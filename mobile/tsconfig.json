@@ -3,7 +3,9 @@
     "target": "esnext",
     "module": "esnext",
     "jsx": "react-native",
-    "lib": ["esnext"],
+    "lib": [
+      "esnext"
+    ],
     "moduleResolution": "bundler",
     "strict": false,
     "skipLibCheck": true,
@@ -13,7 +15,8 @@
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    "nativewind-env.d.ts"
   ],
   "exclude": [
     "**/node_modules",

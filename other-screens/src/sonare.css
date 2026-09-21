@@ -1,80 +1,7 @@
 /* ============================================================
-   SONARE — Design System
-   Offline-first music player. Pitch black + spring green.
+   SONARE — Component Stylesheet (legacy classes)
+   These will be progressively replaced by @utility directives
    ============================================================ */
-
-:root{
-  /* surfaces */
-  --bg:#000000;
-  --s0:#060607;
-  --s1:#0B0B0D;
-  --s2:#111114;
-  --s3:#17171B;
-  --s4:#1E1E23;
-  --ln:#1A1A1F;
-  --ln2:#26262C;
-  --ln3:#33333B;
-
-  /* text */
-  --t1:#FFFFFF;
-  --t2:#9A9AA8;
-  --t3:#7E7E8C;
-  --t4:#5A5A66;
-  --tinv:#000000;
-
-  /* accent */
-  --acc:#00E28A;
-  --acc2:#1FE795;
-  --acc3:#00C074;
-  --accbg:rgba(0,226,138,.12);
-  --accbg2:rgba(0,226,138,.20);
-
-  /* status */
-  --gold:#FFC24D;
-  --goldbg:rgba(255,194,77,.12);
-  --goldbg2:rgba(255,194,77,.22);
-  --red:#FF4D5E;
-  --blue:#4DA3FF;
-
-  /* radius */
-  --r-xs:4px; --r-sm:8px; --r-md:12px; --r-lg:16px;
-  --r-xl:20px; --r-2xl:28px; --r-full:999px;
-
-  /* type */
-  --font:'Geist','Geist Sans',system-ui,-apple-system,sans-serif;
-  --mono:'JetBrains Mono',ui-monospace,monospace;
-
-  /* elevation */
-  --e1:0 1px 2px rgba(0,0,0,.40), 0 0 1px rgba(0,0,0,.24);
-  --e2:0 4px 12px -2px rgba(0,0,0,.50), 0 1px 2px rgba(0,0,0,.30);
-  --e3:0 12px 32px -6px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35);
-  --e4:0 24px 64px -12px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40);
-  --eplayer:0 -8px 32px -8px rgba(0,0,0,.75);
-  --glow:0 4px 20px -4px rgba(0,226,138,.35);
-  --glow-s:0 6px 28px -2px rgba(0,226,138,.55);
-  --glow-g:0 4px 20px -4px rgba(255,194,77,.32);
-}
-
-*{box-sizing:border-box;}
-
-/* Force the dark ground to survive PDF/print export — browsers strip
-   background colours from printed pages unless told not to. */
-html,body{background:#000000;color-scheme:dark;}
-*,*::before,*::after{
-  -webkit-print-color-adjust:exact !important;
-  print-color-adjust:exact !important;
-}
-@media print{
-  html,body{background:#000000 !important;}
-}
-
-/* ---------- screen roots ---------- */
-.scr{
-  position:relative; overflow:hidden; background:var(--bg);
-  color:var(--t1); font-family:var(--font);
-  -webkit-font-smoothing:antialiased;
-  font-feature-settings:"ss01","cv01";
-}
 
 /* ---------- layout helpers ---------- */
 .row{display:flex;align-items:center;}
@@ -127,6 +54,7 @@ html,body{background:#000000;color-scheme:dark;}
 
 /* ---------- icons ---------- */
 svg.ic{display:block;flex:none;}
+.ic{display:block;flex:none;}
 
 /* ---------- buttons ---------- */
 .btn{
@@ -147,25 +75,13 @@ svg.ic{display:block;flex:none;}
 .btn-lg{height:48px;padding:0 24px;font-size:15px;}
 .btn-gold{background:var(--gold);color:#000;box-shadow:var(--glow-g);}
 
-.ib{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:40px;height:40px;border-radius:var(--r-full);
-  border:0;background:transparent;color:var(--t2);cursor:pointer;flex:none;
-  text-decoration:none;
-}
-.ib:hover{background:var(--s3);color:var(--t1);}
 .ib-44{width:44px;height:44px;}
 .ib-32{width:32px;height:32px;}
 .ib-28{width:28px;height:28px;}
 .ib-on{color:var(--acc);background:var(--accbg);}
 .ib-bord{border:1px solid var(--ln2);}
+.ib:hover{background:var(--s3);color:var(--t1);}
 
-/* big circular play */
-.playbtn{
-  display:inline-flex;align-items:center;justify-content:center;
-  width:64px;height:64px;border-radius:var(--r-full);border:0;cursor:pointer;
-  background:var(--acc);color:#000;box-shadow:var(--glow-s);flex:none;
-}
 .playbtn-56{width:56px;height:56px;}
 .playbtn-48{width:48px;height:48px;}
 .playbtn-40{width:40px;height:40px;}
@@ -176,21 +92,10 @@ svg.ic{display:block;flex:none;}
 }
 
 /* ---------- chips / pills / badges ---------- */
-.chip{
-  display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;
-  border-radius:var(--r-full);background:var(--s2);border:1px solid var(--ln2);
-  color:var(--t2);font-size:13px;font-weight:500;cursor:pointer;flex:none;
-  font-family:var(--font);text-decoration:none;
-}
 .chip:hover{background:var(--s3);color:var(--t1);}
 .chip-on{background:var(--accbg2);border-color:rgba(0,226,138,.45);color:var(--acc);}
 .chip-sm{height:26px;padding:0 10px;font-size:12px;}
 
-.badge{
-  display:inline-flex;align-items:center;gap:4px;height:20px;padding:0 7px;
-  border-radius:var(--r-xs);font-size:10px;font-weight:600;letter-spacing:.4px;
-  text-transform:uppercase;flex:none;
-}
 .bg-local{background:var(--goldbg2);color:var(--gold);}
 .bg-cloud{background:var(--accbg2);color:var(--acc);}
 .bg-dl{background:rgba(77,163,255,.18);color:var(--blue);}
@@ -201,7 +106,7 @@ svg.ic{display:block;flex:none;}
 .dot-gold{background:var(--gold);box-shadow:0 0 8px rgba(255,194,77,.8);}
 .dot-off{background:var(--t4);}
 
-/* source glyph — the "where is this music from" language */
+/* source glyph */
 .src{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:var(--r-xs);flex:none;}
 .src-local{background:var(--goldbg);color:var(--gold);}
 .src-cloud{background:var(--accbg);color:var(--acc);}
@@ -211,18 +116,12 @@ svg.ic{display:block;flex:none;}
   display:inline-flex;align-items:center;padding:3px;gap:2px;
   background:var(--s1);border:1px solid var(--ln2);border-radius:var(--r-full);flex:none;
 }
-.seg-i{
-  display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 13px;
-  border-radius:var(--r-full);font-size:12px;font-weight:600;letter-spacing:.2px;
-  color:var(--t3);background:transparent;border:0;cursor:pointer;font-family:var(--font);
-  text-decoration:none;
-}
 .seg-i:hover{color:var(--t1);}
 .seg-on-cloud{background:var(--accbg2);color:var(--acc);box-shadow:inset 0 0 0 1px rgba(0,226,138,.35);}
 .seg-on-dev{background:var(--goldbg2);color:var(--gold);box-shadow:inset 0 0 0 1px rgba(255,194,77,.35);}
 .seg-lg .seg-i{height:34px;padding:0 16px;font-size:13px;}
 
-/* status strip shown under the header in offline mode */
+/* status strip */
 .offstrip{
   display:flex;align-items:center;gap:10px;padding:10px 14px;
   background:var(--goldbg);border:1px solid rgba(255,194,77,.22);
@@ -235,10 +134,6 @@ svg.ic{display:block;flex:none;}
 }
 
 /* ---------- artwork ---------- */
-.art{
-  position:relative;flex:none;border-radius:var(--r-md);overflow:hidden;
-  background:var(--s2);
-}
 .art::after{
   content:"";position:absolute;inset:0;
   background:
@@ -251,6 +146,7 @@ svg.ic{display:block;flex:none;}
   background:repeating-radial-gradient(circle at 50% 52%, rgba(0,0,0,0) 0 8px, rgba(0,0,0,.16) 8px 9px);
   opacity:.7;
 }
+.art-r-xs{border-radius:var(--r-xs);}
 .art-r-sm{border-radius:var(--r-sm);}
 .art-r-lg{border-radius:var(--r-lg);}
 .art-r-xl{border-radius:var(--r-xl);}
@@ -269,24 +165,17 @@ svg.ic{display:block;flex:none;}
 .a11{background:linear-gradient(145deg,#3B5BD9 0%,#1C2A6B 46%,#090E22 100%);}
 .a12{background:linear-gradient(145deg,#C08A2E 0%,#684616 46%,#221707 100%);}
 
-/* artwork-derived ambient background for Now Playing */
 .ambient{position:absolute;inset:0;overflow:hidden;}
 .ambient i{position:absolute;display:block;border-radius:50%;filter:blur(90px);opacity:.55;}
 
 /* ---------- song rows ---------- */
-.srow{
-  display:flex;align-items:center;gap:12px;padding:8px 10px;
-  border-radius:var(--r-md);background:transparent;
-}
-.srow-on{background:var(--s2);box-shadow:inset 0 0 0 1px var(--ln2);}
-.srow-hover{background:var(--s1);}
 .srow-idx{width:22px;text-align:right;flex:none;font-family:var(--mono);font-size:12px;color:var(--t3);font-variant-numeric:tabular-nums;}
 
-/* equalizer bars for the currently playing row */
+/* equalizer bars */
 .eqbars{display:flex;align-items:flex-end;gap:2px;height:14px;width:14px;flex:none;}
 .eqbars i{width:2.5px;background:var(--acc);border-radius:1px;display:block;}
 
-/* ---------- waveform seek rail (signature element) ---------- */
+/* ---------- waveform ---------- */
 .wave{display:flex;align-items:center;gap:2px;height:32px;width:100%;}
 .wave i{width:2px;border-radius:1px;background:var(--ln3);display:block;flex:none;}
 .wave i.on{background:var(--acc);}
@@ -342,11 +231,6 @@ svg.ic{display:block;flex:none;}
   width:260px;flex:none;background:var(--s0);border-right:1px solid var(--ln);
   display:flex;flex-direction:column;
 }
-.sitem{
-  display:flex;align-items:center;gap:12px;height:40px;padding:0 12px;
-  border-radius:var(--r-sm);color:var(--t2);text-decoration:none;
-  font-size:14px;font-weight:500;
-}
 .sitem:hover{background:var(--s2);color:var(--t1);}
 .sitem.on{background:var(--s3);color:var(--t1);box-shadow:inset 2px 0 0 var(--acc);}
 .sitem.on svg{color:var(--acc);}
@@ -369,11 +253,6 @@ svg.ic{display:block;flex:none;}
 .qpanel{width:320px;flex:none;background:var(--s0);border-left:1px solid var(--ln);display:flex;flex-direction:column;}
 
 /* search input */
-.field{
-  display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;
-  background:var(--s2);border:1px solid var(--ln2);border-radius:var(--r-full);
-  color:var(--t3);
-}
 .field input{
   border:0;background:transparent;outline:0;color:var(--t1);font-family:var(--font);
   font-size:14px;width:100%;padding:0;
@@ -452,13 +331,8 @@ svg.ic{display:block;flex:none;}
 }
 .scrim{position:absolute;inset:0;background:rgba(0,0,0,.66);}
 
-/* swatch (foundations) */
+/* misc */
 .sw-box{width:100%;height:56px;border-radius:var(--r-sm);border:1px solid var(--ln2);}
 .spec{display:flex;flex-direction:column;gap:4px;}
-
-/* drag handle rows */
 .drag{color:var(--t4);cursor:grab;}
 .ghost{opacity:.55;border:1px dashed var(--ln3);}
-
-/* focus ring demo */
-.focusring{box-shadow:0 0 0 2px #000, 0 0 0 4px var(--acc);}

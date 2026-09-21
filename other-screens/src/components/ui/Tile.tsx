@@ -1,30 +1,22 @@
-import React from 'react';
-import Icon from './Icon';
+import React from 'react'
+import { Link } from 'react-router-dom'
+import Artwork from '../music/Artwork'
 
 interface TileProps {
-  title: string;
-  subtitle: string;
-  artClass: string;
-  source: 'local' | 'server';
-  href?: string;
+  title: string
+  subtitle: string
+  artVariant: any
+  to: string
 }
 
-export default function Tile({ title, subtitle, artClass, source, href = "#" }: TileProps) {
+export function Tile({ title, subtitle, artVariant, to }: TileProps) {
   return (
-    <a className="tile h-[64px] p-[10px] pr-[16px]" href={href}>
-      <div className={`art ${artClass} art-r-sm art-rings w-[44px] h-[44px]`}></div>
-      <span className="flex flex-col flex-grow min-w-0 gap-[2px]">
-        <span className="flex flex-row items-center gap-[6px]">
-          <span className="text-[15px] leading-[22px] font-medium text-t1 truncate">{title}</span>
-          <span className={`src src-${source === 'local' ? 'local' : 'cloud'}`} title={source === 'local' ? "On this device" : "Streaming from server"}>
-            <Icon name={source === 'local' ? 'smartphone_3' : 'cloud_2'} />
-          </span>
-        </span>
-        <span className="text-[13px] leading-[18px] font-normal text-t3 truncate">{subtitle}</span>
+    <Link to={to} className="tile no-underline text-inherit">
+      <Artwork variant={artVariant} size={44} radius="xs" />
+      <span className="flex flex-col grow min-w-0">
+        <span className="text-body-l text-t1 truncate">{title}</span>
+        <span className="text-body-s text-t3 truncate">{subtitle}</span>
       </span>
-      <span className="playbtn-fab flex-none w-[34px] h-[34px]">
-        <Icon name="play" />
-      </span>
-    </a>
-  );
+    </Link>
+  )
 }
