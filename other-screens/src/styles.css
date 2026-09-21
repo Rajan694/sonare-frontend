@@ -1,25 +1,68 @@
-:root {
-  color-scheme: light dark;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+@import "tailwindcss";
+@import './tokens.css';
+@import './sonare.css';
+
+@theme {
+  --color-bg: #000000;
+  --color-s0: #060607;
+  --color-s1: #0B0B0D;
+  --color-s2: #111114;
+  --color-s3: #17171B;
+  --color-s4: #1E1E23;
+  --color-ln: #1A1A1F;
+  --color-ln2: #26262C;
+  --color-ln3: #33333B;
+  
+  --color-t1: #FFFFFF;
+  --color-t2: #9A9AA8;
+  --color-t3: #7E7E8C;
+  --color-t4: #5A5A66;
+  --color-tinv: #000000;
+
+  --color-acc: #00E28A;
+  --color-acc2: #1FE795;
+  --color-acc3: #00C074;
+  --color-accbg: rgba(0,226,138,0.12);
+  --color-accbg2: rgba(0,226,138,0.20);
+  
+  --color-gold: #FFC24D;
+  --color-goldbg: rgba(255,194,77,0.12);
+  --color-goldbg2: rgba(255,194,77,0.22);
+  
+  --color-red: #FF4D5E;
+  --color-blue: #4DA3FF;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-full: 999px;
+
+  --font-sans: 'Geist', 'Geist Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
-* {
-  box-sizing: border-box;
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  background: var(--bg);
+  color-scheme: dark;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
 }
 
 body {
   margin: 0;
-  background-color: white;
-  color: #111;
+  color: var(--t1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv01";
   /* Desktop chrome: text selection and the I-beam cursor read as a bug here. */
   -webkit-user-select: none;
   user-select: none;
   cursor: default;
-}
-
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #1b1b1f;
-    color: #eaeaea;
-  }
 }

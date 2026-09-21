@@ -1,47 +1,29 @@
-import type { MouseEvent } from 'react';
-
-import { os } from '@neutralinojs/lib';
-
-import { isNeutralino } from './neutralino';
-
-import styles from './App.module.css';
-
-function openExternal(url: string) {
-  return (event: MouseEvent<HTMLAnchorElement>) => {
-    event.preventDefault();
-    void os.open(url);
-  };
-}
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import DesktopHomeOnline from './screens/DesktopHomeOnline';
+import DesktopHomeOffline from './screens/DesktopHomeOffline';
+import DesktopSearchOnline from './screens/DesktopSearchOnline';
+import DesktopLibrary from './screens/DesktopLibrary';
+import DesktopFolders from './screens/DesktopFolders';
+import DesktopSettings from './screens/DesktopSettings';
+import DesktopNowPlayingOnline from './screens/DesktopNowPlayingOnline';
+import DesktopNowPlayingOffline from './screens/DesktopNowPlayingOffline';
+import './styles.css';
 
 export default function App() {
+  const [mode, setMode] = useState<'online' | 'offline'>('online');
+
   return (
-    <main className={styles.app}>
-      <h1 className={styles.greeting}>Hii Rajan!!!</h1>
-
-      {isNeutralino() ? (
-        <>
-          <p className={styles.info}>
-            {window.NL_APPID} is running on port {window.NL_PORT} inside {window.NL_OS}
-          </p>
-          <p className={styles.version}>
-            server: v{window.NL_VERSION} &middot; client: v{window.NL_CVERSION}
-          </p>
-        </>
-      ) : (
-        <p className={styles.info}>Running as a plain web page (no Neutralino runtime).</p>
-      )}
-
-      <img className={styles.logo} src="/icons/logo.gif" alt="Neutralinojs" />
-
-      <p className={styles.links}>
-        <a href="https://neutralino.js.org/docs" onClick={openExternal('https://neutralino.js.org/docs')}>
-          Docs
-        </a>
-        {' · '}
-        <a href="https://www.youtube.com/c/CodeZri" onClick={openExternal('https://www.youtube.com/c/CodeZri')}>
-          Video tutorial
-        </a>
-      </p>
-    </main>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Navigate to="/home" replace />} />
+        <Route path="/home" element={mode === 'online' ? <DesktopHomeOnline /> : <DesktopHomeOffline />} />
+        <Route path="/search" element={<DesktopSearchOnline />} />
+        <Route path="/library" element={<DesktopLibrary />} />
+        <Route path="/folders" element={<DesktopFolders />} />
+        <Route path="/settings" element={<DesktopSettings />} />
+        <Route path="/now-playing" element={mode === 'online' ? <DesktopNowPlayingOnline /> : <DesktopNowPlayingOffline />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
