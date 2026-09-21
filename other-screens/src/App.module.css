@@ -1,0 +1,36 @@
+.app {
+  text-align: center;
+  padding: 24px 16px;
+}
+
+.greeting {
+  margin: 0 0 16px;
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.info {
+  margin: 0;
+  font-size: 16px;
+}
+
+.version {
+  margin: 4px 0 0;
+  font-size: 13px;
+  opacity: 0.7;
+}
+
+.logo {
+  width: 120px;
+  height: auto;
+  margin: 20px 0;
+}
+
+.links {
+  margin: 0;
+  font-size: 15px;
+}
+
+.links a {
+  color: inherit;
+}

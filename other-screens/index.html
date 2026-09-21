@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sonare</title>
+    <!--
+      Neutralino injects NL_* globals into pages it serves itself. In dev the page is
+      served by Vite instead, so `neu run` rewrites this tag's src to the Neutralino
+      server URL (and reverts it on exit). Keep the tag exactly as-is - the CLI matches
+      it with a regex. See cli.frontendLibrary.patchFile in neutralino.config.json.
+    -->
+    <script src="http://localhost:34281/__neutralino_globals.js"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

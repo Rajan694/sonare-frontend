@@ -1,0 +1,25 @@
+:root {
+  color-scheme: light dark;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: white;
+  color: #111;
+  /* Desktop chrome: text selection and the I-beam cursor read as a bug here. */
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #1b1b1f;
+    color: #eaeaea;
+  }
+}

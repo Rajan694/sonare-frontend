@@ -1,0 +1,17 @@
+# Dependencies
+/node_modules
+
+# Vite build output (this is Neutralino's documentRoot / cli.resourcesPath)
+/resources
+
+# Developer tools' files
+.lite_workspace.lua
+
+# Neutralinojs binaries and builds
+/bin
+/dist
+
+# Neutralinojs related files
+.storage
+.tmp
+*.log
