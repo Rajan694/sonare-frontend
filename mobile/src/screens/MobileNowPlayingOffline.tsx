@@ -20,12 +20,12 @@ export default function MobileNowPlayingOffline() {
   </View>
   <View className="col grow" style="position:relative;padding:14px 22px 0">
     <View className="row between none" style="height:44px">
-      <Pressable className="ib none" href="M02-Home-Offline.html" aria-label="Collapse player"><Image source={require('../../assets/icon_a5e5bd6f.svg')} className="ic" /></Pressable>
+      <Pressable className="ib none" href="M02-Home-Offline.html" aria-label="Collapse player"><Image source={require('../../assets/icon_18.svg')} className="ic" /></Pressable>
       <Text className="col center none" style="gap:1px">
         <Text className="t-ls c3">PLAYING FROM ALBUM</Text>
         <Text className="t-ll c1">Midnight Cartography</Text>
       </Text>
-      <Pressable className="ib none" aria-label="More options"><Image source={require('../../assets/icon_4eb1b58e.svg')} className="ic" /></Pressable>
+      <Pressable className="ib none" aria-label="More options"><Image source={require('../../assets/icon_95.svg')} className="ic" /></Pressable>
     </View>
 
     <View className="center" style="padding:22px 0 26px">
@@ -37,13 +37,13 @@ export default function MobileNowPlayingOffline() {
         <Text className="t-h1 c1 trunc">Paper Lanterns</Text>
         <Text className="t-tm c2 trunc">Hollow Coast</Text>
       </Text>
-      <Pressable className="ib ib-44 none" aria-label="Favourite"><Image source={require('../../assets/icon_5bef6a7d.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44 none" aria-label="Add to playlist"><Image source={require('../../assets/icon_ddeb9749.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44 none" aria-label="Favourite"><Image source={require('../../assets/heart_2.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44 none" aria-label="Add to playlist"><Image source={require('../../assets/plus_3.svg')} className="ic" /></Pressable>
     </View>
 
     <View className="row g8 none" style="margin-top:12px">
       <Text className="row g6 none" style="height:24px;padding:0 9px;border-radius:999px;background:var(--goldbg);color:var(--gold)">
-        <Image source={require('../../assets/icon_34e49f0b.svg')} className="ic" /><Text className="t-ls">ON THIS DEVICE</Text>
+        <Image source={require('../../assets/smartphone_6.svg')} className="ic" /><Text className="t-ls">ON THIS DEVICE</Text>
       </Text>
       <Text className="t-mono-s c3">FLAC · 1411 kbps · 24-bit</Text>
     </View>
@@ -54,29 +54,29 @@ export default function MobileNowPlayingOffline() {
     </View>
 
     <View className="row between none" style="margin-top:14px">
-      <Pressable className="ib ib-44" aria-label="Shuffle"><Image source={require('../../assets/icon_dc67ec92.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44" aria-label="Previous track"><Image source={require('../../assets/icon_924ff832.svg')} className="ic" /></Pressable>
-      <Pressable className="playbtn" aria-label="Pause" style="background:var(--gold);box-shadow:var(--glow-g)"><Image source={require('../../assets/icon_213c9eab.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44" aria-label="Next track"><Image source={require('../../assets/icon_65da5e7b.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44" aria-label="Repeat one"><Image source={require('../../assets/icon_5388c4e9.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" aria-label="Shuffle"><Image source={require('../../assets/shuffle_3.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" aria-label="Previous track"><Image source={require('../../assets/icon_46.svg')} className="ic" /></Pressable>
+      <Pressable className="playbtn" aria-label="Pause" style="background:var(--gold);box-shadow:var(--glow-g)"><Image source={require('../../assets/icon_87.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" aria-label="Next track"><Image source={require('../../assets/icon_7.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" aria-label="Repeat one"><Image source={require('../../assets/repeat.svg')} className="ic" /></Pressable>
     </View>
 
     <View className="row between none" style="margin-top:18px;padding-bottom:6px">
-      <Pressable className="ib ib-44" href="M11-Lyrics.html" aria-label="Lyrics"><Image source={require('../../assets/icon_a9777263.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44" href="M13-Equalizer.html" aria-label="Equalizer"><Image source={require('../../assets/icon_7bdd370f.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44" aria-label="Audio output"><Image source={require('../../assets/icon_1a4b9f12.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44" aria-label="Sleep timer"><Image source={require('../../assets/icon_daa1cc18.svg')} className="ic" /></Pressable>
-      <Pressable className="ib ib-44" href="M12-Queue.html" aria-label="Queue"><Image source={require('../../assets/icon_f3686277.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" href="M11-Lyrics.html" aria-label="Lyrics"><Image source={require('../../assets/icon_101.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" href="M13-Equalizer.html" aria-label="Equalizer"><Image source={require('../../assets/sliders_2.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" aria-label="Audio output"><Image source={require('../../assets/icon_12.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" aria-label="Sleep timer"><Image source={require('../../assets/disc_2.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-44" href="M12-Queue.html" aria-label="Queue"><Image source={require('../../assets/icon_28.svg')} className="ic" /></Pressable>
     </View>
   </View>
 
   <View className="row g10 none" style="position:relative;margin:0 22px 22px;padding:10px 12px;background:rgba(17,17,20,.86);border:1px solid var(--ln2);border-radius:14px">
-    <Text className="icobox" style="width:30px;height:30px;background:transparent;color:var(--gold)"><Image source={require('../../assets/icon_f76c8b4d.svg')} className="ic" /></Text>
+    <Text className="icobox" style="width:30px;height:30px;background:transparent;color:var(--gold)"><Image source={require('../../assets/headphones.svg')} className="ic" /></Text>
     <Text className="col grow" style="gap:1px">
       <Text className="t-ll c1">Wired headphones</Text>
       <Text className="t-ls c3">Playing locally · no network used</Text>
     </Text>
-    <Pressable className="ib ib-32 none" aria-label="Change output"><Image source={require('../../assets/icon_aeba3a96.svg')} className="ic" /></Pressable>
+    <Pressable className="ib ib-32 none" aria-label="Change output"><Image source={require('../../assets/chevron_right_2.svg')} className="ic" /></Pressable>
   </View>
 </View>
 </View>

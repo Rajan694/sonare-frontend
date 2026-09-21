@@ -19,9 +19,9 @@ export default function MobileLyrics() {
   </View>
   <View className="col grow" style="position:relative;padding:14px 22px 0">
     <View className="row between none" style="height:44px">
-      <Pressable className="ib none" href="M09-Now-Playing-Online.html" aria-label="Back to player"><Image source={require('../../assets/icon_a5e5bd6f.svg')} className="ic" /></Pressable>
+      <Pressable className="ib none" href="M09-Now-Playing-Online.html" aria-label="Back to player"><Image source={require('../../assets/icon_18.svg')} className="ic" /></Pressable>
       <Text className="t-ll c1 none">Lyrics</Text>
-      <Pressable className="ib none" aria-label="Lyrics options"><Image source={require('../../assets/icon_4eb1b58e.svg')} className="ic" /></Pressable>
+      <Pressable className="ib none" aria-label="Lyrics options"><Image source={require('../../assets/icon_95.svg')} className="ic" /></Pressable>
     </View>
 
     <View className="row g12 none" style="margin-top:6px">
@@ -30,13 +30,13 @@ export default function MobileLyrics() {
         <Text className="t-tm c1 trunc">Paper Lanterns</Text>
         <Text className="t-bs c2 trunc">Hollow Coast</Text>
       </Text>
-      <Text className="badge bg-local"><Image source={require('../../assets/icon_1af5e907.svg')} className="ic" />.lrc</Text>
+      <Text className="badge bg-local"><Image source={require('../../assets/smartphone.svg')} className="ic" />.lrc</Text>
     </View>
 
     <View className="row g8 none" style="margin-top:16px">
-      <Pressable className="chip chip-sm chip-on"><Image source={require('../../assets/icon_5c91961a.svg')} className="ic" />Synced</Pressable>
+      <Pressable className="chip chip-sm chip-on"><Image source={require('../../assets/sync.svg')} className="ic" />Synced</Pressable>
       <Pressable className="chip chip-sm">Plain text</Pressable>
-      <Pressable className="chip chip-sm"><Image source={require('../../assets/icon_8a713b93.svg')} className="ic" />Offset −0.3s</Pressable>
+      <Pressable className="chip chip-sm"><Image source={require('../../assets/clock.svg')} className="ic" />Offset −0.3s</Pressable>
     </View>
 
     <View className="col grow" style="gap:20px;padding:26px 0 0;overflow:hidden">
@@ -70,15 +70,15 @@ export default function MobileLyrics() {
     <View className="row between">
       <Text className="t-mono-s c2">1:24</Text>
       <Text className="row g16">
-        <Pressable className="ib ib-32" aria-label="Previous track"><Image source={require('../../assets/icon_fb29ede2.svg')} className="ic" /></Pressable>
-        <Pressable className="playbtn playbtn-40" aria-label="Pause"><Image source={require('../../assets/icon_775589cc.svg')} className="ic" /></Pressable>
-        <Pressable className="ib ib-32" aria-label="Next track"><Image source={require('../../assets/icon_63cd31f0.svg')} className="ic" /></Pressable>
+        <Pressable className="ib ib-32" aria-label="Previous track"><Image source={require('../../assets/icon_15.svg')} className="ic" /></Pressable>
+        <Pressable className="playbtn playbtn-40" aria-label="Pause"><Image source={require('../../assets/icon_13.svg')} className="ic" /></Pressable>
+        <Pressable className="ib ib-32" aria-label="Next track"><Image source={require('../../assets/icon_92.svg')} className="ic" /></Pressable>
       </Text>
       <Text className="t-mono-s c3">-2:18</Text>
     </View>
     <View className="row g8">
-      <Pressable className="btn btn-sm btn-out grow"><Image source={require('../../assets/icon_665c09e2.svg')} className="ic" />Edit lyrics</Pressable>
-      <Pressable className="btn btn-sm btn-out grow"><Image source={require('../../assets/icon_b81c84d1.svg')} className="ic" />Import .lrc</Pressable>
+      <Pressable className="btn btn-sm btn-out grow"><Image source={require('../../assets/icon_62.svg')} className="ic" />Edit lyrics</Pressable>
+      <Pressable className="btn btn-sm btn-out grow"><Image source={require('../../assets/download_2.svg')} className="ic" />Import .lrc</Pressable>
     </View>
   </View>
 </View>

@@ -21,13 +21,13 @@ export default function DesktopAlbum() {
                 <div className="art a1 art-circ w-[24px] h-[24px]"></div><span className="text-[15px] leading-[22px] font-medium text-t1">Hollow Coast</span></a>
               <span className="text-[14px] leading-[20px] font-normal text-t3">· 2024 · 11 songs · 48 min</span>
             </div>
-            <div className="flex flex-row items-center gap-[8px]"><span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span><span className="badge bg-neutral">FLAC · 1411 KBPS</span><span className="badge bg-neutral">Post-Rock</span></div>
+            <div className="flex flex-row items-center gap-[8px]"><span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span><span className="badge bg-neutral">FLAC · 1411 KBPS</span><span className="badge bg-neutral">Post-Rock</span></div>
             <div className="flex flex-row items-center gap-[12px] mt-[6px]">
-              <button className="playbtn playbtn-56" aria-label="Play album"><img src="/assets/icon_53abdc1a.svg" className="ic" alt="icon" /></button>
-              <button className="btn btn-out btn-lg"><img src="/assets/icon_011b35fd.svg" className="ic" alt="icon" />Shuffle</button>
-              <button className="ib ib-44 ib-bord" aria-label="Favourite album"><img src="/assets/icon_42e55984.svg" className="ic" alt="icon" /></button>
-              <button className="ib ib-44 ib-bord" aria-label="Downloaded"><img src="/assets/icon_bd6b9e75.svg" className="ic" alt="icon" /></button>
-              <button className="ib ib-44 ib-bord" aria-label="More options"><img src="/assets/icon_a0062b9c.svg" className="ic" alt="icon" /></button>
+              <button className="playbtn playbtn-56" aria-label="Play album"><img src="/assets/play_3.svg" className="ic" alt="icon" /></button>
+              <button className="btn btn-out btn-lg"><img src="/assets/shuffle_3.svg" className="ic" alt="icon" />Shuffle</button>
+              <button className="ib ib-44 ib-bord" aria-label="Favourite album"><img src="/assets/icon.svg" className="ic" alt="icon" /></button>
+              <button className="ib ib-44 ib-bord" aria-label="Downloaded"><img src="/assets/icon_70.svg" className="ic" alt="icon" /></button>
+              <button className="ib ib-44 ib-bord" aria-label="More options"><img src="/assets/icon_107.svg" className="ic" alt="icon" /></button>
             </div>
           </div>
         </div>
@@ -36,7 +36,7 @@ export default function DesktopAlbum() {
     <span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3 text-right">#</span><span></span>
     <span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3">TITLE</span><span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3">ALBUM</span>
     <span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3">SOURCE</span><span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3 text-right">PLAYS</span>
-    <span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3 text-right"><img src="/assets/icon_dbc7bf8a.svg" className="ic" alt="icon" /></span><span></span></div>
+    <span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3 text-right"><img src="/assets/icon_3.svg" className="ic" alt="icon" /></span><span></span></div>
           <div className="grid srow-on gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
     <span className="srow-idx w-[auto]"><span className="eqbars"><i className="h-[9px]"></i><i className="h-[14px]"></i><i className="h-[6px]"></i><i className="h-[11px]"></i></span></span>
     <div className="art a1 art-r-sm art-rings w-[40px] h-[40px]"></div>
@@ -45,12 +45,12 @@ export default function DesktopAlbum() {
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span>
     </span>
     <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span>
-    <span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+    <span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
     <span className="t-mono-s text-t3 text-right">142</span>
     <span className="t-mono-s text-t3 text-right">3:42</span>
     <span className="flex flex-row items-center gap-[2px] justify-end">
-      <button className="ib ib-28" aria-label="Favourite Paper Lanterns"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="Favourite Paper Lanterns"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button>
     </span>
   </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
     <span className="srow-idx w-[auto]">2</span>
@@ -60,12 +60,12 @@ export default function DesktopAlbum() {
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span>
     </span>
     <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span>
-    <span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+    <span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
     <span className="t-mono-s text-t3 text-right">97</span>
     <span className="t-mono-s text-t3 text-right">4:33</span>
     <span className="flex flex-row items-center gap-[2px] justify-end">
-      <button className="ib ib-28" aria-label="Favourite Copper Wires"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="Favourite Copper Wires"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button>
     </span>
   </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
     <span className="srow-idx w-[auto]">3</span>
@@ -75,54 +75,54 @@ export default function DesktopAlbum() {
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span>
     </span>
     <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span>
-    <span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+    <span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
     <span className="t-mono-s text-t3 text-right">61</span>
     <span className="t-mono-s text-t3 text-right">5:16</span>
     <span className="flex flex-row items-center gap-[2px] justify-end">
-      <button className="ib ib-28" aria-label="Favourite Cartographer"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="Favourite Cartographer"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button>
     </span>
   </div>
           <div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
             <span className="srow-idx w-[auto]">4</span><div className="art a1 art-r-sm art-rings w-[40px] h-[40px]"></div>
             <span className="flex flex-col gap-[2px] min-w-[0]"><span className="text-[15px] leading-[22px] font-medium text-t1 truncate">Tin Roof Morning</span>
             <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span></span>
-            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
             <span className="t-mono-s text-t3 text-right">54</span>
             <span className="t-mono-s text-t3 text-right">4:02</span>
             <span className="flex flex-row items-center gap-[2px] justify-end">
-              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button></span>
+              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button></span>
           </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
             <span className="srow-idx w-[auto]">5</span><div className="art a1 art-r-sm art-rings w-[40px] h-[40px]"></div>
             <span className="flex flex-col gap-[2px] min-w-[0]"><span className="text-[15px] leading-[22px] font-medium text-t1 truncate">North Field</span>
             <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span></span>
-            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
             <span className="t-mono-s text-t3 text-right">41</span>
             <span className="t-mono-s text-t3 text-right">3:29</span>
             <span className="flex flex-row items-center gap-[2px] justify-end">
-              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button></span>
+              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button></span>
           </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
             <span className="srow-idx w-[auto]">6</span><div className="art a1 art-r-sm art-rings w-[40px] h-[40px]"></div>
             <span className="flex flex-col gap-[2px] min-w-[0]"><span className="text-[15px] leading-[22px] font-medium text-t1 truncate">Signal Hill</span>
             <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span></span>
-            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
             <span className="t-mono-s text-t3 text-right">33</span>
             <span className="t-mono-s text-t3 text-right">5:11</span>
             <span className="flex flex-row items-center gap-[2px] justify-end">
-              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button></span>
+              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button></span>
           </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
             <span className="srow-idx w-[auto]">7</span><div className="art a1 art-r-sm art-rings w-[40px] h-[40px]"></div>
             <span className="flex flex-col gap-[2px] min-w-[0]"><span className="text-[15px] leading-[22px] font-medium text-t1 truncate">Harbour Lights</span>
             <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span></span>
-            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+            <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span><span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
             <span className="t-mono-s text-t3 text-right">28</span>
             <span className="t-mono-s text-t3 text-right">4:20</span>
             <span className="flex flex-row items-center gap-[2px] justify-end">
-              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button></span>
+              <button className="ib ib-28" aria-label="Favourite"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+              <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button></span>
           </div>
         </div>
       </div>

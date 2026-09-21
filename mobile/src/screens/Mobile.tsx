@@ -15,18 +15,18 @@ export default function Mobile() {
 <View className="scr col" style="width:1280px;height:1080px;padding:56px 56px 0;gap:38px">
     <View className="row between none">
       <View className="row g14 none">
-        <Text className="row center none" style="width:52px;height:52px;border-radius:16px;background:var(--acc);color:#000;box-shadow:var(--glow-s)"><Image source={require('../../assets/icon_a362eca1.svg')} className="ic" /></Text>
+        <Text className="row center none" style="width:52px;height:52px;border-radius:16px;background:var(--acc);color:#000;box-shadow:var(--glow-s)"><Image source={require('../../assets/music.svg')} className="ic" /></Text>
         <View className="col" style="gap:2px">
           <Text className="t-dis c1" style="letter-spacing:-1.2px">Sonare</Text>
           <Text className="t-ov c3">Offline-first music player · design system v1.0</Text>
         </View>
       </View>
       <View className="row g10 none"><Text className="seg seg-lg">
-      <Pressable className="seg-i seg-on-cloud" href="#" aria-current="true"><Image source={require('../../assets/icon_dbb4a7b2.svg')} className="ic" />Online</Pressable>
-      <Pressable className="seg-i " href="#" aria-current="false"><Image source={require('../../assets/icon_eca8a722.svg')} className="ic" />Offline</Pressable>
+      <Pressable className="seg-i seg-on-cloud" href="#" aria-current="true"><Image source={require('../../assets/cloud_5.svg')} className="ic" />Online</Pressable>
+      <Pressable className="seg-i " href="#" aria-current="false"><Image source={require('../../assets/smartphone_7.svg')} className="ic" />Offline</Pressable>
     </Text><Text className="seg seg-lg">
-      <Pressable className="seg-i " href="#" aria-current="false"><Image source={require('../../assets/icon_dbb4a7b2.svg')} className="ic" />Online</Pressable>
-      <Pressable className="seg-i seg-on-dev" href="#" aria-current="true"><Image source={require('../../assets/icon_eca8a722.svg')} className="ic" />Offline</Pressable>
+      <Pressable className="seg-i " href="#" aria-current="false"><Image source={require('../../assets/cloud_5.svg')} className="ic" />Online</Pressable>
+      <Pressable className="seg-i seg-on-dev" href="#" aria-current="true"><Image source={require('../../assets/smartphone_7.svg')} className="ic" />Offline</Pressable>
     </Text></View>
     </View>
 
@@ -41,16 +41,16 @@ export default function Mobile() {
         answer is never ambiguous.</Text>
         <View className="col" style="gap:12px">
           <View className="row g14">
-              <Text className="icobox icobox-acc none"><Image source={require('../../assets/icon_3a25d080.svg')} className="ic" /></Text>
+              <Text className="icobox icobox-acc none"><Image source={require('../../assets/smartphone_3.svg')} className="ic" /></Text>
               <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Offline-first</Text>
               <Text className="t-bm c2">Everything on device works with the network unplugged. Queue, favourites and play counts survive.</Text></Text></View><View className="row g14">
-              <Text className="icobox icobox-acc none"><Image source={require('../../assets/icon_80ff517a.svg')} className="ic" /></Text>
+              <Text className="icobox icobox-acc none"><Image source={require('../../assets/cloud_2.svg')} className="ic" /></Text>
               <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Online adds, never replaces</Text>
               <Text className="t-bm c2">Going online layers discovery on top of the local library — it never hides what you already own.</Text></Text></View><View className="row g14">
-              <Text className="icobox icobox-acc none"><Image source={require('../../assets/icon_b21ff97c.svg')} className="ic" /></Text>
+              <Text className="icobox icobox-acc none"><Image source={require('../../assets/sliders.svg')} className="ic" /></Text>
               <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Music before chrome</Text>
               <Text className="t-bm c2">Large artwork, a waveform seek rail, and no decoration that does not carry information.</Text></Text></View><View className="row g14">
-              <Text className="icobox icobox-acc none"><Image source={require('../../assets/icon_4fea2e3d.svg')} className="ic" /></Text>
+              <Text className="icobox icobox-acc none"><Image source={require('../../assets/minimize.svg')} className="ic" /></Text>
               <Text className="col grow" style="gap:2px"><Text className="t-tm c1">One language, three shells</Text>
               <Text className="t-bm c2">Mobile, Windows and web share tokens and components but adapt layout, not just scale.</Text></Text></View>
         </View>
@@ -61,15 +61,15 @@ export default function Mobile() {
           <Text className="t-ov c3">The source language</Text>
           <View className="row g28">
             <View className="col grow" style="gap:12px">
-              <View className="row g10"><Text className="src src-cloud" title="Streaming from server"><Image source={require('../../assets/icon_50979100.svg')} className="ic" /></Text><Text className="t-tm cacc">Server</Text></View>
+              <View className="row g10"><Text className="src src-cloud" title="Streaming from server"><Image source={require('../../assets/cloud.svg')} className="ic" /></Text><Text className="t-tm cacc">Server</Text></View>
               <Text className="t-bm c2">Green. Streamed from the API. Shown only in Online Mode.</Text>
-              <Text className="badge bg-cloud"><Image source={require('../../assets/icon_01d3859e.svg')} className="ic" />Server</Text>
+              <Text className="badge bg-cloud"><Image source={require('../../assets/cloud_3.svg')} className="ic" />Server</Text>
             </View>
             <Text className="vr"></Text>
             <View className="col grow" style="gap:12px">
-              <View className="row g10"><Text className="src src-local" title="On this device"><Image source={require('../../assets/icon_00df50b5.svg')} className="ic" /></Text><Text className="t-tm cgold">On device</Text></View>
+              <View className="row g10"><Text className="src src-local" title="On this device"><Image source={require('../../assets/smartphone_4.svg')} className="ic" /></Text><Text className="t-tm cgold">On device</Text></View>
               <Text className="t-bm c2">Gold. A real file in a scanned folder. Always playable.</Text>
-              <Text className="badge bg-local"><Image source={require('../../assets/icon_1af5e907.svg')} className="ic" />On device</Text>
+              <Text className="badge bg-local"><Image source={require('../../assets/smartphone.svg')} className="ic" />On device</Text>
             </View>
           </View>
           <Text className="hr"></Text>
@@ -77,22 +77,22 @@ export default function Mobile() {
             <View className="srow srow-on">
       <Text className="srow-idx"><Text className="eqbars"><i style="height:9px"></i><i style="height:14px"></i><i style="height:6px"></i><i style="height:11px"></i></Text></Text><View className="art a1 art-r-sm" style="width:44px;height:44px;"></View>
       <Text className="col grow" style="gap:2px">
-        <Text className="row g6"><Text className="t-tm cacc trunc">Paper Lanterns</Text><Text className="src src-local" title="On this device"><Image source={require('../../assets/icon_00df50b5.svg')} className="ic" /></Text></Text>
+        <Text className="row g6"><Text className="t-tm cacc trunc">Paper Lanterns</Text><Text className="src src-local" title="On this device"><Image source={require('../../assets/smartphone_4.svg')} className="ic" /></Text></Text>
         <Text className="t-bs c2 trunc">Hollow Coast · Midnight Cartography</Text>
       </Text>
       
       <Text className="t-mono-s c3 none">3:42</Text>
-      <Pressable className="ib ib-32 none" aria-label="More options for Paper Lanterns"><Image source={require('../../assets/icon_58f52c4d.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-32 none" aria-label="More options for Paper Lanterns"><Image source={require('../../assets/icon_20.svg')} className="ic" /></Pressable>
     </View>
             <View className="srow">
       <Text className="srow-idx">2</Text><View className="art a2 art-r-sm" style="width:44px;height:44px;"></View>
       <Text className="col grow" style="gap:2px">
-        <Text className="row g6"><Text className="t-tm c1 trunc">Static Bloom</Text><Text className="src src-cloud" title="Streaming from server"><Image source={require('../../assets/icon_50979100.svg')} className="ic" /></Text></Text>
+        <Text className="row g6"><Text className="t-tm c1 trunc">Static Bloom</Text><Text className="src src-cloud" title="Streaming from server"><Image source={require('../../assets/cloud.svg')} className="ic" /></Text></Text>
         <Text className="t-bs c2 trunc">Vela Nine · Neon Arboretum</Text>
       </Text>
       
       <Text className="t-mono-s c3 none">4:15</Text>
-      <Pressable className="ib ib-32 none" aria-label="More options for Static Bloom"><Image source={require('../../assets/icon_58f52c4d.svg')} className="ic" /></Pressable>
+      <Pressable className="ib ib-32 none" aria-label="More options for Static Bloom"><Image source={require('../../assets/icon_20.svg')} className="ic" /></Pressable>
     </View>
           </View>
         </View>
@@ -130,17 +130,17 @@ export default function Mobile() {
 
     <View className="row g16 none">
       <View className="surf row g12 grow" style="padding:16px">
-          <Text className="icobox none"><Image source={require('../../assets/icon_dda2d4a4.svg')} className="ic" /></Text>
+          <Text className="icobox none"><Image source={require('../../assets/icon_60.svg')} className="ic" /></Text>
           <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Foundations</Text><Text className="t-bs c3">6 boards</Text></Text></View><View className="surf row g12 grow" style="padding:16px">
-          <Text className="icobox none"><Image source={require('../../assets/icon_7b1fd58c.svg')} className="ic" /></Text>
+          <Text className="icobox none"><Image source={require('../../assets/grid.svg')} className="ic" /></Text>
           <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Components</Text><Text className="t-bs c3">40+ patterns</Text></Text></View><View className="surf row g12 grow" style="padding:16px">
-          <Text className="icobox none"><Image source={require('../../assets/icon_3a25d080.svg')} className="ic" /></Text>
+          <Text className="icobox none"><Image source={require('../../assets/smartphone_3.svg')} className="ic" /></Text>
           <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Mobile</Text><Text className="t-bs c3">16 screens · 390×844</Text></Text></View><View className="surf row g12 grow" style="padding:16px">
-          <Text className="icobox none"><Image source={require('../../assets/icon_06b1bd2b.svg')} className="ic" /></Text>
+          <Text className="icobox none"><Image source={require('../../assets/icon_103.svg')} className="ic" /></Text>
           <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Windows</Text><Text className="t-bs c3">16 screens · 1440×900</Text></Text></View><View className="surf row g12 grow" style="padding:16px">
-          <Text className="icobox none"><Image source={require('../../assets/icon_4fea2e3d.svg')} className="ic" /></Text>
+          <Text className="icobox none"><Image source={require('../../assets/minimize.svg')} className="ic" /></Text>
           <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Web</Text><Text className="t-bs c3">16 screens · 1280</Text></Text></View><View className="surf row g12 grow" style="padding:16px">
-          <Text className="icobox none"><Image source={require('../../assets/icon_a23e1371.svg')} className="ic" /></Text>
+          <Text className="icobox none"><Image source={require('../../assets/icon_25.svg')} className="ic" /></Text>
           <Text className="col grow" style="gap:2px"><Text className="t-tm c1">Tablet</Text><Text className="t-bs c3">4 screens · 834</Text></Text></View>
     </View>
   </View>

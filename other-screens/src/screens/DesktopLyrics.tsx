@@ -18,25 +18,25 @@ export default function DesktopLyrics() {
             <span className="text-[14px] leading-[20px] font-normal text-t2">Hollow Coast · Midnight Cartography</span>
           </div>
           <div className="flex flex-row items-center gap-[8px]">
-            <span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />Paper Lanterns.lrc</span>
+            <span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />Paper Lanterns.lrc</span>
             <span className="badge bg-neutral">Synced</span>
           </div>
           <div className="flex flex-col gap-[8px]">
-            <button className="btn btn-out btn-sm"><img src="/assets/icon_d3c7a6d6.svg" className="ic" alt="icon" />Edit lyrics</button>
-            <button className="btn btn-out btn-sm"><img src="/assets/icon_216469da.svg" className="ic" alt="icon" />Import .lrc file</button>
-            <button className="btn btn-out btn-sm"><img src="/assets/icon_d1b50210.svg" className="ic" alt="icon" />Adjust sync offset (−0.3s)</button>
+            <button className="btn btn-out btn-sm"><img src="/assets/icon_95.svg" className="ic" alt="icon" />Edit lyrics</button>
+            <button className="btn btn-out btn-sm"><img src="/assets/download.svg" className="ic" alt="icon" />Import .lrc file</button>
+            <button className="btn btn-out btn-sm"><img src="/assets/clock.svg" className="ic" alt="icon" />Adjust sync offset (−0.3s)</button>
           </div>
         </div>
         <div className="flex flex-col flex-grow min-w-0 gap-[20px] overflow-hidden min-w-[0]">
           <div className="flex flex-row items-center justify-between flex-none">
             <div className="flex flex-row items-center gap-[8px]">
-              <button className="chip chip-sm chip-on"><img src="/assets/icon_eb42df82.svg" className="ic" alt="icon" />Synced</button>
+              <button className="chip chip-sm chip-on"><img src="/assets/sync.svg" className="ic" alt="icon" />Synced</button>
               <button className="chip chip-sm">Plain text</button>
-              <button className="chip chip-sm"><img src="/assets/icon_d6022f73.svg" className="ic" alt="icon" />Find in lyrics</button>
+              <button className="chip chip-sm"><img src="/assets/icon_100.svg" className="ic" alt="icon" />Find in lyrics</button>
             </div>
             <div className="flex flex-row items-center gap-[8px]">
-              <button className="chip chip-sm"><img src="/assets/icon_aa2c4d5d.svg" className="ic" alt="icon" />Full screen</button>
-              <button className="ib ib-32" aria-label="Lyrics options"><img src="/assets/icon_1da007ef.svg" className="ic" alt="icon" /></button>
+              <button className="chip chip-sm"><img src="/assets/minimize_2.svg" className="ic" alt="icon" />Full screen</button>
+              <button className="ib ib-32" aria-label="Lyrics options"><img src="/assets/icon_74.svg" className="ic" alt="icon" /></button>
             </div>
           </div>
           <div className="flex flex-col gap-[22px] pr-[20px] overflow-hidden">

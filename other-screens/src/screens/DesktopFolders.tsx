@@ -10,8 +10,8 @@ export default function DesktopFolders() {
         <div className="flex flex-col gap-[4px]"><span className="text-[32px] leading-[36px] font-bold tracking-[-0.4px] text-t1">Local music &amp; folders</span>
         <span className="text-[14px] leading-[20px] font-normal text-t2">Choose which folders Sonare scans. Excluded folders never appear in your library or search.</span></div>
         <div className="flex flex-row items-center gap-[10px]">
-          <button className="btn btn-out"><img src="/assets/icon_a97714d8.svg" className="ic" alt="icon" />Add folder</button>
-          <button className="btn btn-gold"><img src="/assets/icon_bde1bdda.svg" className="ic" alt="icon" />Scan now</button>
+          <button className="btn btn-out"><img src="/assets/plus_2.svg" className="ic" alt="icon" />Add folder</button>
+          <button className="btn btn-gold"><img src="/assets/icon_50.svg" className="ic" alt="icon" />Scan now</button>
         </div>
       </div>
 
@@ -33,7 +33,7 @@ export default function DesktopFolders() {
         </div>
         <div className="flex flex-col flex-none w-[330px] gap-[10px]">
           <div className="empty" style={{'padding': '22px 18px', 'borderColor': 'rgba(255,194,77,.35)', 'background': 'var(--goldbg)'}}>
-            <span className="empty-ic w-[44px] h-[44px] mb-[2px]" style={{'background': 'rgba(255,194,77,.16)', 'color': 'var(--gold)'}}><img src="/assets/icon_5ff67f9f.svg" className="ic" alt="icon" /></span>
+            <span className="empty-ic w-[44px] h-[44px] mb-[2px]" style={{'background': 'rgba(255,194,77,.16)', 'color': 'var(--gold)'}}><img src="/assets/icon_133.svg" className="ic" alt="icon" /></span>
             <span className="text-[15px] leading-[22px] font-medium text-gold">Drop music files here</span>
             <span className="text-[13px] leading-[18px] font-normal text-t2">MP3, FLAC, M4A, OGG, WAV, OPUS</span>
           </div>
@@ -43,8 +43,8 @@ export default function DesktopFolders() {
 
       <div className="flex flex-col gap-[12px]">
         <div className="shead"><span className="text-[20px] leading-[26px] font-semibold tracking-[-0.1px] text-t1">Scanned folders</span>
-          <span className="flex flex-row items-center gap-[8px]"><button className="chip chip-sm"><img src="/assets/icon_7501d6dc.svg" className="ic" alt="icon" />Most songs<img src="/assets/icon_af776a80.svg" className="ic" alt="icon" /></button>
-          <button className="chip chip-sm"><img src="/assets/icon_9b32a01b.svg" className="ic" alt="icon" />Show excluded</button></span></div>
+          <span className="flex flex-row items-center gap-[8px]"><button className="chip chip-sm"><img src="/assets/icon_83.svg" className="ic" alt="icon" />Most songs<img src="/assets/icon_92.svg" className="ic" alt="icon" /></button>
+          <button className="chip chip-sm"><img src="/assets/icon_71.svg" className="ic" alt="icon" />Show excluded</button></span></div>
         <div className="surf col" style={{'padding': '4px 0'}}>
           <div className="grid gap-[18px] items-center" style={{'gridTemplateColumns': '44px minmax(0,2fr) minmax(0,2.4fr) 110px 100px 120px 56px', 'padding': '10px 20px', 'borderBottom': '1px solid var(--ln)'}}>
             <span></span><span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3">FOLDER</span><span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3">PATH</span>
@@ -52,7 +52,7 @@ export default function DesktopFolders() {
             <span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3">LAST SCAN</span><span className="text-[11px] leading-[14px] font-medium tracking-[0.4px] text-t3 text-right">INCLUDE</span>
           </div>
           <div className="grid gap-[18px] items-center" style={{'gridTemplateColumns': '44px minmax(0,2fr) minmax(0,2.4fr) 110px 100px 120px 56px', 'padding': '12px 20px'}}>
-            <span className="icobox icobox-gold"><img src="/assets/icon_752feee6.svg" className="ic" alt="icon" /></span>
+            <span className="icobox icobox-gold"><img src="/assets/folder.svg" className="ic" alt="icon" /></span>
             <span className="text-[15px] leading-[22px] font-medium text-t1 truncate">Music/Albums</span>
             <span className="t-mono-s text-t3 truncate">/storage/emulated/0/Music/Albums</span>
             <span className="t-mono-s text-t2 text-right">842</span>
@@ -60,7 +60,7 @@ export default function DesktopFolders() {
             <span className="text-[13px] leading-[18px] font-normal text-t3">12 min ago</span>
             <span className="flex flex-row items-center justify-end"><button className="sw gold on" aria-label="Include Music/Albums"><i></i></button></span>
           </div><div className="grid gap-[18px] items-center" style={{'gridTemplateColumns': '44px minmax(0,2fr) minmax(0,2.4fr) 110px 100px 120px 56px', 'padding': '12px 20px', 'borderTop': '1px solid var(--ln)'}}>
-            <span className="icobox icobox-gold"><img src="/assets/icon_752feee6.svg" className="ic" alt="icon" /></span>
+            <span className="icobox icobox-gold"><img src="/assets/folder.svg" className="ic" alt="icon" /></span>
             <span className="text-[15px] leading-[22px] font-medium text-t1 truncate">Music/Downloads</span>
             <span className="t-mono-s text-t3 truncate">/storage/emulated/0/Music/Downloads</span>
             <span className="t-mono-s text-t2 text-right">204</span>
@@ -68,7 +68,7 @@ export default function DesktopFolders() {
             <span className="text-[13px] leading-[18px] font-normal text-t3">12 min ago</span>
             <span className="flex flex-row items-center justify-end"><button className="sw gold on" aria-label="Include Music/Downloads"><i></i></button></span>
           </div><div className="grid gap-[18px] items-center" style={{'gridTemplateColumns': '44px minmax(0,2fr) minmax(0,2.4fr) 110px 100px 120px 56px', 'padding': '12px 20px', 'borderTop': '1px solid var(--ln)'}}>
-            <span className="icobox icobox-gold"><img src="/assets/icon_bd0b5b4c.svg" className="ic" alt="icon" /></span>
+            <span className="icobox icobox-gold"><img src="/assets/icon_26.svg" className="ic" alt="icon" /></span>
             <span className="text-[15px] leading-[22px] font-medium text-t1 truncate">SD Card/Music</span>
             <span className="t-mono-s text-t3 truncate">/storage/sdcard1/Music</span>
             <span className="t-mono-s text-t2 text-right">1130</span>
@@ -76,7 +76,7 @@ export default function DesktopFolders() {
             <span className="text-[13px] leading-[18px] font-normal text-t3">12 min ago</span>
             <span className="flex flex-row items-center justify-end"><button className="sw gold on" aria-label="Include SD Card/Music"><i></i></button></span>
           </div><div className="grid gap-[18px] items-center" style={{'gridTemplateColumns': '44px minmax(0,2fr) minmax(0,2.4fr) 110px 100px 120px 56px', 'padding': '12px 20px', 'borderTop': '1px solid var(--ln)'}}>
-            <span className="icobox"><img src="/assets/icon_752feee6.svg" className="ic" alt="icon" /></span>
+            <span className="icobox"><img src="/assets/folder.svg" className="ic" alt="icon" /></span>
             <span className="text-[15px] leading-[22px] font-medium text-t3 truncate">Recordings</span>
             <span className="t-mono-s text-t3 truncate">/storage/emulated/0/Recordings</span>
             <span className="t-mono-s text-t4 text-right">18</span>
@@ -84,7 +84,7 @@ export default function DesktopFolders() {
             <span className="text-[13px] leading-[18px] font-normal text-t3">Excluded</span>
             <span className="flex flex-row items-center justify-end"><button className="sw" aria-label="Include Recordings"><i></i></button></span>
           </div><div className="grid gap-[18px] items-center" style={{'gridTemplateColumns': '44px minmax(0,2fr) minmax(0,2.4fr) 110px 100px 120px 56px', 'padding': '12px 20px', 'borderTop': '1px solid var(--ln)'}}>
-            <span className="icobox"><img src="/assets/icon_752feee6.svg" className="ic" alt="icon" /></span>
+            <span className="icobox"><img src="/assets/folder.svg" className="ic" alt="icon" /></span>
             <span className="text-[15px] leading-[22px] font-medium text-t3 truncate">WhatsApp Audio</span>
             <span className="t-mono-s text-t3 truncate">/storage/emulated/0/WhatsApp/Media</span>
             <span className="t-mono-s text-t4 text-right">63</span>

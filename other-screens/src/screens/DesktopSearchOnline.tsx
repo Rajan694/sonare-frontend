@@ -11,7 +11,7 @@ export default function DesktopSearchOnline() {
           <div className="flex flex-row items-center gap-[8px]">
             <a className="chip chip-on" href="#">All</a><a className="chip" href="#">Songs</a><a className="chip" href="#">Albums</a><a className="chip" href="#">Artists</a><a className="chip" href="#">Playlists</a><a className="chip" href="#">Genres</a>
             <span className="flex-grow min-w-0"></span>
-            <span className="flex flex-row items-center gap-[8px] text-[13px] leading-[18px] font-normal text-t3"><img src="/assets/icon_b35de3fd.svg" className="ic" alt="icon" />Searching Sonare server + your device · 1,284 results</span>
+            <span className="flex flex-row items-center gap-[8px] text-[13px] leading-[18px] font-normal text-t3"><img src="/assets/cloud.svg" className="ic" alt="icon" />Searching Sonare server + your device · 1,284 results</span>
           </div>
         </div>
 
@@ -23,10 +23,10 @@ export default function DesktopSearchOnline() {
               <span className="flex flex-col gap-[6px]">
                 <span className="text-[20px] leading-[26px] font-semibold tracking-[-0.1px] text-t1">Neon Arboretum</span>
                 <span className="text-[14px] leading-[20px] font-normal text-t2">Album · Vela Nine · 2025</span>
-                <span className="flex flex-row items-center gap-[6px]"><span className="badge bg-cloud"><img src="/assets/icon_19bce3e5.svg" className="ic" alt="icon" />Server</span><span className="badge bg-neutral">9 tracks</span></span>
+                <span className="flex flex-row items-center gap-[6px]"><span className="badge bg-cloud"><img src="/assets/cloud_6.svg" className="ic" alt="icon" />Server</span><span className="badge bg-neutral">9 tracks</span></span>
               </span>
-              <span className="flex flex-row items-center gap-[10px]"><span className="playbtn playbtn-48"><img src="/assets/icon_93b9975c.svg" className="ic" alt="icon" /></span>
-                <span className="btn btn-out"><img src="/assets/icon_d253ca71.svg" className="ic" alt="icon" />Download</span></span>
+              <span className="flex flex-row items-center gap-[10px]"><span className="playbtn playbtn-48"><img src="/assets/play_2.svg" className="ic" alt="icon" /></span>
+                <span className="btn btn-out"><img src="/assets/download_4.svg" className="ic" alt="icon" />Download</span></span>
             </a>
           </div>
           <div className="flex flex-col flex-grow min-w-0 gap-[12px] min-w-[0]">
@@ -39,12 +39,12 @@ export default function DesktopSearchOnline() {
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Vela Nine</span>
     </span>
     <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Neon Arboretum</span>
-    <span className="badge bg-cloud"><img src="/assets/icon_19bce3e5.svg" className="ic" alt="icon" />Server</span>
+    <span className="badge bg-cloud"><img src="/assets/cloud_6.svg" className="ic" alt="icon" />Server</span>
     <span className="t-mono-s text-t3 text-right">38</span>
     <span className="t-mono-s text-t3 text-right">4:15</span>
     <span className="flex flex-row items-center gap-[2px] justify-end">
-      <button className="ib ib-28" aria-label="Favourite Static Bloom"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="Favourite Static Bloom"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button>
     </span>
   </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
     <span className="srow-idx w-[auto]">2</span>
@@ -54,12 +54,12 @@ export default function DesktopSearchOnline() {
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Vela Nine</span>
     </span>
     <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Neon Arboretum</span>
-    <span className="badge bg-cloud"><img src="/assets/icon_19bce3e5.svg" className="ic" alt="icon" />Server</span>
+    <span className="badge bg-cloud"><img src="/assets/cloud_6.svg" className="ic" alt="icon" />Server</span>
     <span className="t-mono-s text-t3 text-right">22</span>
     <span className="t-mono-s text-t3 text-right">4:48</span>
     <span className="flex flex-row items-center gap-[2px] justify-end">
-      <button className="ib ib-28" aria-label="Favourite Nightjar"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="Favourite Nightjar"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button>
     </span>
   </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
     <span className="srow-idx w-[auto]">3</span>
@@ -69,12 +69,12 @@ export default function DesktopSearchOnline() {
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span>
     </span>
     <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Midnight Cartography</span>
-    <span className="badge bg-local"><img src="/assets/icon_1425f50d.svg" className="ic" alt="icon" />On device</span>
+    <span className="badge bg-local"><img src="/assets/smartphone_5.svg" className="ic" alt="icon" />On device</span>
     <span className="t-mono-s text-t3 text-right">142</span>
     <span className="t-mono-s text-t3 text-right">3:42</span>
     <span className="flex flex-row items-center gap-[2px] justify-end">
-      <button className="ib ib-28" aria-label="Favourite Paper Lanterns"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="Favourite Paper Lanterns"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button>
     </span>
   </div><div className="grid gap-[16px] items-center rounded-[10px]" style={{'gridTemplateColumns': '30px 44px minmax(0,2.4fr) minmax(0,1.7fr) 116px 64px 58px 78px', 'padding': '7px 12px'}}>
     <span className="srow-idx w-[auto]">4</span>
@@ -84,12 +84,12 @@ export default function DesktopSearchOnline() {
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Mira Sound</span>
     </span>
     <span className="text-[14px] leading-[20px] font-normal text-t2 truncate">Velvet Static</span>
-    <span className="badge bg-cloud"><img src="/assets/icon_19bce3e5.svg" className="ic" alt="icon" />Server</span>
+    <span className="badge bg-cloud"><img src="/assets/cloud_6.svg" className="ic" alt="icon" />Server</span>
     <span className="t-mono-s text-t3 text-right">9</span>
     <span className="t-mono-s text-t3 text-right">3:51</span>
     <span className="flex flex-row items-center gap-[2px] justify-end">
-      <button className="ib ib-28" aria-label="Favourite Velvet Static"><img src="/assets/icon_40ab73e4.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_5393a18d.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="Favourite Velvet Static"><img src="/assets/icon_94.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-28" aria-label="More options"><img src="/assets/icon_55.svg" className="ic" alt="icon" /></button>
     </span>
   </div></div>
             <span className="text-[11px] leading-[14px] font-semibold tracking-[0.9px] uppercase text-t3 mt-[10px]">Artists</span>

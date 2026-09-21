@@ -6,18 +6,18 @@ export default function BottomPlayer() {
   <a className="row g12" href="D09-Now-Playing-Online.html" style={{'width': '290px', 'flex': 'none', 'textDecoration': 'none', 'color': 'inherit'}}>
     <div className="art a1 art-r-sm art-rings" style={{'width': '56px', 'height': '56px'}}></div>
     <span className="col grow" style={{'gap': '3px', 'minWidth': '0'}}>
-      <span className="flex flex-row items-center gap-[6px]"><span className="text-[15px] leading-[22px] font-medium text-t1 truncate">Paper Lanterns</span><span className="src src-local" title="On this device"><img src="/assets/icon_4a166b01.svg" className="ic" alt="icon" /></span></span>
+      <span className="flex flex-row items-center gap-[6px]"><span className="text-[15px] leading-[22px] font-medium text-t1 truncate">Paper Lanterns</span><span className="src src-local" title="On this device"><img src="/assets/smartphone_9.svg" className="ic" alt="icon" /></span></span>
       <span className="text-[13px] leading-[18px] font-normal text-t2 truncate">Hollow Coast</span>
     </span>
   </a>
-  <button className="ib ib-32 flex-none" aria-label="Favourite"><img src="/assets/icon_ff1156d1.svg" className="ic" alt="icon" /></button>
+  <button className="ib ib-32 flex-none" aria-label="Favourite"><img src="/assets/heart_2.svg" className="ic" alt="icon" /></button>
   <span className="col grow" style={{'gap': '4px', 'maxWidth': '560px'}}>
     <span className="flex flex-row items-center justify-center gap-[14px]">
-      <button className="ib ib-32" aria-label="Shuffle"><img src="/assets/icon_c5474ae9.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-32" aria-label="Previous track"><img src="/assets/icon_919745a7.svg" className="ic" alt="icon" /></button>
-      <button className="playbtn playbtn-40" aria-label="Pause" style={{'background': 'var(--acc)', 'boxShadow': 'var(--glow-s)'}}><img src="/assets/icon_775589cc.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-32" aria-label="Next track"><img src="/assets/icon_a4669c93.svg" className="ic" alt="icon" /></button>
-      <button className="ib ib-32" aria-label="Repeat one"><img src="/assets/icon_41eae1ae.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-32" aria-label="Shuffle"><img src="/assets/shuffle_5.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-32" aria-label="Previous track"><img src="/assets/icon_21.svg" className="ic" alt="icon" /></button>
+      <button className="playbtn playbtn-40" aria-label="Pause" style={{'background': 'var(--acc)', 'boxShadow': 'var(--glow-s)'}}><img src="/assets/icon_9.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-32" aria-label="Next track"><img src="/assets/icon_42.svg" className="ic" alt="icon" /></button>
+      <button className="ib ib-32" aria-label="Repeat one"><img src="/assets/repeat_2.svg" className="ic" alt="icon" /></button>
     </span>
     <span className="flex flex-row items-center gap-[10px]">
       <span className="t-mono-s text-t2 flex-none">1:24</span>
@@ -26,12 +26,12 @@ export default function BottomPlayer() {
     </span>
   </span>
   <span className="row g4 none" style={{'width': '290px', 'justifyContent': 'flex-end'}}>
-    <a className="ib ib-32" href="D11-Lyrics.html" aria-label="Lyrics"><img src="/assets/icon_f6d3cfc1.svg" className="ic" alt="icon" /></a>
-    <a className="ib ib-32" href="D12-Queue.html" aria-label="Queue"><img src="/assets/icon_9301bfea.svg" className="ic" alt="icon" /></a>
-    <a className="ib ib-32" href="D13-Equalizer.html" aria-label="Equalizer"><img src="/assets/icon_0c56bcaf.svg" className="ic" alt="icon" /></a>
-    <button className="ib ib-32" aria-label="Audio output"><img src="/assets/icon_50fcc3d2.svg" className="ic" alt="icon" /></button>
-    <span className="row g6 none" style={{'width': '96px'}}><img src="/assets/icon_52a300ea.svg" className="ic" alt="icon" /><span className="track" style={{}}><i style={{'width': '62%'}}></i><b style={{'left': '62%'}}></b></span></span>
-    <a className="ib ib-32" href="D09-Now-Playing-Online.html" aria-label="Full screen player"><img src="/assets/icon_7ccb6393.svg" className="ic" alt="icon" /></a>
+    <a className="ib ib-32" href="D11-Lyrics.html" aria-label="Lyrics"><img src="/assets/icon_45.svg" className="ic" alt="icon" /></a>
+    <a className="ib ib-32" href="D12-Queue.html" aria-label="Queue"><img src="/assets/icon_47.svg" className="ic" alt="icon" /></a>
+    <a className="ib ib-32" href="D13-Equalizer.html" aria-label="Equalizer"><img src="/assets/sliders_3.svg" className="ic" alt="icon" /></a>
+    <button className="ib ib-32" aria-label="Audio output"><img src="/assets/icon_80.svg" className="ic" alt="icon" /></button>
+    <span className="row g6 none" style={{'width': '96px'}}><img src="/assets/volume.svg" className="ic" alt="icon" /><span className="track" style={{}}><i style={{'width': '62%'}}></i><b style={{'left': '62%'}}></b></span></span>
+    <a className="ib ib-32" href="D09-Now-Playing-Online.html" aria-label="Full screen player"><img src="/assets/minimize.svg" className="ic" alt="icon" /></a>
   </span>
 </div>
   );
