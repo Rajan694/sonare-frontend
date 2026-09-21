@@ -6,7 +6,6 @@
 
 import React, { useState } from 'react';
 import { View, Text, ScrollView, StatusBar, SafeAreaView, Pressable } from 'react-native';
-import { NativeWindStyleSheet } from "nativewind";
 
 // Mobile Shell equivalent in NativeWind
 export default function App() {
@@ -15,6 +14,7 @@ export default function App() {
 
   return (
     <SafeAreaView className="flex-1 bg-bg">
+      {/* @ts-ignore */}
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       
       {/* Header */}
