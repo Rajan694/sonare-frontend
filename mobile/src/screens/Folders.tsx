@@ -6,6 +6,7 @@ import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
+import Icon from '../components/ui/Icon';
 
 export function FoldersScreen() {
   const navigation = useNavigation<any>();
@@ -28,8 +29,8 @@ export function FoldersScreen() {
     <Screen scrollable={false} className="bg-s0">
       <Header
         title="Music folders"
-        left={<IconButton icon={<Text className="text-t1 text-h2">←</Text>} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />}
-        right={<IconButton icon={<Text className="text-t1 text-h2">+</Text>} onPress={() => {}} accessibilityLabel="Add folder" />}
+        left={<IconButton icon={<Icon name="back" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />}
+        right={<IconButton icon={<Icon name="plus" size={20} color="#FFFFFF" />} onPress={() => {}} accessibilityLabel="Add folder" />}
       />
 
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}>
@@ -84,7 +85,7 @@ export function FoldersScreen() {
           {enabledFolders.map((item, index) => (
             <View key={item.id} className={`flex-row items-center px-4 py-3 ${index !== enabledFolders.length - 1 ? 'border-b border-ln2' : ''}`}>
               <View className="w-9 h-9 rounded bg-gold/10 items-center justify-center mr-3">
-                <Text className="text-gold text-sm">📁</Text>
+                <Icon name="folder" size={14} color="#FFC24D" />
               </View>
               <View className="flex-1 mr-3">
                 <Text className="text-t1 text-tm truncate mb-0.5">{item.name}</Text>
@@ -102,7 +103,7 @@ export function FoldersScreen() {
             {disabledFolders.map((item, index) => (
               <View key={item.id} className={`flex-row items-center px-4 py-3 ${index !== disabledFolders.length - 1 ? 'border-b border-ln2' : ''}`}>
                 <View className="w-9 h-9 rounded bg-s3 items-center justify-center mr-3 opacity-50">
-                  <Text className="text-t3 text-sm">📁</Text>
+                  <Icon name="folder" size={14} color="#7E7E8C" />
                 </View>
                 <View className="flex-1 mr-3 opacity-50">
                   <Text className="text-t1 text-tm truncate mb-0.5">{item.name}</Text>
@@ -115,7 +116,9 @@ export function FoldersScreen() {
           </View>
         ) : (
           <View className="items-center justify-center py-8">
-             <Text className="text-t4 text-2xl mb-3">🚫</Text>
+             <View className="mb-3">
+                <Icon name="folder-off" size={32} color="#5A5A66" />
+             </View>
              <Text className="text-t1 text-tl mb-1">Nothing excluded</Text>
              <Text className="text-t3 text-bm text-center max-w-[300px]">
                Turn a folder off above to keep it out of your library and search results.

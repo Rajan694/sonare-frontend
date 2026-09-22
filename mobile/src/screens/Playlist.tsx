@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/Badge';
 import { mockTracks, mockPlaylists } from '../data/mock';
 import { usePlayerStore } from '../store/player';
 import { AnimatedView } from '../lib/motion';
+import Icon from '../components/ui/Icon';
 
 export function PlaylistScreen() {
   const navigation = useNavigation<any>();
@@ -32,7 +33,7 @@ export function PlaylistScreen() {
         title={playlist.name}
         left={
           <IconButton
-            icon={<Text className="text-t1 text-h2">←</Text>}
+            icon={<Icon name="back" size={20} color="#FFFFFF" />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />

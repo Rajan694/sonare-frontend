@@ -9,6 +9,7 @@ import { formatDuration } from '../../lib/format';
 import Animated, { FadeIn, Layout, ReduceMotion } from 'react-native-reanimated';
 import { Sheet } from '../ui/Sheet';
 import { Button } from '../ui/Button';
+import Icon from '../ui/Icon';
 
 interface SongRowProps {
   track: Track;
@@ -87,19 +88,27 @@ export function SongRow({
             </View>
             <View className="gap-2">
                <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <Text className="text-t1 text-lg mr-3">▶</Text>
+                  <View className="mr-3 w-[18px] items-center">
+                    <Icon name="play" size={18} color="#FFFFFF" />
+                  </View>
                   <Text className="text-t1 text-tm">Play next</Text>
                </Button>
                <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <Text className="text-t1 text-lg mr-3">☰</Text>
+                  <View className="mr-3 w-[18px] items-center">
+                    <Icon name="playlist" size={18} color="#FFFFFF" />
+                  </View>
                   <Text className="text-t1 text-tm">Add to queue</Text>
                </Button>
                <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <Text className="text-t1 text-lg mr-3">♥</Text>
+                  <View className="mr-3 w-[18px] items-center">
+                    <Icon name="heart" size={18} color="#FFFFFF" />
+                  </View>
                   <Text className="text-t1 text-tm">Add to favourites</Text>
                </Button>
                <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <Text className="text-t1 text-lg mr-3">+</Text>
+                  <View className="mr-3 w-[18px] items-center">
+                    <Icon name="plus" size={18} color="#FFFFFF" />
+                  </View>
                   <Text className="text-t1 text-tm">Add to playlist</Text>
                </Button>
             </View>

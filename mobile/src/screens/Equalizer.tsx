@@ -8,6 +8,7 @@ import { Switch } from '../components/ui/Switch';
 import { Chip } from '../components/ui/Chip';
 import { useModeStore } from '../store/mode';
 import { cn } from '../lib/cn';
+import Icon from '../components/ui/Icon';
 
 export function EqualizerScreen() {
   const navigation = useNavigation<any>();
@@ -26,7 +27,7 @@ export function EqualizerScreen() {
     <Screen scrollable={false} className="bg-s0">
       <Header
         title="Audio"
-        left={<IconButton icon={<Text className="text-t1 text-h2">←</Text>} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />}
+        left={<IconButton icon={<Icon name="back" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />}
         right={
           <Switch
             value={eqEnabled}
@@ -71,7 +72,7 @@ export function EqualizerScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
              <View className="flex-row items-center gap-3">
                 <View className="w-8 h-8 items-center justify-center rounded-full bg-acc/10">
-                   <Text className="text-acc text-lg">🔊</Text>
+                   <Icon name="volume" size={16} color="#00E28A" />
                 </View>
                 <View>
                   <Text className="text-t1 text-tm">Bass boost</Text>
@@ -82,7 +83,7 @@ export function EqualizerScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
              <View className="flex-row items-center gap-3">
                 <View className="w-8 h-8 items-center justify-center rounded-full bg-acc/10">
-                   <Text className="text-acc text-lg">🎧</Text>
+                   <Icon name="headphones" size={16} color="#00E28A" />
                 </View>
                 <View>
                   <Text className="text-t1 text-tm">Virtualizer</Text>
@@ -93,7 +94,7 @@ export function EqualizerScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
              <View className="flex-row items-center gap-3">
                 <View className="w-8 h-8 items-center justify-center rounded-full bg-s2">
-                   <Text className="text-t3 text-lg">⏱</Text>
+                   <Icon name="timer" size={16} color="#7E7E8C" />
                 </View>
                 <View>
                   <Text className="text-t1 text-tm">Playback speed</Text>
@@ -108,7 +109,7 @@ export function EqualizerScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
             <View className="flex-row items-center gap-3">
                 <View className="w-8 h-8 items-center justify-center rounded-full bg-s2">
-                   <Text className="text-t3 text-lg">🔀</Text>
+                   <Icon name="shuffle" size={16} color="#7E7E8C" />
                 </View>
                 <View>
                   <Text className="text-t1 text-tm">Crossfade</Text>
@@ -120,7 +121,7 @@ export function EqualizerScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
             <View className="flex-row items-center gap-3">
                 <View className="w-8 h-8 items-center justify-center rounded-full bg-s2">
-                   <Text className="text-t3 text-lg">▶</Text>
+                   <Icon name="play" size={16} color="#7E7E8C" />
                 </View>
                 <View>
                   <Text className="text-t1 text-tm">Gapless playback</Text>
@@ -132,7 +133,7 @@ export function EqualizerScreen() {
           <View className="flex-row items-center justify-between px-4 py-3">
             <View className="flex-row items-center gap-3">
                 <View className="w-8 h-8 items-center justify-center rounded-full bg-s2">
-                   <Text className="text-t3 text-lg">📊</Text>
+                   <Icon name="visualizer" size={16} color="#7E7E8C" />
                 </View>
                 <View>
                   <Text className="text-t1 text-tm">Volume normalization</Text>
@@ -145,7 +146,7 @@ export function EqualizerScreen() {
 
         <View className="bg-s1 rounded-2xl p-4 flex-row items-center gap-3">
             <View className="w-10 h-10 items-center justify-center rounded-full bg-gold/10">
-                <Text className="text-gold text-xl">🎧</Text>
+                <Icon name="headphones" size={22} color="#FFC24D" />
             </View>
             <View className="flex-1">
                 <Text className="text-t1 text-tm">Wired headphones</Text>
@@ -154,7 +155,7 @@ export function EqualizerScreen() {
             {mode === 'offline' ? (
                 <Text className="text-gold text-tm">Requires Online</Text>
             ) : (
-                <IconButton icon={<Text className="text-t2">⟩</Text>} onPress={() => {}} accessibilityLabel="Change output" />
+                <IconButton icon={<Icon name="chevron-right" size={18} color="#9A9AA8" />} onPress={() => {}} accessibilityLabel="Change output" />
             )}
         </View>
 

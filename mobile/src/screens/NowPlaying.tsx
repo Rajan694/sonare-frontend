@@ -13,6 +13,7 @@ import { cn } from '../lib/cn';
 import { Waveform } from '../components/music/Waveform';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated';
+import Icon from '../components/ui/Icon';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -66,7 +67,7 @@ export function NowPlayingScreen() {
       <Screen>
         <Header 
           title="Now Playing" 
-          left={<IconButton icon={<Text className="text-t1 text-h2">↓</Text>} onPress={() => navigation.goBack()} accessibilityLabel="Close now playing" />}
+          left={<IconButton icon={<Icon name="chevron-down" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Close now playing" />}
         />
         <View className="flex-1 items-center justify-center">
           <Text className="text-t3 text-bm">Nothing playing</Text>
@@ -78,7 +79,7 @@ export function NowPlayingScreen() {
   return (
     <Screen scrollable={false} className="bg-bg">
       <Header 
-        left={<IconButton icon={<Text className="text-t1 text-h2">↓</Text>} onPress={() => navigation.goBack()} accessibilityLabel="Close now playing" />}
+        left={<IconButton icon={<Icon name="chevron-down" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Close now playing" />}
         right={<IconButton icon={<View className="w-5 h-5" />} onPress={() => {}} accessibilityLabel="Options" />}
       />
       <View className="flex-1 px-6 pt-8">
@@ -124,14 +125,14 @@ export function NowPlayingScreen() {
 
         <View className="flex-row items-center justify-center gap-6 mb-8 mt-auto">
           <IconButton
-            icon={<Text className="text-t3 text-sm">🔀</Text>}
+            icon={<Icon name="shuffle" size={14} color="#7E7E8C" />}
             onPress={toggleShuffle}
             accessibilityLabel="Toggle shuffle"
             variant={shuffle ? 'active' : 'default'}
           />
           
           <IconButton
-            icon={<Text className="text-t1 text-h2">⏮</Text>}
+            icon={<Icon name="skip-back" size={20} color="#FFFFFF" />}
             onPress={playPrevious}
             accessibilityLabel="Previous track"
             size={44}
@@ -146,20 +147,18 @@ export function NowPlayingScreen() {
               mode === 'online' ? 'bg-acc shadow-acc/20' : 'bg-gold shadow-gold/20'
             )}
           >
-            <Text className="text-black text-[28px] font-bold">
-              {isPlaying ? '❚❚' : '▸'}
-            </Text>
+            <Icon name={isPlaying ? 'pause' : 'play'} size={28} color="#000000" />
           </Pressable>
 
           <IconButton
-            icon={<Text className="text-t1 text-h2">⏭</Text>}
+            icon={<Icon name="skip-forward" size={20} color="#FFFFFF" />}
             onPress={playNext}
             accessibilityLabel="Next track"
             size={44}
           />
 
           <IconButton
-            icon={<Text className="text-t3 text-sm">🔁</Text>}
+            icon={<Icon name="repeat" size={14} color="#7E7E8C" />}
             onPress={cycleRepeat}
             accessibilityLabel="Toggle repeat"
             variant={repeat !== 'off' ? 'active' : 'default'}
@@ -168,17 +167,17 @@ export function NowPlayingScreen() {
 
         <View className="flex-row items-center justify-between mt-auto mb-6 px-2">
           <IconButton
-            icon={<Text className="text-t3 text-lg">📝</Text>}
+            icon={<Icon name="lyrics" size={18} color="#7E7E8C" />}
             onPress={() => navigation.navigate('Lyrics')}
             accessibilityLabel="Lyrics"
           />
           <IconButton
-            icon={<Text className="text-t3 text-lg">🎛</Text>}
+            icon={<Icon name="equalizer" size={18} color="#7E7E8C" />}
             onPress={() => navigation.navigate('Equalizer')}
             accessibilityLabel="Equalizer"
           />
           <IconButton
-            icon={<Text className="text-t3 text-lg">☰</Text>}
+            icon={<Icon name="playlist" size={18} color="#7E7E8C" />}
             onPress={() => navigation.navigate('Queue')}
             accessibilityLabel="Queue"
           />

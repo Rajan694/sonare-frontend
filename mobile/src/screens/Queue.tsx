@@ -8,6 +8,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { usePlayerStore } from '../store/player';
 import { AnimatedView } from '../lib/motion';
+import Icon from '../components/ui/Icon';
 
 export function QueueScreen() {
   const navigation = useNavigation<any>();
@@ -33,8 +34,8 @@ export function QueueScreen() {
     <Screen scrollable={false} className="bg-s0">
       <Header
         title="Queue"
-        left={<IconButton icon={<Text className="text-t1 text-h2">↓</Text>} onPress={() => navigation.goBack()} accessibilityLabel="Close queue" />}
-        right={<IconButton icon={<Text className="text-t1 text-h2">⋮</Text>} onPress={() => {}} accessibilityLabel="Queue options" />}
+        left={<IconButton icon={<Icon name="chevron-down" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Close queue" />}
+        right={<IconButton icon={<Icon name="more" size={20} color="#FFFFFF" />} onPress={() => {}} accessibilityLabel="Queue options" />}
       />
 
       <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 120 }}>
@@ -45,8 +46,8 @@ export function QueueScreen() {
           </View>
           <Text className="text-t3 text-bs flex-1 ml-2">{upcomingQueue.length + 1} songs · 2 from server</Text>
           <View className="flex-row">
-             <IconButton icon={<Text className="text-t1">🔀</Text>} onPress={() => {}} accessibilityLabel="Shuffle queue" />
-             <IconButton icon={<Text className="text-t1">🔁</Text>} onPress={() => {}} accessibilityLabel="Repeat" />
+             <IconButton icon={<Icon name="shuffle" size={20} color="#FFFFFF" />} onPress={() => {}} accessibilityLabel="Shuffle queue" />
+             <IconButton icon={<Icon name="repeat" size={20} color="#FFFFFF" />} onPress={() => {}} accessibilityLabel="Repeat" />
           </View>
         </View>
 
@@ -79,7 +80,7 @@ export function QueueScreen() {
                   />
                 </View>
                 <IconButton
-                  icon={<Text className="text-t3 text-lg">≡</Text>}
+                  icon={<Icon name="drag" size={18} color="#7E7E8C" />}
                   onPress={() => {}}
                   accessibilityLabel="Reorder track"
                 />

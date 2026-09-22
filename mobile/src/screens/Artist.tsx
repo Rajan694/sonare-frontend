@@ -7,6 +7,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { mockTracks, mockArtists } from '../data/mock';
 import { AnimatedView } from '../lib/motion';
+import Icon from '../components/ui/Icon';
 
 export function ArtistScreen() {
   const navigation = useNavigation<any>();
@@ -19,7 +20,7 @@ export function ArtistScreen() {
         title={artist.name}
         left={
           <IconButton
-            icon={<Text className="text-t1 text-h2">←</Text>}
+            icon={<Icon name="back" size={20} color="#FFFFFF" />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />

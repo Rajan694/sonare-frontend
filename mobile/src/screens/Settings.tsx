@@ -5,6 +5,7 @@ import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
 import { Switch } from '../components/ui/Switch';
+import Icon from '../components/ui/Icon';
 
 function SettingsGroup({ title, children }: { title: string, children: React.ReactNode }) {
   return (
@@ -36,7 +37,7 @@ export function SettingsScreen() {
     <Screen>
       <Header
         title="Settings"
-        left={<IconButton icon={<Text className="text-t1 text-h2">←</Text>} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />}
+        left={<IconButton icon={<Icon name="back" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Go back" />}
       />
 
       <ScrollView className="flex-1 pt-6 pb-20">

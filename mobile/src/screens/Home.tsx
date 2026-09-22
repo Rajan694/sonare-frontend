@@ -97,7 +97,7 @@ export function HomeScreen() {
                 </View>
              </View>
              <View className={cn("w-10 h-10 rounded-full items-center justify-center mr-1", mode === 'online' ? "bg-acc" : "bg-gold")}>
-                <Text className="text-black text-xl ml-0.5">▶</Text>
+                <Icon name="play" size={22} color="#000000" />
              </View>
           </Pressable>
 

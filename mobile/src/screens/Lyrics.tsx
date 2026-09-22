@@ -7,6 +7,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { usePlayerStore } from '../store/player';
 import { Chip } from '../components/ui/Chip';
 import Animated from 'react-native-reanimated';
+import Icon from '../components/ui/Icon';
 
 export function LyricsScreen() {
   const navigation = useNavigation<any>();
@@ -58,14 +59,14 @@ export function LyricsScreen() {
     <Screen scrollable={false} className="bg-s0">
       <Header
         title={currentTrack.title}
-        left={<IconButton icon={<Text className="text-t1 text-h2">↓</Text>} onPress={() => navigation.goBack()} accessibilityLabel="Close lyrics" />}
-        right={<IconButton icon={<Text className="text-t1 text-h2">⋮</Text>} onPress={() => {}} accessibilityLabel="Lyrics options" />}
+        left={<IconButton icon={<Icon name="chevron-down" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Close lyrics" />}
+        right={<IconButton icon={<Icon name="more" size={20} color="#FFFFFF" />} onPress={() => {}} accessibilityLabel="Lyrics options" />}
       />
 
       <View className="px-6 py-4">
         <View className="flex-row items-center gap-3">
           <View className="w-12 h-12 rounded-lg bg-s2 items-center justify-center">
-             <Text className="text-t2 text-lg">🎵</Text>
+             <Icon name="music" size={22} color="#9A9AA8" />
           </View>
           <View className="flex-1">
             <Text className="text-t1 text-tm font-medium" numberOfLines={1}>{currentTrack.title}</Text>

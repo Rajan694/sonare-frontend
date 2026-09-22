@@ -11,6 +11,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { mockTracks, mockAlbums } from '../data/mock';
 import { usePlayerStore } from '../store/player';
 import { AnimatedView } from '../lib/motion';
+import Icon from '../components/ui/Icon';
 
 export function AlbumScreen() {
   const navigation = useNavigation<any>();
@@ -33,7 +34,7 @@ export function AlbumScreen() {
         title={album.title}
         left={
           <IconButton
-            icon={<Text className="text-t1 text-h2">←</Text>}
+            icon={<Icon name="back" size={20} color="#FFFFFF" />}
             onPress={() => navigation.goBack()}
             accessibilityLabel="Go back"
           />
