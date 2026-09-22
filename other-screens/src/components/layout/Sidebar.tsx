@@ -1,12 +1,12 @@
 import React from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
+import { Link, useLocation } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { useModeStore } from '../../store/modeStore'
+import { useMyPlaylists } from '../../data/hooks'
+import { api } from '../../data/api'
 import Icon from '../ui/Icon'
 import { IconButton } from '../ui/Button'
 import Artwork from '../music/Artwork'
-import { MOCK_PLAYLISTS } from '../../data/mock'
 import type { Playlist } from '../../data/types'
 
 const NAV_ITEMS = [
@@ -35,9 +35,24 @@ const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4'] as const
 export default function Sidebar() {
   const location = useLocation()
   const { mode } = useModeStore()
+  const { data: playlistsData, loading: playlistsLoading, refetch } = useMyPlaylists()
+
+  const playlists: Playlist[] = playlistsData?.items || []
 
   function isActive(to: string) {
-    return location.pathname === to || location.pathname.startsWith(to + '/')
+    return location.pathname === to || (to !== '/home' && to !== '/library' && location.pathname.startsWith(to + '/'))
+  }
+
+  const handleCreatePlaylist = async () => {
+    const name = window.prompt('Enter playlist name:')
+    if (name?.trim()) {
+      try {
+        await api.createPlaylist({ name: name.trim() })
+        refetch()
+      } catch (e: any) {
+        alert(e.message || 'Failed to create playlist')
+      }
+    }
   }
 
   return (
@@ -86,28 +101,46 @@ export default function Sidebar() {
       <div className="flex flex-col grow py-3 px-2.5 gap-0.5 overflow-hidden">
         <div className="flex items-center justify-between px-3 pb-2">
           <span className="text-overline text-t3">Playlists</span>
-          <IconButton icon="plus" label="New playlist" size={28} />
+          <IconButton icon="plus" label="New playlist" size={28} onClick={handleCreatePlaylist} />
         </div>
 
-        {MOCK_PLAYLISTS.map((pl, i) => {
-          const { icon, cls } = playlistIcon(pl.kind)
-          return (
-            <Link
-              key={pl.id}
-              to={`/playlist/${pl.id}`}
-              className="sitem h-11"
-            >
-              <Artwork variant={artVariants[i % artVariants.length]} size={30} radius="xs" />
-              <span className="flex flex-col grow gap-px min-w-0">
-                <span className="text-label-l text-t1 truncate">{pl.name}</span>
-                <span className="text-label-s text-t3 truncate capitalize">{pl.kind} · {pl.trackCount}</span>
-              </span>
-              <span className={cn('flex-none', cls)}>
-                <Icon name={icon} size={14} />
-              </span>
-            </Link>
-          )
-        })}
+        <div className="flex flex-col gap-0.5 overflow-y-auto grow">
+          {playlistsLoading ? (
+            Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="sitem h-11 animate-pulse bg-s2/30 rounded" />
+            ))
+          ) : playlists.length === 0 ? (
+            <span className="text-body-s text-t3 px-3 py-2">No playlists created</span>
+          ) : (
+            playlists.map((pl, i) => {
+              const { icon, cls } = playlistIcon(pl.kind)
+              return (
+                <Link
+                  key={pl.id}
+                  to={`/playlist/${pl.id}`}
+                  className="sitem h-11"
+                >
+                  <Artwork
+                    src={pl.thumbnail || `/api/v1/playlists/${pl.id}/artwork?size=64`}
+                    alt={pl.name}
+                    variant={artVariants[i % artVariants.length]}
+                    size={30}
+                    radius="xs"
+                  />
+                  <span className="flex flex-col grow gap-px min-w-0">
+                    <span className="text-label-l text-t1 truncate">{pl.name}</span>
+                    <span className="text-label-s text-t3 truncate capitalize">
+                      {pl.kind}{pl.trackCount !== null ? ` · ${pl.trackCount}` : ''}
+                    </span>
+                  </span>
+                  <span className={cn('flex-none', cls)}>
+                    <Icon name={icon} size={14} />
+                  </span>
+                </Link>
+              )
+            })
+          )}
+        </div>
       </div>
 
       <div className="flex flex-col flex-none p-3 border-t border-ln">
@@ -118,7 +151,7 @@ export default function Sidebar() {
               {mode === 'online' ? 'ONLINE · SYNCED' : 'OFFLINE MODE'}
             </span>
             <span className="text-label-s text-t3">
-              {mode === 'online' ? 'Last sync 3 min ago' : 'Local files only'}
+              {mode === 'online' ? 'Connected to Sonare' : 'Local files only'}
             </span>
           </span>
         </div>

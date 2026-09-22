@@ -1,14 +1,11 @@
 import { createContext, useContext } from 'react'
 import type { PlayerState, Track } from '../data/types'
-import { MOCK_TRACKS, MOCK_PEAKS } from '../data/mock'
-
-const defaultTrack: Track = { ...MOCK_TRACKS[0], peaks: MOCK_PEAKS }
 
 export const defaultPlayerState: PlayerState = {
   mode: 'online',
-  queue: MOCK_TRACKS.map((t, i) => (i === 0 ? { ...t, peaks: MOCK_PEAKS } : t)),
+  queue: [],
   index: 0,
-  positionMs: 84000,
+  positionMs: 0,
   shuffle: false,
   repeat: 'off',
   output: { id: 'default', name: 'Built-in Speakers', kind: 'speaker', available: true },
@@ -17,13 +14,44 @@ export const defaultPlayerState: PlayerState = {
 export interface PlayerStore {
   state: PlayerState
   setState: (s: Partial<PlayerState>) => void
-  currentTrack: Track
+  currentTrack: Track | null
+  playTrack: (track: Track, newQueue?: Track[]) => void
+  /** Live audio state, driven by the HTMLAudioElement in data/player.ts. */
+  isPlaying: boolean
+  isLoading: boolean
+  durationMs: number
+  playbackError: string | null
+  togglePlay: () => void
+  seek: (positionMs: number) => void
+  /** Seek by fraction of the track (0..1) — what the waveform and progress bar hand back. */
+  seekRatio: (ratio: number) => void
+  next: () => void
+  previous: () => void
+  /** 0..1 */
+  volume: number
+  setVolume: (v: number) => void
+  toggleShuffle: () => void
+  cycleRepeat: () => void
 }
 
 export const PlayerContext = createContext<PlayerStore>({
   state: defaultPlayerState,
   setState: () => void 0,
-  currentTrack: defaultTrack,
+  currentTrack: null,
+  playTrack: () => void 0,
+  isPlaying: false,
+  isLoading: false,
+  durationMs: 0,
+  playbackError: null,
+  togglePlay: () => void 0,
+  seek: () => void 0,
+  seekRatio: () => void 0,
+  next: () => void 0,
+  previous: () => void 0,
+  volume: 1,
+  setVolume: () => void 0,
+  toggleShuffle: () => void 0,
+  cycleRepeat: () => void 0,
 })
 
 export function usePlayerStore() {

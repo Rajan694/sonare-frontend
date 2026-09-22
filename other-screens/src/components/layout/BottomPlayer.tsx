@@ -4,6 +4,8 @@ import { motion } from 'motion/react'
 import { cn } from '../../lib/utils'
 import { useModeStore } from '../../store/modeStore'
 import { usePlayerStore } from '../../store/playerStore'
+import { usePeaks } from '../../data/hooks'
+import { useFavourite } from '../../data/favourites'
 import Icon from '../ui/Icon'
 import { IconButton } from '../ui/Button'
 import { Slider } from '../ui/Slider'
@@ -14,10 +16,69 @@ import { formatDuration } from '../../lib/utils'
 
 export default function BottomPlayer() {
   const { mode } = useModeStore()
-  const { state, currentTrack } = usePlayerStore()
+  const {
+    state,
+    currentTrack,
+    isPlaying,
+    isLoading,
+    durationMs,
+    playbackError,
+    togglePlay,
+    seekRatio,
+    next,
+    previous,
+    volume,
+    setVolume,
+    toggleShuffle,
+    cycleRepeat,
+  } = usePlayerStore()
   const isOffline = mode === 'offline'
 
-  const positionRatio = state.positionMs / (currentTrack.durationMs || 1)
+  const { data: peaksData } = usePeaks(currentTrack?.id)
+  const peaks = currentTrack?.peaks || peaksData?.peaks
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite)
+
+  if (!currentTrack) {
+    return (
+      <footer className="dplayer">
+        <div className="flex items-center gap-3 flex-none w-[290px] opacity-40">
+          <Artwork variant="a1" size={56} radius="sm" />
+          <span className="flex flex-col grow gap-[3px] min-w-0">
+            <span className="text-title-m text-t3 truncate">Nothing playing</span>
+            <span className="text-body-s text-t4 truncate">Select a track to start</span>
+          </span>
+        </div>
+
+        <div className="flex flex-col grow gap-1 max-w-[560px] opacity-40">
+          <div className="flex items-center justify-center gap-3.5">
+            <IconButton icon="shuffle" label="Shuffle" size={32} disabled />
+            <IconButton icon="skip-back" label="Previous track" size={32} disabled />
+            <button className={cn('playbtn playbtn-40', isOffline ? 'bg-gold' : 'bg-acc')} aria-label="Play" disabled>
+              <Icon name="play" size={18} />
+            </button>
+            <IconButton icon="skip-forward" label="Next track" size={32} disabled />
+            <IconButton icon="repeat" label="Repeat" size={32} disabled />
+          </div>
+          <div className="flex items-center gap-2.5">
+            <span className="text-mono-s text-t3 flex-none">0:00</span>
+            <div className="grow h-6 bg-s2/40 rounded-sm" />
+            <span className="text-mono-s text-t3 flex-none">0:00</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1 flex-none w-[290px] justify-end opacity-60">
+          <Link to="/queue" className="ib ib-32" aria-label="Queue"><Icon name="list" size={16} /></Link>
+          <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer"><Icon name="sliders" size={16} /></Link>
+          <IconButton icon="volume" label="Audio output" size={32} />
+        </div>
+      </footer>
+    )
+  }
+
+  // Prefer the decoded duration from the audio element; fall back to the catalog value
+  // before the stream has loaded its metadata.
+  const effectiveDurationMs = durationMs || currentTrack.durationMs || 1
+  const positionRatio = state.positionMs / effectiveDurationMs
 
   return (
     <footer className="dplayer">
@@ -28,6 +89,8 @@ export default function BottomPlayer() {
       >
         <motion.div layoutId="now-playing-artwork">
           <Artwork
+            src={currentTrack.thumbnail || `/api/v1/tracks/${currentTrack.id}/artwork?size=64`}
+            alt={currentTrack.title}
             variant="a1"
             size={56}
             radius="sm"
@@ -43,37 +106,55 @@ export default function BottomPlayer() {
         </span>
       </Link>
 
-      <IconButton icon="heart" label="Favourite" size={32} active={currentTrack.favourite} />
+      <IconButton
+        icon="heart"
+        label={favourite ? 'Remove from favourites' : 'Add to favourites'}
+        size={32}
+        active={favourite}
+        onClick={toggleFavourite}
+      />
 
       <div className="flex flex-col grow gap-1 max-w-[560px]">
         <div className="flex items-center justify-center gap-3.5">
-          <IconButton icon="shuffle" label="Shuffle" size={32} active={state.shuffle} />
-          <IconButton icon="skip-back" label="Previous track" size={32} />
+          <IconButton
+            icon="shuffle"
+            label={state.shuffle ? 'Shuffle on' : 'Shuffle off'}
+            size={32}
+            active={state.shuffle}
+            onClick={toggleShuffle}
+          />
+          <IconButton icon="skip-back" label="Previous track" size={32} onClick={previous} />
           <button
             className={cn('playbtn playbtn-40', isOffline ? 'bg-gold shadow-glow-g' : 'bg-acc shadow-glow-s')}
-            aria-label="Pause"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            onClick={togglePlay}
+            disabled={isLoading}
           >
-            <Icon name="pause" size={18} />
+            <Icon name={isPlaying ? 'pause' : 'play'} size={18} />
           </button>
-          <IconButton icon="skip-forward" label="Next track" size={32} />
+          <IconButton icon="skip-forward" label="Next track" size={32} onClick={next} />
           <IconButton
             icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'}
-            label="Repeat"
+            label={
+              state.repeat === 'one' ? 'Repeat one' : state.repeat === 'all' ? 'Repeat all' : 'Repeat off'
+            }
             size={32}
             active={state.repeat !== 'off'}
+            onClick={cycleRepeat}
           />
         </div>
 
         <div className="flex items-center gap-2.5">
           <span className="text-mono-s text-t2 flex-none">{formatDuration(state.positionMs)}</span>
           <Waveform
-            peaks={currentTrack.peaks}
+            peaks={peaks}
             barCount={150}
             positionRatio={positionRatio}
             offline={isOffline}
             className="wave-sm"
+            onSeek={seekRatio}
           />
-          <span className="text-mono-s text-t3 flex-none">{formatDuration(currentTrack.durationMs)}</span>
+          <span className="text-mono-s text-t3 flex-none">{formatDuration(effectiveDurationMs)}</span>
         </div>
       </div>
 
@@ -89,8 +170,12 @@ export default function BottomPlayer() {
         </Link>
         <IconButton icon="volume" label="Audio output" size={32} />
         <div className="flex items-center gap-1.5 flex-none w-24">
-          <Icon name="volume" size={14} className="text-t3 flex-none" />
-          <Slider value={62} className="w-full" />
+          <Icon
+            name="volume"
+            size={14}
+            className={cn('flex-none', volume === 0 ? 'text-t4' : 'text-t3')}
+          />
+          <Slider value={volume * 100} onChange={v => setVolume(v / 100)} className="w-full" />
         </div>
         <Link to="/now-playing" className="ib ib-32" aria-label="Full screen player">
           <Icon name="minimize" size={16} />

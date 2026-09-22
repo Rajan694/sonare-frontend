@@ -2,26 +2,50 @@ import React from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useModeStore } from '../store/modeStore'
-import { MOCK_TRACKS, MOCK_ALBUMS } from '../data/mock'
+import { usePlayerStore } from '../store/playerStore'
+import { useTrending, useRecentlyPlayed } from '../data/hooks'
+import { getCurrentUser } from '../data/auth'
 import SongRow from '../components/music/SongRow'
 import Button from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Tile } from '../components/ui/Tile'
 import { staggerContainer, staggerItem, transition } from '../lib/motion'
-import { cn } from '../lib/utils'
-
-const TILES = [
-  { title: 'Paper Lanterns', subtitle: 'Hollow Coast', artVariant: 'a1' as const, to: '/album/al1' },
-  { title: 'Static Bloom', subtitle: 'Vela Nine', artVariant: 'a2' as const, to: '/album/al2' },
-  { title: 'Winter Arithmetic', subtitle: 'The Orchard Machine', artVariant: 'a3' as const, to: '/album/al3' },
-  { title: 'Signal Decay', subtitle: 'Kite Runner', artVariant: 'a4' as const, to: '/album/al4' },
-  { title: 'Deep Work Session', subtitle: 'Focus · 88 tracks', artVariant: 'a5' as const, to: '/playlist/pl2' },
-  { title: 'Low Sun, Long Shadows', subtitle: 'Alinea', artVariant: 'a6' as const, to: '/album/al1' },
-]
+import type { Track } from '../data/types'
 
 export default function Home() {
   const { mode } = useModeStore()
   const isOnline = mode === 'online'
+  const { currentTrack, playTrack } = usePlayerStore()
+  const user = getCurrentUser()
+
+  const { data: trendingData, loading: trendingLoading } = useTrending('IN', 20)
+  const { data: recentData, loading: recentLoading } = useRecentlyPlayed(10)
+
+  const trendingTracks = trendingData?.items || []
+  const recentTracks = recentData?.items && recentData.items.length > 0 
+    ? recentData.items 
+    : trendingTracks.slice(0, 5)
+
+  const tiles = trendingTracks.slice(0, 6).map((t, i) => ({
+    title: t.title,
+    subtitle: t.artist,
+    artVariant: `a${(i % 12) + 1}` as const,
+    to: t.albumId ? `/album/${t.albumId}` : `/search?q=${encodeURIComponent(t.title)}`,
+    track: t,
+  }))
+
+  const trendingCards = trendingTracks.slice(6, 12).map((t, i) => ({
+    id: t.id,
+    title: t.title,
+    artist: t.artist,
+    artVariant: `a${((i + 6) % 12) + 1}` as const,
+    to: t.albumId ? `/album/${t.albumId}` : `/search?q=${encodeURIComponent(t.title)}`,
+    track: t,
+  }))
+
+  const handlePlay = (track: Track, queue: Track[]) => {
+    playTrack(track, queue)
+  }
 
   return (
     <motion.div
@@ -32,21 +56,49 @@ export default function Home() {
     >
       <motion.div className="flex items-center justify-between" variants={staggerItem} transition={transition.normal}>
         <div className="flex flex-col gap-1">
-          <span className="text-body-s text-t3">Thursday evening · {isOnline ? '2 new releases from artists you follow' : 'Showing local library'}</span>
-          <span className="text-display-m text-t1">Welcome back, Rajan</span>
+          <span className="text-body-s text-t3">
+            {isOnline ? 'Online mode · Connected to Sonare API' : 'Showing local library'}
+          </span>
+          <span className="text-display-m text-t1">
+            Welcome back{user?.displayName ? `, ${user.displayName}` : ''}
+          </span>
         </div>
         <div className="flex items-center gap-2.5">
           {isOnline && <Button variant="out" icon="sync">Sync now</Button>}
-          <Button variant={isOnline ? 'acc' : 'gold'} icon="play">Resume</Button>
+          {trendingTracks.length > 0 && (
+            <Button
+              variant={isOnline ? 'acc' : 'gold'}
+              icon="play"
+              onClick={() => handlePlay(trendingTracks[0], trendingTracks)}
+            >
+              Resume
+            </Button>
+          )}
         </div>
       </motion.div>
 
+      {/* Quick Access Tiles */}
       <motion.div className="grid gap-3 grid-cols-3" variants={staggerItem} transition={transition.normal}>
-        {TILES.map((tile, i) => (
-          <Tile key={i} {...tile} />
-        ))}
+        {trendingLoading && tiles.length === 0 ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="tile animate-pulse opacity-50 h-14 bg-s2/40" />
+          ))
+        ) : (
+          tiles.map((tile, i) => (
+            <div key={i} onClick={() => handlePlay(tile.track, trendingTracks)} className="cursor-pointer">
+              <Tile
+                title={tile.title}
+                subtitle={tile.subtitle}
+                artVariant={tile.artVariant}
+                to={tile.to}
+                thumbnail={tile.track.thumbnail || `/api/v1/tracks/${tile.track.id}/artwork?size=64`}
+              />
+            </div>
+          ))
+        )}
       </motion.div>
 
+      {/* Trending Section */}
       {isOnline && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
@@ -54,34 +106,49 @@ export default function Home() {
             <Link to="/library" className="text-label-l text-t3 no-underline hover:text-t1">See all</Link>
           </div>
           <div className="flex gap-4 flex-wrap">
-            {MOCK_ALBUMS.slice(0, 3).map((album, i) => (
-              <Card
-                key={album.id}
-                title={album.title}
-                subtitle={album.artist}
-                artVariant={`a${i + 7}` as any}
-                to={`/album/${album.id}`}
-              />
-            ))}
+            {trendingLoading && trendingCards.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="acard w-[160px] h-[210px] animate-pulse bg-s2/40 rounded-md" />
+              ))
+            ) : (
+              trendingCards.map((card) => (
+                <Card
+                  key={card.id}
+                  title={card.title}
+                  subtitle={card.artist}
+                  artVariant={card.artVariant}
+                  to={card.to}
+                  thumbnail={card.track.thumbnail || `/api/v1/tracks/${card.track.id}/artwork?size=140`}
+                />
+              ))
+            )}
           </div>
         </motion.div>
       )}
 
+      {/* Recently Played / Recommended Tracks */}
       <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
         <div className="shead">
-          <span className="text-h2 text-t1">Recently played</span>
+          <span className="text-h2 text-t1">{recentData?.items && recentData.items.length > 0 ? 'Recently played' : 'Recommended tracks'}</span>
           <Link to="/library" className="text-label-l text-t3 no-underline hover:text-t1">See all</Link>
         </div>
         <div className="flex flex-col gap-0.5">
-          {MOCK_TRACKS.slice(0, 5).map((track, i) => (
-            <SongRow
-              key={track.id}
-              track={track}
-              index={i + 1}
-              isActive={i === 0}
-              isPlaying={i === 0}
-            />
-          ))}
+          {recentLoading && recentTracks.length === 0 ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="srow animate-pulse opacity-50 h-14 bg-s2/30" />
+            ))
+          ) : (
+            recentTracks.map((track, i) => (
+              <SongRow
+                key={track.id}
+                track={track}
+                index={i + 1}
+                isActive={currentTrack?.id === track.id}
+                isPlaying={currentTrack?.id === track.id}
+                onClick={() => handlePlay(track, recentTracks)}
+              />
+            ))
+          )}
         </div>
       </motion.div>
     </motion.div>

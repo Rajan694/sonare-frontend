@@ -1,18 +1,33 @@
 export type Source = 'local' | 'server'
 export type Mode = 'online' | 'offline'
 
+export interface Page<T> {
+  items: T[]
+  meta?: {
+    nextCursor?: string
+    total?: number
+  }
+}
+
+export interface User {
+  id: string
+  email: string
+  displayName: string
+  createdAt?: number
+}
+
 export interface Track {
   id: string
   title: string
   artistId: string
   artist: string
-  albumId: string
-  album: string
-  durationMs: number
+  albumId: string | null
+  album: string | null
+  durationMs: number | null
   source: Source
   localPath?: string
-  codec?: string
-  bitrateKbps?: number
+  codec?: string | null
+  bitrateKbps?: number | null
   bitDepth?: number
   playCount: number
   favourite: boolean
@@ -24,6 +39,7 @@ export interface Track {
     lines: { atMs: number; text: string }[]
     offsetMs: number
   }
+  thumbnail?: string
 }
 
 export interface Album {
@@ -31,11 +47,12 @@ export interface Album {
   title: string
   artist: string
   artistId: string
-  year: number
-  trackCount: number
-  genre: string
+  year: number | null
+  trackCount: number | null
+  genre: string | null
   source: Source
   downloaded: boolean
+  thumbnail?: string
 }
 
 export interface Artist {
@@ -44,16 +61,19 @@ export interface Artist {
   albumCount: number
   localTrackCount: number
   following: boolean
-  monthlyListeners?: number
+  monthlyListeners?: number | null
+  thumbnail?: string
 }
 
 export interface Playlist {
   id: string
   name: string
+  description?: string | null
   kind: 'local' | 'synced' | 'online'
-  trackCount: number
+  trackCount: number | null
   downloadedCount: number
   updatedAt: number
+  thumbnail?: string
 }
 
 export interface Folder {

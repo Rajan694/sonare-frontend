@@ -1,9 +1,12 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { cn } from '../../lib/utils'
+import { API_BASE } from '../../data/auth'
 
 type ArtVariant = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10' | 'a11' | 'a12'
 
-interface ArtworkProps {
+export interface ArtworkProps {
+  src?: string | null
+  alt?: string
   variant?: ArtVariant
   size?: number
   radius?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'circ'
@@ -20,12 +23,64 @@ const radiusClass = {
   circ: 'art-circ',
 }
 
-export default function Artwork({ variant = 'a1', size, radius = 'md', rings = false, className }: ArtworkProps) {
+export function resolveArtworkUrl(url?: string | null, targetSize?: number): string | undefined {
+  if (!url) return undefined
+  let resolved = url
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    const origin = API_BASE.replace(/\/api\/v1\/?$/, '')
+    resolved = `${origin}${url.startsWith('/') ? '' : '/'}${url}`
+  }
+
+  if (targetSize && resolved.includes('/artwork')) {
+    const sizeParam = targetSize <= 64 ? 64 : targetSize <= 140 ? 140 : targetSize <= 300 ? 300 : 640
+    const separator = resolved.includes('?') ? '&' : '?'
+    if (!resolved.includes('size=')) {
+      resolved = `${resolved}${separator}size=${sizeParam}`
+    }
+  }
+
+  return resolved
+}
+
+export default function Artwork({
+  src,
+  alt = '',
+  variant = 'a1',
+  size,
+  radius = 'md',
+  rings = false,
+  className
+}: ArtworkProps) {
+  const [loaded, setLoaded] = useState(false)
+  const [error, setError] = useState(false)
+
+  const resolvedSrc = resolveArtworkUrl(src, size)
+
   return (
     <span
-      className={cn('art', variant, radiusClass[radius], rings && 'art-rings', className)}
+      className={cn(
+        'art relative overflow-hidden flex items-center justify-center flex-none select-none',
+        variant,
+        radiusClass[radius],
+        rings && 'art-rings',
+        className
+      )}
       style={size ? { width: `${size}px`, height: `${size}px` } : undefined}
-      aria-hidden
-    />
+      aria-hidden={!alt}
+    >
+      {resolvedSrc && !error && (
+        <img
+          src={resolvedSrc}
+          alt={alt}
+          loading="lazy"
+          onLoad={() => setLoaded(true)}
+          onError={() => setError(true)}
+          className={cn(
+            'absolute inset-0 w-full h-full object-cover transition-opacity duration-300',
+            loaded ? 'opacity-100' : 'opacity-0'
+          )}
+        />
+      )}
+    </span>
   )
 }

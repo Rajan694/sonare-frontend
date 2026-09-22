@@ -3,12 +3,15 @@ import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
+import { usePeaks } from '../data/hooks'
+import { useFavourite } from '../data/favourites'
 import Artwork from '../components/music/Artwork'
 import Waveform from '../components/music/Waveform'
 import { IconButton } from '../components/ui/Button'
 import Icon from '../components/ui/Icon'
 import { SourceGlyph } from '../components/ui/SourceGlyph'
 import { Slider } from '../components/ui/Slider'
+import { EmptyState } from '../components/ui/EmptyState'
 import { formatDuration } from '../lib/utils'
 import { cn } from '../lib/utils'
 
@@ -16,7 +19,26 @@ export default function NowPlaying() {
   const { mode } = useModeStore()
   const { state, currentTrack } = usePlayerStore()
   const isOffline = mode === 'offline'
-  const positionRatio = state.positionMs / (currentTrack.durationMs || 1)
+
+  const { data: peaksData } = usePeaks(currentTrack?.id)
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite)
+  const peaks = currentTrack?.peaks || peaksData?.peaks
+
+  if (!currentTrack) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <EmptyState
+          icon="music"
+          title="Nothing playing"
+          description="Choose a song from your library or search to start playback"
+          action={<Link to="/home" className="btn btn-acc">Go to Home</Link>}
+        />
+      </div>
+    )
+  }
+
+  const durationMs = currentTrack.durationMs || 1
+  const positionRatio = state.positionMs / durationMs
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-8 py-6 relative overflow-hidden">
@@ -27,7 +49,15 @@ export default function NowPlaying() {
 
       <div className="flex flex-col items-center gap-6 relative w-full max-w-[480px]">
         <motion.div layoutId="now-playing-artwork" className="relative">
-          <Artwork variant="a1" size={300} radius="xl" rings className="shadow-e4" />
+          <Artwork
+            src={currentTrack.thumbnail || `/api/v1/tracks/${currentTrack.id}/artwork?size=640`}
+            alt={currentTrack.title}
+            variant="a1"
+            size={300}
+            radius="xl"
+            rings
+            className="shadow-e4"
+          />
         </motion.div>
 
         <div className="flex flex-col gap-1 w-full">
@@ -36,7 +66,13 @@ export default function NowPlaying() {
               <span className="text-display-m text-t1 truncate">{currentTrack.title}</span>
               <span className="text-h2 text-t2">{currentTrack.artist}</span>
             </div>
-            <IconButton icon="heart" label="Favourite" size={40} active={currentTrack.favourite} />
+            <IconButton
+              icon="heart"
+              label={favourite ? 'Remove from favourites' : 'Add to favourites'}
+              size={40}
+              active={favourite}
+              onClick={toggleFavourite}
+            />
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <SourceGlyph source={currentTrack.source} />
@@ -49,7 +85,7 @@ export default function NowPlaying() {
 
         <div className="flex flex-col gap-1.5 w-full">
           <Waveform
-            peaks={currentTrack.peaks}
+            peaks={peaks}
             barCount={150}
             positionRatio={positionRatio}
             offline={isOffline}

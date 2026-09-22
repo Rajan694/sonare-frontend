@@ -6,6 +6,7 @@ import { SourceGlyph } from '../ui/SourceGlyph'
 import EqualizerBars from './EqualizerBars'
 import Artwork from './Artwork'
 import type { Track } from '../../data/types'
+import { useFavourite } from '../../data/favourites'
 import { formatDuration } from '../../lib/utils'
 import { motion } from 'motion/react'
 import { staggerItem, transition } from '../../lib/motion'
@@ -20,6 +21,8 @@ interface SongRowProps {
 }
 
 export default function SongRow({ track, index, isActive, isPlaying, onClick, onContextMenu }: SongRowProps) {
+  const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite)
+
   return (
     <motion.div
       className={cn(
@@ -41,7 +44,13 @@ export default function SongRow({ track, index, isActive, isPlaying, onClick, on
         )}
       </span>
 
-      <Artwork variant={`a${((index % 12) || 12) as 1}`} size={40} radius="xs" />
+      <Artwork
+        src={track.thumbnail || `/api/v1/tracks/${track.id}/artwork`}
+        alt={track.title}
+        variant={`a${((index % 12) || 12) as 1}`}
+        size={40}
+        radius="xs"
+      />
 
       <div className="flex flex-col grow min-w-0 pr-4">
         <button
@@ -67,9 +76,14 @@ export default function SongRow({ track, index, isActive, isPlaying, onClick, on
       <div className="flex-none flex items-center gap-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150">
         <IconButton
           icon="heart"
-          label={track.favourite ? 'Remove from favourites' : 'Add to favourites'}
+          label={favourite ? 'Remove from favourites' : 'Add to favourites'}
           size={32}
-          active={track.favourite}
+          active={favourite}
+          onClick={e => {
+            // The row itself starts playback — don't do both.
+            e.stopPropagation()
+            toggleFavourite()
+          }}
         />
         <IconButton
           icon="more"
