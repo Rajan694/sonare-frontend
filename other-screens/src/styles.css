@@ -1,25 +1,422 @@
+@import "tailwindcss";
+
+@theme {
+  /* ===== COLORS ===== */
+  --color-bg: #000000;
+  --color-s0: #060607;
+  --color-s1: #0B0B0D;
+  --color-s2: #111114;
+  --color-s3: #17171B;
+  --color-s4: #1E1E23;
+  --color-ln: #1A1A1F;
+  --color-ln2: #26262C;
+  --color-ln3: #33333B;
+  
+  --color-t1: #FFFFFF;
+  --color-t2: #9A9AA8;
+  --color-t3: #7E7E8C;
+  --color-t4: #5A5A66;
+  --color-tinv: #000000;
+
+  --color-acc: #00E28A;
+  --color-acc2: #1FE795;
+  --color-acc3: #00C074;
+  --color-accbg: rgba(0,226,138,0.12);
+  --color-accbg2: rgba(0,226,138,0.20);
+  
+  --color-gold: #FFC24D;
+  --color-goldbg: rgba(255,194,77,0.12);
+  --color-goldbg2: rgba(255,194,77,0.22);
+  
+  --color-red: #FF4D5E;
+  --color-blue: #4DA3FF;
+
+  /* ===== SPACING ===== */
+  --spacing-2xs: 2px;
+  --spacing-xs: 4px;
+  --spacing-sm: 6px;
+  --spacing-md: 8px;
+  --spacing-lg: 12px;
+  --spacing-xl: 16px;
+  --spacing-2xl: 20px;
+  --spacing-3xl: 24px;
+  --spacing-4xl: 32px;
+  --spacing-5xl: 40px;
+  --spacing-6xl: 48px;
+  --spacing-7xl: 64px;
+  --spacing-8xl: 80px;
+  --spacing-9xl: 120px;
+
+  /* ===== RADIUS ===== */
+  --radius-none: 0px;
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 28px;
+  --radius-3xl: 40px;
+  --radius-full: 999px;
+
+  /* ===== TYPOGRAPHY ===== */
+  --font-sans: 'Geist', 'Geist Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  --text-display: 40px 44px 700 -0.6px;
+  --text-display-m: 32px 36px 700 -0.4px;
+  --text-h1: 24px 30px 600 -0.2px;
+  --text-h2: 20px 26px 600 -0.1px;
+  --text-title-l: 17px 24px 600 -0.1px;
+  --text-title-m: 15px 22px 500 0;
+  --text-body-l: 15px 22px 400 0;
+  --text-body-m: 14px 20px 400 0;
+  --text-body-s: 13px 18px 400 0;
+  --text-label-l: 13px 16px 500 0;
+  --text-label-m: 12px 16px 500 0.2px;
+  --text-label-s: 11px 14px 500 0.4px;
+  --text-overline: 11px 14px 600 0.9px;
+  --text-mono-m: 13px 16px 500 0;
+  --text-mono-s: 11px 14px 500 0;
+
+  /* ===== SHADOWS ===== */
+  --shadow-e1: 0 1px 2px rgba(0,0,0,.40), 0 0 1px rgba(0,0,0,.24);
+  --shadow-e2: 0 4px 12px -2px rgba(0,0,0,.50), 0 1px 2px rgba(0,0,0,.30);
+  --shadow-e3: 0 12px 32px -6px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35);
+  --shadow-e4: 0 24px 64px -12px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40);
+  --shadow-eplayer: 0 -8px 32px -8px rgba(0,0,0,.75);
+  --shadow-glow: 0 4px 20px -4px rgba(0,226,138,.35);
+  --shadow-glow-s: 0 6px 28px -2px rgba(0,226,138,.55);
+  --shadow-glow-g: 0 4px 20px -4px rgba(255,194,77,.32);
+
+  /* ===== MOTION ===== */
+  --ease-smooth: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0.0, 1, 1);
+  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  --animate-fast: 150ms;
+  --animate-normal: 250ms;
+  --animate-slow: 400ms;
+  --animate-slower: 600ms;
+}
+
+/* ===== LEGACY SUPPORT - keep :root vars for existing sonare.css ===== */
 :root {
-  color-scheme: light dark;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  --bg: #000000;
+  --s0: #060607;
+  --s1: #0B0B0D;
+  --s2: #111114;
+  --s3: #17171B;
+  --s4: #1E1E23;
+  --ln: #1A1A1F;
+  --ln2: #26262C;
+  --ln3: #33333B;
+  --t1: #FFFFFF;
+  --t2: #9A9AA8;
+  --t3: #7E7E8C;
+  --t4: #5A5A66;
+  --tinv: #000000;
+  --acc: #00E28A;
+  --acc2: #1FE795;
+  --acc3: #00C074;
+  --accbg: rgba(0,226,138,.12);
+  --accbg2: rgba(0,226,138,.20);
+  --gold: #FFC24D;
+  --goldbg: rgba(255,194,77,.12);
+  --goldbg2: rgba(255,194,77,.22);
+  --red: #FF4D5E;
+  --blue: #4DA3FF;
+  --r-xs: 4px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-2xl: 28px;
+  --r-full: 999px;
+  --font: 'Geist', 'Geist Sans', system-ui, -apple-system, sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --e1: 0 1px 2px rgba(0,0,0,.40), 0 0 1px rgba(0,0,0,.24);
+  --e2: 0 4px 12px -2px rgba(0,0,0,.50), 0 1px 2px rgba(0,0,0,.30);
+  --e3: 0 12px 32px -6px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35);
+  --e4: 0 24px 64px -12px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40);
+  --eplayer: 0 -8px 32px -8px rgba(0,0,0,.75);
+  --glow: 0 4px 20px -4px rgba(0,226,138,.35);
+  --glow-s: 0 6px 28px -2px rgba(0,226,138,.55);
+  --glow-g: 0 4px 20px -4px rgba(255,194,77,.32);
+  color-scheme: dark;
+}
+
+html, body {
+  background: var(--bg);
+  color-scheme: dark;
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+body {
+  margin: 0;
+  color: var(--t1);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01", "cv01";
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: default;
 }
 
 * {
   box-sizing: border-box;
 }
 
-body {
-  margin: 0;
-  background-color: white;
-  color: #111;
-  /* Desktop chrome: text selection and the I-beam cursor read as a bug here. */
-  -webkit-user-select: none;
-  user-select: none;
-  cursor: default;
+/* ===== CUSTOM UTILITIES ===== */
+
+@utility srow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: transparent;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    background-color: #1b1b1f;
-    color: #eaeaea;
-  }
+@utility srow-on {
+  background: var(--color-s2);
+  box-shadow: inset 0 0 0 1px var(--color-ln2);
+}
+
+@utility srow-hover {
+  background: var(--color-s1);
+}
+
+@utility seg-i {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 13px;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  color: var(--color-t3);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  text-decoration: none;
+}
+
+@utility ib {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-full);
+  border: 0;
+  background: transparent;
+  color: var(--color-t2);
+  cursor: pointer;
+  flex: none;
+  text-decoration: none;
+}
+
+@utility playbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  border: 0;
+  cursor: pointer;
+  background: var(--color-acc);
+  color: #000;
+  box-shadow: var(--shadow-glow-s);
+  flex: none;
+}
+
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-s2);
+  border: 1px solid var(--color-ln2);
+  color: var(--color-t2);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  flex: none;
+  font-family: var(--font-sans);
+  text-decoration: none;
+}
+
+@utility badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: var(--radius-xs);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  flex: none;
+}
+
+@utility field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 14px;
+  background: var(--color-s2);
+  border: 1px solid var(--color-ln2);
+  border-radius: var(--radius-full);
+  color: var(--color-t1);
+}
+
+@utility sitem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 40px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  color: var(--color-t2);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@utility art {
+  position: relative;
+  /* span defaults to inline, which ignores width/height — only flex parents
+     blockify it, so set it explicitly or fixed-size artwork collapses to 0x0. */
+  display: block;
+  flex: none;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-s2);
+}
+
+@utility wave-bar {
+  width: 2px;
+  border-radius: 1px;
+  background: var(--color-ln3);
+  display: block;
+  flex: none;
+}
+
+@utility focusring {
+  outline: 2px solid var(--color-acc);
+  outline-offset: 2px;
+}
+
+/* ===== TYPOGRAPHY UTILITIES ===== */
+@utility text-display {
+  font-size: 40px;
+  line-height: 44px;
+  font-weight: 700;
+  letter-spacing: -0.6px;
+}
+
+@utility text-display-m {
+  font-size: 32px;
+  line-height: 36px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+}
+
+@utility text-h1 {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+@utility text-h2 {
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+
+@utility text-title-l {
+  font-size: 17px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.1px;
+}
+
+@utility text-title-m {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 500;
+}
+
+@utility text-body-l {
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+}
+
+@utility text-body-m {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+@utility text-body-s {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+@utility text-label-l {
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+@utility text-label-m {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+}
+
+@utility text-label-s {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+}
+
+@utility text-overline {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+}
+
+@utility text-mono-m {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility text-mono-s {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
 }
