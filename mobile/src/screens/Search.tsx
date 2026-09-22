@@ -8,8 +8,7 @@ import { SongRow } from '../components/music/SongRow';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { mockTracks } from '../data/mock';
-
-import SearchIcon from '../../assets/icon_76.svg';
+import Icon from '../components/ui/Icon';
 
 export function SearchScreen() {
   const [query, setQuery] = useState('');
@@ -44,7 +43,7 @@ export function SearchScreen() {
       <View className="flex-1 pt-4">
         <View className="px-4">
            <Field
-             icon={<SearchIcon width={16} height={16} color="#7E7E8C" />}
+             icon={<Icon name="search" size={16} color="#7E7E8C" />}
              placeholder="Songs, albums, artists..."
              value={query}
              onChangeText={setQuery}

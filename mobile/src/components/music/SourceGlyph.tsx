@@ -1,7 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import SmartphoneIcon from '../../../assets/smartphone.svg';
-import CloudIcon from '../../../assets/cloud.svg';
+import Icon from '../ui/Icon';
 
 interface SourceGlyphProps {
   source: 'local' | 'server';
@@ -22,9 +21,9 @@ export function SourceGlyph({ source, size = 18 }: SourceGlyphProps) {
       }}
     >
       {source === 'local' ? (
-        <SmartphoneIcon width={iconSize} height={iconSize} color={color} />
+        <Icon name="smartphone" size={iconSize} color={color} />
       ) : (
-        <CloudIcon width={iconSize} height={iconSize} color={color} />
+        <Icon name="cloud" size={iconSize} color={color} />
       )}
     </View>
   );

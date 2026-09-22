@@ -73,10 +73,11 @@ interface IconProps {
   name: IconName
   size?: number
   className?: string
+  strokeWidth?: number
   'aria-hidden'?: boolean
 }
 
-export default function Icon({ name, size = 16, className, 'aria-hidden': ariaHidden = true }: IconProps) {
+export default function Icon({ name, size = 16, className, strokeWidth = 1.6, 'aria-hidden': ariaHidden = true }: IconProps) {
   const Component = ICONS[name]
   if (!Component) return null
   return (
@@ -84,7 +85,7 @@ export default function Icon({ name, size = 16, className, 'aria-hidden': ariaHi
       size={size}
       className={cn('flex-none', className)}
       aria-hidden={ariaHidden}
-      strokeWidth={1.75}
+      strokeWidth={strokeWidth}
     />
   )
 }

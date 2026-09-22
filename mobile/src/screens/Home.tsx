@@ -12,9 +12,7 @@ import { usePlayerStore } from '../store/player';
 import { mockTracks } from '../data/mock';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { cn } from '../lib/cn';
-
-import SearchIcon from '../../assets/icon_76.svg';
-import SettingsIcon from '../../assets/icon_47.svg';
+import Icon from '../components/ui/Icon';
 
 export function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -61,7 +59,7 @@ export function HomeScreen() {
             value={mode}
             onChange={(value) => {
               if (value === 'offline' && mode === 'online') {
-                navigation.navigate('ModeSwitch');
+                navigation.navigate('ModeSwitch', { targetMode: 'offline' });
               } else {
                 setMode(value as 'online' | 'offline');
               }
@@ -71,8 +69,8 @@ export function HomeScreen() {
         }
         right={
           <View className="flex-row items-center gap-1">
-            <IconButton icon={<SearchIcon width={20} height={20} color="#FFFFFF" />} onPress={() => navigation.navigate('Search')} accessibilityLabel="Search" />
-            <IconButton icon={<SettingsIcon width={20} height={20} color="#FFFFFF" />} onPress={() => navigation.navigate('Settings')} accessibilityLabel="Settings" />
+            <IconButton icon={<Icon name="search" size={20} color="#FFFFFF" />} onPress={() => navigation.navigate('Search')} accessibilityLabel="Search" />
+            <IconButton icon={<Icon name="settings" size={20} color="#FFFFFF" />} onPress={() => navigation.navigate('Settings')} accessibilityLabel="Settings" />
             <IconButton icon={<Artwork size={40} uri="a5" className="rounded-full w-[30px] h-[30px] ml-1 mr-1" />} onPress={() => {}} accessibilityLabel="Your profile" size={32} />
           </View>
         }

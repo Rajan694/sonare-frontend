@@ -49,7 +49,7 @@ export function LibraryScreen() {
             value={mode}
             onChange={(value) => {
               if (value === 'offline' && mode === 'online') {
-                navigation.navigate('ModeSwitch');
+                navigation.navigate('ModeSwitch', { targetMode: 'offline' });
               } else {
                 setMode(value as 'online' | 'offline');
               }

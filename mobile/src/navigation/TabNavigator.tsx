@@ -8,11 +8,7 @@ import { SearchScreen } from '../screens/Search';
 import { MiniPlayer } from '../components/music/MiniPlayer';
 import { Toast } from '../components/ui/Toast';
 import { useModeStore } from '../store/mode';
-
-import HomeIcon from '../../assets/home.svg';
-import LibraryIcon from '../../assets/library.svg';
-import PlaylistIcon from '../../assets/playlist.svg';
-import SearchIcon from '../../assets/icon_76.svg';
+import Icon from '../components/ui/Icon';
 
 const Tab = createBottomTabNavigator<Record<string, undefined>, undefined>();
 
@@ -61,22 +57,22 @@ export function TabNavigator() {
         <Tab.Screen
           name="Home"
           component={HomeScreen}
-          options={{ tabBarIcon: ({ color }) => <HomeIcon width={21} height={21} color={color} /> }}
+          options={{ tabBarIcon: ({ color }) => <Icon name="home" size={21} color={color} /> }}
         />
         <Tab.Screen
           name="Library"
           component={LibraryScreen}
-          options={{ tabBarIcon: ({ color }) => <LibraryIcon width={21} height={21} color={color} /> }}
+          options={{ tabBarIcon: ({ color }) => <Icon name="library" size={21} color={color} /> }}
         />
         <Tab.Screen
           name="Playlists"
           component={PlaylistsScreen}
-          options={{ tabBarIcon: ({ color }) => <PlaylistIcon width={21} height={21} color={color} /> }}
+          options={{ tabBarIcon: ({ color }) => <Icon name="playlist" size={21} color={color} /> }}
         />
         <Tab.Screen
           name="Search"
           component={SearchScreen}
-          options={{ tabBarIcon: ({ color }) => <SearchIcon width={21} height={21} color={color} /> }}
+          options={{ tabBarIcon: ({ color }) => <Icon name="search" size={21} color={color} /> }}
         />
       </Tab.Navigator>
       <MiniPlayer />

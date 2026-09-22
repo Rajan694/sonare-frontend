@@ -1,22 +1,25 @@
 import React from 'react';
 import { View, Text } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Button } from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useModeStore } from '../store/mode';
 import Animated, { FadeIn, FadeOut, Layout, ReduceMotion } from 'react-native-reanimated';
-import SmartphoneIcon from '../../assets/smartphone.svg';
-import SearchIcon from '../../assets/icon_76.svg';
-import FolderIcon from '../../assets/folder.svg';
-import CloudIcon from '../../assets/cloud.svg';
+import Icon from '../components/ui/Icon';
 
 export function ModeSwitchScreen() {
   const navigation = useNavigation<any>();
-  const { mode, setMode } = useModeStore();
+  const route = useRoute<any>();
+  const { setMode } = useModeStore();
   const [stayOffline, setStayOffline] = React.useState(true);
-  const [localMode, setLocalMode] = React.useState(mode);
+  // This screen only exists for the Online -> Offline confirmation (AGENTS.md
+  // section 2 — Offline -> Online is immediate and never routes here), so the
+  // target mode is the mode being switched TO, not whatever is current.
+  const [localMode, setLocalMode] = React.useState<'online' | 'offline'>(
+    route.params?.targetMode ?? 'offline',
+  );
 
   return (
     <Screen scrollable={false} className="bg-s0/90 items-center justify-end">
@@ -54,7 +57,7 @@ export function ModeSwitchScreen() {
           
           <View className="flex-row items-center gap-3">
              <View className="w-6 h-6 rounded items-center justify-center bg-local/20">
-                <SmartphoneIcon width={12} height={12} color="#FFC24D" />
+                <Icon name="smartphone" size={12} color="#FFC24D" />
              </View>
              <Text className="text-t1 text-bs flex-1">
                {localMode === 'offline' ? '2,184 songs stored on this device' : 'Full server library and catalogs'}
@@ -63,7 +66,7 @@ export function ModeSwitchScreen() {
           
           <View className="flex-row items-center gap-3">
              <View className="w-6 h-6 rounded items-center justify-center bg-local/20">
-                <FolderIcon width={12} height={12} color="#FFC24D" />
+                <Icon name="folder" size={12} color="#FFC24D" />
              </View>
              <Text className="text-t1 text-bs flex-1">
                {localMode === 'offline' ? '5 music folders and all local playlists' : 'Online search and discovery'}
@@ -77,14 +80,14 @@ export function ModeSwitchScreen() {
               
               <View className="flex-row items-center gap-3 opacity-60 mb-2">
                  <View className="w-6 h-6 rounded items-center justify-center bg-s3">
-                    <CloudIcon width={12} height={12} color="#7E7E8C" />
+                    <Icon name="cloud" size={12} color="#7E7E8C" />
                  </View>
                  <Text className="text-t3 text-bs flex-1">Server library, recommendations and trending</Text>
               </View>
               
               <View className="flex-row items-center gap-3 opacity-60">
                  <View className="w-6 h-6 rounded items-center justify-center bg-s3">
-                    <SearchIcon width={12} height={12} color="#7E7E8C" />
+                    <Icon name="search" size={12} color="#7E7E8C" />
                  </View>
                  <Text className="text-t3 text-bs flex-1">Online search results</Text>
               </View>
