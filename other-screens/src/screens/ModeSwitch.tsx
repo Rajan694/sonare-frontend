@@ -1,7 +1,8 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useModeStore } from '../store/modeStore'
+import { updateSettings, useSettings } from '../data/settings'
 import Button from '../components/ui/Button'
 import Icon from '../components/ui/Icon'
 import { Switch } from '../components/ui/Switch'
@@ -26,10 +27,12 @@ const HIDES = [
 export default function ModeSwitch() {
   const navigate = useNavigate()
   const { setMode } = useModeStore()
+  const [stay, setStay] = useState(useSettings().stayOffline)
 
   function confirm() {
+    updateSettings({ stayOffline: stay })
     setMode('offline')
-    navigate('/home')
+    navigate('/home', { replace: true })
   }
 
   return (
@@ -70,9 +73,9 @@ export default function ModeSwitch() {
           </div>
         </div>
 
-        <label className="flex items-center justify-between">
+        <label className="flex items-center justify-between cursor-pointer">
           <span className="text-body-m text-t1">Stay offline until I switch back</span>
-          <Switch variant="gold" checked={true} aria-label="Stay offline until manual switch" />
+          <Switch variant="gold" checked={stay} onCheckedChange={setStay} aria-label="Stay offline until manual switch" />
         </label>
 
         <div className="flex items-center gap-3 justify-end">

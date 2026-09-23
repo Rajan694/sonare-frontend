@@ -1,9 +1,13 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
+import { CAPS } from '../lib/caps'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
-import { useSearch, useGenres } from '../data/hooks'
+import { useSearch, useGenres, usePlaylist, notifyPlaylistsChanged } from '../data/hooks'
+import { api } from '../data/api'
+import { showToast } from '../store/toastStore'
+import { useLocalLibrary } from '../data/local'
 import SongRow from '../components/music/SongRow'
 import Artwork from '../components/music/Artwork'
 import Icon from '../components/ui/Icon'
@@ -18,9 +22,37 @@ const CHIPS = ['Songs', 'Albums', 'Artists', 'Playlists'] as const
 type FilterChip = typeof CHIPS[number]
 
 export default function Search() {
-  const { mode } = useModeStore()
+  const { mode, setMode } = useModeStore()
   const { currentTrack, playTrack } = usePlayerStore()
-  const [query, setQuery] = useState('')
+  // Shared with the topbar field through the URL.
+  const [params, setParams] = useSearchParams()
+  const query = params.get('q') ?? ''
+  // ?addTo=<playlist> is FLOWS M08's "Add songs" mode; keep it while the query changes.
+  const addTo = params.get('addTo')
+  const setQuery = (q: string) => {
+    const next = new URLSearchParams(params)
+    if (q) next.set('q', q)
+    else next.delete('q')
+    setParams(next, { replace: true })
+  }
+  const { data: addToPlaylist } = usePlaylist(addTo ?? undefined)
+  const [added, setAdded] = useState<Set<string>>(new Set())
+
+  async function addTrack(track: Track) {
+    if (!addTo) return
+    setAdded(prev => new Set(prev).add(track.id))
+    try {
+      await api.addTracksToPlaylist(addTo, [track.id])
+      notifyPlaylistsChanged()
+    } catch {
+      setAdded(prev => {
+        const next = new Set(prev)
+        next.delete(track.id)
+        return next
+      })
+      showToast({ title: 'Could not add to playlist', description: track.title, icon: 'info' })
+    }
+  }
   const [active, setActive] = useState<FilterChip>('Songs')
 
   const isOnline = mode === 'online'
@@ -33,14 +65,23 @@ export default function Search() {
     Playlists: 'playlists',
   }
 
-  const { data: searchResult, loading: searchLoading, error: searchError } = useSearch(
-    query,
+  // Offline (FLOWS M04) searches files on this device and never calls the server.
+  const local = useLocalLibrary()
+  const { data: searchResult, loading: serverLoading, error: serverError } = useSearch(
+    isOnline ? query : '',
     typeMap[active] || 'songs'
   )
+  const searchLoading = isOnline && serverLoading
+  const searchError = isOnline ? serverError : null
+  const needle = query.trim().toLowerCase()
+  const localMatches = !isOnline && needle
+    ? local.tracks.filter(t => [t.title, t.artist, t.album].some(v => v?.toLowerCase().includes(needle)))
+    : []
+  const shown: FilterChip = isOnline ? active : 'Songs'
 
   const { data: genres } = useGenres()
 
-  const items = searchResult?.items || []
+  const items = isOnline ? searchResult?.items || [] : localMatches
   const tracks = items.filter((item): item is Track => 'durationMs' in item)
   const albums = items.filter((item): item is Album => 'trackCount' in item && 'year' in item)
   const artists = items.filter((item): item is Artist => 'albumCount' in item || 'following' in item)
@@ -52,6 +93,15 @@ export default function Search() {
 
   return (
     <div className="flex flex-col overflow-hidden h-full">
+      {addTo && (
+        <div className="onstrip mx-8 mt-6 gap-3 flex-none">
+          <span className="flex flex-col grow gap-px">
+            <span className="text-label-l text-acc">Adding to {addToPlaylist?.name ?? 'playlist'}</span>
+            <span className="text-label-s text-t3">{added.size > 0 ? `${added.size} added — search for more` : 'Search for songs and press + to add them'}</span>
+          </span>
+          <Link to={`/playlist/${addTo}`} className="btn btn-acc btn-sm no-underline">Done</Link>
+        </div>
+      )}
       <div className="flex items-center gap-3 px-8 pt-6 pb-4 flex-none">
         <Field
           square
@@ -74,7 +124,7 @@ export default function Search() {
         </Field>
       </div>
 
-      {hasQuery && (
+      {hasQuery && isOnline && (
         <div className="flex items-center gap-2 px-8 pb-4 flex-none">
           {CHIPS.map(chip => (
             <Chip
@@ -92,7 +142,7 @@ export default function Search() {
         <AnimatePresence mode="wait">
           {hasQuery ? (
             <motion.div
-              key={query + active}
+              key={query + shown}
               variants={fadeRise}
               initial="hidden"
               animate="visible"
@@ -114,9 +164,9 @@ export default function Search() {
                 <EmptyState
                   icon="search"
                   title="No results found"
-                  description={`No ${active.toLowerCase()} found matching "${query}"`}
+                  description={isOnline ? `No ${active.toLowerCase()} found matching "${query}"` : `Nothing on this device matches "${query}"`}
                 />
-              ) : active === 'Songs' ? (
+              ) : shown === 'Songs' ? (
                 tracks.map((track, i) => (
                   <SongRow
                     key={track.id}
@@ -125,9 +175,11 @@ export default function Search() {
                     isActive={currentTrack?.id === track.id}
                     isPlaying={currentTrack?.id === track.id}
                     onClick={() => handlePlay(track)}
+                    onAdd={addTo ? () => void addTrack(track) : undefined}
+                    added={added.has(track.id)}
                   />
                 ))
-              ) : active === 'Albums' ? (
+              ) : shown === 'Albums' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
                   {(albums.length > 0 ? albums : items).map((album: any, i) => (
                     <Card
@@ -140,7 +192,7 @@ export default function Search() {
                     />
                   ))}
                 </div>
-              ) : active === 'Artists' ? (
+              ) : shown === 'Artists' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
                   {(artists.length > 0 ? artists : items).map((artist: any, i) => (
                     <Link
@@ -175,7 +227,7 @@ export default function Search() {
                 </div>
               )}
 
-              {!isOnline && (
+              {CAPS.offlineMode && !isOnline && (
                 <div className="mt-6 flex flex-col gap-3">
                   <hr className="hr" />
                   <div className="offstrip">
@@ -184,7 +236,7 @@ export default function Search() {
                       <span className="text-label-l text-gold">Offline mode active</span>
                       <span className="text-label-s text-t3">Switch to Online mode to stream full catalog</span>
                     </span>
-                    <Link to="/mode-switch" className="btn btn-gold btn-sm">Go online</Link>
+                    <button className="btn btn-gold btn-sm" onClick={() => setMode('online')}>Go online</button>
                   </div>
                 </div>
               )}

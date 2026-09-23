@@ -1,10 +1,13 @@
 import React, { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { CAPS } from '../lib/caps'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
-import { useAlbum, useAlbumTracks } from '../data/hooks'
+import { useAlbum, useAlbumTracks, useLibraryAlbums } from '../data/hooks'
 import { api } from '../data/api'
+import { openTrackMenu } from '../components/music/TrackMenu'
+import DownloadButton from '../components/music/DownloadButton'
 import SongRow from '../components/music/SongRow'
 import Artwork from '../components/music/Artwork'
 import Button from '../components/ui/Button'
@@ -21,7 +24,10 @@ export default function Album() {
 
   const { data: album, loading: albumLoading, error: albumError } = useAlbum(id)
   const { data: tracksData, loading: tracksLoading } = useAlbumTracks(id)
-  const [favourite, setFavourite] = useState(false)
+  // Saved albums are the library's album list; null until the user toggles.
+  const { data: savedAlbums } = useLibraryAlbums()
+  const [favouriteOverride, setFavourite] = useState<boolean | null>(null)
+  const favourite = favouriteOverride ?? !!savedAlbums?.items.some(a => a.id === id)
 
   const tracks = tracksData?.items || []
 
@@ -77,6 +83,9 @@ export default function Album() {
     )
   }
 
+  // Only join the parts that exist, so a missing artist or year leaves no stray " · ".
+  const albumMeta = [album.year, album.trackCount ? `${album.trackCount} songs` : null].filter(Boolean).join(' · ')
+
   return (
     <div className="flex flex-col overflow-auto h-full">
       <div className="flex items-end gap-6 p-8 pb-6">
@@ -93,9 +102,11 @@ export default function Album() {
             <span className="text-overline text-t3">Album</span>
             <span className="text-display text-t1">{album.title}</span>
             <span className="text-title-l text-t2">
-              {album.artist}
-              {album.year ? ` · ${album.year}` : ''}
-              {album.trackCount ? ` · ${album.trackCount} songs` : ''}
+              {album.artist && (album.artistId ? (
+                <Link to={`/artist/${album.artistId}`} className="text-t2 no-underline hover:text-t1 hover:underline">{album.artist}</Link>
+              ) : album.artist)}
+              {album.artist && albumMeta ? ' · ' : ''}
+              {albumMeta}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -116,9 +127,7 @@ export default function Album() {
             >
               Shuffle
             </Button>
-            {!album.downloaded && !isOffline && (
-              <Button variant="out" icon="download">Download</Button>
-            )}
+            <DownloadButton tracks={tracks} offline={isOffline} />
             <IconButton
               icon="heart"
               label="Favourite album"
@@ -127,7 +136,7 @@ export default function Album() {
               active={favourite}
               onClick={toggleFavourite}
             />
-            <IconButton icon="more" label="More options" size={40} />
+            <IconButton icon="more" label="More options" size={40} disabled={tracks.length === 0} onClick={e => openTrackMenu(tracks, e)} />
           </div>
         </div>
       </div>

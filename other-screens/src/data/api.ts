@@ -305,6 +305,10 @@ export const api = {
     return request<Playlist>(`/me/playlists/${encodeURIComponent(id)}`)
   },
 
+  getMyPlaylistTracks(id: string) {
+    return request<Page<Track>>(`/me/playlists/${encodeURIComponent(id)}/tracks`)
+  },
+
   updateMyPlaylist(id: string, body: { name?: string; description?: string }) {
     return request<Playlist>(`/me/playlists/${encodeURIComponent(id)}`, {
       method: 'PATCH',

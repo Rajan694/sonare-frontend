@@ -4,12 +4,14 @@ import Icon from '../ui/Icon'
 import { IconButton } from '../ui/Button'
 import { SourceGlyph } from '../ui/SourceGlyph'
 import EqualizerBars from './EqualizerBars'
-import Artwork from './Artwork'
+import Artwork, { trackArtwork } from './Artwork'
 import type { Track } from '../../data/types'
 import { useFavourite } from '../../data/favourites'
 import { formatDuration } from '../../lib/utils'
 import { motion } from 'motion/react'
 import { staggerItem, transition } from '../../lib/motion'
+import { openTrackMenu } from './TrackMenu'
+import { useLocalLibrary } from '../../data/local'
 
 interface SongRowProps {
   track: Track
@@ -18,23 +20,31 @@ interface SongRowProps {
   isPlaying?: boolean
   onClick?: () => void
   onContextMenu?: (e: React.MouseEvent) => void
+  /** Shows a remove (X) button — queue and own playlists. */
+  onRemove?: () => void
+  /** Add-to-playlist mode (FLOWS M08 "Add songs"): a visible + / ✓ at the row's end. */
+  onAdd?: () => void
+  added?: boolean
 }
 
-export default function SongRow({ track, index, isActive, isPlaying, onClick, onContextMenu }: SongRowProps) {
+export default function SongRow({ track, index, isActive, isPlaying, onClick, onContextMenu, onRemove, onAdd, added }: SongRowProps) {
   const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite)
+  const { downloads, downloading } = useLocalLibrary()
+  const progress = downloading[track.id]
 
   return (
     <motion.div
       className={cn(
         'srow',
         isActive ? 'srow-on' : 'srow-hover',
-        'group cursor-default'
+        'group cursor-default select-none'
       )}
       variants={staggerItem}
       transition={transition.normal}
       role="row"
       aria-selected={isActive}
-      onContextMenu={onContextMenu}
+      onContextMenu={onContextMenu ?? (e => openTrackMenu(track, e))}
+      onDoubleClick={onClick}
     >
       <span className="srow-idx">
         {isActive ? (
@@ -45,7 +55,7 @@ export default function SongRow({ track, index, isActive, isPlaying, onClick, on
       </span>
 
       <Artwork
-        src={track.thumbnail || `/api/v1/tracks/${track.id}/artwork`}
+        src={trackArtwork(track)}
         alt={track.title}
         variant={`a${((index % 12) || 12) as 1}`}
         size={40}
@@ -56,6 +66,7 @@ export default function SongRow({ track, index, isActive, isPlaying, onClick, on
         <button
           className={cn('text-body-m font-medium truncate text-left bg-transparent border-0 p-0 cursor-default', isActive ? 'text-acc' : 'text-t1')}
           onClick={onClick}
+          onDoubleClick={e => e.stopPropagation()}
           aria-label={`Play ${track.title}`}
         >
           {track.title}
@@ -66,7 +77,11 @@ export default function SongRow({ track, index, isActive, isPlaying, onClick, on
       <div className="flex-none w-48 text-body-s text-t3 truncate">{track.album}</div>
 
       <div className="flex-none w-11 flex items-center justify-center">
-        <SourceGlyph source={track.source} />
+        {progress !== undefined ? (
+          <span className="text-mono-s text-gold" aria-label="Downloading">{Math.round(progress * 100)}%</span>
+        ) : (
+          <SourceGlyph source={downloads.has(track.id) ? 'local' : track.source} />
+        )}
       </div>
 
       <div className="flex-none w-16 text-mono-s text-t3 text-right">{track.playCount.toLocaleString()}</div>
@@ -84,13 +99,44 @@ export default function SongRow({ track, index, isActive, isPlaying, onClick, on
             e.stopPropagation()
             toggleFavourite()
           }}
+          onDoubleClick={e => e.stopPropagation()}
         />
         <IconButton
           icon="more"
           label="More options"
           size={32}
+          onClick={e => openTrackMenu(track, e)}
+          onDoubleClick={e => e.stopPropagation()}
         />
+        {onRemove && (
+          <IconButton
+            icon="close"
+            label={`Remove ${track.title}`}
+            size={32}
+            onClick={e => {
+              e.stopPropagation()
+              onRemove()
+            }}
+            onDoubleClick={e => e.stopPropagation()}
+          />
+        )}
       </div>
+      {onAdd && (
+        <IconButton
+          icon={added ? 'check' : 'plus'}
+          label={added ? `${track.title} added` : `Add ${track.title} to playlist`}
+          size={32}
+          active={added}
+          disabled={added}
+          bordered
+          className="flex-none ml-1"
+          onClick={e => {
+            e.stopPropagation()
+            onAdd()
+          }}
+          onDoubleClick={e => e.stopPropagation()}
+        />
+      )}
     </motion.div>
   )
 }

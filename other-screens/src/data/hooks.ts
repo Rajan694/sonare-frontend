@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api } from './api'
-import { localLibrary } from './local'
+import { useLocalLibrary } from './local'
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth'
 import type { Track, Album, Artist, Playlist, Folder, Page, User } from './types'
 
@@ -182,17 +182,30 @@ export function useArtistAlbums(id: string | undefined, cursor?: string) {
   )
 }
 
+/** The user's own playlists (contract §8.1 `sonare:` ids) live under /me, not the public catalog. */
+const isOwnPlaylist = (id: string) => id.startsWith('sonare:')
+
 export function usePlaylist(id: string | undefined) {
-  return useAsync(
-    () => (id ? api.getPlaylist(id) : Promise.reject(new Error('Missing playlist id'))),
+  return useAuthAsync(
+    () =>
+      !id
+        ? Promise.reject(new Error('Missing playlist id'))
+        : isOwnPlaylist(id)
+          ? api.getMyPlaylist(id)
+          : api.getPlaylist(id),
     [id],
     { enabled: !!id }
   )
 }
 
 export function usePlaylistTracks(id: string | undefined, cursor?: string) {
-  return useAsync(
-    () => (id ? api.getPlaylistTracks(id, cursor) : Promise.reject(new Error('Missing playlist id'))),
+  return useAuthAsync(
+    () =>
+      !id
+        ? Promise.reject(new Error('Missing playlist id'))
+        : isOwnPlaylist(id)
+          ? api.getMyPlaylistTracks(id)
+          : api.getPlaylistTracks(id, cursor),
     [id, cursor],
     { enabled: !!id }
   )
@@ -239,15 +252,29 @@ export function useNewReleases() {
   return useAuthAsync(() => api.getNewReleases(), [])
 }
 
+const PLAYLISTS_CHANGED = 'sonare:playlists-changed'
+
+/** Tell every mounted playlist list (sidebar, pickers) to refetch. */
+export function notifyPlaylistsChanged(): void {
+  window.dispatchEvent(new Event(PLAYLISTS_CHANGED))
+}
+
 export function useMyPlaylists() {
-  return useAuthAsync(() => api.getMyPlaylists(), [])
+  const result = useAuthAsync(() => api.getMyPlaylists(), [])
+  const { refetch } = result
+  useEffect(() => {
+    window.addEventListener(PLAYLISTS_CHANGED, refetch)
+    return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch)
+  }, [refetch])
+  return result
 }
 
 export function useLyrics(trackId: string | undefined, prefer: 'synced' | 'plain' = 'synced') {
   return useAsync(
     () => (trackId ? api.getLyrics(trackId, prefer) : Promise.reject(new Error('Missing track id'))),
     [trackId, prefer],
-    { enabled: !!trackId }
+    // Local files are unknown to the server; their lyrics come from the editor only.
+    { enabled: !!trackId && !trackId.startsWith('local:') }
   )
 }
 
@@ -255,10 +282,11 @@ export function usePeaks(trackId: string | undefined, bars: number = 150) {
   return useAsync(
     () => (trackId ? api.getTrackPeaks(trackId, bars) : Promise.reject(new Error('Missing track id'))),
     [trackId, bars],
-    { enabled: !!trackId }
+    { enabled: !!trackId && !trackId.startsWith('local:') }
   )
 }
 
-export function useFolders() {
-  return useAsync(() => localLibrary.listFolders(), [])
+export function useFolders(): AsyncState<Folder[]> {
+  const local = useLocalLibrary()
+  return { data: local.folders, loading: !local.ready, error: null, refetch: () => void 0 }
 }

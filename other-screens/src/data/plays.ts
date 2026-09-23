@@ -36,11 +36,44 @@ export function resetPlay(trackId: string, startedAt: number): void {
  * Call on each position update. Records the play the first time the threshold is met
  * for this listen; repeated calls afterwards are no-ops.
  */
+type PendingPlay = { trackRef: ReturnType<typeof trackRef>; at: number; ms: number }
+const PENDING_KEY = 'sonare_pending_plays'
+
+function readPending(): PendingPlay[] {
+  try {
+    return JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]') as PendingPlay[]
+  } catch {
+    return []
+  }
+}
+
+function writePending(plays: PendingPlay[]) {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(plays))
+  } catch {
+    // Storage unavailable: offline plays are lost rather than blocking playback.
+  }
+}
+
+/** Plays heard offline, waiting for the next sync. Taking them clears the queue. */
+export function takePendingPlays(): PendingPlay[] {
+  const plays = readPending()
+  if (plays.length) writePending([])
+  return plays
+}
+
+/** Put plays back if the sync that took them failed. */
+export function restorePendingPlays(plays: PendingPlay[]): void {
+  if (plays.length) writePending([...plays, ...readPending()])
+}
+
 export function maybeRecordPlay(
   trackId: string,
   startedAt: number,
   positionMs: number,
-  durationMs: number
+  durationMs: number,
+  /** Offline mode keeps the play on the device instead of calling the server. */
+  offline = false
 ): void {
   if (!trackId || positionMs <= 0) return
 
@@ -51,16 +84,16 @@ export function maybeRecordPlay(
   if (counted.has(k)) return
   counted.add(k)
 
-  const ref = trackRef(trackId)
+  const play = { trackRef: trackRef(trackId), at: startedAt, ms: Math.round(positionMs) }
+  if (offline) {
+    writePending([...readPending(), play])
+    return
+  }
+  const pending = takePendingPlays()
   void api
-    .sync({
-      since: 0,
-      plays: [{ trackRef: ref, at: startedAt, ms: Math.round(positionMs) }],
-      favourites: [],
-      playlists: [],
-    })
+    .sync({ since: 0, plays: [...pending, play], favourites: [], playlists: [] })
     .catch(() => {
-      // A dropped play should never interrupt playback; allow a retry on the next listen.
-      counted.delete(k)
+      // A dropped play should never interrupt playback; keep it for the next sync.
+      restorePendingPlays([...pending, play])
     })
 }

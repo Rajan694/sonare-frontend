@@ -1,5 +1,15 @@
 import { API_BASE } from './auth'
 import { api } from './api'
+import * as dsp from './dsp'
+import { localLibrary } from './local'
+import { getSettings, type UserSettings } from './settings'
+
+const STREAM_QUALITY: Record<UserSettings['downloadQuality'], 'auto' | 'low' | 'high'> = {
+  low: 'low',
+  normal: 'auto',
+  high: 'high',
+  lossless: 'high',
+}
 
 /**
  * Audio playback engine.
@@ -73,10 +83,19 @@ function absolute(url: string): string {
 function el(): HTMLAudioElement {
   if (audio) return audio
   const a = new Audio()
+  // Required for the Web Audio EQ: without CORS the graph would output silence.
+  a.crossOrigin = 'anonymous'
   a.preload = 'auto'
   a.volume = volume
+  dsp.bindElement(a)
   a.addEventListener('timeupdate', emit)
-  a.addEventListener('durationchange', emit)
+  a.addEventListener('durationchange', () => {
+    // Scans estimate some durations (or have none); the decoder's value is authoritative.
+    if (currentTrackId?.startsWith('local:') && Number.isFinite(a.duration)) {
+      localLibrary.noteDuration(currentTrackId, Math.round(a.duration * 1000))
+    }
+    emit()
+  })
   a.addEventListener('play', emit)
   a.addEventListener('pause', emit)
   a.addEventListener('ended', emit)
@@ -108,7 +127,7 @@ function el(): HTMLAudioElement {
 }
 
 async function resolveStream(trackId: string): Promise<string> {
-  const res = await api.getTrackStream(trackId)
+  const res = await api.getTrackStream(trackId, STREAM_QUALITY[getSettings().downloadQuality] ?? 'auto')
   expiresAt = res.expiresAt ?? 0
   muxed = !!res.muxed
   return absolute(res.url)
@@ -129,7 +148,16 @@ export async function load(trackId: string, force = false): Promise<void> {
   emit()
 
   try {
-    const src = await resolveStream(trackId)
+    // Local files, and server tracks that have been downloaded, play from disk.
+    const localId = localLibrary.localIdFor(trackId)
+    let src: string
+    if (localId) {
+      src = await localLibrary.objectUrl(trackId)
+      expiresAt = Number.POSITIVE_INFINITY
+      muxed = false
+    } else {
+      src = await resolveStream(trackId)
+    }
     // Another track may have been selected while this request was in flight.
     if (currentTrackId !== trackId) return
     a.src = src
@@ -149,9 +177,18 @@ export async function playTrackId(trackId: string): Promise<void> {
   await play()
 }
 
+/** Re-resolve the current track's source (fresh stream url / re-read file) and play. */
+export async function retry(): Promise<void> {
+  if (!currentTrackId) return
+  retriedForTrack = null
+  await load(currentTrackId, true)
+  await play()
+}
+
 export async function play(): Promise<void> {
   const a = el()
   if (!a.src) return
+  void dsp.ensureGraph()
   try {
     await a.play()
   } catch (e) {
@@ -205,6 +242,18 @@ export function setVolume(v: number): void {
     // Not worth failing playback over an unwritable localStorage.
   }
   emit()
+}
+
+/** Volume to restore on unmute; never 0, or unmuting would do nothing. */
+let volumeBeforeMute = 1
+
+export function toggleMute(): void {
+  if (volume > 0) {
+    volumeBeforeMute = volume
+    setVolume(0)
+  } else {
+    setVolume(volumeBeforeMute)
+  }
 }
 
 export function getVolume(): number {

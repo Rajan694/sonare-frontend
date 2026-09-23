@@ -23,6 +23,13 @@ const radiusClass = {
   circ: 'art-circ',
 }
 
+/** Artwork for a track: its own thumbnail, else the server's — local files have none. */
+export function trackArtwork(track: { id: string; source: string; thumbnail?: string }, size?: 64 | 140 | 300 | 640): string | undefined {
+  if (track.thumbnail) return track.thumbnail
+  if (track.source === 'local') return undefined
+  return `/api/v1/tracks/${track.id}/artwork${size ? `?size=${size}` : ''}`
+}
+
 export function resolveArtworkUrl(url?: string | null, targetSize?: number): string | undefined {
   if (!url) return undefined
   let resolved = url

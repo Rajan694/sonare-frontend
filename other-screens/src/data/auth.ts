@@ -7,7 +7,7 @@ const ACCESS_TOKEN_KEY = 'sonare_access_token'
 const REFRESH_TOKEN_KEY = 'sonare_refresh_token'
 const USER_KEY = 'sonare_user'
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3999/api/v1'
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3010/api/v1'
 
 let currentAccessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY)
 let currentRefreshToken: string | null = localStorage.getItem(REFRESH_TOKEN_KEY)

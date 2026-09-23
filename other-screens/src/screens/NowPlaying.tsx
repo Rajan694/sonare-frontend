@@ -1,11 +1,11 @@
 import React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { usePeaks } from '../data/hooks'
 import { useFavourite } from '../data/favourites'
-import Artwork from '../components/music/Artwork'
+import Artwork, { trackArtwork } from '../components/music/Artwork'
 import Waveform from '../components/music/Waveform'
 import { IconButton } from '../components/ui/Button'
 import Icon from '../components/ui/Icon'
@@ -14,10 +14,30 @@ import { Slider } from '../components/ui/Slider'
 import { EmptyState } from '../components/ui/EmptyState'
 import { formatDuration } from '../lib/utils'
 import { cn } from '../lib/utils'
+import * as player from '../data/player'
 
 export default function NowPlaying() {
+  const navigate = useNavigate()
+  // Leave full screen: back where the user came from, or Home on a direct visit.
+  const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/home'))
   const { mode } = useModeStore()
-  const { state, currentTrack } = usePlayerStore()
+  const {
+    state,
+    currentTrack,
+    isPlaying,
+    isLoading,
+    playbackError,
+    durationMs: liveDurationMs,
+    togglePlay,
+    seekRatio,
+    next,
+    previous,
+    volume,
+    setVolume,
+    toggleMute,
+    toggleShuffle,
+    cycleRepeat,
+  } = usePlayerStore()
   const isOffline = mode === 'offline'
 
   const { data: peaksData } = usePeaks(currentTrack?.id)
@@ -37,11 +57,18 @@ export default function NowPlaying() {
     )
   }
 
-  const durationMs = currentTrack.durationMs || 1
+  const durationMs = liveDurationMs || currentTrack.durationMs || 1
   const positionRatio = state.positionMs / durationMs
 
   return (
     <div className="flex flex-col items-center justify-center h-full px-8 py-6 relative overflow-hidden">
+      <IconButton
+        icon="chevron-down"
+        label="Exit full screen (Esc)"
+        size={40}
+        className="absolute top-5 left-5 z-10"
+        onClick={exit}
+      />
       <div className="ambient" aria-hidden>
         <i className={cn(isOffline ? 'bg-gold' : 'bg-acc', 'w-[600px] h-[600px] -top-[200px] -left-[100px] opacity-[0.18]')} />
         <i className="bg-s2 w-[400px] h-[400px] -bottom-[100px] -right-[100px]" />
@@ -50,7 +77,7 @@ export default function NowPlaying() {
       <div className="flex flex-col items-center gap-6 relative w-full max-w-[480px]">
         <motion.div layoutId="now-playing-artwork" className="relative">
           <Artwork
-            src={currentTrack.thumbnail || `/api/v1/tracks/${currentTrack.id}/artwork?size=640`}
+            src={trackArtwork(currentTrack, 640)}
             alt={currentTrack.title}
             variant="a1"
             size={300}
@@ -74,6 +101,13 @@ export default function NowPlaying() {
               onClick={toggleFavourite}
             />
           </div>
+          {/* Full screen hides the bottom bar, so failures must show here too. */}
+          {playbackError && (
+            <div className="flex items-center gap-2 mt-1" role="alert">
+              <span className="text-body-m text-red">{playbackError}</span>
+              <button className="btn btn-out btn-sm" onClick={() => void player.retry()}>Retry</button>
+            </div>
+          )}
           <div className="flex items-center gap-2 mt-0.5">
             <SourceGlyph source={currentTrack.source} />
             <span className="text-label-s text-t3">
@@ -88,35 +122,64 @@ export default function NowPlaying() {
             peaks={peaks}
             barCount={150}
             positionRatio={positionRatio}
+            durationMs={durationMs}
             offline={isOffline}
+            onSeek={seekRatio}
           />
           <div className="flex items-center justify-between">
             <span className="text-mono-s text-t2">{formatDuration(state.positionMs)}</span>
-            <span className="text-mono-s text-t3">{formatDuration(currentTrack.durationMs)}</span>
+            <span className="text-mono-s text-t3">{formatDuration(durationMs)}</span>
           </div>
         </div>
 
         <div className="flex items-center justify-center gap-6 w-full">
-          <IconButton icon="shuffle" label="Shuffle" size={32} active={state.shuffle} />
-          <IconButton icon="skip-back" label="Previous track" size={40} />
+          <IconButton
+            icon="shuffle"
+            label={state.shuffle ? 'Shuffle on' : 'Shuffle off'}
+            size={32}
+            active={state.shuffle}
+            onClick={toggleShuffle}
+          />
+          <IconButton icon="skip-back" label="Previous track" size={40} onClick={previous} />
           <button
             className={cn('playbtn', isOffline ? 'bg-gold shadow-glow-g' : 'bg-acc shadow-glow-s')}
-            aria-label="Pause"
+            aria-label={isPlaying ? 'Pause' : 'Play'}
+            onClick={togglePlay}
+            disabled={isLoading}
           >
-            <Icon name="pause" size={24} />
+            <Icon name={isLoading ? 'loader' : isPlaying ? 'pause' : 'play'} size={24} className={cn(isLoading && 'animate-spin')} />
           </button>
-          <IconButton icon="skip-forward" label="Next track" size={40} />
-          <IconButton icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'} label="Repeat" size={32} active={state.repeat !== 'off'} />
+          <IconButton icon="skip-forward" label="Next track" size={40} onClick={next} />
+          <IconButton
+            icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'}
+            label={state.repeat === 'one' ? 'Repeat one' : state.repeat === 'all' ? 'Repeat all' : 'Repeat off'}
+            size={32}
+            active={state.repeat !== 'off'}
+            onClick={cycleRepeat}
+          />
         </div>
 
         <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2 flex-none w-[96px]">
-            <Icon name="volume" size={14} className="text-t3 flex-none" />
-            <Slider value={62} className="w-full" />
+          <div className="flex items-center gap-2 flex-none w-[140px]">
+            <button
+              className="ib ib-28 flex-none"
+              aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+              onClick={toggleMute}
+            >
+              <Icon name={volume === 0 ? 'mute' : 'volume'} size={14} />
+            </button>
+            <Slider
+              value={volume * 100}
+              variant={isOffline ? 'gold' : 'acc'}
+              ariaLabel="Volume"
+              onChange={v => setVolume(v / 100)}
+              className="w-full"
+            />
           </div>
           <div className="flex items-center gap-1">
             <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics"><Icon name="music4" size={16} /></Link>
             <Link to="/queue" className="ib ib-32" aria-label="Queue"><Icon name="list" size={16} /></Link>
+            <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer"><Icon name="sliders" size={16} /></Link>
           </div>
         </div>
       </div>

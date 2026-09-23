@@ -30,8 +30,17 @@ export interface PlayerStore {
   /** 0..1 */
   volume: number
   setVolume: (v: number) => void
+  toggleMute: () => void
   toggleShuffle: () => void
   cycleRepeat: () => void
+  /** Insert right after the current track. */
+  playNext: (track: Track) => void
+  /** Append to the end of the queue. */
+  enqueue: (tracks: Track[]) => void
+  removeFromQueue: (index: number) => void
+  moveInQueue: (from: number, to: number) => void
+  /** Drop everything after the current track. */
+  clearUpcoming: () => void
 }
 
 export const PlayerContext = createContext<PlayerStore>({
@@ -50,8 +59,14 @@ export const PlayerContext = createContext<PlayerStore>({
   previous: () => void 0,
   volume: 1,
   setVolume: () => void 0,
+  toggleMute: () => void 0,
   toggleShuffle: () => void 0,
   cycleRepeat: () => void 0,
+  playNext: () => void 0,
+  enqueue: () => void 0,
+  removeFromQueue: () => void 0,
+  moveInQueue: () => void 0,
+  clearUpcoming: () => void 0,
 })
 
 export function usePlayerStore() {

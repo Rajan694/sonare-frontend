@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
+import { CAPS } from '../lib/caps'
+import { useLocalLibrary, resolveLocalRefs } from '../data/local'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { 
@@ -14,23 +16,51 @@ import {
 } from '../data/hooks'
 import SongRow from '../components/music/SongRow'
 import { Card } from '../components/ui/Card'
-import Artwork from '../components/music/Artwork'
+import Artwork, { trackArtwork } from '../components/music/Artwork'
 import Button from '../components/ui/Button'
 import { IconButton } from '../components/ui/Button'
-import { Chip } from '../components/ui/ChipBadge'
 import { EmptyState } from '../components/ui/EmptyState'
 import Icon from '../components/ui/Icon'
 import { staggerContainer, transition } from '../lib/motion'
 import { cn, formatBytes } from '../lib/utils'
 import type { Track } from '../data/types'
 
-const TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Folders', 'Favourites', 'Most played'] as const
-type Tab = typeof TABS[number]
+const ALL_TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Folders', 'Favourites', 'Most played'] as const
+const TABS = CAPS.localLibrary ? ALL_TABS : ALL_TABS.filter(t => t !== 'Folders')
+type Tab = typeof ALL_TABS[number]
+
+type SortKey = 'addedAt' | 'title' | 'artist' | 'album' | 'durationMs' | 'playCount'
+const SORTS: { key: SortKey; label: string; desc: boolean }[] = [
+  { key: 'addedAt', label: 'Recently added', desc: true },
+  { key: 'title', label: 'Title', desc: false },
+  { key: 'artist', label: 'Artist', desc: false },
+  { key: 'album', label: 'Album', desc: false },
+  { key: 'durationMs', label: 'Duration', desc: false },
+  { key: 'playCount', label: 'Plays', desc: true },
+]
+
+function sortTracks(list: Track[], key: SortKey, desc: boolean): Track[] {
+  const sorted = [...list].sort((a, b) => {
+    const x = a[key] ?? ''
+    const y = b[key] ?? ''
+    return typeof x === 'number' && typeof y === 'number'
+      ? x - y
+      : String(x).localeCompare(String(y), undefined, { sensitivity: 'base' })
+  })
+  return desc ? sorted.reverse() : sorted
+}
 
 export default function Library() {
   const { mode } = useModeStore()
   const { currentTrack, playTrack } = usePlayerStore()
-  const [activeTab, setActiveTab] = useState<Tab>('Songs')
+  // The tab lives in ?view= so sidebar links (Albums, Artists, Genres) land on it.
+  const [params, setParams] = useSearchParams()
+  const slug = (t: Tab) => t.toLowerCase().replace(' ', '-')
+  const activeTab: Tab = TABS.find(t => slug(t) === params.get('view')) ?? 'Songs'
+  const setActiveTab = (t: Tab) => setParams(t === 'Songs' ? {} : { view: slug(t) }, { replace: true })
+  // Most played keeps the server's ranking until the user picks a sort.
+  const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(null)
+  const [view, setView] = useState<'list' | 'grid'>('list')
   const isOffline = mode === 'offline'
 
   const { data: libraryTracksData, loading: libLoading } = useLibraryTracks()
@@ -41,24 +71,64 @@ export default function Library() {
   const { data: foldersData, loading: foldersLoading } = useFolders()
   const { data: trendingData } = useTrending('IN', 20)
 
+  const local = useLocalLibrary()
+
   let tracks: Track[] = []
   let loading = false
 
   if (activeTab === 'Songs') {
-    tracks = libraryTracksData?.items && libraryTracksData.items.length > 0 
-      ? libraryTracksData.items 
-      : (trendingData?.items || [])
-    loading = libLoading
+    // Desktop merges files on this device into the server library; offline shows only them.
+    const server = isOffline
+      ? []
+      : libraryTracksData?.items && libraryTracksData.items.length > 0
+        ? libraryTracksData.items
+        : local.tracks.length > 0 ? [] : trendingData?.items || []
+    tracks = [...local.tracks, ...server]
+    loading = !isOffline && libLoading && local.tracks.length === 0
   } else if (activeTab === 'Favourites') {
-    tracks = favsData?.items || []
+    tracks = resolveLocalRefs(favsData?.items || [], local)
     loading = favsLoading
   } else if (activeTab === 'Most played') {
-    tracks = mostPlayedData?.items || []
+    tracks = resolveLocalRefs(mostPlayedData?.items || [], local)
     loading = mostLoading
   }
 
-  if (isOffline) {
-    tracks = tracks.filter(t => t.source === 'local')
+  if (isOffline && activeTab !== 'Songs') {
+    // Favourites / most played that were downloaded are still playable offline.
+    tracks = tracks.filter(t => t.source === 'local' || local.downloads.has(t.id))
+    loading = false
+  }
+
+  // Offline, albums and artists come from the tags of files on this device.
+  function groupLocal(key: 'album' | 'artist') {
+    const groups = new Map<string, Track[]>()
+    for (const t of local.tracks) {
+      const name = (key === 'album' ? t.album : t.artist) || (key === 'album' ? 'Unknown album' : 'Unknown artist')
+      groups.set(name, [...(groups.get(name) ?? []), t])
+    }
+    return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }
+  if (sort) tracks = sortTracks(tracks, sort.key, sort.desc)
+  const isTrackTab = activeTab === 'Songs' || activeTab === 'Favourites' || activeTab === 'Most played'
+
+  // FLOWS D05: clicking a column header sorts by it; clicking again flips the direction.
+  function sortBy(key: SortKey) {
+    const preset = SORTS.find(s => s.key === key)!
+    setSort(prev => (prev?.key === key ? { key, desc: !prev.desc } : { key, desc: preset.desc }))
+  }
+
+  function headerCell(key: SortKey, label: React.ReactNode, className?: string) {
+    const on = sort?.key === key
+    return (
+      <button
+        className={cn('flex items-center gap-1 bg-transparent border-0 p-0 cursor-pointer text-label-s hover:text-t1', on ? 'text-t1' : 'text-t3', className)}
+        onClick={() => sortBy(key)}
+        aria-label={`Sort by ${SORTS.find(s => s.key === key)!.label}`}
+      >
+        {label}
+        {on && <Icon name={sort!.desc ? 'chevron-down' : 'chevron-up'} size={12} />}
+      </button>
+    )
   }
 
   const handlePlayAll = () => {
@@ -87,7 +157,9 @@ export default function Library() {
             </span>
           </div>
           <div className="flex items-center gap-2.5">
-            <Link to="/folders" className="btn btn-out"><Icon name="folder" size={15} />Manage folders</Link>
+            {CAPS.localLibrary && (
+              <Link to="/folders" className="btn btn-out"><Icon name="folder" size={15} />Manage folders</Link>
+            )}
             <Button variant="out" icon="shuffle" onClick={handleShuffle} disabled={tracks.length === 0}>Shuffle all</Button>
             <Button variant={isOffline ? 'gold' : 'acc'} icon="play" onClick={handlePlayAll} disabled={tracks.length === 0}>Play all</Button>
           </div>
@@ -104,24 +176,37 @@ export default function Library() {
             </button>
           ))}
           <span className="grow min-w-0" />
-          <Chip size="sm" icon="clock" suffixIcon="chevron-down">
-            Recently added
-          </Chip>
-          <div className="flex items-center gap-0.5 ml-2">
-            <IconButton icon="list" label="List view" size={28} active />
-            <IconButton icon="layout-grid" label="Grid view" size={28} />
-          </div>
+          {isTrackTab && (
+            <>
+              <select
+                className="chip chip-sm text-t1 bg-s2 border-ln2 appearance-none cursor-pointer"
+                aria-label="Sort songs"
+                value={sort?.key ?? ''}
+                onChange={e => {
+                  const preset = SORTS.find(s => s.key === e.target.value)
+                  setSort(preset ? { key: preset.key, desc: preset.desc } : null)
+                }}
+              >
+                <option value="">{activeTab === 'Most played' ? 'Most played' : 'Default order'}</option>
+                {SORTS.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
+              </select>
+              <div className="flex items-center gap-0.5 ml-2">
+                <IconButton icon="list" label="List view" size={28} active={view === 'list'} onClick={() => setView('list')} />
+                <IconButton icon="layout-grid" label="Grid view" size={28} active={view === 'grid'} onClick={() => setView('grid')} />
+              </div>
+            </>
+          )}
         </div>
 
-        {(activeTab === 'Songs' || activeTab === 'Favourites' || activeTab === 'Most played') && (
+        {isTrackTab && view === 'list' && (
           <div className="grid gap-4 items-center text-label-s text-t3 pb-2.5 border-b border-ln grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_64px_58px_78px] px-3">
             <span className="text-right">#</span>
             <span />
-            <span>TITLE</span>
-            <span>ALBUM</span>
+            {headerCell('title', 'TITLE')}
+            {headerCell('album', 'ALBUM')}
             <span>SOURCE</span>
-            <span className="text-right">PLAYS</span>
-            <span className="flex justify-end"><Icon name="clock" size={13} /></span>
+            {headerCell('playCount', 'PLAYS', 'justify-end')}
+            {headerCell('durationMs', <Icon name="clock" size={13} />, 'justify-end')}
             <span />
           </div>
         )}
@@ -129,7 +214,7 @@ export default function Library() {
 
       <AnimatePresence mode="wait">
         <motion.div
-          key={activeTab + mode}
+          key={activeTab + mode + view}
           className="flex flex-col gap-0.5 px-8 pb-8 overflow-auto"
           variants={staggerContainer}
           initial="hidden"
@@ -141,6 +226,23 @@ export default function Library() {
                 <div key={i} className="srow h-14 bg-s2/30 rounded" />
               ))}
             </div>
+          ) : isOffline && (activeTab === 'Albums' || activeTab === 'Artists') ? (
+            local.tracks.length === 0 ? (
+              <EmptyState icon="folder" title="Nothing on this device" description="Add a music folder or download songs while online" />
+            ) : (
+              <div className="flex gap-4 flex-wrap">
+                {groupLocal(activeTab === 'Albums' ? 'album' : 'artist').map(([name, group], i) => (
+                  <Card
+                    key={name}
+                    title={name}
+                    subtitle={`${group.length} ${group.length === 1 ? 'song' : 'songs'}`}
+                    artVariant={`a${(i % 12) + 1}` as any}
+                    thumbnail={group.find(t => t.thumbnail)?.thumbnail}
+                    onPlay={() => playTrack(group[0], group)}
+                  />
+                ))}
+              </div>
+            )
           ) : activeTab === 'Albums' ? (
             <div className="flex gap-4 flex-wrap">
               {albumsLoading ? (
@@ -240,6 +342,20 @@ export default function Library() {
               title="No songs found"
               description="Add songs or go online to browse catalog"
             />
+          ) : view === 'grid' ? (
+            <div className="flex gap-4 flex-wrap">
+              {tracks.map((track, i) => (
+                <Card
+                  key={track.id}
+                  title={track.title}
+                  subtitle={track.artist}
+                  artVariant={`a${(i % 12) + 1}` as any}
+                  thumbnail={trackArtwork(track, 140)}
+                  to={track.albumId ? `/album/${track.albumId}` : undefined}
+                  onPlay={() => playTrack(track, tracks)}
+                />
+              ))}
+            </div>
           ) : (
             tracks.map((track, i) => (
               <SongRow

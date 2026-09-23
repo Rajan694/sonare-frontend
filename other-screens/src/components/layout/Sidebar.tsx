@@ -1,10 +1,12 @@
 import React from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
+import { CAPS } from '../../lib/caps'
 import { useModeStore } from '../../store/modeStore'
-import { useMyPlaylists } from '../../data/hooks'
+import { useMyPlaylists, notifyPlaylistsChanged } from '../../data/hooks'
 import { api } from '../../data/api'
 import Icon from '../ui/Icon'
+import { showToast } from '../../store/toastStore'
 import { IconButton } from '../ui/Button'
 import Artwork from '../music/Artwork'
 import type { Playlist } from '../../data/types'
@@ -34,8 +36,9 @@ const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4'] as const
 
 export default function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
   const { mode } = useModeStore()
-  const { data: playlistsData, loading: playlistsLoading, refetch } = useMyPlaylists()
+  const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists()
 
   const playlists: Playlist[] = playlistsData?.items || []
 
@@ -47,10 +50,11 @@ export default function Sidebar() {
     const name = window.prompt('Enter playlist name:')
     if (name?.trim()) {
       try {
-        await api.createPlaylist({ name: name.trim() })
-        refetch()
+        const created = await api.createPlaylist({ name: name.trim(), kind: 'synced' })
+        notifyPlaylistsChanged()
+        navigate(`/playlist/${created.id}`)
       } catch (e: any) {
-        alert(e.message || 'Failed to create playlist')
+        showToast({ title: 'Could not create playlist', description: e?.message, icon: 'info' })
       }
     }
   }
@@ -64,7 +68,6 @@ export default function Sidebar() {
         <span className="flex flex-col grow gap-0">
           <span className="text-title-l text-t1 tracking-tight">Sonare</span>
         </span>
-        <IconButton icon="minimize" label="Collapse sidebar" size={28} />
       </div>
 
       <div className="flex flex-col flex-none py-3 px-2.5 gap-0.5">
@@ -84,11 +87,11 @@ export default function Sidebar() {
 
       <div className="flex flex-col flex-none pt-3 px-2.5 pb-1.5 gap-0.5">
         <span className="text-overline text-t3 px-3 pb-2">Library</span>
-        {LIBRARY_ITEMS.map(item => (
+        {LIBRARY_ITEMS.filter(item => item.to !== '/folders' || CAPS.localLibrary).map(item => (
           <Link
             key={item.label}
             to={item.to}
-            className={cn('sitem', isActive(item.to.split('?')[0]) && item.label === 'Songs' && location.search === '' && 'on')}
+            className={cn('sitem', location.pathname + location.search === item.to && 'on')}
           >
             <Icon name={item.icon} size={18} />
             {item.label}
@@ -144,14 +147,14 @@ export default function Sidebar() {
       </div>
 
       <div className="flex flex-col flex-none p-3 border-t border-ln">
-        <div className={cn('onstrip', mode === 'offline' && 'offstrip')}>
-          <span className={cn('dot', mode === 'online' ? 'dot-acc' : 'dot-gold')} />
+        <div className={cn('onstrip', CAPS.offlineMode && mode === 'offline' && 'offstrip')}>
+          <span className={cn('dot', !CAPS.offlineMode || mode === 'online' ? 'dot-acc' : 'dot-gold')} />
           <span className="flex flex-col grow gap-px">
-            <span className={cn('text-label-s font-medium tracking-[0.4px]', mode === 'online' ? 'text-acc' : 'text-gold')}>
-              {mode === 'online' ? 'ONLINE · SYNCED' : 'OFFLINE MODE'}
+            <span className={cn('text-label-s font-medium tracking-[0.4px]', !CAPS.offlineMode || mode === 'online' ? 'text-acc' : 'text-gold')}>
+              {!CAPS.offlineMode || mode === 'online' ? 'ONLINE · SYNCED' : 'OFFLINE MODE'}
             </span>
             <span className="text-label-s text-t3">
-              {mode === 'online' ? 'Connected to Sonare' : 'Local files only'}
+              {!CAPS.offlineMode || mode === 'online' ? 'Connected to Sonare' : 'Local files only'}
             </span>
           </span>
         </div>

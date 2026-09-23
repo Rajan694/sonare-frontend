@@ -10,9 +10,10 @@ import Icon from '../ui/Icon'
 import { IconButton } from '../ui/Button'
 import { Slider } from '../ui/Slider'
 import { SourceGlyph } from '../ui/SourceGlyph'
-import Artwork from '../music/Artwork'
+import Artwork, { trackArtwork } from '../music/Artwork'
 import Waveform from '../music/Waveform'
 import { formatDuration } from '../../lib/utils'
+import * as player from '../../data/player'
 
 export default function BottomPlayer() {
   const { mode } = useModeStore()
@@ -29,6 +30,7 @@ export default function BottomPlayer() {
     previous,
     volume,
     setVolume,
+    toggleMute,
     toggleShuffle,
     cycleRepeat,
   } = usePlayerStore()
@@ -69,7 +71,6 @@ export default function BottomPlayer() {
         <div className="flex items-center gap-1 flex-none w-[290px] justify-end opacity-60">
           <Link to="/queue" className="ib ib-32" aria-label="Queue"><Icon name="list" size={16} /></Link>
           <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer"><Icon name="sliders" size={16} /></Link>
-          <IconButton icon="volume" label="Audio output" size={32} />
         </div>
       </footer>
     )
@@ -89,7 +90,7 @@ export default function BottomPlayer() {
       >
         <motion.div layoutId="now-playing-artwork">
           <Artwork
-            src={currentTrack.thumbnail || `/api/v1/tracks/${currentTrack.id}/artwork?size=64`}
+            src={trackArtwork(currentTrack, 64)}
             alt={currentTrack.title}
             variant="a1"
             size={56}
@@ -102,9 +103,16 @@ export default function BottomPlayer() {
             <span className="text-title-m text-t1 truncate">{currentTrack.title}</span>
             <SourceGlyph source={currentTrack.source} />
           </span>
-          <span className="text-body-s text-t2 truncate">{currentTrack.artist}</span>
+          {playbackError ? (
+            <span className="text-body-s text-red truncate" role="alert">{playbackError}</span>
+          ) : (
+            <span className="text-body-s text-t2 truncate">{currentTrack.artist}</span>
+          )}
         </span>
       </Link>
+      {playbackError && (
+        <IconButton icon="sync" label="Retry playback" size={32} onClick={() => void player.retry()} />
+      )}
 
       <IconButton
         icon="heart"
@@ -150,6 +158,7 @@ export default function BottomPlayer() {
             peaks={peaks}
             barCount={150}
             positionRatio={positionRatio}
+            durationMs={effectiveDurationMs}
             offline={isOffline}
             className="wave-sm"
             onSeek={seekRatio}
@@ -168,14 +177,21 @@ export default function BottomPlayer() {
         <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer">
           <Icon name="sliders" size={16} />
         </Link>
-        <IconButton icon="volume" label="Audio output" size={32} />
-        <div className="flex items-center gap-1.5 flex-none w-24">
-          <Icon
-            name="volume"
-            size={14}
-            className={cn('flex-none', volume === 0 ? 'text-t4' : 'text-t3')}
+        <div className="flex items-center gap-1.5 flex-none w-28">
+          <button
+            className={cn('ib ib-28 flex-none', volume === 0 ? 'text-t4' : 'text-t3')}
+            aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+            onClick={toggleMute}
+          >
+            <Icon name={volume === 0 ? 'mute' : 'volume'} size={14} />
+          </button>
+          <Slider
+            value={volume * 100}
+            variant={isOffline ? 'gold' : 'acc'}
+            ariaLabel="Volume"
+            onChange={v => setVolume(v / 100)}
+            className="w-full"
           />
-          <Slider value={volume * 100} onChange={v => setVolume(v / 100)} className="w-full" />
         </div>
         <Link to="/now-playing" className="ib ib-32" aria-label="Full screen player">
           <Icon name="minimize" size={16} />

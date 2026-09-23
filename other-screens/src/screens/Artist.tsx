@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { CAPS } from '../lib/caps'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useArtist, useArtistTopTracks, useArtistAlbums } from '../data/hooks'
 import { api } from '../data/api'
+import { openTrackMenu } from '../components/music/TrackMenu'
 import SongRow from '../components/music/SongRow'
 import Artwork from '../components/music/Artwork'
 import Button from '../components/ui/Button'
@@ -22,12 +24,13 @@ export default function Artist() {
   const { data: artist, loading: artistLoading, error: artistError } = useArtist(id)
   const { data: topTracksData, loading: tracksLoading } = useArtistTopTracks(id, 10)
   const { data: albumsData, loading: albumsLoading } = useArtistAlbums(id)
-  const [following, setFollowing] = useState<boolean>(false)
+  // null until the user toggles; before that the server's value applies.
+  const [following, setFollowing] = useState<boolean | null>(null)
 
   const tracks = topTracksData?.items || []
   const albums = albumsData?.items || []
 
-  const isFollowing = artist?.following ?? following
+  const isFollowing = following ?? artist?.following ?? false
 
   const toggleFollowing = async () => {
     if (!id) return
@@ -104,7 +107,7 @@ export default function Artist() {
               <span className="text-title-l text-t2">{artist.monthlyListeners.toLocaleString()} monthly listeners</span>
             )}
             <span className="text-body-l text-t3">
-              {artist.localTrackCount ? `${artist.localTrackCount} local tracks · ` : ''}
+              {CAPS.localLibrary && artist.localTrackCount ? `${artist.localTrackCount} local tracks · ` : ''}
               {artist.albumCount ? `${artist.albumCount} albums` : ''}
             </span>
           </div>
@@ -131,7 +134,7 @@ export default function Artist() {
             >
               {isFollowing ? 'Following' : 'Follow'}
             </Button>
-            <IconButton icon="more" label="More options" size={40} />
+            <IconButton icon="more" label="More options" size={40} disabled={tracks.length === 0} onClick={e => openTrackMenu(tracks, e)} />
           </div>
         </div>
       </div>
