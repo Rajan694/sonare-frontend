@@ -41,6 +41,7 @@ export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width 
           className="playbtn playbtn-40 bg-acc shadow-glow-s absolute opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
           style={{ top: width - 48, right: 8 }}
           aria-label={`Play ${title}`}
+          data-tip="Play"
           onClick={onPlay}
         >
           <Icon name="play" size={16} />
@@ -50,6 +51,7 @@ export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width 
         <button
           className="ib ib-28 absolute top-2 right-2 bg-black/60 text-t1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
           aria-label={`More options for ${title}`}
+          data-tip="More options"
           onClick={onMore}
         >
           <Icon name="more" size={14} />

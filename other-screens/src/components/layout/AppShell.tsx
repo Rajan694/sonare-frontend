@@ -6,6 +6,7 @@ import Topbar from './Topbar'
 import BottomPlayer from './BottomPlayer'
 import TrackMenu from '../music/TrackMenu'
 import { Toast } from '../ui/Toast'
+import TooltipLayer from '../ui/Tooltip'
 import { useToasts, dismissToast } from '../../store/toastStore'
 import { fadeRise, transition } from '../../lib/motion'
 import { bindAccountGateNavigator } from '../../data/accountGate'
@@ -70,6 +71,7 @@ export default function AppShell() {
       </div>
       {!immersive && <BottomPlayer />}
       <TrackMenu />
+      <TooltipLayer />
       <div className="fixed right-6 bottom-[104px] z-50 flex flex-col gap-2 items-end" role="status" aria-live="polite">
         {toasts.map(t => (
           <Toast

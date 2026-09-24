@@ -52,6 +52,7 @@ export function Toast({ show, title, description, icon, variant = 'neutral', onC
               onClick={onClose}
               className="ib ib-28 flex-none ml-2"
               aria-label="Close message"
+              data-tip="Dismiss"
             >
               <Icon name="close" size={14} />
             </button>

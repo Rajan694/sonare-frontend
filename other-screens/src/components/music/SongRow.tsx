@@ -114,6 +114,7 @@ export default function SongRow({ track, index, isActive, onClick, onContextMenu
           <IconButton
             icon="close"
             label={`Remove ${track.title}`}
+            tip="Remove"
             size={32}
             onClick={e => {
               e.stopPropagation()
@@ -127,6 +128,7 @@ export default function SongRow({ track, index, isActive, onClick, onContextMenu
         <IconButton
           icon={added ? 'check' : 'plus'}
           label={added ? `${track.title} added` : `Add ${track.title} to playlist`}
+          tip={added ? 'Added' : 'Add to playlist'}
           size={32}
           active={added}
           disabled={added}

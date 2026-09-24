@@ -272,7 +272,7 @@ export default function Lyrics() {
                       }}
                       className="flex items-start gap-4 text-left bg-transparent border-0 p-0 cursor-pointer group"
                       aria-current={active}
-                      title={`Jump to ${formatDuration(line.atMs + offsetMs)}`}
+                      data-tip={`Jump to ${formatDuration(line.atMs + offsetMs)}`}
                       onClick={() => seek(Math.max(0, line.atMs + offsetMs))}
                     >
                       <span className={cn('text-mono-m w-[38px] pt-2.5 flex-none', active ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t4')}>

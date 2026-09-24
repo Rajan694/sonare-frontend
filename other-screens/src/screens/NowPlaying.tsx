@@ -64,7 +64,9 @@ export default function NowPlaying() {
     <div className="flex flex-col items-center justify-center h-full px-8 py-6 relative overflow-hidden">
       <IconButton
         icon="chevron-down"
-        label="Exit full screen (Esc)"
+        label="Exit full screen"
+        kbd="Esc"
+        aria-keyshortcuts="Escape"
         size={40}
         className="absolute top-5 left-5 z-10"
         onClick={exit}
@@ -141,16 +143,18 @@ export default function NowPlaying() {
             active={state.shuffle}
             onClick={toggleShuffle}
           />
-          <IconButton icon="skip-back" label="Previous track" size={40} onClick={previous} />
+          <IconButton icon="skip-back" label="Previous track" kbd="←←" size={40} onClick={previous} />
           <button
             className={cn('playbtn', isOffline ? 'bg-gold shadow-glow-g' : 'bg-acc shadow-glow-s')}
             aria-label={isPlaying ? 'Pause' : 'Play'}
+            data-tip={isPlaying ? 'Pause' : 'Play'}
+            data-tip-kbd="Space"
             onClick={togglePlay}
             disabled={isLoading}
           >
             <Icon name={isLoading ? 'loader' : isPlaying ? 'pause' : 'play'} size={24} className={cn(isLoading && 'animate-spin')} />
           </button>
-          <IconButton icon="skip-forward" label="Next track" size={40} onClick={next} />
+          <IconButton icon="skip-forward" label="Next track" kbd="→→" size={40} onClick={next} />
           <IconButton
             icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'}
             label={state.repeat === 'one' ? 'Repeat one' : state.repeat === 'all' ? 'Repeat all' : 'Repeat off'}
@@ -165,6 +169,7 @@ export default function NowPlaying() {
             <button
               className="ib ib-28 flex-none"
               aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+              data-tip={volume === 0 ? 'Unmute' : 'Mute'}
               onClick={toggleMute}
             >
               <Icon name={volume === 0 ? 'mute' : 'volume'} size={14} />
@@ -178,9 +183,9 @@ export default function NowPlaying() {
             />
           </div>
           <div className="flex items-center gap-1">
-            <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" title="Lyrics"><Icon name="lyrics" size={16} /></Link>
-            <Link to="/queue" className="ib ib-32" aria-label="Queue" title="Queue"><Icon name="list" size={16} /></Link>
-            <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer" title="Equalizer"><Icon name="sliders" size={16} /></Link>
+            <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" data-tip="Lyrics"><Icon name="lyrics" size={16} /></Link>
+            <Link to="/queue" className="ib ib-32" aria-label="Queue" data-tip="Queue" data-tip-kbd="Ctrl Q"><Icon name="list" size={16} /></Link>
+            <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer" data-tip="Equalizer"><Icon name="sliders" size={16} /></Link>
           </div>
         </div>
       </div>

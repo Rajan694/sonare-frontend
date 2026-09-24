@@ -50,7 +50,7 @@ export default function DownloadButton({ tracks, offline }: { tracks: Track[]; o
     return <Button variant="out" icon="loader" disabled className="[&_svg]:animate-spin">Downloading {done}/{server.length}</Button>
   }
   if (all) {
-    return <Button variant="gold" icon="check" onClick={removeAll} title="Remove downloads">Downloaded</Button>
+    return <Button variant="gold" icon="check" onClick={removeAll} data-tip="Remove downloads">Downloaded</Button>
   }
   if (offline) return null
   return (

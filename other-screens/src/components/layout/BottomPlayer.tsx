@@ -1,22 +1,21 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { cn } from '../../lib/utils'
-import { useModeStore } from '../../store/modeStore'
-import { usePlayerStore } from '../../store/playerStore'
-import { usePeaks } from '../../data/hooks'
-import { useFavourite } from '../../data/favourites'
-import Icon from '../ui/Icon'
-import { IconButton } from '../ui/Button'
-import { Slider } from '../ui/Slider'
-import { SourceGlyph } from '../ui/SourceGlyph'
-import Artwork, { trackArtwork } from '../music/Artwork'
-import Waveform from '../music/Waveform'
-import { formatDuration } from '../../lib/utils'
-import * as player from '../../data/player'
+import { Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { cn } from '../../lib/utils';
+import { useModeStore } from '../../store/modeStore';
+import { usePlayerStore } from '../../store/playerStore';
+import { usePeaks } from '../../data/hooks';
+import { useFavourite } from '../../data/favourites';
+import Icon from '../ui/Icon';
+import { IconButton } from '../ui/Button';
+import { Slider } from '../ui/Slider';
+import { SourceGlyph } from '../ui/SourceGlyph';
+import Artwork, { trackArtwork } from '../music/Artwork';
+import Waveform from '../music/Waveform';
+import { formatDuration } from '../../lib/utils';
+import * as player from '../../data/player';
 
 export default function BottomPlayer() {
-  const { mode } = useModeStore()
+  const { mode } = useModeStore();
   const {
     state,
     currentTrack,
@@ -33,12 +32,12 @@ export default function BottomPlayer() {
     toggleMute,
     toggleShuffle,
     cycleRepeat,
-  } = usePlayerStore()
-  const isOffline = mode === 'offline'
+  } = usePlayerStore();
+  const isOffline = mode === 'offline';
 
-  const { data: peaksData } = usePeaks(currentTrack?.id)
-  const peaks = currentTrack?.peaks || peaksData?.peaks
-  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite)
+  const { data: peaksData } = usePeaks(currentTrack?.id);
+  const peaks = currentTrack?.peaks || peaksData?.peaks;
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
 
   if (!currentTrack) {
     return (
@@ -55,7 +54,7 @@ export default function BottomPlayer() {
           <div className="flex items-center justify-center gap-3.5">
             <IconButton icon="shuffle" label="Shuffle" size={32} disabled />
             <IconButton icon="skip-back" label="Previous track" size={32} disabled />
-            <button className={cn('playbtn playbtn-40', isOffline ? 'bg-gold' : 'bg-acc')} aria-label="Play" disabled>
+            <button className={cn('playbtn playbtn-40', isOffline ? 'bg-gold' : 'bg-acc')} aria-label="Play" data-tip="Play" data-tip-kbd="Space" disabled>
               <Icon name="play" size={18} />
             </button>
             <IconButton icon="skip-forward" label="Next track" size={32} disabled />
@@ -69,17 +68,21 @@ export default function BottomPlayer() {
         </div>
 
         <div className="flex items-center gap-1 flex-none w-[290px] justify-end opacity-60">
-          <Link to="/queue" className="ib ib-32" aria-label="Queue"><Icon name="list" size={16} /></Link>
-          <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer"><Icon name="sliders" size={16} /></Link>
+          <Link to="/queue" className="ib ib-32" aria-label="Queue" data-tip="Queue" data-tip-kbd="Ctrl Q">
+            <Icon name="list" size={16} />
+          </Link>
+          <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer" data-tip="Equalizer">
+            <Icon name="sliders" size={16} />
+          </Link>
         </div>
       </footer>
-    )
+    );
   }
 
   // Prefer the decoded duration from the audio element; fall back to the catalog value
   // before the stream has loaded its metadata.
-  const effectiveDurationMs = durationMs || currentTrack.durationMs || 1
-  const positionRatio = state.positionMs / effectiveDurationMs
+  const effectiveDurationMs = durationMs || currentTrack.durationMs || 1;
+  const positionRatio = state.positionMs / effectiveDurationMs;
 
   return (
     <footer className="dplayer">
@@ -104,15 +107,15 @@ export default function BottomPlayer() {
             <SourceGlyph source={currentTrack.source} />
           </span>
           {playbackError ? (
-            <span className="text-body-s text-red truncate" role="alert">{playbackError}</span>
+            <span className="text-body-s text-red truncate" role="alert">
+              {playbackError}
+            </span>
           ) : (
             <span className="text-body-s text-t2 truncate">{currentTrack.artist}</span>
           )}
         </span>
       </Link>
-      {playbackError && (
-        <IconButton icon="sync" label="Retry playback" size={32} onClick={() => void player.retry()} />
-      )}
+      {playbackError && <IconButton icon="sync" label="Retry playback" size={32} onClick={() => void player.retry()} />}
 
       <IconButton
         icon="heart"
@@ -131,21 +134,21 @@ export default function BottomPlayer() {
             active={state.shuffle}
             onClick={toggleShuffle}
           />
-          <IconButton icon="skip-back" label="Previous track" size={32} onClick={previous} />
+          <IconButton icon="skip-back" label="Previous track" kbd="←←" size={32} onClick={previous} />
           <button
             className={cn('playbtn playbtn-40', isOffline ? 'bg-gold shadow-glow-g' : 'bg-acc shadow-glow-s')}
             aria-label={isPlaying ? 'Pause' : 'Play'}
+            data-tip={isPlaying ? 'Pause' : 'Play'}
+            data-tip-kbd="Space"
             onClick={togglePlay}
             disabled={isLoading}
           >
             <Icon name={isPlaying ? 'pause' : 'play'} size={18} />
           </button>
-          <IconButton icon="skip-forward" label="Next track" size={32} onClick={next} />
+          <IconButton icon="skip-forward" label="Next track" kbd="→→" size={32} onClick={next} />
           <IconButton
             icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'}
-            label={
-              state.repeat === 'one' ? 'Repeat one' : state.repeat === 'all' ? 'Repeat all' : 'Repeat off'
-            }
+            label={state.repeat === 'one' ? 'Repeat one' : state.repeat === 'all' ? 'Repeat all' : 'Repeat off'}
             size={32}
             active={state.repeat !== 'off'}
             onClick={cycleRepeat}
@@ -168,19 +171,20 @@ export default function BottomPlayer() {
       </div>
 
       <div className="flex items-center gap-1 flex-none w-[290px] justify-end">
-        <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" title="Lyrics">
+        <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" data-tip="Lyrics">
           <Icon name="lyrics" size={16} />
         </Link>
-        <Link to="/queue" className="ib ib-32" aria-label="Queue" title="Queue">
+        <Link to="/queue" className="ib ib-32" aria-label="Queue" data-tip="Queue" data-tip-kbd="Ctrl Q">
           <Icon name="list" size={16} />
         </Link>
-        <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer" title="Equalizer">
+        <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer" data-tip="Equalizer">
           <Icon name="sliders" size={16} />
         </Link>
         <div className="flex items-center gap-1.5 flex-none w-28">
           <button
             className={cn('ib ib-28 flex-none', volume === 0 ? 'text-t4' : 'text-t3')}
             aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+            data-tip={volume === 0 ? 'Unmute' : 'Mute'}
             onClick={toggleMute}
           >
             <Icon name={volume === 0 ? 'mute' : 'volume'} size={14} />
@@ -189,14 +193,14 @@ export default function BottomPlayer() {
             value={volume * 100}
             variant={isOffline ? 'gold' : 'acc'}
             ariaLabel="Volume"
-            onChange={v => setVolume(v / 100)}
+            onChange={(v) => setVolume(v / 100)}
             className="w-full"
           />
         </div>
-        <Link to="/now-playing" className="ib ib-32" aria-label="Full screen player" title="Full screen player">
+        <Link to="/now-playing" className="ib ib-32" aria-label="Full screen player" data-tip="Full screen player">
           <Icon name="minimize" size={16} />
         </Link>
       </div>
     </footer>
-  )
+  );
 }

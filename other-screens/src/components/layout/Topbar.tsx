@@ -91,6 +91,7 @@ export default function Topbar() {
           <button
             className="ib ib-28 flex-none"
             aria-label="Clear search"
+            data-tip="Clear search"
             onClick={() => {
               dispatch(setQuery(''))
               searchRef.current?.focus()
@@ -140,7 +141,7 @@ export default function Topbar() {
       <button
         className="ib ib-32 flex-none p-0"
         aria-label="Profile and settings"
-        title={user ? `${user.displayName} · Profile and settings` : 'Profile and settings'}
+        data-tip={user ? `${user.displayName} · Profile and settings` : 'Profile and settings'}
         onClick={() => navigate('/settings')}
       >
         {user ? (
