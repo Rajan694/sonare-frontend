@@ -6,6 +6,7 @@ import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useAlbum, useAlbumTracks, useLibraryAlbums } from '../data/hooks'
 import { api } from '../data/api'
+import { requireAccount } from '../data/accountGate'
 import { openTrackMenu } from '../components/music/TrackMenu'
 import DownloadButton from '../components/music/DownloadButton'
 import SongRow from '../components/music/SongRow'
@@ -44,16 +45,17 @@ export default function Album() {
     }
   }
 
-  const toggleFavourite = async () => {
-    if (!id) return
-    const next = !favourite
-    setFavourite(next)
-    try {
-      await api.setAlbumFavourite(id, next)
-    } catch {
-      setFavourite(!next)
-    }
-  }
+  const toggleFavourite = () =>
+    requireAccount('Create a free account to save albums you love.', async () => {
+      if (!id) return
+      const next = !favourite
+      setFavourite(next)
+      try {
+        await api.setAlbumFavourite(id, next)
+      } catch {
+        setFavourite(!next)
+      }
+    })
 
   if (albumLoading) {
     return (

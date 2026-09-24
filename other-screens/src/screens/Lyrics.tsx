@@ -5,6 +5,8 @@ import { showToast } from '../store/toastStore'
 import { useAsync, useLyrics } from '../data/hooks'
 import { localLibrary } from '../data/local'
 import { api } from '../data/api'
+import { requireAccount } from '../data/accountGate'
+import { isAuthenticated } from '../data/auth'
 import Artwork, { trackArtwork } from '../components/music/Artwork'
 import Button, { IconButton } from '../components/ui/Button'
 import { Switch } from '../components/ui/Switch'
@@ -83,7 +85,12 @@ export default function Lyrics() {
 
   const trackId = currentTrack.id
 
+  // Server lyrics are saved to the account; a guest signs in first and then carries on here.
+  const needsAccount = !isLocal && !isAuthenticated()
+  const askToSignIn = () => requireAccount('Create a free account to fix lyrics and their timing.', () => {})
+
   function changeOffset(delta: number) {
+    if (needsAccount) return askToSignIn()
     const next = offsetMs + delta
     setOffsetMs(next)
     const save = isLocal ? localLibrary.setLyricsOffset(trackId, next) : api.updateLyricsOffset(trackId, next)
@@ -102,6 +109,7 @@ export default function Lyrics() {
   }
 
   function startEditing() {
+    if (needsAccount) return askToSignIn()
     setDraft(synced ? toLrc(lines) : lyricsData?.plain ?? lines.map(l => l.text).join('\n'))
     setEditing(true)
   }

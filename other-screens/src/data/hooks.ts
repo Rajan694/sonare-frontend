@@ -51,6 +51,8 @@ export function useAsync<T>(
   useEffect(() => {
     if (!enabled) {
       setLoading(false)
+      // e.g. signed out: don't keep showing the previous user's data.
+      setData(initialData)
       return
     }
 
@@ -83,13 +85,14 @@ export function useAsync<T>(
 export function useAuthAsync<T>(
   asyncFn: () => Promise<T>,
   deps: any[] = [],
-  options: { enabled?: boolean; initialData?: T | null } = {}
+  options: { enabled?: boolean; initialData?: T | null; accountOnly?: boolean } = {}
 ): AsyncState<T> {
   const { user, ready } = useAuth()
-  const { enabled = true, initialData = null } = options
+  const { enabled = true, initialData = null, accountOnly = false } = options
 
-  // Wait for auth to settle during cold boot before firing /me calls, and refetch on user state change
-  const shouldRun = enabled && ready
+  // Wait for auth to settle during cold boot before firing /me calls, and refetch on user state change.
+  // Account-only data isn't asked for at all while listening as a guest.
+  const shouldRun = enabled && ready && (!accountOnly || !!user)
 
   return useAsync(
     asyncFn,
@@ -194,7 +197,7 @@ export function usePlaylist(id: string | undefined) {
           ? api.getMyPlaylist(id)
           : api.getPlaylist(id),
     [id],
-    { enabled: !!id }
+    { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) }
   )
 }
 
@@ -207,7 +210,7 @@ export function usePlaylistTracks(id: string | undefined, cursor?: string) {
           ? api.getMyPlaylistTracks(id)
           : api.getPlaylistTracks(id, cursor),
     [id, cursor],
-    { enabled: !!id }
+    { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) }
   )
 }
 
@@ -220,36 +223,37 @@ export function useLibraryTracks(params?: {
 }) {
   return useAuthAsync(
     () => api.getLibraryTracks(params),
-    [params?.sort, params?.order, params?.source, params?.cursor]
+    [params?.sort, params?.order, params?.source, params?.cursor],
+    { accountOnly: true }
   )
 }
 
 export function useLibraryAlbums(cursor?: string) {
-  return useAuthAsync(() => api.getLibraryAlbums(cursor), [cursor])
+  return useAuthAsync(() => api.getLibraryAlbums(cursor), [cursor], { accountOnly: true })
 }
 
 export function useLibraryArtists(cursor?: string) {
-  return useAuthAsync(() => api.getLibraryArtists(cursor), [cursor])
+  return useAuthAsync(() => api.getLibraryArtists(cursor), [cursor], { accountOnly: true })
 }
 
 export function useLibraryGenres() {
-  return useAuthAsync(() => api.getLibraryGenres(), [])
+  return useAuthAsync(() => api.getLibraryGenres(), [], { accountOnly: true })
 }
 
 export function useFavourites(cursor?: string) {
-  return useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor])
+  return useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor], { accountOnly: true })
 }
 
 export function useRecentlyPlayed(limit: number = 20) {
-  return useAuthAsync(() => api.getRecentlyPlayed(limit), [limit])
+  return useAuthAsync(() => api.getRecentlyPlayed(limit), [limit], { accountOnly: true })
 }
 
 export function useMostPlayed(params?: { limit?: number; window?: '30d' }) {
-  return useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window])
+  return useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], { accountOnly: true })
 }
 
 export function useNewReleases() {
-  return useAuthAsync(() => api.getNewReleases(), [])
+  return useAuthAsync(() => api.getNewReleases(), [], { accountOnly: true })
 }
 
 const PLAYLISTS_CHANGED = 'sonare:playlists-changed'
@@ -260,7 +264,7 @@ export function notifyPlaylistsChanged(): void {
 }
 
 export function useMyPlaylists() {
-  const result = useAuthAsync(() => api.getMyPlaylists(), [])
+  const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true })
   const { refetch } = result
   useEffect(() => {
     window.addEventListener(PLAYLISTS_CHANGED, refetch)

@@ -12,7 +12,8 @@ import {
   useLibraryAlbums, 
   useLibraryArtists, 
   useFolders,
-  useTrending
+  useTrending,
+  useAuth,
 } from '../data/hooks'
 import SongRow from '../components/music/SongRow'
 import { Card } from '../components/ui/Card'
@@ -62,6 +63,9 @@ export default function Library() {
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(null)
   const [view, setView] = useState<'list' | 'grid'>('list')
   const isOffline = mode === 'offline'
+  const { user } = useAuth()
+  // Favourites, history and the library's albums / artists belong to an account.
+  const guestTab = !isOffline && !user && activeTab !== 'Songs' && activeTab !== 'Genres' && activeTab !== 'Folders'
 
   const { data: libraryTracksData, loading: libLoading } = useLibraryTracks()
   const { data: favsData, loading: favsLoading } = useFavourites()
@@ -226,6 +230,18 @@ export default function Library() {
                 <div key={i} className="srow h-14 bg-s2/30 rounded" />
               ))}
             </div>
+          ) : guestTab ? (
+            <EmptyState
+              icon="heart"
+              title="This lives in your account"
+              description="Create a free account to keep favourites, play history, albums and artists — on every device."
+              action={
+                <span className="flex gap-2">
+                  <Link to="/signin" state={{ mode: 'signup' }} className="no-underline"><Button variant="acc">Create account</Button></Link>
+                  <Link to="/signin" state={{ mode: 'signin' }} className="no-underline"><Button variant="out">Sign in</Button></Link>
+                </span>
+              }
+            />
           ) : isOffline && (activeTab === 'Albums' || activeTab === 'Artists') ? (
             local.tracks.length === 0 ? (
               <EmptyState icon="folder" title="Nothing on this device" description="Add a music folder or download songs while online" />

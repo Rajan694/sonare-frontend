@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from './api'
+import { requireAccount } from './accountGate'
 
 /**
  * Favourite state that survives across screens.
@@ -58,9 +59,12 @@ export function useFavourite(trackId: string | undefined, serverValue: boolean |
 
   const toggle = useCallback(() => {
     if (!trackId) return
-    void setFavourite(trackId, !isFavourite(trackId, !!serverValue)).catch(() => {
-      // setFavourite already rolled the UI back; nothing useful to show here.
-    })
+    // Favourites live in the account; a guest is asked to sign in first, then it's saved.
+    requireAccount('Create a free account to save songs you love.', () =>
+      setFavourite(trackId, !isFavourite(trackId, !!serverValue)).catch(() => {
+        // setFavourite already rolled the UI back; nothing useful to show here.
+      }),
+    )
   }, [trackId, serverValue])
 
   return { favourite, toggle }

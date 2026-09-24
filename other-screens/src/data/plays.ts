@@ -1,4 +1,5 @@
 import { api } from './api'
+import { isAuthenticated } from './auth'
 
 /**
  * Split a namespaced id (contract 8.1) into the TrackRef shape from 8.3. The backend
@@ -76,6 +77,8 @@ export function maybeRecordPlay(
   offline = false
 ): void {
   if (!trackId || positionMs <= 0) return
+  // History belongs to an account; guests just listen.
+  if (!isAuthenticated()) return
 
   const threshold = durationMs > 0 ? Math.min(PLAY_THRESHOLD_MS, durationMs / 2) : PLAY_THRESHOLD_MS
   if (positionMs < threshold) return

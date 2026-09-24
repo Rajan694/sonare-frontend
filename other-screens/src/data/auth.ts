@@ -1,11 +1,13 @@
 import type { User } from './types'
 
-// TODO(design): A full Login/Signup screen is a separate design task.
-// For now, auth is managed programmatically and boots via VITE_DEV_EMAIL / VITE_DEV_PASSWORD in dev.
+// Signed out is guest mode: catalog and playback work, saving needs an account (accountGate.ts).
+// In dev, VITE_DEV_EMAIL / VITE_DEV_PASSWORD sign in automatically — until someone signs out.
 
 const ACCESS_TOKEN_KEY = 'sonare_access_token'
 const REFRESH_TOKEN_KEY = 'sonare_refresh_token'
 const USER_KEY = 'sonare_user'
+/** Set by an explicit sign-out so dev auto-login doesn't sign straight back in on reload. */
+const SIGNED_OUT_KEY = 'sonare_signed_out'
 
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3010/api/v1'
 
@@ -20,7 +22,7 @@ let currentUser: User | null = (() => {
   }
 })()
 
-let isAuthSettled = !import.meta.env.VITE_DEV_EMAIL || !!currentAccessToken
+let isAuthSettled = !import.meta.env.VITE_DEV_EMAIL || !!currentAccessToken || !!localStorage.getItem(SIGNED_OUT_KEY)
 let authSettlePromise: Promise<void> | null = null
 
 type AuthListener = (user: User | null) => void
@@ -83,6 +85,7 @@ export function setSession(accessToken: string, refreshToken: string, user: User
   localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
   localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
   localStorage.setItem(USER_KEY, JSON.stringify(user))
+  localStorage.removeItem(SIGNED_OUT_KEY)
 
   notifyListeners()
 }
@@ -140,12 +143,15 @@ export async function signOut(): Promise<void> {
           'Authorization': `Bearer ${currentAccessToken}`,
           'Content-Type': 'application/json',
         },
+        // The server revokes by refresh token; without it the session stays usable.
+        body: JSON.stringify({ refreshToken: currentRefreshToken }),
       })
     }
   } catch {
     // Ignore network error on logout
   } finally {
     clearSession()
+    localStorage.setItem(SIGNED_OUT_KEY, '1')
   }
 }
 
@@ -194,7 +200,8 @@ export async function refreshAccessToken(): Promise<string | null> {
 }
 
 export async function initDevAuth(): Promise<void> {
-  if (currentAccessToken) {
+  // Someone who signed out stays a guest; dev auto-login is only for a fresh start.
+  if (currentAccessToken || localStorage.getItem(SIGNED_OUT_KEY)) {
     markAuthSettled()
     return
   }

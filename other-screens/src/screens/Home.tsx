@@ -3,11 +3,10 @@ import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
-import { useTrending, useRecentlyPlayed } from '../data/hooks'
+import { useTrending, useRecentlyPlayed, useAuth } from '../data/hooks'
 import { syncNow } from '../data/sync'
 import { useLocalLibrary, resolveLocalRefs } from '../data/local'
 import Icon from '../components/ui/Icon'
-import { getCurrentUser } from '../data/auth'
 import SongRow from '../components/music/SongRow'
 import { trackArtwork } from '../components/music/Artwork'
 import Button from '../components/ui/Button'
@@ -20,7 +19,7 @@ export default function Home() {
   const { mode } = useModeStore()
   const isOnline = mode === 'online'
   const { currentTrack, playTrack, isPlaying, togglePlay } = usePlayerStore()
-  const user = getCurrentUser()
+  const { user } = useAuth()
 
   const { data: trendingData, loading: trendingLoading } = useTrending('IN', 20)
   // "See all" expands a section in place — there is no separate trending / history page.
@@ -72,11 +71,11 @@ export default function Home() {
             {isOnline ? 'Online mode · Connected to Sonare API' : 'Showing local library'}
           </span>
           <span className="text-display-m text-t1">
-            Welcome back{user?.displayName ? `, ${user.displayName}` : ''}
+            {user ? `Welcome back${user.displayName ? `, ${user.displayName}` : ''}` : 'Welcome to Sonare'}
           </span>
         </div>
         <div className="flex items-center gap-2.5">
-          {isOnline && <Button variant="out" icon="sync" onClick={() => void syncNow()}>Sync now</Button>}
+          {isOnline && user && <Button variant="out" icon="sync" onClick={() => void syncNow()}>Sync now</Button>}
           {currentTrack ? (
             <Button variant={isOnline ? 'acc' : 'gold'} icon={isPlaying ? 'pause' : 'play'} onClick={togglePlay}>
               {isPlaying ? 'Pause' : 'Resume'}
@@ -92,6 +91,18 @@ export default function Home() {
           )}
         </div>
       </motion.div>
+
+      {isOnline && !user && (
+        <motion.div className="onstrip gap-3" variants={staggerItem} transition={transition.normal}>
+          <Icon name="info" size={16} className="text-acc flex-none" />
+          <span className="flex flex-col grow gap-px">
+            <span className="text-label-l text-acc">You're listening as a guest</span>
+            <span className="text-body-s text-t2">Create a free account to save songs you love, build playlists and keep your history across devices.</span>
+          </span>
+          <Link to="/signin" state={{ mode: 'signup' }} className="no-underline"><Button variant="acc" size="sm">Create account</Button></Link>
+          <Link to="/signin" state={{ mode: 'signin' }} className="no-underline"><Button variant="out" size="sm">Sign in</Button></Link>
+        </motion.div>
+      )}
 
       {!isOnline && (
         <motion.div className="offstrip gap-3" variants={staggerItem} transition={transition.normal}>

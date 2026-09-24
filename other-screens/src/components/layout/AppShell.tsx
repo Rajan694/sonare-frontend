@@ -8,6 +8,7 @@ import TrackMenu from '../music/TrackMenu'
 import { Toast } from '../ui/Toast'
 import { useToasts, dismissToast } from '../../store/toastStore'
 import { fadeRise, transition } from '../../lib/motion'
+import { bindAccountGateNavigator } from '../../data/accountGate'
 
 function isTyping(el: EventTarget | null) {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
@@ -19,6 +20,9 @@ export default function AppShell() {
   const toasts = useToasts()
   // FLOWS D09: the full-screen player drops the sidebar, top bar and bottom bar.
   const immersive = location.pathname === '/now-playing'
+
+  // Lets the account gate send a guest to /signin from anywhere.
+  useEffect(() => bindAccountGateNavigator(navigate), [navigate])
 
   // FLOWS §3: Ctrl Q toggles the queue, Esc leaves the full-screen player.
   useEffect(() => {

@@ -5,6 +5,8 @@ import { usePlayerStore } from '../../store/playerStore'
 import { showToast } from '../../store/toastStore'
 import { useMyPlaylists, notifyPlaylistsChanged } from '../../data/hooks'
 import { api } from '../../data/api'
+import { requireAccount } from '../../data/accountGate'
+import { isAuthenticated } from '../../data/auth'
 import type { Track } from '../../data/types'
 import { CAPS } from '../../lib/caps'
 import { localLibrary, useLocalLibrary } from '../../data/local'
@@ -164,7 +166,17 @@ function OpenMenu({ target }: { target: MenuTarget }) {
           <>
             {single && <MenuItem icon="play" onClick={run(() => playNext(single))}>Play next</MenuItem>}
             <MenuItem icon="list" onClick={run(() => enqueue(tracks))}>Add to queue</MenuItem>
-            <MenuItem icon="playlist" onClick={() => setPicking(true)}>Add to playlist…</MenuItem>
+            <MenuItem
+              icon="playlist"
+              onClick={() => {
+                // Playlists live in the account: a guest is sent to sign in, then comes back here.
+                if (isAuthenticated()) return setPicking(true)
+                closeTrackMenu()
+                requireAccount('Create a free account to make playlists.', () => {})
+              }}
+            >
+              Add to playlist…
+            </MenuItem>
             {CAPS.downloads && single && single.source !== 'local' && (
               downloads.has(single.id) ? (
                 <MenuItem icon="trash" onClick={run(() => void localLibrary.removeDownload(single.id).then(() => showToast({ title: 'Download removed', description: single.title, icon: 'trash' })))}>

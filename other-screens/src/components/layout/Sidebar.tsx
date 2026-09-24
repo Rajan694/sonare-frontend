@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '../../lib/utils'
 import { CAPS } from '../../lib/caps'
 import { useModeStore } from '../../store/modeStore'
-import { useMyPlaylists, notifyPlaylistsChanged } from '../../data/hooks'
+import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../../data/hooks'
+import { requireAccount } from '../../data/accountGate'
 import { api } from '../../data/api'
 import Icon from '../ui/Icon'
 import { showToast } from '../../store/toastStore'
@@ -39,6 +40,7 @@ export default function Sidebar() {
   const navigate = useNavigate()
   const { mode } = useModeStore()
   const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists()
+  const { user } = useAuth()
 
   const playlists: Playlist[] = playlistsData?.items || []
 
@@ -46,7 +48,9 @@ export default function Sidebar() {
     return location.pathname === to || (to !== '/home' && to !== '/library' && location.pathname.startsWith(to + '/'))
   }
 
-  const handleCreatePlaylist = async () => {
+  const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist)
+
+  const createPlaylist = async () => {
     const name = window.prompt('Enter playlist name:')
     if (name?.trim()) {
       try {
@@ -112,6 +116,10 @@ export default function Sidebar() {
             Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="sitem h-11 animate-pulse bg-s2/30 rounded" />
             ))
+          ) : !user ? (
+            <Link to="/signin" state={{ mode: 'signup', reason: 'Create a free account to make playlists and sync them across devices.' }} className="text-body-s text-t3 px-3 py-2 no-underline hover:text-t1">
+              Sign in to make playlists
+            </Link>
           ) : playlists.length === 0 ? (
             <span className="text-body-s text-t3 px-3 py-2">No playlists created</span>
           ) : (
@@ -147,6 +155,16 @@ export default function Sidebar() {
       </div>
 
       <div className="flex flex-col flex-none p-3 border-t border-ln">
+        {(!CAPS.offlineMode || mode === 'online') && !user ? (
+          // Listening as a guest: nothing is synced, and the strip says how to change that.
+          <Link to="/signin" state={{ mode: 'signin' }} className="onstrip no-underline">
+            <span className="dot dot-acc" />
+            <span className="flex flex-col grow gap-px">
+              <span className="text-label-s font-medium tracking-[0.4px] text-acc">ONLINE · GUEST</span>
+              <span className="text-label-s text-t3">Sign in to sync</span>
+            </span>
+          </Link>
+        ) : (
         <div className={cn('onstrip', CAPS.offlineMode && mode === 'offline' && 'offstrip')}>
           <span className={cn('dot', !CAPS.offlineMode || mode === 'online' ? 'dot-acc' : 'dot-gold')} />
           <span className="flex flex-col grow gap-px">
@@ -158,6 +176,7 @@ export default function Sidebar() {
             </span>
           </span>
         </div>
+        )}
       </div>
     </aside>
   )

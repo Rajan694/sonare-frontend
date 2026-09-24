@@ -6,6 +6,7 @@ import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useArtist, useArtistTopTracks, useArtistAlbums } from '../data/hooks'
 import { api } from '../data/api'
+import { requireAccount } from '../data/accountGate'
 import { openTrackMenu } from '../components/music/TrackMenu'
 import SongRow from '../components/music/SongRow'
 import Artwork from '../components/music/Artwork'
@@ -32,16 +33,17 @@ export default function Artist() {
 
   const isFollowing = following ?? artist?.following ?? false
 
-  const toggleFollowing = async () => {
-    if (!id) return
-    const next = !isFollowing
-    setFollowing(next)
-    try {
-      await api.setArtistFollowing(id, next)
-    } catch {
-      setFollowing(!next)
-    }
-  }
+  const toggleFollowing = () =>
+    requireAccount('Create a free account to follow artists.', async () => {
+      if (!id) return
+      const next = !isFollowing
+      setFollowing(next)
+      try {
+        await api.setArtistFollowing(id, next)
+      } catch {
+        setFollowing(!next)
+      }
+    })
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {

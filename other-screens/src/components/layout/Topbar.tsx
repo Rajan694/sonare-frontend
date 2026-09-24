@@ -6,10 +6,10 @@ import { cn } from '../../lib/utils'
 import { CAPS } from '../../lib/caps'
 import { useModeStore } from '../../store/modeStore'
 import Icon from '../ui/Icon'
-import { IconButton } from '../ui/Button'
+import Button, { IconButton } from '../ui/Button'
 import { Field } from '../ui/Field'
-import Artwork from '../music/Artwork'
 import { syncNow } from '../../data/sync'
+import { useAuth } from '../../data/hooks'
 import type { Mode } from '../../data/types'
 
 async function toggleMaximize() {
@@ -24,6 +24,7 @@ export default function Topbar() {
   const { mode, setMode } = useModeStore()
   const searchRef = useRef<HTMLInputElement>(null)
   const [syncing, setSyncing] = useState(false)
+  const { user } = useAuth()
 
   // The search query lives in the URL (/search?q=) so this field and the Search screen agree.
   const onSearchPage = location.pathname === '/search'
@@ -107,21 +108,32 @@ export default function Topbar() {
         </>
       )}
 
-      <IconButton
-        icon="sync"
-        label={syncing ? 'Syncing…' : 'Sync now'}
-        size={32}
-        onClick={handleSync}
-        disabled={syncing || mode === 'offline'}
-        className={cn(syncing && '[&_svg]:animate-spin')}
-      />
+      {/* Guests have no account library to sync. */}
+      {user && (
+        <IconButton
+          icon="sync"
+          label={syncing ? 'Syncing…' : 'Sync now'}
+          size={32}
+          onClick={handleSync}
+          disabled={syncing || mode === 'offline'}
+          className={cn(syncing && '[&_svg]:animate-spin')}
+        />
+      )}
       <Link to="/settings" className="ib ib-32 flex-none" aria-label="Settings">
         <Icon name="settings" size={16} />
       </Link>
 
-      <button className="ib ib-32 flex-none p-0" aria-label="Your profile" onClick={() => navigate('/settings')}>
-        <Artwork variant="a5" size={26} radius="circ" />
-      </button>
+      {user ? (
+        <button className="ib ib-32 flex-none p-0" aria-label="Your profile" title={user.displayName} onClick={() => navigate('/settings')}>
+          <span className="flex items-center justify-center w-[26px] h-[26px] rounded-full bg-acc text-black text-label-l font-semibold">
+            {user.displayName.charAt(0).toUpperCase()}
+          </span>
+        </button>
+      ) : (
+        <Button variant="acc" size="sm" onClick={() => navigate('/signin', { state: { mode: 'signin' } })}>
+          Sign in
+        </Button>
+      )}
 
       {CAPS.windowControls && (
         <>

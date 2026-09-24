@@ -4,6 +4,7 @@ import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { showToast } from '../store/toastStore'
 import { api } from '../data/api'
+import { requireAccount } from '../data/accountGate'
 import { notifyPlaylistsChanged } from '../data/hooks'
 import { localLibrary, useLocalLibrary } from '../data/local'
 import SongRow from '../components/music/SongRow'
@@ -32,7 +33,11 @@ export default function Queue() {
   const played = rows.filter(r => r.index <= state.index)
   const upcoming = rows.filter(r => r.index > state.index)
 
-  async function saveAsPlaylist() {
+  function saveAsPlaylist() {
+    requireAccount('Create a free account to save your queue as a playlist.', saveQueue)
+  }
+
+  async function saveQueue() {
     const name = window.prompt('Save queue as playlist', 'My queue')?.trim()
     if (!name) return
     setSaving(true)

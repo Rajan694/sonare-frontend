@@ -57,8 +57,8 @@ export default function SettingsScreen() {
 
   async function handleSignOut() {
     await signOut()
-    showToast({ title: 'Signed out', icon: 'logout' })
-    navigate('/signin')
+    // Guests can keep listening, so stay put; the Account section now offers signing back in.
+    showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' })
   }
 
   return (
