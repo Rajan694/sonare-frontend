@@ -10,6 +10,7 @@ import Icon from '../ui/Icon'
 import { showToast } from '../../store/toastStore'
 import { IconButton } from '../ui/Button'
 import Artwork from '../music/Artwork'
+import { openPlaylistMenu } from '../music/TrackMenu'
 import type { Playlist } from '../../data/types'
 
 const NAV_ITEMS = [
@@ -145,6 +146,8 @@ export default function Sidebar() {
                   key={pl.id}
                   to={`/playlist/${pl.id}`}
                   className="sitem h-11"
+                  // Right-click for "Delete playlist".
+                  onContextMenu={e => openPlaylistMenu(pl, e)}
                 >
                   <Artwork
                     src={pl.thumbnail || `/api/v1/playlists/${pl.id}/artwork?size=64`}

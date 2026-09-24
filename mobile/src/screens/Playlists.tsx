@@ -17,6 +17,8 @@ import { useAuthStore } from '../data/auth';
 import { requireAccount } from '../data/accountGate';
 import { GuestPrompt } from '../components/ui/GuestPrompt';
 import { songCount } from '../lib/format';
+import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
+import type { Playlist } from '../data/types';
 import Icon from '../components/ui/Icon';
 
 export function PlaylistsScreen() {
@@ -26,6 +28,17 @@ export function PlaylistsScreen() {
   const [error, setError] = useState<Error | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
+  // The options sheet keeps its playlist while it slides away, so the title doesn't blank out.
+  const [options, setOptions] = useState<Playlist | null>(null);
+  const [optionsOpen, setOptionsOpen] = useState(false);
+  const openOptions = (playlist: Playlist) => {
+    setOptions(playlist);
+    setOptionsOpen(true);
+  };
+  const deleteFromOptions = () => {
+    setOptionsOpen(false);
+    if (options) void confirmDeletePlaylist(options);
+  };
 
   const signedIn = useAuthStore((state) => state.status === 'signedIn');
   const reload = useCallback(() => {
@@ -65,9 +78,11 @@ export function PlaylistsScreen() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => navigation.navigate('Playlist', { id: item.id })}
+            onLongPress={() => openOptions(item)}
             className="flex-row items-center px-4 py-3 gap-3"
             accessibilityRole="button"
             accessibilityLabel={item.name}
+            accessibilityHint="Long press for options"
           >
             <Artwork uri={item.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${item.id}/artwork` }, 140) : undefined} size={64} className="rounded-lg" />
             <View className="flex-1 gap-1">
@@ -78,6 +93,11 @@ export function PlaylistsScreen() {
                 {item.kind === 'local' && <Badge label="Local" variant="local" />}
               </View>
             </View>
+            <IconButton
+              icon={<Icon name="more" size={20} color="#7E7E8C" />}
+              onPress={() => openOptions(item)}
+              accessibilityLabel={`Options for ${item.name}`}
+            />
           </Pressable>
         )}
         refreshControl={<RefreshControl refreshing={false} onRefresh={reload} tintColor="#00E28A" colors={['#00E28A']} />}
@@ -115,6 +135,15 @@ export function PlaylistsScreen() {
             accessibilityLabel="Playlist name"
           />
           <Button variant="accent" onPress={() => create()} disabled={!name.trim()}>Create</Button>
+        </View>
+      </Sheet>
+
+      <Sheet visible={optionsOpen} onClose={() => setOptionsOpen(false)}>
+        <View className="px-6 pb-6 gap-2">
+          <Text className="text-t1 text-h2 font-medium" numberOfLines={1}>{options?.name}</Text>
+          <Button variant="ghost" className="justify-start px-2 py-3" onPress={deleteFromOptions} accessibilityLabel="Delete playlist">
+            <Text className="text-red text-tm">Delete playlist</Text>
+          </Button>
         </View>
       </Sheet>
     </Screen>

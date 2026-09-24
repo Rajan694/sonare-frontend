@@ -15,6 +15,8 @@ interface LibraryStore {
   toggleFavourite: (track: Track) => Promise<void>;
   reloadPlaylists: () => Promise<void>;
   createPlaylist: (name: string) => Promise<Playlist>;
+  /** Rejects if the server refuses; the playlist stays listed until it is really gone. */
+  deletePlaylist: (id: string) => Promise<void>;
   addToPlaylist: (playlistId: string, track: Track) => Promise<void>;
 }
 
@@ -65,6 +67,11 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     const playlist = await api.createPlaylist(name);
     set(state => ({ playlists: [playlist, ...state.playlists] }));
     return playlist;
+  },
+
+  deletePlaylist: async (id) => {
+    await api.deletePlaylist(id);
+    set(state => ({ playlists: state.playlists.filter(p => p.id !== id) }));
   },
 
   addToPlaylist: async (playlistId, track) => {

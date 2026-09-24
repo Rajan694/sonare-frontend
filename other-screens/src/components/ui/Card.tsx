@@ -13,9 +13,11 @@ interface CardProps {
   width?: number
   /** Plays in place without leaving the screen. */
   onPlay?: () => void
+  /** Opens the item's menu: from a "More options" button on hover, or a right-click. */
+  onMore?: (e: React.MouseEvent) => void
 }
 
-export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width = 160, onPlay }: CardProps) {
+export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width = 160, onPlay, onMore }: CardProps) {
   const body = (
     <>
       <Artwork src={thumbnail} variant={artVariant} size={width} radius="md" alt={title} />
@@ -28,7 +30,7 @@ export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width 
   const style = { width: `${width}px` } as React.CSSProperties
 
   return (
-    <div className="relative group flex-none" style={style}>
+    <div className="relative group flex-none" style={style} onContextMenu={onMore}>
       {to ? (
         <Link to={to} className="acard no-underline text-inherit" style={style}>{body}</Link>
       ) : (
@@ -42,6 +44,15 @@ export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width 
           onClick={onPlay}
         >
           <Icon name="play" size={16} />
+        </button>
+      )}
+      {onMore && (
+        <button
+          className="ib ib-28 absolute top-2 right-2 bg-black/60 text-t1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
+          aria-label={`More options for ${title}`}
+          onClick={onMore}
+        >
+          <Icon name="more" size={14} />
         </button>
       )}
     </div>

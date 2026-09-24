@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Alert } from 'react-native';
+import { View, Text, FlatList } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -17,6 +17,7 @@ import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import { AnimatedView } from '../lib/motion';
 import { songCount } from '../lib/format';
+import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
 import Icon from '../components/ui/Icon';
 
 export function PlaylistScreen() {
@@ -42,20 +43,10 @@ export function PlaylistScreen() {
     useLibraryStore.getState().reloadPlaylists().catch(() => {});
   };
 
-  const deletePlaylist = () => {
+  // Only leaves the screen once the playlist is really gone; a failure is reported instead.
+  const deletePlaylist = async () => {
     setMenuOpen(false);
-    Alert.alert('Delete playlist?', `"${info?.name ?? 'This playlist'}" will be removed from all your devices.`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await api.deletePlaylist(id).catch(() => {});
-          await useLibraryStore.getState().reloadPlaylists().catch(() => {});
-          navigation.goBack();
-        },
-      },
-    ]);
+    if (await confirmDeletePlaylist({ id, name: info?.name })) navigation.goBack();
   };
 
   const playAll = (shuffled: boolean) => {

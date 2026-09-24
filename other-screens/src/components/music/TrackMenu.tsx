@@ -14,11 +14,14 @@ import { useModeStore } from '../../store/modeStore'
 
 /**
  * One context menu for every track list (FLOWS §3 D05): right-click a row, or press its
- * "more" button. A module-level store keeps rows free of menu state.
+ * "more" button. A module-level store keeps rows free of menu state. The same menu serves
+ * the user's own playlists, adding "Delete playlist".
  */
 
 interface MenuTarget {
   tracks: Track[]
+  /** One of the user's playlists: the menu ends with "Delete playlist". */
+  playlist?: { id: string; name: string }
   x: number
   y: number
 }
@@ -32,17 +35,22 @@ function set(next: MenuTarget | null) {
 }
 
 /** Open at the pointer (right-click) or under the clicked button. */
-export function openTrackMenu(tracks: Track | Track[], e: React.MouseEvent): void {
+export function openTrackMenu(tracks: Track | Track[], e: React.MouseEvent, playlist?: MenuTarget['playlist']): void {
   e.preventDefault()
   e.stopPropagation()
   const list = Array.isArray(tracks) ? tracks : [tracks]
-  if (list.length === 0) return
+  if (list.length === 0 && !playlist) return
   if (e.type === 'contextmenu') {
-    set({ tracks: list, x: e.clientX, y: e.clientY })
+    set({ tracks: list, playlist, x: e.clientX, y: e.clientY })
   } else {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    set({ tracks: list, x: r.right, y: r.bottom + 4 })
+    set({ tracks: list, playlist, x: r.right, y: r.bottom + 4 })
   }
+}
+
+/** A playlist whose tracks aren't loaded (sidebar, playlist cards): only playlist actions. */
+export function openPlaylistMenu(playlist: { id: string; name: string }, e: React.MouseEvent): void {
+  openTrackMenu([], e, playlist)
 }
 
 export function closeTrackMenu(): void {
@@ -69,6 +77,7 @@ export default function TrackMenu() {
 
 function OpenMenu({ target }: { target: MenuTarget }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { playNext, enqueue } = usePlayerStore()
   const { data: playlists } = useMyPlaylists()
   const { downloads } = useLocalLibrary()
@@ -77,7 +86,7 @@ function OpenMenu({ target }: { target: MenuTarget }) {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: target.x, top: target.y })
 
-  const { tracks } = target
+  const { tracks, playlist } = target
   const single = tracks.length === 1 ? tracks[0] : null
 
   // Keep the menu on screen; anchor it to the left of the pointer near the right edge.
@@ -138,6 +147,20 @@ function OpenMenu({ target }: { target: MenuTarget }) {
     }
   }
 
+  async function deletePlaylist(p: { id: string; name: string }) {
+    closeTrackMenu()
+    if (!window.confirm(`Delete the playlist "${p.name}"? This can't be undone.`)) return
+    try {
+      await api.deleteMyPlaylist(p.id)
+      notifyPlaylistsChanged()
+      showToast({ title: 'Playlist deleted', description: p.name, icon: 'trash' })
+      // Deleted from its own page: that page is gone now.
+      if (decodeURIComponent(location.pathname) === `/playlist/${p.id}`) navigate('/playlist', { replace: true })
+    } catch {
+      showToast({ title: 'Could not delete playlist', description: p.name, icon: 'info' })
+    }
+  }
+
   async function download(track: Track) {
     try {
       await localLibrary.download(track)
@@ -164,36 +187,46 @@ function OpenMenu({ target }: { target: MenuTarget }) {
           </>
         ) : (
           <>
-            {single && <MenuItem icon="play" onClick={run(() => playNext(single))}>Play next</MenuItem>}
-            <MenuItem icon="list" onClick={run(() => enqueue(tracks))}>Add to queue</MenuItem>
-            <MenuItem
-              icon="playlist"
-              onClick={() => {
-                // Playlists live in the account: a guest is sent to sign in, then comes back here.
-                if (isAuthenticated()) return setPicking(true)
-                closeTrackMenu()
-                requireAccount('Create a free account to make playlists.', () => {})
-              }}
-            >
-              Add to playlist…
-            </MenuItem>
-            {CAPS.downloads && single && single.source !== 'local' && (
-              downloads.has(single.id) ? (
-                <MenuItem icon="trash" onClick={run(() => void localLibrary.removeDownload(single.id).then(() => showToast({ title: 'Download removed', description: single.title, icon: 'trash' })))}>
-                  Remove download
+            {tracks.length > 0 && (
+              <>
+                {single && <MenuItem icon="play" onClick={run(() => playNext(single))}>Play next</MenuItem>}
+                <MenuItem icon="list" onClick={run(() => enqueue(tracks))}>Add to queue</MenuItem>
+                <MenuItem
+                  icon="playlist"
+                  onClick={() => {
+                    // Playlists live in the account: a guest is sent to sign in, then comes back here.
+                    if (isAuthenticated()) return setPicking(true)
+                    closeTrackMenu()
+                    requireAccount('Create a free account to make playlists.', () => {})
+                  }}
+                >
+                  Add to playlist…
                 </MenuItem>
-              ) : mode === 'online' && (
-                <MenuItem icon="download" onClick={run(() => void download(single))}>Download</MenuItem>
-              )
+                {CAPS.downloads && single && single.source !== 'local' && (
+                  downloads.has(single.id) ? (
+                    <MenuItem icon="trash" onClick={run(() => void localLibrary.removeDownload(single.id).then(() => showToast({ title: 'Download removed', description: single.title, icon: 'trash' })))}>
+                      Remove download
+                    </MenuItem>
+                  ) : mode === 'online' && (
+                    <MenuItem icon="download" onClick={run(() => void download(single))}>Download</MenuItem>
+                  )
+                )}
+                {CAPS.localLibrary && single && localLibrary.localIdFor(single.id) && (
+                  <MenuItem icon="folder" onClick={run(() => void localLibrary.showInFolder(single.id))}>Show in folder</MenuItem>
+                )}
+                {single?.albumId && (
+                  <MenuItem icon="disc" onClick={run(() => navigate(`/album/${single.albumId}`))}>Go to album</MenuItem>
+                )}
+                {single?.artistId && (
+                  <MenuItem icon="mic" onClick={run(() => navigate(`/artist/${single.artistId}`))}>Go to artist</MenuItem>
+                )}
+              </>
             )}
-            {CAPS.localLibrary && single && localLibrary.localIdFor(single.id) && (
-              <MenuItem icon="folder" onClick={run(() => void localLibrary.showInFolder(single.id))}>Show in folder</MenuItem>
-            )}
-            {single?.albumId && (
-              <MenuItem icon="disc" onClick={run(() => navigate(`/album/${single.albumId}`))}>Go to album</MenuItem>
-            )}
-            {single?.artistId && (
-              <MenuItem icon="mic" onClick={run(() => navigate(`/artist/${single.artistId}`))}>Go to artist</MenuItem>
+            {playlist && (
+              <>
+                {tracks.length > 0 && <hr className="hr mx-2 my-[5px]" />}
+                <MenuItem icon="trash" danger onClick={() => void deletePlaylist(playlist)}>Delete playlist</MenuItem>
+              </>
             )}
           </>
         )}

@@ -7,7 +7,7 @@ import { usePlayerStore } from '../store/playerStore'
 import { usePlaylist, usePlaylistTracks, useMyPlaylists, notifyPlaylistsChanged } from '../data/hooks'
 import { api } from '../data/api'
 import { showToast } from '../store/toastStore'
-import { openTrackMenu } from '../components/music/TrackMenu'
+import { openPlaylistMenu, openTrackMenu } from '../components/music/TrackMenu'
 import Icon from '../components/ui/Icon'
 import { cn } from '../lib/utils'
 import DownloadButton from '../components/music/DownloadButton'
@@ -76,6 +76,7 @@ function PlaylistsIndex() {
               artVariant={`a${(i % 12) + 1}` as any}
               thumbnail={p.thumbnail || `/api/v1/playlists/${p.id}/artwork?size=140`}
               to={`/playlist/${p.id}`}
+              onMore={e => openPlaylistMenu(p, e)}
             />
           ))}
         </div>
@@ -130,18 +131,6 @@ function Playlist({ id }: { id: string }) {
     } catch {
       setEdited(previous)
       showToast({ title: 'Could not remove track', icon: 'info' })
-    }
-  }
-
-  async function deletePlaylist() {
-    if (!defaultId || !window.confirm(`Delete "${playlist?.name ?? 'this playlist'}"?`)) return
-    try {
-      await api.deleteMyPlaylist(defaultId)
-      notifyPlaylistsChanged()
-      showToast({ title: 'Playlist deleted', icon: 'trash' })
-      navigate('/playlist', { replace: true })
-    } catch {
-      showToast({ title: 'Could not delete playlist', icon: 'info' })
     }
   }
 
@@ -233,17 +222,16 @@ function Playlist({ id }: { id: string }) {
             </Button>
             <DownloadButton tracks={tracks} offline={isOffline} />
             {isOwn && (
-              <>
-                <Button variant="out" icon="plus" onClick={() => navigate(`/search?addTo=${encodeURIComponent(id)}`)}>Add songs</Button>
-                <IconButton icon="trash" label="Delete playlist" size={40} bordered onClick={deletePlaylist} />
-              </>
+              <Button variant="out" icon="plus" onClick={() => navigate(`/search?addTo=${encodeURIComponent(id)}`)}>Add songs</Button>
             )}
+            {/* Queue actions for every track, and on your own playlists "Delete playlist" (D08). */}
             <IconButton
               icon="more"
               label="More options"
               size={40}
-              disabled={tracks.length === 0}
-              onClick={e => openTrackMenu(tracks, e)}
+              bordered
+              disabled={tracks.length === 0 && !isOwn}
+              onClick={e => openTrackMenu(tracks, e, isOwn ? { id, name: displayName } : undefined)}
             />
           </div>
         </div>
