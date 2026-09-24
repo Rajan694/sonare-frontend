@@ -17,3 +17,9 @@ export function generatePeaks(trackId: string, count: number): number[] {
   
   return peaks;
 }
+
+/** "1 song", "12 songs". */
+export function songCount(n: number | null | undefined): string {
+  const count = n ?? 0;
+  return `${count} ${count === 1 ? 'song' : 'songs'}`;
+}

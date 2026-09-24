@@ -1,6 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../screens/Home';
 import { LibraryScreen } from '../screens/Library';
 import { PlaylistsScreen } from '../screens/Playlists';
@@ -16,6 +17,8 @@ export function TabNavigator() {
   const mode = useModeStore((state) => state.mode);
   const toastVisible = useModeStore((state) => state.toastVisible);
   const hideToast = useModeStore((state) => state.hideToast);
+  // Clear the Android gesture bar / iOS home indicator; a fixed height alone puts labels under it.
+  const insets = useSafeAreaInsets();
 
   React.useEffect(() => {
     if (toastVisible) {
@@ -31,7 +34,8 @@ export function TabNavigator() {
         screenOptions={{
           headerShown: false,
           tabBarStyle: {
-            height: 64,
+            height: 64 + insets.bottom,
+            paddingBottom: insets.bottom,
             backgroundColor: '#000000',
             borderTopColor: '#1A1A1F',
             borderTopWidth: 1,

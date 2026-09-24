@@ -39,7 +39,9 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       className={cn(
-        'flex-row items-center justify-center rounded-lg',
+        // cn() only joins classes, so a caller's justify-* can't override a default one.
+        'flex-row items-center rounded-lg',
+        !/\bjustify-/.test(className ?? '') && 'justify-center',
         size === 'sm' && 'h-[32px] px-3 gap-1.5',
         size === 'md' && 'h-[40px] px-4 gap-2',
         size === 'lg' && 'h-[48px] px-5 gap-2.5',

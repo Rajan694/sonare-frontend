@@ -4,8 +4,13 @@ import Animated from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Stop, Rect, Circle } from 'react-native-svg';
 import { artGradients } from '../../data/gradients';
 
+// cn() only joins classes, so a caller's rounded-* can't override a default one.
+const radius = (className?: string) => (/\brounded-/.test(className ?? '') ? '' : 'rounded-md');
+
 interface ArtworkProps {
   uri?: string;
+  /** Tried when `uri` fails to load, e.g. a smaller size that always exists. */
+  fallbackUri?: string;
   size: 40 | 42 | 44 | 48 | 56 | 64 | 96 | 132 | 160 | 200 | 240;
   gradient?: [string, string];
   className?: string;
@@ -13,9 +18,11 @@ interface ArtworkProps {
   rings?: boolean;
 }
 
-export function Artwork({ uri, size, gradient, className, sharedTransitionTag, rings }: ArtworkProps) {
+export function Artwork({ uri: primaryUri, fallbackUri, size, gradient, className, sharedTransitionTag, rings }: ArtworkProps) {
   const AnimatedImageComponent = Animated.Image as any;
   const AnimatedViewComponent = Animated.View as any;
+  const [failed, setFailed] = React.useState<Record<string, true>>({});
+  const uri = primaryUri && !failed[primaryUri] ? primaryUri : fallbackUri && !failed[fallbackUri] ? fallbackUri : undefined;
 
   const isHttp = uri?.startsWith('http') || uri?.startsWith('file://');
   const gradKey = uri && artGradients[uri] ? uri : null;
@@ -25,7 +32,8 @@ export function Artwork({ uri, size, gradient, className, sharedTransitionTag, r
     return (
       <AnimatedImageComponent
         source={{ uri }}
-        className={cn('rounded-md overflow-hidden bg-s3', className)}
+        onError={() => setFailed(f => ({ ...f, [uri]: true }))}
+        className={cn(radius(className), 'overflow-hidden bg-s3', className)}
         style={{ width: size, height: size }}
         sharedTransitionTag={sharedTransitionTag}
         accessibilityIgnoresInvertColors
@@ -39,7 +47,7 @@ export function Artwork({ uri, size, gradient, className, sharedTransitionTag, r
     
     return (
       <AnimatedViewComponent
-        className={cn('rounded-md overflow-hidden', className)}
+        className={cn(radius(className), 'overflow-hidden', className)}
         style={{ width: size, height: size }}
         sharedTransitionTag={sharedTransitionTag}
       >
@@ -67,7 +75,7 @@ export function Artwork({ uri, size, gradient, className, sharedTransitionTag, r
 
   return (
     <AnimatedViewComponent
-      className={cn('rounded-md bg-s3', className)}
+      className={cn(radius(className), 'bg-s3', className)}
       style={{ width: size, height: size }}
       sharedTransitionTag={sharedTransitionTag}
     />

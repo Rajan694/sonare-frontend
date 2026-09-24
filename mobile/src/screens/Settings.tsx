@@ -1,11 +1,13 @@
 import React from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
 import { Switch } from '../components/ui/Switch';
 import Icon from '../components/ui/Icon';
+import { Button } from '../components/ui/Button';
+import { useAuthStore } from '../data/auth';
 
 function SettingsGroup({ title, children }: { title: string, children: React.ReactNode }) {
   return (
@@ -32,6 +34,14 @@ function SettingsRow({ title, subtitle, right }: { title: string, subtitle?: str
 
 export function SettingsScreen() {
   const navigation = useNavigation<any>();
+  const user = useAuthStore(s => s.user);
+  const signOut = useAuthStore(s => s.signOut);
+
+  const confirmSignOut = () =>
+    Alert.alert('Sign out?', 'Your favourites and playlists stay saved to your account. You can keep listening as a guest.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: () => signOut() },
+    ]);
 
   return (
     <Screen>
@@ -41,6 +51,42 @@ export function SettingsScreen() {
       />
 
       <ScrollView className="flex-1 pt-6 pb-20">
+        <SettingsGroup title="Account">
+          {user ? (
+            <>
+              <SettingsRow
+                title={user.displayName}
+                subtitle={user.email}
+                right={
+                  <View className="w-10 h-10 rounded-full bg-acc items-center justify-center">
+                    <Text className="text-black text-tm font-semibold">{user.displayName.charAt(0).toUpperCase()}</Text>
+                  </View>
+                }
+              />
+              <View className="px-4 py-3">
+                <Button variant="outline" onPress={confirmSignOut} accessibilityLabel="Sign out">
+                  <Text className="text-red text-tm font-medium">Sign out</Text>
+                </Button>
+              </View>
+            </>
+          ) : (
+            <>
+              <SettingsRow
+                title="Listening as a guest"
+                subtitle="Create a free account to save favourites and playlists, and pick them up on any device."
+              />
+              <View className="px-4 py-3 flex-row gap-3">
+                <Button variant="accent" className="flex-1" onPress={() => navigation.navigate('SignIn', { mode: 'signup' })}>
+                  Create account
+                </Button>
+                <Button variant="outline" className="flex-1" onPress={() => navigation.navigate('SignIn', { mode: 'signin' })}>
+                  Sign in
+                </Button>
+              </View>
+            </>
+          )}
+        </SettingsGroup>
+
         <SettingsGroup title="Playback">
           <SettingsRow 
             title="Gapless Playback" 

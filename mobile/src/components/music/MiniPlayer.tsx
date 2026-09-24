@@ -5,7 +5,10 @@ import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/mode';
 import { usePlayerStore } from '../../store/player';
 import { Artwork } from './Artwork';
+import { artworkUrl } from '../../data/config';
+import Icon from '../ui/Icon';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated';
 
 const THRESHOLD = -50;
@@ -16,8 +19,10 @@ export function MiniPlayer() {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const progress = usePlayerStore((state) => (state.durationMs ? Math.min(1, state.positionMs / state.durationMs) : 0));
 
   const translateY = useSharedValue(0);
+  const insets = useSafeAreaInsets();
 
   const handleGestureEnd = (event: PanGestureHandlerGestureEvent) => {
     const { translationY, velocityY } = event.nativeEvent;
@@ -52,9 +57,9 @@ export function MiniPlayer() {
 
   return (
     <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
-      <AnimatedViewComponent style={animatedStyle} className="absolute bottom-[64px] inset-x-0 h-[64px] bg-[#111114] flex-row items-center px-4 border-b border-black z-50">
+      <AnimatedViewComponent style={[animatedStyle, { bottom: 64 + insets.bottom }]} className="absolute inset-x-0 h-[64px] bg-[#111114] flex-row items-center px-4 border-b border-black z-50">
         <View className="absolute top-0 left-0 right-0 h-[2px] bg-ln3">
-          <View className={cn('h-full', mode === 'online' ? 'bg-acc' : 'bg-gold')} style={{ width: '40%' }} />
+          <View className={cn('h-full', mode === 'online' ? 'bg-acc' : 'bg-gold')} style={{ width: `${progress * 100}%` }} />
         </View>
 
         <Pressable
@@ -63,7 +68,7 @@ export function MiniPlayer() {
           accessibilityLabel="Open now playing"
           className="flex-row items-center gap-3 flex-1"
         >
-          <Artwork uri={currentTrack.albumId} size={48} sharedTransitionTag={`artwork-${currentTrack.id}`} />
+          <Artwork uri={artworkUrl(currentTrack, 140)} size={48} sharedTransitionTag={`artwork-${currentTrack.id}`} />
           <View className="flex-1 gap-0.5">
             <Text numberOfLines={1} className="text-t1 text-tm font-medium">
               {currentTrack.title}
@@ -83,7 +88,7 @@ export function MiniPlayer() {
             mode === 'online' ? 'bg-acc' : 'bg-gold'
           )}
         >
-          <Text className="text-black text-h2">{isPlaying ? '❚❚' : '▸'}</Text>
+          <Icon name={isPlaying ? 'pause' : 'play'} size={20} color="#000000" />
         </Pressable>
       </AnimatedViewComponent>
     </PanGestureHandler>
