@@ -10,6 +10,4 @@ export const CAPS = {
   offlineMode: native,
   downloads: native,
   nativeEq: native,
-  /** Custom minimize / maximize / close buttons. */
-  windowControls: native,
 } as const

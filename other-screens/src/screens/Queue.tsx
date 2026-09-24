@@ -95,7 +95,6 @@ export default function Queue() {
                 track={track}
                 index={index + 1}
                 isActive={index === state.index}
-                isPlaying={index === state.index}
                 onClick={() => setState({ index, positionMs: 0 })}
                 onRemove={index === state.index ? undefined : () => removeFromQueue(index)}
               />

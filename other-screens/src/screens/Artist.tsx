@@ -160,7 +160,6 @@ export default function Artist() {
                   track={track}
                   index={i + 1}
                   isActive={currentTrack?.id === track.id}
-                  isPlaying={currentTrack?.id === track.id}
                   onClick={() => playTrack(track, tracks)}
                 />
               ))}

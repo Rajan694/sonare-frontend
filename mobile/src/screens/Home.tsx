@@ -100,26 +100,29 @@ export function HomeScreen() {
         right={
           <View className="flex-row items-center gap-1">
             <IconButton icon={<Icon name="search" size={20} color="#FFFFFF" />} onPress={() => navigation.navigate('Search')} accessibilityLabel="Search" />
-            <IconButton icon={<Icon name="settings" size={20} color="#FFFFFF" />} onPress={() => navigation.navigate('Settings')} accessibilityLabel="Settings" />
-            {firstName ? (
-              <Pressable
-                onPress={() => navigation.navigate('Settings')}
-                accessibilityRole="button"
-                accessibilityLabel="Your account"
-                className="w-[30px] h-[30px] rounded-full bg-acc items-center justify-center ml-1 mr-1"
-              >
-                <Text className="text-black text-bm font-semibold">{firstName.charAt(0).toUpperCase()}</Text>
-              </Pressable>
-            ) : (
+            {!firstName && (
               <Pressable
                 onPress={() => navigation.navigate('SignIn', { mode: 'signin' })}
                 accessibilityRole="button"
                 accessibilityLabel="Sign in"
-                className="h-[30px] px-3 rounded-full bg-acc items-center justify-center ml-1 mr-1"
+                className="h-[30px] px-3 rounded-full bg-acc items-center justify-center ml-1"
               >
                 <Text className="text-black text-bs font-semibold">Sign in</Text>
               </Pressable>
             )}
+            {/* Profile and settings are one screen, so this is its only way in. */}
+            <Pressable
+              onPress={() => navigation.navigate('Settings')}
+              accessibilityRole="button"
+              accessibilityLabel="Profile and settings"
+              className={cn('w-[30px] h-[30px] rounded-full items-center justify-center ml-1 mr-1', firstName ? 'bg-acc' : 'bg-s3')}
+            >
+              {firstName ? (
+                <Text className="text-black text-bm font-semibold">{firstName.charAt(0).toUpperCase()}</Text>
+              ) : (
+                <Icon name="user" size={16} color="#9A9AA8" />
+              )}
+            </Pressable>
           </View>
         }
       />
@@ -228,7 +231,7 @@ export function HomeScreen() {
                         track={item}
                         index={index}
                         showIndex
-                        isPlaying={currentTrack?.id === item.id}
+                        isActive={currentTrack?.id === item.id}
                         onPress={() => playTrack(item, trendingTracks)}
                       />
                     ))

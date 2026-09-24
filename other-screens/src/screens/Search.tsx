@@ -1,10 +1,10 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'motion/react'
 import { CAPS } from '../lib/caps'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
-import { useSearch, useGenres, usePlaylist, notifyPlaylistsChanged } from '../data/hooks'
+import { useDebounce, useGenres, usePlaylist, notifyPlaylistsChanged } from '../data/hooks'
 import { api } from '../data/api'
 import { showToast } from '../store/toastStore'
 import { useLocalLibrary } from '../data/local'
@@ -12,29 +12,42 @@ import SongRow from '../components/music/SongRow'
 import Artwork from '../components/music/Artwork'
 import Icon from '../components/ui/Icon'
 import { Chip } from '../components/ui/ChipBadge'
-import { Field } from '../components/ui/Field'
+import Button from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { fadeRise, transition } from '../lib/motion'
+import { cn } from '../lib/utils'
+import { useAppDispatch, useAppSelector } from '../store'
+import { runSearch, searchKey, setQuery, setType, type SearchType } from '../store/searchSlice'
 import type { Track, Album, Artist, Playlist } from '../data/types'
 
-const CHIPS = ['Songs', 'Albums', 'Artists', 'Playlists'] as const
-type FilterChip = typeof CHIPS[number]
+const CHIPS: { type: SearchType; label: string }[] = [
+  { type: 'songs', label: 'Songs' },
+  { type: 'albums', label: 'Albums' },
+  { type: 'artists', label: 'Artists' },
+  { type: 'playlists', label: 'Playlists' },
+]
 
 export default function Search() {
   const { mode, setMode } = useModeStore()
   const { currentTrack, playTrack } = usePlayerStore()
-  // Shared with the topbar field through the URL.
+  const dispatch = useAppDispatch()
+  // Typed into the top-bar field; the Redux store keeps it (and the results) while we're away.
+  const { query, type: active, results, resultsFor, requested, status, error } = useAppSelector(s => s.search)
   const [params, setParams] = useSearchParams()
-  const query = params.get('q') ?? ''
-  // ?addTo=<playlist> is FLOWS M08's "Add songs" mode; keep it while the query changes.
+  // ?addTo=<playlist> is FLOWS M08's "Add songs" mode.
   const addTo = params.get('addTo')
-  const setQuery = (q: string) => {
+
+  // ?q= links (Library → Genres) hand their query to the store and leave the URL.
+  const linkedQuery = params.get('q')
+  useEffect(() => {
+    if (linkedQuery === null) return
+    dispatch(setQuery(linkedQuery))
     const next = new URLSearchParams(params)
-    if (q) next.set('q', q)
-    else next.delete('q')
+    next.delete('q')
     setParams(next, { replace: true })
-  }
+  }, [linkedQuery])
+
   const { data: addToPlaylist } = usePlaylist(addTo ?? undefined)
   const [added, setAdded] = useState<Set<string>>(new Set())
 
@@ -53,35 +66,36 @@ export default function Search() {
       showToast({ title: 'Could not add to playlist', description: track.title, icon: 'info' })
     }
   }
-  const [active, setActive] = useState<FilterChip>('Songs')
-
   const isOnline = mode === 'online'
   const hasQuery = query.trim().length > 0
 
-  const typeMap: Record<FilterChip, 'songs' | 'albums' | 'artists' | 'playlists'> = {
-    Songs: 'songs',
-    Albums: 'albums',
-    Artists: 'artists',
-    Playlists: 'playlists',
-  }
+  // Online, ask the server once typing pauses. Coming back to the page finds these results
+  // already in the store, so nothing is refetched.
+  const debouncedQuery = useDebounce(query.trim(), 300)
+  const search = () => void dispatch(runSearch({ query: debouncedQuery, type: active }))
+  useEffect(() => {
+    if (isOnline && debouncedQuery) search()
+  }, [isOnline, debouncedQuery, active])
 
   // Offline (FLOWS M04) searches files on this device and never calls the server.
   const local = useLocalLibrary()
-  const { data: searchResult, loading: serverLoading, error: serverError } = useSearch(
-    isOnline ? query : '',
-    typeMap[active] || 'songs'
-  )
-  const searchLoading = isOnline && serverLoading
-  const searchError = isOnline ? serverError : null
+  const key = searchKey(debouncedQuery, active)
+  const current = resultsFor === key
+  const failed = requested === key && status === 'error'
+  // Until this query's results arrive — the debounce gap included — show the skeleton rather
+  // than the previous query's results.
+  const searchLoading = isOnline && !current && !failed
+  const searchError = isOnline && failed ? error : null
   const needle = query.trim().toLowerCase()
   const localMatches = !isOnline && needle
     ? local.tracks.filter(t => [t.title, t.artist, t.album].some(v => v?.toLowerCase().includes(needle)))
     : []
-  const shown: FilterChip = isOnline ? active : 'Songs'
+  const shown: SearchType = isOnline ? active : 'songs'
+  const activeLabel = CHIPS.find(c => c.type === active)!.label
 
   const { data: genres } = useGenres()
 
-  const items = isOnline ? searchResult?.items || [] : localMatches
+  const items = isOnline ? (current ? results : []) : localMatches
   const tracks = items.filter((item): item is Track => 'durationMs' in item)
   const albums = items.filter((item): item is Album => 'trackCount' in item && 'year' in item)
   const artists = items.filter((item): item is Artist => 'albumCount' in item || 'following' in item)
@@ -102,47 +116,25 @@ export default function Search() {
           <Link to={`/playlist/${addTo}`} className="btn btn-acc btn-sm no-underline">Done</Link>
         </div>
       )}
-      <div className="flex items-center gap-3 px-8 pt-6 pb-4 flex-none">
-        <Field
-          square
-          icon="search"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search songs, albums, artists..."
-          className="grow max-w-[560px]"
-          aria-label="Search your library"
-        >
-          {query && (
-            <button
-              className="ib ib-28 flex-none"
-              onClick={() => setQuery('')}
-              aria-label="Clear search"
-            >
-              <Icon name="close" size={14} />
-            </button>
-          )}
-        </Field>
-      </div>
-
       {hasQuery && isOnline && (
-        <div className="flex items-center gap-2 px-8 pb-4 flex-none">
+        <div className="flex items-center gap-2 px-8 pt-6 pb-4 flex-none">
           {CHIPS.map(chip => (
             <Chip
-              key={chip}
-              active={active === chip}
-              onClick={() => setActive(chip)}
+              key={chip.type}
+              active={active === chip.type}
+              onClick={() => dispatch(setType(chip.type))}
             >
-              {chip}
+              {chip.label}
             </Chip>
           ))}
         </div>
       )}
 
-      <div className="flex flex-col grow overflow-auto px-8 pb-8">
+      <div className={cn('flex flex-col grow overflow-auto px-8 pb-8', !(hasQuery && isOnline) && 'pt-6')}>
         <AnimatePresence mode="wait">
           {hasQuery ? (
             <motion.div
-              key={query + shown}
+              key={debouncedQuery + shown}
               variants={fadeRise}
               initial="hidden"
               animate="visible"
@@ -157,29 +149,29 @@ export default function Search() {
                   ))}
                 </div>
               ) : searchError ? (
-                <div className="text-red p-4 text-center">
-                  Search error: {searchError.message}
+                <div className="flex flex-col items-center gap-3 p-4 text-center">
+                  <span className="text-red">Search error: {searchError}</span>
+                  <Button variant="out" size="sm" icon="sync" onClick={search}>Try again</Button>
                 </div>
               ) : items.length === 0 ? (
                 <EmptyState
                   icon="search"
                   title="No results found"
-                  description={isOnline ? `No ${active.toLowerCase()} found matching "${query}"` : `Nothing on this device matches "${query}"`}
+                  description={isOnline ? `No ${activeLabel.toLowerCase()} found matching "${query}"` : `Nothing on this device matches "${query}"`}
                 />
-              ) : shown === 'Songs' ? (
+              ) : shown === 'songs' ? (
                 tracks.map((track, i) => (
                   <SongRow
                     key={track.id}
                     track={track}
                     index={i + 1}
                     isActive={currentTrack?.id === track.id}
-                    isPlaying={currentTrack?.id === track.id}
                     onClick={() => handlePlay(track)}
                     onAdd={addTo ? () => void addTrack(track) : undefined}
                     added={added.has(track.id)}
                   />
                 ))
-              ) : shown === 'Albums' ? (
+              ) : shown === 'albums' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
                   {(albums.length > 0 ? albums : items).map((album: any, i) => (
                     <Card
@@ -192,7 +184,7 @@ export default function Search() {
                     />
                   ))}
                 </div>
-              ) : shown === 'Artists' ? (
+              ) : shown === 'artists' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
                   {(artists.length > 0 ? artists : items).map((artist: any, i) => (
                     <Link
@@ -270,7 +262,7 @@ export default function Search() {
                     <button
                       key={cat.id}
                       className="gcard text-left cursor-pointer relative overflow-hidden"
-                      onClick={() => setQuery(cat.name)}
+                      onClick={() => dispatch(setQuery(cat.name))}
                     >
                       <Artwork variant={`a${(i % 12) + 1}` as any} size={56} radius="md" className="absolute top-2 right-2" />
                       <span className="text-title-l text-t1 relative">{cat.name}</span>

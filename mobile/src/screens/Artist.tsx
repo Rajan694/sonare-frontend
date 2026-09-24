@@ -107,7 +107,7 @@ export function ArtistScreen() {
           <SongRow
             track={item}
             onPress={() => playTrack(item, tracks)}
-            isPlaying={currentTrack?.id === item.id}
+            isActive={currentTrack?.id === item.id}
             index={index}
             showIndex
           />

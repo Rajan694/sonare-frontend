@@ -186,13 +186,17 @@ export default function App() {
     if (total > 0) player.seek(Math.max(0, Math.min(1, ratio)) * total)
   }
 
+  function skipToPrevious() {
+    setPlayerState(prev => stepQueue(prev, -1))
+  }
+
   function previous() {
     // Match the usual player convention: restart the track unless we are near its start.
     if (playback.positionMs > 3000) {
       player.seek(0)
       return
     }
-    setPlayerState(prev => stepQueue(prev, -1))
+    skipToPrevious()
   }
 
   /** Queue edits move the playing index along with the current track, and reshuffle. */
@@ -289,6 +293,7 @@ export default function App() {
           seekRatio,
           next,
           previous,
+          skipToPrevious,
           volume: playback.volume,
           setVolume: player.setVolume,
           toggleMute: player.toggleMute,

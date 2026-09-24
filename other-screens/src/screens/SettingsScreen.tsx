@@ -1,9 +1,9 @@
 import React from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import Icon, { type IconName } from '../components/ui/Icon'
+import Button from '../components/ui/Button'
 import { Switch } from '../components/ui/Switch'
 import { Segmented } from '../components/ui/Segmented'
-import { cn } from '../lib/utils'
 import { CAPS } from '../lib/caps'
 import { useModeStore } from '../store/modeStore'
 import { showToast } from '../store/toastStore'
@@ -19,18 +19,17 @@ const QUALITIES: { id: UserSettings['downloadQuality']; label: string }[] = [
   { id: 'lossless', label: 'Best available' },
 ]
 
-function Row({ icon, label, desc, danger, children }: {
+function Row({ icon, label, desc, children }: {
   icon: IconName
   label: string
   desc?: string
-  danger?: boolean
   children?: React.ReactNode
 }) {
   return (
     <>
-      <span className={cn('icobox', danger && 'bg-red/10 text-red')}><Icon name={icon} size={16} /></span>
+      <span className="icobox"><Icon name={icon} size={16} /></span>
       <span className="flex flex-col grow min-w-0">
-        <span className={cn('text-body-m', danger ? 'text-red' : 'text-t1')}>{label}</span>
+        <span className="text-body-m text-t1">{label}</span>
         {desc && <span className="text-body-s text-t3 truncate">{desc}</span>}
       </span>
       {children}
@@ -63,7 +62,35 @@ export default function SettingsScreen() {
 
   return (
     <div className="flex flex-col p-8 gap-6 overflow-auto h-full">
-      <span className="text-h1 text-t1">Settings</span>
+      <span className="text-h1 text-t1">Profile & settings</span>
+
+      {/* The top bar's avatar lands here, so the account comes first. */}
+      <div className="surf2 flex items-center gap-4 p-5">
+        {user ? (
+          <>
+            <span className="flex items-center justify-center flex-none w-12 h-12 rounded-full bg-acc text-black text-title-l font-semibold">
+              {user.displayName.charAt(0).toUpperCase()}
+            </span>
+            <span className="flex flex-col grow min-w-0">
+              <span className="text-title-l text-t1 truncate">{user.displayName || 'Signed in'}</span>
+              <span className="text-body-s text-t3 truncate">{user.email}</span>
+            </span>
+            <Button variant="out" icon="logout" onClick={handleSignOut}>Sign out</Button>
+          </>
+        ) : (
+          <>
+            <span className="flex items-center justify-center flex-none w-12 h-12 rounded-full bg-s4 text-t2">
+              <Icon name="user" size={22} />
+            </span>
+            <span className="flex flex-col grow min-w-0">
+              <span className="text-title-l text-t1">Listening as a guest</span>
+              <span className="text-body-s text-t3">Create a free account to sync playlists, favourites and history.</span>
+            </span>
+            <Button variant="acc" onClick={() => navigate('/signin', { state: { mode: 'signup' } })}>Create account</Button>
+            <Button variant="out" onClick={() => navigate('/signin', { state: { mode: 'signin' } })}>Sign in</Button>
+          </>
+        )}
+      </div>
 
       <Section title="Audio & Playback">
         <Link to="/equalizer" className="lrow no-underline">
@@ -133,24 +160,10 @@ export default function SettingsScreen() {
         </div>
       </Section>
 
-      <Section title="Account">
-        {user && (
-          <div className="lrow">
-            <Row icon="info" label={user.displayName || 'Signed in'} desc={user.email} />
-          </div>
-        )}
+      <Section title="About">
         <div className="lrow">
           <Row icon="info" label="About Sonare" desc="Version 1.0.0" />
         </div>
-        {user ? (
-          <button className="lrow w-full text-left bg-transparent border-0 cursor-pointer" onClick={handleSignOut}>
-            <Row icon="logout" label="Sign out" danger />
-          </button>
-        ) : (
-          <Link to="/signin" className="lrow no-underline">
-            <Row icon="logout" label="Sign in" desc="Sync playlists, favourites and history">{chevron}</Row>
-          </Link>
-        )}
       </Section>
     </div>
   )

@@ -69,8 +69,9 @@ export default function NowPlaying() {
         className="absolute top-5 left-5 z-10"
         onClick={exit}
       />
+      {/* Inline opacity: `.ambient i` in sonare.css would outrank a utility class. */}
       <div className="ambient" aria-hidden>
-        <i className={cn(isOffline ? 'bg-gold' : 'bg-acc', 'w-[600px] h-[600px] -top-[200px] -left-[100px] opacity-[0.18]')} />
+        <i className={cn(isOffline ? 'bg-gold' : 'bg-acc', 'w-[600px] h-[600px] -top-[200px] -left-[100px]')} style={{ opacity: 0.18 }} />
         <i className="bg-s2 w-[400px] h-[400px] -bottom-[100px] -right-[100px]" />
       </div>
 
@@ -177,9 +178,9 @@ export default function NowPlaying() {
             />
           </div>
           <div className="flex items-center gap-1">
-            <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics"><Icon name="music4" size={16} /></Link>
-            <Link to="/queue" className="ib ib-32" aria-label="Queue"><Icon name="list" size={16} /></Link>
-            <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer"><Icon name="sliders" size={16} /></Link>
+            <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" title="Lyrics"><Icon name="lyrics" size={16} /></Link>
+            <Link to="/queue" className="ib ib-32" aria-label="Queue" title="Queue"><Icon name="list" size={16} /></Link>
+            <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer" title="Equalizer"><Icon name="sliders" size={16} /></Link>
           </div>
         </div>
       </div>

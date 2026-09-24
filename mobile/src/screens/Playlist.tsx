@@ -103,7 +103,7 @@ export function PlaylistScreen() {
           <SongRow
             track={item}
             onPress={() => playTrack(item, tracks)}
-            isPlaying={currentTrack?.id === item.id}
+            isActive={currentTrack?.id === item.id}
             index={index}
             showIndex
             extraAction={own ? { label: 'Remove from playlist', onPress: () => removeAt(allTracks.indexOf(item)) } : undefined}

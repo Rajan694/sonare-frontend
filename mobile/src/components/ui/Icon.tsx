@@ -4,7 +4,7 @@ import {
   Play, Pause, Heart, ChevronLeft, ChevronRight, ChevronDown,
   Plus, MoreVertical, Shuffle, Repeat, GripVertical,
   SkipBack, SkipForward, SlidersHorizontal, ArrowLeft, Volume2,
-  Headphones, Timer, BarChart3, Music, FileText, FolderX
+  Headphones, Timer, BarChart3, Music, FileText, FolderX, UserRound
 } from 'lucide-react-native'
 
 const ICONS = {
@@ -38,6 +38,7 @@ const ICONS = {
   visualizer: BarChart3,
   music: Music,
   lyrics: FileText,
+  user: UserRound,
 } as const
 
 export type IconName = keyof typeof ICONS

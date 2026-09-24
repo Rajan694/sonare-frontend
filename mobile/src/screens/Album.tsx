@@ -75,7 +75,7 @@ export function AlbumScreen() {
           <SongRow
             track={item}
             onPress={() => playTrack(item, tracks)}
-            isPlaying={currentTrack?.id === item.id}
+            isActive={currentTrack?.id === item.id}
             showArtwork={false}
             index={index}
             showIndex

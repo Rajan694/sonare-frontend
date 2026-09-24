@@ -35,6 +35,8 @@ function playlistIcon(kind: Playlist['kind']) {
 
 const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4'] as const
 
+const LIKED_SONGS = '/library?view=favourites'
+
 export default function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -112,6 +114,19 @@ export default function Sidebar() {
         </div>
 
         <div className="flex flex-col gap-0.5 overflow-y-auto grow">
+          {/* Every favourited song, pinned above the playlists (Library → Favourites). */}
+          <Link
+            to={LIKED_SONGS}
+            className={cn('sitem h-11', location.pathname + location.search === LIKED_SONGS && 'on')}
+          >
+            <span className="art-r-xs flex items-center justify-center flex-none w-[30px] h-[30px] bg-accbg text-acc">
+              <Icon name="heart" size={15} />
+            </span>
+            <span className="flex flex-col grow gap-px min-w-0">
+              <span className="text-label-l text-t1 truncate">Liked Songs</span>
+              <span className="text-label-s text-t3 truncate">Your favourites</span>
+            </span>
+          </Link>
           {playlistsLoading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="sitem h-11 animate-pulse bg-s2/30 rounded" />

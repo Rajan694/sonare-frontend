@@ -11,11 +11,13 @@ import Animated, { FadeIn, Layout, ReduceMotion } from 'react-native-reanimated'
 import Icon from '../ui/Icon';
 import { useLibraryStore } from '../../store/library';
 import { useTrackMenuStore, type TrackMenuAction } from '../../store/trackMenu';
+import { usePlayerStore } from '../../store/player';
 
 interface SongRowProps {
   track: Track;
   onPress: () => void;
-  isPlaying?: boolean;
+  /** This row is the current track. Its bars only move while audio is actually playing. */
+  isActive?: boolean;
   showArtwork?: boolean;
   showIndex?: boolean;
   index?: number;
@@ -27,7 +29,7 @@ interface SongRowProps {
 export function SongRow({
   track,
   onPress,
-  isPlaying = false,
+  isActive = false,
   showArtwork = true,
   showIndex = false,
   index,
@@ -35,6 +37,8 @@ export function SongRow({
   extraAction,
 }: SongRowProps) {
   const favourite = useLibraryStore(s => !!s.favouriteIds[track.id]);
+  // Only the active row cares, so the others never re-render on play/pause.
+  const playing = usePlayerStore(s => isActive && s.isPlaying);
   const accent = track.source === 'local' ? '#FFC24D' : '#00E28A';
 
   return (
@@ -48,12 +52,12 @@ export function SongRow({
       accessibilityRole="button"
       accessibilityLabel={`${track.title} by ${track.artist}`}
       accessibilityHint="Long press for more options"
-      className={cn('flex-row items-center px-4 py-2 min-h-[56px]', isPlaying && 'bg-s1', className)}
+      className={cn('flex-row items-center px-4 py-2 min-h-[56px]', isActive && 'bg-s1', className)}
     >
       {showIndex && index !== undefined && (
         <View className="w-[20px] mr-2 items-center justify-center">
-          {isPlaying ? (
-            <EqualizerBars isPlaying={true} color={accent} />
+          {isActive ? (
+            <EqualizerBars isPlaying={playing} color={accent} />
           ) : (
             <Text className="text-t3 text-bm text-right font-mono w-full">{index + 1}</Text>
           )}
@@ -68,7 +72,7 @@ export function SongRow({
 
       <View className="flex-1 justify-center mr-3 p-1">
         <View className="flex-row items-center gap-2">
-          <Text numberOfLines={1} className={cn("text-t1 text-tm font-medium flex-shrink", isPlaying && (track.source === 'local' ? 'text-gold' : 'text-acc'))}>
+          <Text numberOfLines={1} className={cn("text-t1 text-tm font-medium flex-shrink", isActive && (track.source === 'local' ? 'text-gold' : 'text-acc'))}>
             {track.title}
           </Text>
           <SourceGlyph source={track.source} />

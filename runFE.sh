@@ -6,8 +6,9 @@ usage() {
     echo "Usage: ./runFE.sh <web|linux|windows|mobile> [options]"
     echo ""
     echo "Targets:"
-    echo "  web       Run NeutralinoJS in browser mode (Vite dev server + HMR)"
-    echo "  linux     Run NeutralinoJS in window mode (Vite dev server + HMR)"
+    echo "  web       Run NeutralinoJS in browser mode (Vite dev server on 5183 + HMR)"
+    echo "  linux     Run NeutralinoJS in window mode (Vite dev server on 5184 + HMR)."
+    echo "            Uses its own ports, so it can run alongside 'web'."
     echo "  windows   Build NeutralinoJS for Windows"
     echo "  mobile    Start React Native Metro + Android"
     echo ""
@@ -62,6 +63,61 @@ load_android_sdk() {
 
 METRO_PORT=""
 
+# `web` goes through `neu run`, which can only serve cli.frontendLibrary.devUrl (5183) and
+# has Neutralino write .tmp/auth_info.json, where the dev server looks up its port. Two
+# `neu run`s would fight over both, so the window build is started by hand on its own
+# ports instead, and leaves auth_info.json to `web`.
+LINUX_VITE_PORT=5184
+# Not `local`: the EXIT trap below runs after the function has returned.
+LINUX_VITE_PID=""
+LINUX_NL_PID=""
+
+run_linux_window() {
+    local binary nl_port
+    case "$(uname -m)" in
+        x86_64) binary="bin/neutralino-linux_x64" ;;
+        aarch64|arm64) binary="bin/neutralino-linux_arm64" ;;
+        armv7l) binary="bin/neutralino-linux_armhf" ;;
+        *) echo "Error: unsupported CPU '$(uname -m)'"; exit 1 ;;
+    esac
+    if [ ! -x "$binary" ]; then
+        echo "Error: $binary is missing - run ./installFE.sh first."
+        exit 1
+    fi
+
+    vite_is_up() {
+        curl -s -o /dev/null -m 2 "http://localhost:$LINUX_VITE_PORT/"
+    }
+    if vite_is_up; then
+        echo "Error: port $LINUX_VITE_PORT is already in use - is another 'linux' run still open?"
+        exit 1
+    fi
+
+    # Chosen up front so the dev server can point the page's globals script at it.
+    nl_port=$(node -e 'const s = require("net").createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); })')
+
+    SONARE_VITE_PORT=$LINUX_VITE_PORT SONARE_NL_PORT=$nl_port node_modules/.bin/vite &
+    LINUX_VITE_PID=$!
+    trap 'kill $LINUX_VITE_PID $LINUX_NL_PID 2>/dev/null' EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+
+    for _ in $(seq 1 60); do
+        vite_is_up && break
+        sleep 0.5
+    done
+    if ! vite_is_up; then
+        echo "Error: the dev server did not come up on port $LINUX_VITE_PORT."
+        exit 1
+    fi
+
+    # In the background with `wait`, so a TERM from ../run.sh is handled straight away
+    # and closes the window too, instead of waiting for it to exit on its own.
+    "$binary" --load-dir-res --path=. --port="$nl_port" --url="http://localhost:$LINUX_VITE_PORT" &
+    LINUX_NL_PID=$!
+    wait "$LINUX_NL_PID"
+}
+
 parse_mobile_args() {
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -98,7 +154,7 @@ case "$TARGET" in
     linux)
         [ $# -gt 0 ] && { echo "Error: 'linux' takes no options"; usage; }
         cd "$SCRIPT_DIR/other-screens"
-        npx neu run
+        run_linux_window
         ;;
     windows)
         [ $# -gt 0 ] && { echo "Error: 'windows' takes no options"; usage; }

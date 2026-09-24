@@ -1,8 +1,12 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cn, formatDuration, generatePeaks } from '../../lib/utils'
+
+/** `.wave` bars are 2px wide with a 2px gap (sonare.css); the playhead bar is 1px wider. */
+const BAR_PITCH_PX = 4
 
 interface WaveformProps {
   peaks?: number[]
+  /** The most bars to draw; fewer are drawn when the rail is too narrow to fit them. */
   barCount?: number
   positionRatio?: number
   /** Used for the hover / scrub timecode. */
@@ -22,14 +26,31 @@ export default function Waveform({
   className,
   onSeek,
 }: WaveformProps) {
+  const ref = useRef<HTMLSpanElement>(null)
+  // Bars have a fixed width, so a rail narrower than barCount of them would spill its
+  // bars over whatever sits next to it (the bottom player's duration label). Draw only
+  // as many as fit; measured before paint so the overflow never shows.
+  const [fitCount, setFitCount] = useState(barCount)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // n bars take n * pitch - 1px (no trailing gap, one wider playhead bar).
+    const measure = () => setFitCount(Math.max(1, Math.floor((el.getBoundingClientRect().width + 1) / BAR_PITCH_PX)))
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+  const count = Math.min(barCount, fitCount)
+
   // Bars as a fraction of the rail height. Server peaks arrive normalised to 0..1 and the
   // generated placeholder is in pixels, so scale whichever we have by its own maximum.
   const bars = useMemo(() => {
-    let raw: number[] = peaks && peaks.length > 0 ? peaks : generatePeaks(barCount)
-    if (raw.length !== barCount) {
+    let raw: number[] = peaks && peaks.length > 0 ? peaks : generatePeaks(count)
+    if (raw.length !== count) {
       const src = raw
-      raw = Array.from({ length: barCount }, (_, i) => {
-        const idx = (i / barCount) * src.length
+      raw = Array.from({ length: count }, (_, i) => {
+        const idx = (i / count) * src.length
         const lo = Math.floor(idx)
         const hi = Math.min(lo + 1, src.length - 1)
         return src[lo] * (1 - (idx - lo)) + src[hi] * (idx - lo)
@@ -37,14 +58,13 @@ export default function Waveform({
     }
     const max = Math.max(...raw) || 1
     return raw.map(v => Math.max(0.12, v / max))
-  }, [peaks, barCount])
+  }, [peaks, count])
 
-  const ref = useRef<HTMLSpanElement>(null)
   const [hoverRatio, setHoverRatio] = useState<number | null>(null)
   const [scrubRatio, setScrubRatio] = useState<number | null>(null)
 
   const shownRatio = scrubRatio ?? positionRatio
-  const playheadIdx = Math.floor(Math.max(0, Math.min(1, shownRatio)) * barCount)
+  const playheadIdx = Math.floor(Math.max(0, Math.min(1, shownRatio)) * count)
 
   function ratioAt(e: React.PointerEvent) {
     const rect = ref.current!.getBoundingClientRect()
@@ -92,7 +112,8 @@ export default function Waveform({
       aria-valuenow={onSeek ? Math.round((positionRatio * durationMs) / 1000) : undefined}
       aria-valuetext={onSeek ? formatDuration(positionRatio * durationMs) : undefined}
       className={cn(
-        'wave relative touch-none outline-none',
+        // min-w-0: the rail takes its width from its container, never from its bars.
+        'wave relative min-w-0 touch-none outline-none',
         offline && 'wave-gold',
         onSeek && 'cursor-pointer',
         className

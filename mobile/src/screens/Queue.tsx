@@ -81,7 +81,7 @@ export function QueueScreen() {
           <SongRow
             track={currentTrack}
             onPress={() => {}}
-            isPlaying
+            isActive
             showArtwork
           />
         </View>

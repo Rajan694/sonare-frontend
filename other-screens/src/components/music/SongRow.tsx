@@ -12,12 +12,13 @@ import { motion } from 'motion/react'
 import { staggerItem, transition } from '../../lib/motion'
 import { openTrackMenu } from './TrackMenu'
 import { useLocalLibrary } from '../../data/local'
+import { usePlayerStore } from '../../store/playerStore'
 
 interface SongRowProps {
   track: Track
   index: number
+  /** The row is the current track; its bars move only while audio is actually playing. */
   isActive?: boolean
-  isPlaying?: boolean
   onClick?: () => void
   onContextMenu?: (e: React.MouseEvent) => void
   /** Shows a remove (X) button — queue and own playlists. */
@@ -27,8 +28,9 @@ interface SongRowProps {
   added?: boolean
 }
 
-export default function SongRow({ track, index, isActive, isPlaying, onClick, onContextMenu, onRemove, onAdd, added }: SongRowProps) {
+export default function SongRow({ track, index, isActive, onClick, onContextMenu, onRemove, onAdd, added }: SongRowProps) {
   const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite)
+  const { isPlaying } = usePlayerStore()
   const { downloads, downloading } = useLocalLibrary()
   const progress = downloading[track.id]
 

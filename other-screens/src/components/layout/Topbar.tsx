@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
-import { app, window as neuWindow } from '@neutralinojs/lib'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { Segmented } from '../ui/Segmented'
 import { cn } from '../../lib/utils'
 import { CAPS } from '../../lib/caps'
@@ -11,33 +10,34 @@ import { Field } from '../ui/Field'
 import { syncNow } from '../../data/sync'
 import { useAuth } from '../../data/hooks'
 import type { Mode } from '../../data/types'
-
-async function toggleMaximize() {
-  if (await neuWindow.isMaximized()) await neuWindow.unmaximize()
-  else await neuWindow.maximize()
-}
+import { useAppDispatch, useAppSelector } from '../../store'
+import { setQuery } from '../../store/searchSlice'
 
 export default function Topbar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [params] = useSearchParams()
   const { mode, setMode } = useModeStore()
   const searchRef = useRef<HTMLInputElement>(null)
   const [syncing, setSyncing] = useState(false)
   const { user } = useAuth()
 
-  // The search query lives in the URL (/search?q=) so this field and the Search screen agree.
+  // The app's only search field. The query lives in the Redux store, so the Search screen
+  // shows it — and keeps its results — however you get back there.
+  const dispatch = useAppDispatch()
+  const query = useAppSelector(s => s.search.query)
   const onSearchPage = location.pathname === '/search'
-  const query = onSearchPage ? params.get('q') ?? '' : ''
 
   function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
     const v = e.target.value
-    // Keep other search state (e.g. ?addTo= add-to-playlist mode) while typing.
-    const next = new URLSearchParams(onSearchPage ? params : undefined)
-    if (v) next.set('q', v)
-    else next.delete('q')
-    const qs = next.toString()
-    navigate(qs ? `/search?${qs}` : '/search', { replace: onSearchPage })
+    dispatch(setQuery(v))
+    // Searching opens the results. Already there, stay put (keeps ?addTo= add-to-playlist mode).
+    if (v.trim() && !onSearchPage) navigate('/search')
+  }
+
+  function handleSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter' && !onSearchPage) navigate('/search')
+    // Hand the keyboard back to the player shortcuts.
+    else if (e.key === 'Escape') e.currentTarget.blur()
   }
 
   // Ctrl K focuses search from anywhere (FLOWS §3 top bar).
@@ -79,16 +79,27 @@ export default function Topbar() {
         ref={searchRef}
         square
         icon="search"
-        shortcut="Ctrl K"
+        shortcut={query ? undefined : 'Ctrl K'}
         value={query}
         onChange={handleSearchChange}
-        onFocus={() => {
-          if (!onSearchPage) navigate('/search')
-        }}
+        onKeyDown={handleSearchKey}
         placeholder="Search songs, albums, artists"
         className="flex-none w-[380px] h-[38px]"
         aria-label="Search"
-      />
+      >
+        {query && (
+          <button
+            className="ib ib-28 flex-none"
+            aria-label="Clear search"
+            onClick={() => {
+              dispatch(setQuery(''))
+              searchRef.current?.focus()
+            }}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        )}
+      </Field>
 
       <span className="grow min-w-0" />
 
@@ -119,33 +130,29 @@ export default function Topbar() {
           className={cn(syncing && '[&_svg]:animate-spin')}
         />
       )}
-      <Link to="/settings" className="ib ib-32 flex-none" aria-label="Settings">
-        <Icon name="settings" size={16} />
-      </Link>
-
-      {user ? (
-        <button className="ib ib-32 flex-none p-0" aria-label="Your profile" title={user.displayName} onClick={() => navigate('/settings')}>
-          <span className="flex items-center justify-center w-[26px] h-[26px] rounded-full bg-acc text-black text-label-l font-semibold">
-            {user.displayName.charAt(0).toUpperCase()}
-          </span>
-        </button>
-      ) : (
+      {!user && (
         <Button variant="acc" size="sm" onClick={() => navigate('/signin', { state: { mode: 'signin' } })}>
           Sign in
         </Button>
       )}
 
-      {CAPS.windowControls && (
-        <>
-          <span className="vr flex-none h-6" />
-
-          <span className="wctl flex-none">
-            <button aria-label="Minimize" onClick={() => void neuWindow.minimize()}><Icon name="minus" size={14} /></button>
-            <button aria-label="Maximize" onClick={() => void toggleMaximize()}><Icon name="maximize" size={14} /></button>
-            <button className="cls" aria-label="Close" onClick={() => void app.exit()}><Icon name="close" size={14} /></button>
+      {/* Profile and settings are one page, so this is its only way in. */}
+      <button
+        className="ib ib-32 flex-none p-0"
+        aria-label="Profile and settings"
+        title={user ? `${user.displayName} · Profile and settings` : 'Profile and settings'}
+        onClick={() => navigate('/settings')}
+      >
+        {user ? (
+          <span className="flex items-center justify-center w-[26px] h-[26px] rounded-full bg-acc text-black text-label-l font-semibold">
+            {user.displayName.charAt(0).toUpperCase()}
           </span>
-        </>
-      )}
+        ) : (
+          <span className="flex items-center justify-center w-[26px] h-[26px] rounded-full bg-s4 text-t2">
+            <Icon name="user" size={15} />
+          </span>
+        )}
+      </button>
     </header>
   )
 }

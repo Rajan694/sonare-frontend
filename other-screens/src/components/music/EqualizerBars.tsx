@@ -14,9 +14,10 @@ export default function EqualizerBars({ playing = true }: EqualizerBarsProps) {
     { delay: 0.3, heights: [10, 4, 14, 6, 12] },
   ], [])
 
+  // Paused (or reduced motion): the bars hold still at a fixed shape.
   if (reduceMotion || !playing) {
     return (
-      <span className="eqbars" aria-label="Now playing">
+      <span className="eqbars" aria-label={playing ? 'Now playing' : 'Paused'}>
         <i className="h-[10px]" />
         <i className="h-[6px]" />
         <i className="h-[14px]" />

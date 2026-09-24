@@ -156,7 +156,7 @@ export default function BottomPlayer() {
           <span className="text-mono-s text-t2 flex-none">{formatDuration(state.positionMs)}</span>
           <Waveform
             peaks={peaks}
-            barCount={150}
+            barCount={120}
             positionRatio={positionRatio}
             durationMs={effectiveDurationMs}
             offline={isOffline}
@@ -168,13 +168,13 @@ export default function BottomPlayer() {
       </div>
 
       <div className="flex items-center gap-1 flex-none w-[290px] justify-end">
-        <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics">
-          <Icon name="music4" size={16} />
+        <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" title="Lyrics">
+          <Icon name="lyrics" size={16} />
         </Link>
-        <Link to="/queue" className="ib ib-32" aria-label="Queue">
+        <Link to="/queue" className="ib ib-32" aria-label="Queue" title="Queue">
           <Icon name="list" size={16} />
         </Link>
-        <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer">
+        <Link to="/equalizer" className="ib ib-32" aria-label="Equalizer" title="Equalizer">
           <Icon name="sliders" size={16} />
         </Link>
         <div className="flex items-center gap-1.5 flex-none w-28">
@@ -193,7 +193,7 @@ export default function BottomPlayer() {
             className="w-full"
           />
         </div>
-        <Link to="/now-playing" className="ib ib-32" aria-label="Full screen player">
+        <Link to="/now-playing" className="ib ib-32" aria-label="Full screen player" title="Full screen player">
           <Icon name="minimize" size={16} />
         </Link>
       </div>
