@@ -3,6 +3,7 @@ import Button from '../components/ui/Button'
 import { cn } from '../lib/utils'
 import { adminApi, AdminApiError, type Setting } from './api'
 import { fmtDateTime, Notice, PageHeader, Panel, useLoad } from './ui'
+import ExtractorCommitHelp from './ExtractorCommitHelp'
 
 export default function Configuration() {
   const { data, setData, error } = useLoad(() => adminApi.config(), [])
@@ -118,6 +119,8 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
             )}
           </div>
         </div>
+
+        {s.key === 'piped.extractorCommit' && <ExtractorCommitHelp current={s.effective} />}
 
         {problem && (
           <Notice>
