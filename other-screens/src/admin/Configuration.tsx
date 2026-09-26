@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import Button from '../components/ui/Button'
 import { cn } from '../lib/utils'
-import { adminApi, AdminApiError, type Setting } from './api'
+import { adminApi, AdminApiError, type LatestCommit, type Setting } from './api'
 import { fmtDateTime, Notice, PageHeader, Panel, useLoad } from './ui'
 import ExtractorCommitHelp from './ExtractorCommitHelp'
 
@@ -39,12 +39,30 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
   const [saving, setSaving] = useState(false)
   const [problem, setProblem] = useState<{ message: string; canForce: boolean } | null>(null)
   const [saved, setSaved] = useState(false)
+  const [latest, setLatest] = useState<LatestCommit | null>(null)
+  const [findingLatest, setFindingLatest] = useState(false)
 
   useEffect(() => setDraft(s.value ?? ''), [s.value])
 
   const next = draft.trim() === '' ? null : draft.trim()
   const dirty = next !== s.value
   const live = s.applies === 'live'
+
+  /** Puts the newest dev commit in the field; saving is still up to the admin. */
+  async function fillLatest() {
+    setFindingLatest(true)
+    setProblem(null)
+    setSaved(false)
+    try {
+      const commit = await adminApi.latestExtractorCommit()
+      setLatest(commit)
+      setDraft(commit.sha)
+    } catch (e) {
+      setProblem({ message: (e as Error).message, canForce: false })
+    } finally {
+      setFindingLatest(false)
+    }
+  }
 
   async function save(value: string | null, force = false) {
     setSaving(true)
@@ -113,12 +131,33 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
             />
           </label>
           <div className="flex gap-2 flex-none">
+            {s.key === 'piped.extractorCommit' && (
+              <Button type="button" variant="out" disabled={findingLatest || saving} onClick={() => void fillLatest()}>
+                {findingLatest ? 'Finding…' : 'Fill in latest'}
+              </Button>
+            )}
             <Button type="submit" variant="acc" disabled={!dirty || saving}>{saving ? 'Saving…' : 'Save'}</Button>
             {s.value !== null && (
               <Button type="button" variant="out" disabled={saving} onClick={() => void save(null)}>Use default</Button>
             )}
           </div>
         </div>
+
+        {latest && draft.trim() === latest.sha && (
+          <p role="status" className="text-body-s text-t2 -mt-1">
+            {latest.sha === s.effective ? (
+              <>Piped already has the newest commit on dev.</>
+            ) : (
+              <>
+                Filled in the newest commit on dev
+                {latest.message && <>: <span className="text-t1">{latest.message}</span></>}
+                {latest.date && <span className="text-t3"> ({fmtDateTime(latest.date)})</span>}.{' '}
+                <a href={latest.url} target="_blank" rel="noreferrer" className="text-acc hover:underline">View on GitHub</a>
+                , then Save to use it.
+              </>
+            )}
+          </p>
+        )}
 
         {s.key === 'piped.extractorCommit' && <ExtractorCommitHelp current={s.effective} />}
 

@@ -75,6 +75,11 @@ export default function ExtractorCommitHelp({ current }: { current: string | nul
             picks that fix up.
           </p>
 
+          <p className="text-body-s text-t2">
+            The quickest way: <span className="text-t1">Fill in latest</span> puts the newest commit on dev in the
+            field for you. To choose a commit yourself:
+          </p>
+
           <ol className="flex flex-col gap-3.5">
             <Step n={1} title="Open the list of commits">
               <Link href={`${REPO}/commits/dev`}>NewPipeExtractor commits on dev</Link> - newest first.

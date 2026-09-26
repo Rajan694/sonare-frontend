@@ -110,6 +110,14 @@ export interface Setting {
   updatedBy: string | null
 }
 
+export interface LatestCommit {
+  sha: string
+  /** First line of the message; null when the backend could only get the hash. */
+  message: string | null
+  date: string | null
+  url: string
+}
+
 export interface Health {
   piped: { up: boolean; url: string }
   database: boolean
@@ -220,6 +228,11 @@ export const adminApi = {
       body: { value, force },
     })
     return r.setting
+  },
+
+  /** The newest NewPipeExtractor commit on dev. Suggests a value; saves nothing. */
+  latestExtractorCommit() {
+    return call<LatestCommit>('/config/piped.extractorCommit/latest')
   },
 
   overview(days: number) {
