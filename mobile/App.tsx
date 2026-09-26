@@ -5,9 +5,14 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { AudioEngine } from './src/components/music/AudioEngine';
 import { hasInternet } from './src/lib/connectivity';
 import { useModeStore } from './src/store/mode';
+import { startBackgroundSync } from './src/data/sync';
 import './global.css';
 
 export default function App() {
+  useEffect(() => {
+    startBackgroundSync();
+  }, []);
+
   useEffect(() => {
     let active = true;
     hasInternet().then((online) => {

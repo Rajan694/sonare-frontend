@@ -15,6 +15,7 @@ interface RequestOptions {
   method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   params?: Params;
   body?: unknown;
+  timeoutMs?: number;
 }
 
 function buildUrl(path: string, params?: Params): string {
@@ -25,7 +26,7 @@ function buildUrl(path: string, params?: Params): string {
   return `${API_BASE}${path}${query ? `?${query}` : ''}`;
 }
 
-async function request<T>(path: string, { method = 'GET', params, body }: RequestOptions = {}): Promise<T> {
+async function request<T>(path: string, { method = 'GET', params, body, timeoutMs }: RequestOptions = {}): Promise<T> {
   const url = buildUrl(path, params);
   const send = (token: string | null) =>
     httpRequest(url, {
@@ -35,6 +36,7 @@ async function request<T>(path: string, { method = 'GET', params, body }: Reques
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      timeoutMs,
     });
 
   let res = await send(useAuthStore.getState().accessToken);
@@ -86,13 +88,13 @@ export const api = {
     request<{ ok: boolean }>(`/me/following/artists/${enc(artistId)}`, { method: following ? 'PUT' : 'DELETE' }),
   recentlyPlayed: (limit = 20) => request<Page<Track>>('/me/recently-played', { params: { limit } }),
   mostPlayed: (limit = 20) => request<Page<Track>>('/me/most-played', { params: { limit } }),
-  /** Plays are reported by the client once the listener has actually heard the track. */
-  reportPlays: (plays: { trackId: string; at: number; ms: number }[]) =>
+  /** Plays the listener has actually heard; queued and sent by data/sync.ts. */
+  reportPlays: (plays: { trackRef: { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string }; at: number; ms: number }[]) =>
     request<{ ok: boolean }>('/me/sync', {
       method: 'POST',
-      body: {
-        plays: plays.map(p => ({ trackRef: { kind: 'server', id: p.trackId.replace(/^yt:/, '') }, at: p.at, ms: p.ms })),
-      },
+      body: { plays: plays.map(({ trackRef, at, ms }) => ({ trackRef, at, ms })) },
+      // A hung upload would hold the whole queue; time out and let sync.ts retry.
+      timeoutMs: 15_000,
     }),
 
   // The user's playlists

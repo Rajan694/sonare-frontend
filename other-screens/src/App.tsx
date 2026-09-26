@@ -9,6 +9,7 @@ import type { PlayerState } from './data/types'
 import { initDevAuth } from './data/auth'
 import * as player from './data/player'
 import { maybeRecordPlay, resetPlay } from './data/plays'
+import { setSyncOnline, startBackgroundSync } from './data/sync'
 import { loadSettings, updateSettings, useSettings } from './data/settings'
 import { showToast } from './store/toastStore'
 import { localLibrary } from './data/local'
@@ -88,7 +89,11 @@ export default function App() {
   useEffect(() => {
     initDevAuth()
     loadSettings()
+    startBackgroundSync()
   }, [])
+
+  // Plays held in Offline Mode upload in the background once the app is Online again.
+  useEffect(() => setSyncOnline(effectiveMode === 'online'), [effectiveMode])
 
   // Mirror the audio element's state into React, and keep positionMs on the shared
   // PlayerState so screens that already read it (NowPlaying, BottomPlayer) keep working.
@@ -115,8 +120,7 @@ export default function App() {
       currentTrack.id,
       playStartedAt.current,
       playback.positionMs,
-      playback.durationMs || currentTrack.durationMs || 0,
-      modeRef.current === 'offline'
+      playback.durationMs || currentTrack.durationMs || 0
     )
   }, [currentTrack?.id, playback.positionMs, playback.playing])
 

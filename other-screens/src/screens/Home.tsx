@@ -6,7 +6,6 @@ import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useTrending, useRecentlyPlayed, useAuth } from '../data/hooks'
 import { loadErrorMessage } from '../data/api'
-import { syncNow } from '../data/sync'
 import { useLocalLibrary, resolveLocalRefs } from '../data/local'
 import Icon from '../components/ui/Icon'
 import SongRow, { SongTableHeader } from '../components/music/SongRow'
@@ -108,7 +107,6 @@ export default function Home() {
           )}
         </div>
         <div className="flex items-center gap-2.5">
-          {isOnline && user && <Button variant="out" icon="sync" onClick={() => void syncNow()}>Sync now</Button>}
           {!isOnline && CAPS.localLibrary && (
             <Link to="/folders" className="btn btn-out">
               <Icon name="folder" size={16} />

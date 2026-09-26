@@ -1,11 +1,10 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Segmented } from '../ui/Segmented'
 import { CAPS } from '../../lib/caps'
 import { useModeStore } from '../../store/modeStore'
 import Icon from '../ui/Icon'
 import Button, { IconButton } from '../ui/Button'
-import { syncNow } from '../../data/sync'
 import { useAuth } from '../../data/hooks'
 import type { Mode } from '../../data/types'
 import { useAppDispatch, useAppSelector } from '../../store'
@@ -14,7 +13,6 @@ import SearchField from './SearchField'
 export default function Topbar() {
   const navigate = useNavigate()
   const { mode, setMode } = useModeStore()
-  const [syncing, setSyncing] = useState(false)
   const { user } = useAuth()
 
   function handleModeSwitch(target: Mode) {
@@ -24,12 +22,6 @@ export default function Topbar() {
     } else {
       setMode('online')
     }
-  }
-
-  async function handleSync() {
-    setSyncing(true)
-    await syncNow()
-    setSyncing(false)
   }
 
   return (
@@ -61,17 +53,6 @@ export default function Topbar() {
         </>
       )}
 
-      {/* Guests have no account library to sync. */}
-      {user && (
-        <IconButton
-          icon="sync"
-          label={syncing ? 'Syncing…' : 'Sync now'}
-          size={32}
-          onClick={handleSync}
-          disabled={syncing || mode === 'offline'}
-          className={syncing ? '[&_svg]:animate-spin' : undefined}
-        />
-      )}
       {!user && (
         <Button variant="acc" size="sm" onClick={() => navigate('/signin', { state: { mode: 'signin' } })}>
           Sign in

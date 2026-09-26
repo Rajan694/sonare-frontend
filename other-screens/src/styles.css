@@ -159,6 +159,55 @@ body {
 
 /* ===== CUSTOM UTILITIES ===== */
 
+/* ===== SCROLLBARS =====
+ * One thin accent rail everywhere instead of the platform scrollbar. The thumb is drawn 2px
+ * wide; the transparent border around it keeps a 6px strip to grab with the mouse.
+ * Chromium and the Neutralino webview (WebKitGTK / WebView2) use the ::-webkit-scrollbar
+ * rules. Setting scrollbar-width/-color would switch Chromium to its standard (wider)
+ * scrollbar, so those two are only for Firefox, which has no ::-webkit-scrollbar. */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+  background: transparent;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 226, 138, .55);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--acc);
+}
+::-webkit-scrollbar-button {
+  display: none;
+}
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 226, 138, .55) transparent;
+  }
+}
+
+/* Horizontal shelves and chip rows scroll by wheel, trackpad or drag - no rail at all. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 @utility srow {
   display: flex;
   align-items: center;

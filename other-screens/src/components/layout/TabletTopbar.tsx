@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Segmented } from '../ui/Segmented'
 import { CAPS } from '../../lib/caps'
 import { useModeStore } from '../../store/modeStore'
-import Icon from '../ui/Icon'
+import { BrandMark } from '../ui/BrandMark'
 import Button from '../ui/Button'
 import SearchField from './SearchField'
 import { useAuth } from '../../data/hooks'
@@ -26,9 +26,7 @@ export default function TabletTopbar() {
   return (
     <header className="flex items-center gap-4 flex-none h-[60px] px-5 border-b border-ln bg-[#060607]/90 z-20">
       <Link to="/home" className="flex items-center gap-2.5 flex-none no-underline text-inherit">
-        <span className="flex items-center justify-center flex-none w-[26px] h-[26px] rounded-[8px] bg-acc text-black">
-          <Icon name="music" size={16} />
-        </span>
+        <BrandMark size={26} className="flex-none" />
         <span className="text-title-l text-t1 tracking-tight">Sonare</span>
       </Link>
 

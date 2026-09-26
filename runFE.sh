@@ -62,6 +62,24 @@ load_android_sdk() {
 }
 
 METRO_PORT=""
+MOBILE_APP_ID="com.mobile"
+
+# Debug builds reach Metro at the emulator's 10.0.2.2 alias by default, i.e. over the
+# emulator's own network. Cutting that network to test Offline Mode then cut Metro too
+# ("Cannot connect to Metro" / "Fast Refresh disconnected" popups), and Android 17 asks for
+# local-network access to use the alias at all. Point the app's dev settings at
+# localhost instead, carried over the adb link by `adb reverse`. Fails (returns 1) until the
+# app is installed, since it writes into the app's own data directory.
+point_app_at_local_metro() {
+    local tmp="/data/local/tmp/sonare_dev_prefs.xml" ok
+    adb reverse "tcp:$1" "tcp:$1" >/dev/null 2>&1 || return 1
+    printf '%s\n' "<?xml version='1.0' encoding='utf-8' standalone='yes' ?>" '<map>' \
+        "    <string name=\"debug_http_host\">localhost:$1</string>" '</map>' | adb shell "cat > $tmp"
+    adb shell "run-as $MOBILE_APP_ID sh -c 'mkdir -p shared_prefs && cp $tmp shared_prefs/${MOBILE_APP_ID}_preferences.xml'" >/dev/null 2>&1
+    ok=$?
+    adb shell rm -f "$tmp" >/dev/null 2>&1
+    return $ok
+}
 
 # `web` goes through `neu run`, which can only serve cli.frontendLibrary.devUrl (5183) and
 # has Neutralino write .tmp/auth_info.json, where the dev server looks up its port. Two
@@ -206,12 +224,22 @@ case "$TARGET" in
         echo "Warming the JS bundle..."
         curl -s -o /dev/null "http://127.0.0.1:$PORT/index.bundle?platform=android&dev=true&minify=false"
 
-        # Android 17 (SDK 37) gates local-network addresses, including the
-        # emulator's 10.0.2.2 alias that Metro is reached through.
-        echo "Note: if the app asks for local-network access on first launch, tap Allow."
-        echo "      Declining it leaves a red \"Unable to load script\" box."
+        # Already installed: point it at localhost before it launches. A fresh install
+        # has no data directory yet, so it gets pointed right after and restarted.
+        METRO_HOST_SET=0
+        point_app_at_local_metro "$PORT" && METRO_HOST_SET=1
+        if [ "$METRO_HOST_SET" = 0 ]; then
+            # Only this first launch goes through 10.0.2.2, which Android 17 (SDK 37) gates.
+            echo "Note: if the app asks for local-network access on first launch, tap Allow."
+            echo "      Declining it leaves a red \"Unable to load script\" box."
+        fi
 
         npx react-native run-android --no-packager --port "$PORT"
+
+        if [ "$METRO_HOST_SET" = 0 ] && point_app_at_local_metro "$PORT"; then
+            adb shell am force-stop "$MOBILE_APP_ID"
+            adb shell am start -n "$MOBILE_APP_ID/.MainActivity" >/dev/null
+        fi
 
         if [ -n "$METRO_PID" ]; then
             echo ""

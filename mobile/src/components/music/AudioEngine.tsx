@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { api } from '../../data/api';
 import { absoluteUrl, artworkUrl } from '../../data/config';
 import { useAuthStore } from '../../data/auth';
+import { queuePlay } from '../../data/sync';
 import { SonarePlayer } from '../../native/SonarePlayer';
 import { usePlayerStore } from '../../store/player';
 
@@ -96,7 +97,7 @@ function startAudio() {
     // History belongs to an account; guests just listen.
     if (!listen.counted && e.positionMs >= threshold && useAuthStore.getState().status === 'signedIn') {
       listen.counted = true;
-      api.reportPlays([{ trackId: listen.trackId, at: listen.startedAt, ms: e.positionMs }]).catch(() => {});
+      queuePlay(listen.trackId, listen.startedAt, e.positionMs);
     }
   });
 

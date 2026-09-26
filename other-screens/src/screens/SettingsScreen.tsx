@@ -11,7 +11,6 @@ import { showToast } from '../store/toastStore'
 import { useSettings, updateSettings, type UserSettings } from '../data/settings'
 import { useAuth } from '../data/hooks'
 import { signOut } from '../data/auth'
-import { syncNow } from '../data/sync'
 import { formatBytes } from '../lib/utils'
 
 const QUALITIES: { id: UserSettings['downloadQuality']; label: string }[] = [
@@ -88,8 +87,9 @@ export default function SettingsScreen() {
       label: 'Library & scanning',
       icon: 'folder',
       title: 'Library & scanning',
-      description: 'Local folders, rescanning, and synchronization.',
-      available: true,
+      description: 'Local folders and rescanning. Plays and favourites sync on their own.',
+      // Only local folders live here now that sync runs in the background.
+      available: CAPS.localLibrary,
     },
     {
       id: 'connection',
@@ -206,18 +206,9 @@ export default function SettingsScreen() {
   const renderLibrary = () => (
     <div className="flex flex-col gap-4">
       <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-        {CAPS.localLibrary && (
-          <Link to="/folders" className="no-underline block">
-            <Row icon="folder" label="Local music folders" desc="Manage scanned music folders on this device">{chevron}</Row>
-          </Link>
-        )}
-        <button
-          className="w-full text-left bg-transparent border-0 cursor-pointer p-0"
-          onClick={() => void syncNow()}
-          disabled={mode === 'offline'}
-        >
-          <Row icon="sync" label="Sync now" desc="Push plays and favourites, refresh playlists" />
-        </button>
+        <Link to="/folders" className="no-underline block">
+          <Row icon="folder" label="Local music folders" desc="Manage scanned music folders on this device">{chevron}</Row>
+        </Link>
       </div>
     </div>
   )
@@ -348,10 +339,12 @@ export default function SettingsScreen() {
           {renderAudio()}
         </div>
 
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Library & scanning</span>
-          {renderLibrary()}
-        </div>
+        {CAPS.localLibrary && (
+          <div className="flex flex-col gap-2">
+            <span className="text-overline text-t3 pl-1">Library & scanning</span>
+            {renderLibrary()}
+          </div>
+        )}
 
         <div className="flex flex-col gap-2">
           <span className="text-overline text-t3 pl-1">Appearance</span>

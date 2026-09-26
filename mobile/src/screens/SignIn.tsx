@@ -7,6 +7,7 @@ import { clearPendingAction } from '../data/accountGate';
 import { Field } from '../components/ui/Field';
 import { Button } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
+import { BrandMark } from '../components/ui/BrandMark';
 import { useAuthStore } from '../data/auth';
 
 type Mode = 'signin' | 'signup';
@@ -94,8 +95,8 @@ export function SignInScreen() {
         )}
       </View>
       <View className="px-6 flex-1 pt-4">
-        <View className="w-14 h-14 rounded-2xl bg-acc items-center justify-center mb-6">
-          <Icon name="music" size={28} color="#000000" strokeWidth={2} />
+        <View className="mb-6">
+          <BrandMark size={56} />
         </View>
         <Text className="text-h1 font-semibold text-t1 mb-2">
           {isSignUp ? 'Create your account' : 'Welcome back'}

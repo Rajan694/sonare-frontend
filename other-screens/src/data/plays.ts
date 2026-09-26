@@ -1,5 +1,5 @@
-import { api } from './api'
-import { isAuthenticated } from './auth'
+import { getCurrentUser, isAuthenticated } from './auth'
+import { requestSync } from './sync'
 
 /**
  * Split a namespaced id (contract 8.1) into the TrackRef shape from 8.3. The backend
@@ -34,10 +34,12 @@ export function resetPlay(trackId: string, startedAt: number): void {
 }
 
 /**
- * Call on each position update. Records the play the first time the threshold is met
- * for this listen; repeated calls afterwards are no-ops.
+ * Every counted play lands in this on-device queue first, online or not; data/sync.ts
+ * uploads it in the background and removes exactly what the server confirmed. Each play
+ * carries the account it was heard on, so one made before a sign-out never lands on the
+ * next account.
  */
-type PendingPlay = { trackRef: ReturnType<typeof trackRef>; at: number; ms: number }
+export type PendingPlay = { trackRef: ReturnType<typeof trackRef>; at: number; ms: number; userId?: string }
 const PENDING_KEY = 'sonare_pending_plays'
 
 function readPending(): PendingPlay[] {
@@ -56,26 +58,28 @@ function writePending(plays: PendingPlay[]) {
   }
 }
 
-/** Plays heard offline, waiting for the next sync. Taking them clears the queue. */
-export function takePendingPlays(): PendingPlay[] {
-  const plays = readPending()
-  if (plays.length) writePending([])
-  return plays
+function playKey(p: PendingPlay): string {
+  const ref = p.trackRef.kind === 'local' ? p.trackRef.fingerprint : p.trackRef.id
+  return `${p.userId ?? ''}|${p.trackRef.kind}|${ref}|${p.at}`
 }
 
-/** Put plays back if the sync that took them failed. */
-export function restorePendingPlays(plays: PendingPlay[]): void {
-  if (plays.length) writePending([...plays, ...readPending()])
+/** Plays waiting to upload for this account (queues from before the userId tag count too). */
+export function pendingPlaysFor(userId: string): PendingPlay[] {
+  return readPending().filter(p => !p.userId || p.userId === userId)
 }
 
-export function maybeRecordPlay(
-  trackId: string,
-  startedAt: number,
-  positionMs: number,
-  durationMs: number,
-  /** Offline mode keeps the play on the device instead of calling the server. */
-  offline = false
-): void {
+/** Drop plays the server has stored. Anything queued while the upload ran stays. */
+export function removePendingPlays(done: PendingPlay[]): void {
+  if (!done.length) return
+  const gone = new Set(done.map(playKey))
+  writePending(readPending().filter(p => !gone.has(playKey(p))))
+}
+
+/**
+ * Call on each position update. Records the play the first time the threshold is met
+ * for this listen; repeated calls afterwards are no-ops.
+ */
+export function maybeRecordPlay(trackId: string, startedAt: number, positionMs: number, durationMs: number): void {
   if (!trackId || positionMs <= 0) return
   // History belongs to an account; guests just listen.
   if (!isAuthenticated()) return
@@ -87,16 +91,8 @@ export function maybeRecordPlay(
   if (counted.has(k)) return
   counted.add(k)
 
-  const play = { trackRef: trackRef(trackId), at: startedAt, ms: Math.round(positionMs) }
-  if (offline) {
-    writePending([...readPending(), play])
-    return
-  }
-  const pending = takePendingPlays()
-  void api
-    .sync({ since: 0, plays: [...pending, play], favourites: [], playlists: [] })
-    .catch(() => {
-      // A dropped play should never interrupt playback; keep it for the next sync.
-      restorePendingPlays([...pending, play])
-    })
+  const play: PendingPlay = { trackRef: trackRef(trackId), at: startedAt, ms: Math.round(positionMs), userId: getCurrentUser()?.id }
+  writePending([...readPending(), play])
+  // Uploads straight away when online; in Offline Mode it waits for the switch back.
+  requestSync()
 }

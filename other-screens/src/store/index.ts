@@ -4,6 +4,7 @@ import search, { initialSearchState, type SearchState, type SearchType } from '.
 import ui from './uiSlice'
 
 const SAVED_SEARCH_KEY = 'sonare_search'
+const SIDEBAR_KEY = 'sonare_sidebar_collapsed'
 const SEARCH_TYPES: SearchType[] = ['songs', 'albums', 'artists', 'playlists']
 
 /** The query and chip survive a reload (dev-server reloads included); results are refetched. */
@@ -20,9 +21,30 @@ function savedSearch(): SearchState {
   }
 }
 
+/** Unlike the search, the sidebar choice is a preference and survives restarts. */
+function savedSidebarCollapsed(): boolean {
+  try {
+    return localStorage.getItem(SIDEBAR_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
 export const store = configureStore({
   reducer: { search, ui },
-  preloadedState: { search: savedSearch() },
+  preloadedState: { search: savedSearch(), ui: { queueOpen: false, sidebarCollapsed: savedSidebarCollapsed() } },
+})
+
+let lastSidebar = store.getState().ui.sidebarCollapsed
+store.subscribe(() => {
+  const collapsed = store.getState().ui.sidebarCollapsed
+  if (collapsed === lastSidebar) return
+  lastSidebar = collapsed
+  try {
+    localStorage.setItem(SIDEBAR_KEY, String(collapsed))
+  } catch {
+    // Blocked storage: the sidebar reopens expanded next launch.
+  }
 })
 
 let lastSaved: SearchState | null = null

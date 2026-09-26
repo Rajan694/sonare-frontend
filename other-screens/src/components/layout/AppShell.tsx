@@ -18,7 +18,7 @@ import { bindAccountGateNavigator } from '../../data/accountGate'
 import { usePlayerShortcuts } from './usePlayerShortcuts'
 import { useLayout } from '../../lib/layout'
 import { useAppDispatch, useAppSelector } from '../../store'
-import { closeQueue, toggleQueue } from '../../store/uiSlice'
+import { closeQueue, toggleQueue, toggleSidebar } from '../../store/uiSlice'
 import { cn } from '../../lib/utils'
 
 function isTyping(el: EventTarget | null) {
@@ -35,6 +35,8 @@ export default function AppShell() {
 
   // FLOWS D09/M09: the full-screen player drops all chrome.
   const immersive = location.pathname === '/now-playing'
+  // Ctrl B only means something where the full sidebar is on screen.
+  const sidebarShown = (layout === 'desktop' || layout === 'web') && !immersive
 
   // Lets the account gate send a guest to /signin from anywhere.
   useEffect(() => bindAccountGateNavigator(navigate), [navigate])
@@ -48,6 +50,9 @@ export default function AppShell() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
         e.preventDefault()
         dispatch(toggleQueue())
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b' && sidebarShown && !isTyping(e.target)) {
+        e.preventDefault()
+        dispatch(toggleSidebar())
       } else if (e.key === 'Escape' && !isTyping(e.target)) {
         if (queueOpen) {
           e.preventDefault()
@@ -61,7 +66,7 @@ export default function AppShell() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [location.pathname, navigate, queueOpen, dispatch])
+  }, [location.pathname, navigate, queueOpen, dispatch, sidebarShown])
 
   const toastContainer = (
     <div

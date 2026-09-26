@@ -21,11 +21,23 @@ export class NetworkError extends Error {
 
 export function httpRequest(
   url: string,
-  { method = 'GET', headers = {}, body }: { method?: string; headers?: Record<string, string>; body?: string } = {},
+  {
+    method = 'GET',
+    headers = {},
+    body,
+    timeoutMs = 0,
+  }: {
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+    /** 0 waits forever (the default); without one, a request sent as the network comes back can hang. */
+    timeoutMs?: number;
+  } = {},
 ): Promise<HttpResponse> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(method, url);
+    xhr.timeout = timeoutMs;
     for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
     xhr.onload = () => {
       let json: any = null;

@@ -5,7 +5,8 @@ import { motion, useReducedMotion } from 'motion/react'
 
 /**
  * Tooltips for icon-only controls. Mark an element with `data-tip="Label"` and, when it has a
- * keyboard shortcut, `data-tip-kbd="Space"`; IconButton does this itself. This one layer
+ * keyboard shortcut, `data-tip-kbd="Space"`; IconButton does this itself. `data-tip-side="right"`
+ * puts it beside the control instead (a vertical rail, where above would cover the next item). This one layer
  * (mounted in AppShell) serves every tooltip through event delegation, so controls carry no
  * tooltip state.
  *
@@ -24,6 +25,7 @@ interface Tip {
   el: HTMLElement
   text: string
   kbd?: string
+  right: boolean
   rect: DOMRect
 }
 
@@ -33,7 +35,7 @@ function tipTarget(node: EventTarget | null): HTMLElement | null {
 
 function read(el: HTMLElement): Tip | null {
   const text = el.dataset.tip?.trim()
-  return text ? { el, text, kbd: el.dataset.tipKbd || undefined, rect: el.getBoundingClientRect() } : null
+  return text ? { el, text, kbd: el.dataset.tipKbd || undefined, right: el.dataset.tipSide === 'right', rect: el.getBoundingClientRect() } : null
 }
 
 export default function TooltipLayer() {
@@ -157,7 +159,8 @@ export default function TooltipLayer() {
   // A new screen takes its controls (and their tooltips) with it.
   useEffect(() => hideRef.current(), [location.pathname])
 
-  // Above the control, or below it when there's no room (the top bar); kept inside the window.
+  // Above the control, or below it when there's no room (the top bar), or beside it when asked;
+  // kept inside the window.
   useLayoutEffect(() => {
     const box = boxRef.current
     if (!tip || !box) return setPos(null)
@@ -165,6 +168,11 @@ export default function TooltipLayer() {
     const width = box.offsetWidth
     const height = box.offsetHeight
     const r = tip.rect
+    if (tip.right) {
+      const top = Math.min(Math.max(r.top + r.height / 2 - height / 2, EDGE_PX), window.innerHeight - height - EDGE_PX)
+      const left = r.right + GAP_PX
+      return setPos(prev => (prev && prev.left === left && prev.top === top ? prev : { left, top }))
+    }
     const above = r.top - height - GAP_PX >= EDGE_PX
     const top = above ? r.top - height - GAP_PX : r.bottom + GAP_PX
     const left = Math.min(Math.max(r.left + r.width / 2 - width / 2, EDGE_PX), window.innerWidth - width - EDGE_PX)

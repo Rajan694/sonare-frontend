@@ -8,10 +8,14 @@ import { SegmentedControl } from '../components/ui/Segmented';
 import { Button } from '../components/ui/Button';
 import { useModeStore } from '../store/mode';
 import { useAuthStore } from '../data/auth';
+import { useSyncStatus } from '../data/sync';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
 
+const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
+
 export function SettingsScreen() {
+  const sync = useSyncStatus();
   const navigation = useNavigation<any>();
   const user = useAuthStore(s => s.user);
   const signOut = useAuthStore(s => s.signOut);
@@ -100,12 +104,22 @@ export function SettingsScreen() {
           {isGold ? (
             <View className="flex-row items-center gap-2 p-2.5 px-3 bg-goldbg border border-[rgba(255,194,77,0.22)] rounded-md">
               <View className="w-1.5 h-1.5 rounded-full bg-gold" />
-              <Text className="text-bs text-t2 flex-1">Offline mode active · nothing fetched from server</Text>
+              <Text className="text-bs text-t2 flex-1">
+                {sync.pending
+                  ? `Offline mode active · ${plays(sync.pending)} will sync when you're back online`
+                  : 'Offline mode active · nothing fetched from server'}
+              </Text>
             </View>
           ) : (
             <View className="flex-row items-center gap-2 p-2.5 px-3 bg-accbg border border-[rgba(0,226,138,0.22)] rounded-md">
               <View className="w-1.5 h-1.5 rounded-full bg-acc" />
-              <Text className="text-bs text-t2 flex-1">Online mode active · streaming & sync enabled</Text>
+              <Text className="text-bs text-t2 flex-1">
+                {sync.syncing
+                  ? `Online mode active · syncing ${plays(sync.pending)}`
+                  : sync.pending
+                    ? `Online mode active · ${plays(sync.pending)} waiting to sync`
+                    : 'Online mode active · streaming & sync enabled'}
+              </Text>
             </View>
           )}
         </View>
