@@ -18,7 +18,7 @@ export default function Configuration() {
         subtitle="System-wide settings, stored in the system_configuration table. Leave one empty to use its default."
       />
       {error && <div className="mb-4"><Notice>{error}</Notice></div>}
-      <div className="flex flex-col gap-4 max-w-3xl">
+      <div className="flex flex-col gap-4 max-w-[768px]">
         {data?.settings.map(s => <SettingCard key={s.key} setting={s} onSaved={replace} />)}
         {data && (
           <p className="text-body-s text-t3">

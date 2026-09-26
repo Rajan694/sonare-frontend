@@ -135,7 +135,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-sm bg-s1 border border-ln rounded-xl p-8 flex flex-col gap-5 shadow-e3">
+      <form onSubmit={submit} className="w-full max-w-[384px] bg-s1 border border-ln rounded-xl p-8 flex flex-col gap-5 shadow-e3">
         <div className="flex items-center gap-3">
           <BrandMark size={32} />
           <div>

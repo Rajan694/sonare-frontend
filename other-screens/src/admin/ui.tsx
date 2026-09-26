@@ -311,7 +311,8 @@ export function ColumnChart({ title, subtitle, points, format = fmtInt, empty }:
                   )}
                   {(i % labelEvery === 0 || i === points.length - 1) && (points.length - 1 - i >= labelEvery || i === points.length - 1) && (
                     <text
-                      x={Math.min(Math.max(x + barW / 2, left + 16), width - 16)}
+                      // Half of the widest label ("Sep 26" in mono-s), so an end label isn't cut off.
+                      x={Math.min(Math.max(x + barW / 2, left + 24), width - 24)}
                       y={base + 16} textAnchor="middle" className="fill-t3 text-mono-s"
                     >
                       {p.label}

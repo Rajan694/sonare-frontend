@@ -36,7 +36,7 @@ export default function Account({ account, onChange }: { account: AdminAccount |
   return (
     <>
       <PageHeader title="Account" subtitle="The admin sign-in. It is separate from app accounts." />
-      <div className="flex flex-col gap-4 max-w-xl">
+      <div className="flex flex-col gap-4 max-w-[576px]">
         <Panel>
           <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-body-m">
             <dt className="text-t3">Username</dt>
