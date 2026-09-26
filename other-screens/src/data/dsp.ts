@@ -12,18 +12,18 @@ import { getSettings, subscribeSettings, updateSettings } from './settings'
  * a suspended context means silence.
  */
 
-export const EQ_BANDS = [60, 150, 400, 1000, 2400, 6000, 14000] as const
-export const EQ_LABELS = ['60', '150', '400', '1K', '2.4K', '6K', '14K'] as const
+export const EQ_BANDS = [32, 64, 150, 400, 1000, 2400, 6000, 14000] as const
+export const EQ_LABELS = ['32', '64', '150', '400', '1k', '2.4k', '6k', '14k'] as const
 export const EQ_MIN_DB = -12
 export const EQ_MAX_DB = 12
 
 export const EQ_PRESETS: Record<string, number[]> = {
-  Flat: [0, 0, 0, 0, 0, 0, 0],
-  Sonare: [3, 1.5, 0, -0.5, 1, 2.5, 3],
-  Bass: [6, 4.5, 1.5, 0, 0, 0, 0],
-  Vocal: [-2, -1, 1.5, 3.5, 3, 1, 0],
-  Acoustic: [2.5, 1.5, 0.5, 1, 2, 2.5, 2],
-  'Late night': [-3, -1.5, 0, 1, 0.5, -1.5, -3],
+  Flat: [0, 0, 0, 0, 0, 0, 0, 0],
+  Sonare: [1, 4, 0, -1, 2, 5, 3, 0],
+  Bass: [6, 5, 3.5, 1, 0, 0, 0, 0],
+  Vocal: [-3, -2, -1, 1.5, 3.5, 3, 1, 0],
+  Acoustic: [1, 2.5, 1.5, 0.5, 1, 2, 2.5, 2],
+  'Late night': [-3, -2.5, -1, 0, 1, 0.5, -1.5, -3],
 }
 export const CUSTOM_PRESET = 'Custom'
 

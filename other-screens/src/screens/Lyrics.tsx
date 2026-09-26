@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { usePlayerStore } from '../store/playerStore'
 import { useModeStore } from '../store/modeStore'
 import { showToast } from '../store/toastStore'
@@ -10,7 +10,6 @@ import { requireAccount } from '../data/accountGate'
 import { isAuthenticated } from '../data/auth'
 import Artwork, { trackArtwork } from '../components/music/Artwork'
 import Button, { IconButton } from '../components/ui/Button'
-import { Badge, Chip } from '../components/ui/ChipBadge'
 import Icon from '../components/ui/Icon'
 import { Switch } from '../components/ui/Switch'
 import { EmptyState } from '../components/ui/EmptyState'
@@ -39,8 +38,9 @@ function toLrc(lines: { atMs: number; text: string }[]): string {
     .join('\n')
 }
 
-/** FLOWS D11: artwork and lyric actions on the left, time-stamped lines on the right. */
 export default function Lyrics() {
+  const navigate = useNavigate()
+  const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/now-playing'))
   const { state, currentTrack, seek } = usePlayerStore()
   const { mode } = useModeStore()
   const isOffline = mode === 'offline'
@@ -84,7 +84,7 @@ export default function Lyrics() {
 
   if (!currentTrack) {
     return (
-      <div className="flex items-center justify-center h-full p-8">
+      <div className="@container flex items-center justify-center h-full p-8">
         <EmptyState
           icon="lyrics"
           title="No track selected"
@@ -167,101 +167,178 @@ export default function Lyrics() {
   const glow = isOffline ? '0 0 30px rgba(255,194,77,.35)' : '0 0 30px rgba(0,226,138,.35)'
 
   return (
-    <div className="relative flex h-full overflow-hidden">
-      {/* Inline opacity: `.ambient i` in sonare.css would outrank a utility class. */}
-      <div className="ambient" aria-hidden>
-        <i className={cn(isOffline ? 'bg-gold' : 'bg-acc', 'w-[620px] h-[620px] -top-[300px] -left-[180px]')} style={{ opacity: 0.16 }} />
-        <i className="bg-s2 w-[460px] h-[460px] -top-[120px] -right-[120px]" />
+    <div className="@container relative flex flex-col w-full h-full overflow-hidden bg-bg text-t1 select-none">
+      {/* Ambient background glow */}
+      <div className="ambient pointer-events-none" aria-hidden>
+        <i
+          className={cn(
+            isOffline ? 'bg-gold' : 'bg-[#2A5AA8]',
+            'w-[400px] h-[400px] @3xl:w-[560px] @3xl:h-[560px] -top-[160px] @3xl:-top-[280px] -left-[100px] @3xl:-left-[180px]'
+          )}
+          style={{ opacity: isOffline ? 0.16 : 0.45 }}
+        />
+        <i
+          className="bg-[#6B3FA0] w-[350px] h-[350px] @3xl:w-[420px] @3xl:h-[420px] -top-[80px] @3xl:-top-[100px] -right-[100px] @3xl:-right-[120px]"
+          style={{ opacity: 0.3 }}
+        />
       </div>
 
-      <div className="relative flex grow gap-10 px-10 pt-8 overflow-hidden">
-        {/* Short windows scroll this column; the artwork shrinks to fit beside the scrollbar. */}
-        <aside className="flex flex-col flex-none w-[340px] gap-5 pb-8 overflow-y-auto overflow-x-hidden">
-          <Artwork
-            src={trackArtwork(currentTrack, 640)}
-            alt={currentTrack.title}
-            variant="a1"
-            radius="lg"
-            rings
-            className="shadow-e4 flex-none w-full aspect-square"
-          />
-          <div className="flex flex-col gap-1.5">
-            <span className="text-h2 text-t1">{currentTrack.title}</span>
-            <span className="text-body-m text-t2">
-              {[currentTrack.artist, currentTrack.album].filter(Boolean).join(' · ')}
-            </span>
+      {/* Mobile Top bar (< 3xl) */}
+      <header className="relative z-10 flex @3xl:hidden items-center justify-between flex-none h-14 px-4 border-b border-ln bg-s0/40 backdrop-blur-md">
+        <button onClick={exit} className="ib ib-32 text-t2 hover:text-t1 flex items-center justify-center" aria-label="Back">
+          <Icon name="chevron-left" size={20} />
+        </button>
+        <span className="text-title-m font-semibold text-t1">Lyrics</span>
+        <div className="w-8" />
+      </header>
+
+      {/* Main Container */}
+      <div className="relative z-10 flex flex-col @3xl:flex-row grow gap-6 @3xl:gap-10 px-5 @sm:px-8 @3xl:px-10 pt-4 @3xl:pt-8 pb-4 overflow-hidden">
+        {/* Left Column: Artwork + Metadata + Actions */}
+        <aside className="flex flex-col flex-none w-full @3xl:w-[300px] @4xl:w-[320px] gap-4 @3xl:gap-5 overflow-y-auto overflow-x-hidden">
+          <div className="flex @3xl:flex-col items-center @3xl:items-start gap-4">
+            <Artwork
+              src={trackArtwork(currentTrack, 640)}
+              alt={currentTrack.title}
+              variant="a1"
+              radius="lg"
+              rings
+              className="shadow-e4 flex-none w-16 h-16 @sm:w-20 @sm:h-20 @3xl:w-[300px] @3xl:h-[300px] rounded-lg @3xl:rounded-xl"
+            />
+            <div className="flex flex-col min-w-0 gap-1 grow">
+              <span className="text-h3 @3xl:text-h2 font-semibold text-t1 truncate">{currentTrack.title}</span>
+              <span className="text-body-s @3xl:text-body-m text-t2 truncate">
+                {[currentTrack.artist, currentTrack.album].filter(Boolean).join(' · ')}
+              </span>
+            </div>
           </div>
+
           {hasLyrics && (
             <div className="flex flex-wrap items-center gap-2">
               {source && (
-                <Badge variant={isLocal ? 'local' : 'cloud'} icon={isLocal ? 'smartphone' : 'cloud'}>{source}</Badge>
+                <span
+                  className={cn(
+                    'badge',
+                    isLocal ? 'bg-local' : 'bg-cloud'
+                  )}
+                >
+                  <Icon name={isLocal ? 'smartphone' : 'cloud'} size={10} />
+                  <span>{source}</span>
+                </span>
               )}
-              <Badge>{synced && lines.length > 0 ? 'Synced' : 'Plain text'}</Badge>
+              <span className="badge bg-neutral">{synced && lines.length > 0 ? 'Synced' : 'Plain text'}</span>
             </div>
           )}
+
           <div className="flex flex-col gap-2">
-            <Button variant="out" size="sm" icon={hasLyrics ? 'edit' : 'plus'} onClick={startEditing} disabled={editing || loading}>
-              {hasLyrics ? 'Edit lyrics' : 'Add lyrics'}
-            </Button>
-            <Button variant="out" size="sm" icon="download" onClick={importFile} disabled={editing || loading}>
-              Import .lrc file
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="out"
+                size="sm"
+                icon={hasLyrics ? 'edit' : 'plus'}
+                onClick={startEditing}
+                disabled={editing || loading}
+                className="flex-1"
+              >
+                {hasLyrics ? 'Edit lyrics' : 'Add lyrics'}
+              </Button>
+              <Button
+                variant="out"
+                size="sm"
+                icon="download"
+                onClick={importFile}
+                disabled={editing || loading}
+                className="flex-1"
+              >
+                Import .lrc
+              </Button>
+            </div>
             <input ref={fileInput} type="file" accept=".lrc,.txt,text/plain" className="hidden" onChange={onFileChosen} />
+
+            {/* Sync offset control */}
             {synced && lines.length > 0 && (
-              <div className="flex items-center justify-between gap-2 h-8 pl-[14px] pr-1 rounded-full border border-ln2">
-                <span className="text-[13px] font-semibold text-t1">
-                  Sync offset <span className="text-mono-m text-t3">{offsetMs > 0 ? '+' : offsetMs < 0 ? '−' : ''}{(Math.abs(offsetMs) / 1000).toFixed(2)}s</span>
+              <div className="flex items-center justify-between gap-2 h-8.5 pl-3.5 pr-1 rounded-full border border-ln2 bg-s1/60">
+                <span className="text-label-s font-semibold text-t1 flex items-center gap-1.5">
+                  <span>Offset</span>
+                  <span className="text-mono-s text-t3">
+                    {offsetMs > 0 ? '+' : offsetMs < 0 ? '−' : ''}
+                    {(Math.abs(offsetMs) / 1000).toFixed(1)}s
+                  </span>
                 </span>
-                <span className="flex items-center gap-1">
+                <span className="flex items-center gap-0.5">
                   <IconButton icon="minus" label="Show lyrics earlier" size={28} onClick={() => changeOffset(-OFFSET_STEP_MS)} />
                   <IconButton icon="plus" label="Show lyrics later" size={28} onClick={() => changeOffset(OFFSET_STEP_MS)} />
                 </span>
               </div>
             )}
           </div>
-          <label className="flex items-center justify-between cursor-pointer">
+
+          <label className="flex items-center justify-between cursor-pointer py-1">
             <span className="text-body-m text-t1">Auto-scroll</span>
             <Switch checked={autoScroll} onCheckedChange={toggleAutoScroll} aria-label="Toggle auto-scroll" />
           </label>
         </aside>
 
-        <section className="flex flex-col grow gap-5 min-w-0 overflow-hidden" aria-label="Lyrics">
+        {/* Right Column: Lyrics Viewport & Chips */}
+        <section className="flex flex-col grow gap-4 @3xl:gap-5 min-w-0 overflow-hidden" aria-label="Lyrics">
           {hasLyrics && !editing && (
-            <div className="flex items-center gap-2 flex-none">
-              <Chip size="sm" icon="sync" active={showSynced} disabled={!synced || lines.length === 0} onClick={() => setView('synced')}>
-                Synced
-              </Chip>
-              <Chip size="sm" active={!showSynced} onClick={() => setView('plain')}>
-                Plain text
-              </Chip>
+            <div className="flex items-center justify-between gap-2 flex-none">
+              <div className="flex items-center gap-2">
+                <button
+                  className={cn('chip chip-sm', showSynced && 'chip-on')}
+                  disabled={!synced || lines.length === 0}
+                  onClick={() => setView('synced')}
+                >
+                  <Icon name="sync" size={13} />
+                  <span>Synced</span>
+                </button>
+                <button
+                  className={cn('chip chip-sm', !showSynced && 'chip-on')}
+                  onClick={() => setView('plain')}
+                >
+                  <span>Plain text</span>
+                </button>
+                {synced && lines.length > 0 && (
+                  <span className="chip chip-sm text-t3">
+                    <Icon name="clock" size={13} />
+                    <span>Offset {offsetMs > 0 ? '+' : offsetMs < 0 ? '−' : ''}{(Math.abs(offsetMs) / 1000).toFixed(1)}s</span>
+                  </span>
+                )}
+              </div>
             </div>
           )}
 
-          <div className="flex flex-col grow overflow-y-auto pr-5 pb-10">
+          <div className="flex flex-col grow overflow-y-auto pr-2 @3xl:pr-6 pb-12">
             {editing ? (
               <div className="flex flex-col gap-3">
-                <span className="text-body-s text-t3">Paste LRC (<span className="kbd">[mm:ss.xx]</span> per line) for synced lyrics, or plain text.</span>
+                <span className="text-body-s text-t3">
+                  Paste LRC (<span className="kbd">[mm:ss.xx]</span> per line) for synced lyrics, or plain text.
+                </span>
                 <textarea
                   value={draft}
                   onChange={e => setDraft(e.target.value)}
-                  className="surf2 min-h-[420px] p-4 text-body-m text-t1 font-mono bg-s1 border border-ln2 rounded-lg outline-none focus:border-acc resize-y"
+                  className="surf2 min-h-[380px] p-4 text-body-m text-t1 font-mono bg-s1 border border-ln2 rounded-lg outline-none focus:border-acc resize-y"
                   aria-label="Lyrics editor"
                   autoFocus
                 />
                 <div className="flex justify-end gap-2">
-                  <Button variant="ghost" onClick={() => setEditing(false)}>Cancel</Button>
-                  <Button variant="acc" onClick={saveEdit} disabled={!draft.trim()}>Save lyrics</Button>
+                  <Button variant="ghost" onClick={() => setEditing(false)}>
+                    Cancel
+                  </Button>
+                  <Button variant="acc" onClick={saveEdit} disabled={!draft.trim()}>
+                    Save lyrics
+                  </Button>
                 </div>
               </div>
             ) : loading ? (
-              <div className="flex flex-col gap-6 animate-pulse">
+              <div className="flex flex-col gap-6 animate-pulse pt-4">
                 <div className="h-8 bg-s2/40 rounded w-3/4" />
                 <div className="h-8 bg-s2/40 rounded w-1/2" />
                 <div className="h-8 bg-s2/40 rounded w-2/3" />
                 <div className="h-8 bg-s2/40 rounded w-3/5" />
               </div>
             ) : showSynced ? (
-              <div className="flex flex-col gap-[22px]">
+              <div className="flex flex-col gap-4 @3xl:gap-5 pt-2">
                 {lines.map((line, i) => {
                   const active = i === currentLine
                   return (
@@ -270,18 +347,25 @@ export default function Lyrics() {
                       ref={el => {
                         lineRefs.current[i] = el
                       }}
-                      className="flex items-start gap-4 text-left bg-transparent border-0 p-0 cursor-pointer group"
+                      className="flex items-start gap-3.5 @3xl:gap-4 text-left bg-transparent border-0 p-0 cursor-pointer group"
                       aria-current={active}
                       data-tip={`Jump to ${formatDuration(line.atMs + offsetMs)}`}
                       onClick={() => seek(Math.max(0, line.atMs + offsetMs))}
                     >
-                      <span className={cn('text-mono-m w-[38px] pt-2.5 flex-none', active ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t4')}>
+                      <span
+                        className={cn(
+                          'text-mono-s @3xl:text-mono-m w-9 pt-1.5 flex-none font-medium',
+                          active ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t4'
+                        )}
+                      >
                         {formatDuration(line.atMs + offsetMs)}
                       </span>
                       <span
                         className={cn(
-                          'text-display-m transition-opacity duration-300',
-                          active ? 'text-t1' : 'text-t3 opacity-[0.42] group-hover:opacity-70'
+                          'text-h2 @sm:text-display-m @3xl:text-display-m font-bold leading-tight transition-all duration-300',
+                          active
+                            ? 'text-t1 opacity-100 scale-[1.01] origin-left'
+                            : 'text-t3 opacity-[0.42] group-hover:opacity-75'
                         )}
                         style={active ? { textShadow: glow } : undefined}
                       >
@@ -292,11 +376,11 @@ export default function Lyrics() {
                 })}
               </div>
             ) : plainText ? (
-              <p className="text-h2 text-t2 whitespace-pre-line leading-[1.6]">{plainText}</p>
+              <p className="text-h2 text-t2 whitespace-pre-line leading-[1.7] pt-2">{plainText}</p>
             ) : (
-              <div className="flex flex-col items-center justify-center gap-4 grow text-center">
-                <Icon name="lyrics" size={32} className="text-t4" />
-                <span className="text-title-l text-t2">No lyrics available for this track</span>
+              <div className="flex flex-col items-center justify-center gap-3 grow text-center py-16">
+                <Icon name="lyrics" size={36} className="text-t4" />
+                <span className="text-title-l text-t2 font-semibold">No lyrics available for this track</span>
                 <span className="text-body-s text-t3">Add them yourself, or import an .lrc file.</span>
               </div>
             )}
@@ -306,3 +390,4 @@ export default function Lyrics() {
     </div>
   )
 }
+
