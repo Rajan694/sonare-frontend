@@ -8,6 +8,7 @@ import { Badge } from '../components/ui/Badge';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
+import { useTrackMenuStore } from '../store/trackMenu';
 import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
@@ -114,28 +115,54 @@ export function NowPlayingScreen() {
         right={
           <IconButton
             icon={<Icon name="more" size={20} color="#FFFFFF" />}
-            onPress={() => {}}
+            onPress={() => useTrackMenuStore.getState().open(currentTrack)}
             accessibilityLabel="More options"
           />
         }
       />
-      <View className="flex-1 px-5 pt-2 pb-6 justify-between">
+      <View className="flex-1 px-5 pt-1 pb-6">
         
-        {/* Large Artwork */}
+        {/* Large Artwork matching M09 (~306px) */}
         <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
-          <AnimatedViewComponent style={artworkStyle} className="self-center my-auto">
-             <Artwork
-               uri={artworkUrl(currentTrack, 640)}
-               fallbackUri={artworkUrl(currentTrack, 300)}
-               size={240}
-               rings
-               className="rounded-xl shadow-2xl"
-               sharedTransitionTag={`artwork-${currentTrack.id}`}
-             />
+          <AnimatedViewComponent style={artworkStyle} className="self-center mt-2 mb-4">
+            <View className="relative">
+              <View
+                className="absolute inset-0 rounded-[40px]"
+                style={{
+                  backgroundColor: isGold ? '#FFC24D' : '#00E28A',
+                  opacity: 0.04,
+                  transform: [{ scale: 1.24 }],
+                }}
+              />
+              <View
+                className="absolute inset-0 rounded-[40px]"
+                style={{
+                  backgroundColor: isGold ? '#FFC24D' : '#00E28A',
+                  opacity: 0.08,
+                  transform: [{ scale: 1.14 }],
+                }}
+              />
+              <View
+                className="absolute inset-0 rounded-[40px]"
+                style={{
+                  backgroundColor: isGold ? '#FFC24D' : '#00E28A',
+                  opacity: 0.14,
+                  transform: [{ scale: 1.06 }],
+                }}
+              />
+              <Artwork
+                uri={artworkUrl(currentTrack, 640)}
+                fallbackUri={artworkUrl(currentTrack, 300)}
+                size={306}
+                rings
+                className="rounded-2xl shadow-2xl"
+                sharedTransitionTag={`artwork-${currentTrack.id}`}
+              />
+            </View>
           </AnimatedViewComponent>
         </PanGestureHandler>
 
-        <View className="gap-3 mt-auto">
+        <View className="gap-2.5">
           {/* Title and Heart */}
           <View className="flex-row items-center justify-between gap-3">
             <View className="flex-1 gap-1 min-w-0">
@@ -154,24 +181,16 @@ export function NowPlayingScreen() {
                 {currentTrack.artist}
               </Text>
             </View>
-            <View className="flex-row items-center gap-1">
-              <IconButton
-                icon={<Icon name="heart" size={22} color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
-                size={44}
-                onPress={() =>
-                  requireAccount('Create a free account to save songs you love.', () =>
-                    useLibraryStore.getState().toggleFavourite(currentTrack).catch(() => {}),
-                  )
-                }
-                accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
-              />
-              <IconButton
-                icon={<Icon name="plus" size={22} color="#9A9AA8" />}
-                size={44}
-                onPress={() => {}}
-                accessibilityLabel="Add to playlist"
-              />
-            </View>
+            <IconButton
+              icon={<Icon name="heart" size={23} color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
+              size={44}
+              onPress={() =>
+                requireAccount('Create a free account to save songs you love.', () =>
+                  useLibraryStore.getState().toggleFavourite(currentTrack).catch(() => {}),
+                )
+              }
+              accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
+            />
           </View>
 
           {/* Badges line: Source pill + Codec */}
@@ -194,7 +213,7 @@ export function NowPlayingScreen() {
           </View>
 
           {/* Waveform Seek Rail */}
-          <View className="gap-1.5 mt-2">
+          <View className="gap-1 mt-1">
             <View className="w-full h-[34px] justify-center">
               <Waveform
                 trackId={currentTrack.id}
@@ -214,7 +233,7 @@ export function NowPlayingScreen() {
           </View>
 
           {/* Transport Controls */}
-          <View className="flex-row items-center justify-between mt-2 px-1">
+          <View className="flex-row items-center justify-between mt-1 px-1">
             <IconButton
               icon={<Icon name="shuffle" size={21} color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#7E7E8C'} />}
               size={44}
@@ -261,7 +280,7 @@ export function NowPlayingScreen() {
           </View>
 
           {/* Bottom Utility Row */}
-          <View className="flex-row items-center justify-between mt-2 px-2">
+          <View className="flex-row items-center justify-between mt-1 px-4">
             <IconButton
               icon={<Icon name="lyrics" size={21} color="#7E7E8C" />}
               size={44}
@@ -275,12 +294,6 @@ export function NowPlayingScreen() {
               accessibilityLabel="Equalizer"
             />
             <IconButton
-              icon={<Icon name="headphones" size={21} color="#7E7E8C" />}
-              size={44}
-              onPress={() => {}}
-              accessibilityLabel="Audio output"
-            />
-            <IconButton
               icon={<Icon name="playlist" size={21} color="#7E7E8C" />}
               size={44}
               onPress={() => navigation.navigate('Queue')}
@@ -288,6 +301,8 @@ export function NowPlayingScreen() {
             />
           </View>
         </View>
+
+        <View className="flex-1" />
       </View>
     </Screen>
   );

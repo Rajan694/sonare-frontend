@@ -2,9 +2,10 @@ import React from 'react'
 import {
   Home, Library, ListMusic, Search, Settings, Smartphone, Cloud, Folder,
   Play, Pause, Heart, ChevronLeft, ChevronRight, ChevronDown,
-  Plus, MoreVertical, Shuffle, Repeat, GripVertical, RefreshCw,
+  Plus, X, MoreVertical, Shuffle, Repeat, GripVertical, RefreshCw,
   SkipBack, SkipForward, SlidersHorizontal, ArrowLeft, Volume2,
-  Headphones, Timer, BarChart3, Music, FileText, FolderX, UserRound
+  Headphones, Timer, BarChart3, Music, FileText, FolderX, UserRound,
+  Check, Trash2, Edit, Share2, Download, Moon, Sun, Info, LogOut
 } from 'lucide-react-native'
 
 const ICONS = {
@@ -24,6 +25,8 @@ const ICONS = {
   'chevron-right': ChevronRight,
   'chevron-down': ChevronDown,
   plus: Plus,
+  close: X,
+  x: X,
   more: MoreVertical,
   shuffle: Shuffle,
   repeat: Repeat,
@@ -40,6 +43,15 @@ const ICONS = {
   music: Music,
   lyrics: FileText,
   user: UserRound,
+  check: Check,
+  trash: Trash2,
+  edit: Edit,
+  share: Share2,
+  download: Download,
+  moon: Moon,
+  sun: Sun,
+  info: Info,
+  logout: LogOut,
 } as const
 
 export type IconName = keyof typeof ICONS

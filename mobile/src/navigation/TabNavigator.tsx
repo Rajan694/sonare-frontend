@@ -36,7 +36,7 @@ export function TabNavigator() {
           tabBarStyle: {
             height: 64 + insets.bottom,
             paddingBottom: insets.bottom,
-            backgroundColor: 'rgba(6, 6, 7, 0.92)',
+            backgroundColor: '#060607',
             borderTopColor: '#1A1A1F',
             borderTopWidth: 1,
             position: 'absolute',

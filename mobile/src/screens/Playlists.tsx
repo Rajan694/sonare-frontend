@@ -66,7 +66,7 @@ export function PlaylistsScreen() {
   return (
     <Screen scrollable={false}>
       <Header
-        title="Playlists"
+        title={<Text className="text-h1 font-semibold text-t1">Playlists</Text>}
         right={online ? (
           <IconButton icon={<Icon name="plus" size={20} color="#FFFFFF" />} onPress={startCreating} accessibilityLabel="New playlist" />
         ) : undefined}
@@ -79,22 +79,24 @@ export function PlaylistsScreen() {
           <Pressable
             onPress={() => navigation.navigate('Playlist', { id: item.id })}
             onLongPress={() => openOptions(item)}
-            className="flex-row items-center px-4 py-3 gap-3"
+            className="flex-row items-center px-2.5 py-2.5 rounded-md gap-3"
             accessibilityRole="button"
             accessibilityLabel={item.name}
             accessibilityHint="Long press for options"
           >
-            <Artwork uri={item.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${item.id}/artwork` }, 140) : undefined} size={64} className="rounded-lg" />
-            <View className="flex-1 gap-1">
-              <Text className="text-tm font-medium text-t1" numberOfLines={1}>{item.name}</Text>
+            <Artwork uri={item.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${item.id}/artwork` }, 140) : undefined} size={56} rings className="rounded-md" />
+            <View className="flex-1 gap-1 min-w-0">
+              <Text className="text-tm font-medium text-t1 truncate" numberOfLines={1}>{item.name}</Text>
               <View className="flex-row items-center gap-2">
                 <Text className="text-bs text-t2">{songCount(item.trackCount)}</Text>
-                {item.kind === 'synced' && <Badge label="Synced" variant="neutral" />}
-                {item.kind === 'local' && <Badge label="Local" variant="local" />}
+                {item.kind === 'synced' && <Badge label="Synced" variant="neutral" icon={<Icon name="refresh" size={10} color="#9A9AA8" />} />}
+                {item.kind === 'local' && <Badge label="Local" variant="local" icon={<Icon name="smartphone" size={10} color="#FFC24D" />} />}
+                {item.kind === 'online' && <Badge label="Online" variant="cloud" icon={<Icon name="cloud" size={10} color="#00E28A" />} />}
               </View>
             </View>
             <IconButton
-              icon={<Icon name="more" size={20} color="#7E7E8C" />}
+              icon={<Icon name="more" size={18} color="#7E7E8C" />}
+              size={32}
               onPress={() => openOptions(item)}
               accessibilityLabel={`Options for ${item.name}`}
             />
@@ -109,17 +111,17 @@ export function PlaylistsScreen() {
               body="Create a free account to build playlists and keep them in sync across your devices."
             />
           ) : online ? (
-            <View className="items-center">
+            <View className="items-center py-8">
               <StateView error={error} onRetry={reload} empty="No playlists yet." />
               {!error && (
-                <Button variant="outline" onPress={startCreating}>New playlist</Button>
+                <Button variant="outline" size="sm" onPress={startCreating} className="mt-4">New playlist</Button>
               )}
             </View>
           ) : (
             <StateView empty="Playlists sync from the Sonare server — switch back to Online." />
           )
         }
-        contentContainerStyle={{ paddingBottom: 128 }}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 140 }}
       />
 
       <Sheet visible={creating} onClose={() => setCreating(false)}>

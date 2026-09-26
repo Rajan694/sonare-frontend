@@ -26,7 +26,7 @@ export function Field({ icon, clearButton, onClear, className, ...props }: Field
           accessibilityLabel="Clear search"
           className="w-7 h-7 rounded-full items-center justify-center"
         >
-          <Icon name="plus" size={14} color="#9A9AA8" style={{ transform: [{ rotate: '45deg' }] }} />
+          <Icon name="close" size={14} color="#9A9AA8" />
         </Pressable>
       ) : null}
     </View>

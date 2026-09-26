@@ -6,6 +6,7 @@ import { Header } from '../components/layout/Header';
 import { SongRow } from '../components/music/SongRow';
 import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
+import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { api } from '../data/api';
@@ -16,6 +17,7 @@ import Icon from '../components/ui/Icon';
 
 export function QueueScreen() {
   const navigation = useNavigation<any>();
+  const mode = useModeStore((state) => state.mode);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const queue = usePlayerStore((state) => state.queue);
   const setCurrentTrack = usePlayerStore((state) => state.setCurrentTrack);
@@ -44,7 +46,10 @@ export function QueueScreen() {
   if (!currentTrack) {
     return (
       <Screen>
-        <Header title="Queue" />
+        <Header
+          title="Queue"
+          left={<IconButton icon={<Icon name="chevron-down" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Close queue" />}
+        />
         <View className="flex-1 items-center justify-center">
           <Text className="text-t3 text-bm">Queue is empty</Text>
         </View>
@@ -52,32 +57,52 @@ export function QueueScreen() {
     );
   }
 
+  const isGold = mode === 'offline' || currentTrack.source === 'local';
   const currentIndex = queue.findIndex(t => t.id === currentTrack.id);
   const upcomingQueue = queue.slice(currentIndex + 1);
+  const serverCount = queue.filter(t => t.source === 'server').length;
 
   return (
-    <Screen scrollable={false} className="bg-s0">
+    <Screen scrollable={false} className="bg-bg">
       <Header
-        title="Queue"
-        left={<IconButton icon={<Icon name="chevron-down" size={20} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Close queue" />}
+        title={<Text className="text-ll font-semibold text-t1">Queue</Text>}
+        left={<IconButton icon={<Icon name="chevron-down" size={22} color="#FFFFFF" />} onPress={() => navigation.goBack()} accessibilityLabel="Close queue" />}
         right={<IconButton icon={<Icon name="more" size={20} color="#FFFFFF" />} onPress={() => {}} accessibilityLabel="Queue options" />}
       />
 
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 120 }}>
-        <View className="py-2 mb-4 flex-row justify-between items-center">
-          <View className="flex-row items-center gap-1.5 px-2 bg-accbg rounded-full h-6">
-            <View className="w-1.5 h-1.5 bg-acc rounded-full" />
-            <Text className="text-acc text-ls font-bold">ONLINE QUEUE</Text>
+      <ScrollView className="flex-1 px-5" contentContainerStyle={{ paddingBottom: 130 }}>
+        {/* Top Status & Mode Strip */}
+        <View className="py-2.5 mb-2 flex-row justify-between items-center">
+          <View className={`flex-row items-center gap-1.5 px-2.5 ${isGold ? 'bg-goldbg' : 'bg-accbg'} rounded-full h-[26px]`}>
+            <View className={`w-1.5 h-1.5 ${isGold ? 'bg-gold' : 'bg-acc'} rounded-full`} />
+            <Text className={`${isGold ? 'text-gold' : 'text-acc'} text-ls font-semibold uppercase`}>
+              {isGold ? 'OFFLINE QUEUE' : 'ONLINE QUEUE'}
+            </Text>
           </View>
-          <Text className="text-t3 text-bs flex-1 ml-2">{songCount(upcomingQueue.length + 1)}{saved ? ` · ${saved}` : ''}</Text>
-          <View className="flex-row">
-             <IconButton icon={<Icon name="shuffle" size={20} color={shuffle ? '#00E28A' : '#FFFFFF'} />} onPress={toggleShuffle} accessibilityLabel="Shuffle queue" variant={shuffle ? 'active' : 'default'} />
-             <IconButton icon={<Icon name="repeat" size={20} color={repeat !== 'off' ? '#00E28A' : '#FFFFFF'} />} onPress={cycleRepeat} accessibilityLabel={`Repeat: ${repeat}`} variant={repeat !== 'off' ? 'active' : 'default'} />
+          <Text className="text-t3 text-bs flex-1 ml-2.5 truncate">
+            {songCount(queue.length)}
+            {serverCount > 0 ? ` · ${serverCount} from server` : ''}
+            {saved ? ` · ${saved}` : ''}
+          </Text>
+          <View className="flex-row items-center gap-1">
+            <IconButton
+              icon={<Icon name="shuffle" size={18} color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
+              size={32}
+              onPress={toggleShuffle}
+              accessibilityLabel="Shuffle queue"
+            />
+            <IconButton
+              icon={<Icon name="repeat" size={18} color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
+              size={32}
+              onPress={cycleRepeat}
+              accessibilityLabel={`Repeat: ${repeat}`}
+            />
           </View>
         </View>
 
-        <Text className="text-t3 text-ov mb-2">Now playing</Text>
-        <View className="-mx-2 bg-s2/50 rounded-lg">
+        {/* Now Playing Section */}
+        <Text className="text-t3 text-ov font-semibold uppercase mb-2 ml-0.5">Now playing</Text>
+        <View className="-mx-2.5 bg-s2 border border-ln2 rounded-md mb-4">
           <SongRow
             track={currentTrack}
             onPress={() => {}}
@@ -86,30 +111,43 @@ export function QueueScreen() {
           />
         </View>
 
-        <View className="flex-row justify-between items-center mt-5 mb-2">
-          <Text className="text-t3 text-ov">Next in queue</Text>
-          <Pressable onPress={() => setQueue([currentTrack])} accessibilityRole="button">
-             <Text className="text-acc text-ll">Clear queue</Text>
-          </Pressable>
+        {/* Next in queue header */}
+        <View className="flex-row justify-between items-center mt-2 mb-2 px-0.5">
+          <Text className="text-t3 text-ov font-semibold uppercase">Next in queue</Text>
+          {upcomingQueue.length > 0 && (
+            <Pressable onPress={() => setQueue([currentTrack])} accessibilityRole="button">
+              <Text className={isGold ? 'text-gold text-ll font-medium' : 'text-acc text-ll font-medium'}>Clear queue</Text>
+            </Pressable>
+          )}
         </View>
 
-        <View className="-mx-2 overflow-hidden">
-          {upcomingQueue.map((item, index) => (
-            <AnimatedView key={item.id} delay={Math.min(index, 12) * 30}>
-              <SongRow
-                track={item}
-                onPress={() => setCurrentTrack(item)}
-                showArtwork
-                extraAction={{ label: 'Remove from queue', onPress: () => setQueue(queue.filter(t => t.id !== item.id)) }}
-              />
-            </AnimatedView>
-          ))}
-        </View>
+        {/* Upcoming Queue List */}
+        {upcomingQueue.length === 0 ? (
+          <Text className="text-t3 text-bs py-4 px-1">End of queue</Text>
+        ) : (
+          <View className="-mx-2.5 gap-0.5 overflow-hidden">
+            {upcomingQueue.map((item, index) => (
+              <AnimatedView key={`${item.id}-${index}`} delay={Math.min(index, 12) * 30}>
+                <SongRow
+                  track={item}
+                  onPress={() => setCurrentTrack(item)}
+                  showArtwork
+                  extraAction={{ label: 'Remove from queue', onPress: () => setQueue(queue.filter(t => t.id !== item.id)) }}
+                />
+              </AnimatedView>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
-      <View className="absolute bottom-0 left-0 right-0 p-4 bg-s1/95 border-t border-ln2 flex-row gap-2">
-        <Button variant="outline" className="flex-1" onPress={saveAsPlaylist}>Save as playlist</Button>
-        <Button variant="outline" className="flex-1" onPress={() => navigation.navigate('Tabs', { screen: 'Search' })}>Add songs</Button>
+      {/* Bottom Action Footer */}
+      <View className="absolute bottom-0 left-0 right-0 p-4 bg-s1 border-t border-ln2 flex-row gap-2.5">
+        <Button variant="outline" size="sm" className="flex-1" icon={<Icon name="plus" size={14} color="#FFFFFF" />} onPress={saveAsPlaylist}>
+          Save as playlist
+        </Button>
+        <Button variant="outline" size="sm" className="flex-1" icon={<Icon name="playlist" size={14} color="#FFFFFF" />} onPress={() => navigation.navigate('Tabs', { screen: 'Search' })}>
+          Add songs
+        </Button>
       </View>
     </Screen>
   );

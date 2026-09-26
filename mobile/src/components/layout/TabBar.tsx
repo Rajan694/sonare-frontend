@@ -14,7 +14,7 @@ interface TabBarProps {
 
 export function TabBar({ tabs, activeTab }: TabBarProps) {
   return (
-    <View className="flex-row items-stretch h-[64px] bg-[#060607]/90 border-t border-ln">
+    <View className="flex-row items-stretch h-[64px] bg-[#060607] border-t border-ln">
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
