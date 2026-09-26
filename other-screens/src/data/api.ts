@@ -1,4 +1,5 @@
 import { API_BASE, getAccessToken, refreshAccessToken } from './auth'
+import { CLIENT } from '../lib/caps'
 import type { Track, Album, Artist, Playlist, Page, User } from './types'
 
 export class ApiError extends Error {
@@ -41,6 +42,7 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   const headers = new Headers(init.headers)
+  headers.set('X-Sonare-Client', CLIENT)
   if (!headers.has('Content-Type') && init.body && typeof init.body === 'string') {
     headers.set('Content-Type', 'application/json')
   }
