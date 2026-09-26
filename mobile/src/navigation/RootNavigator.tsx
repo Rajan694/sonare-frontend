@@ -11,6 +11,9 @@ import { QueueScreen } from '../screens/Queue';
 import { EqualizerScreen } from '../screens/Equalizer';
 import { SettingsScreen } from '../screens/Settings';
 import { FoldersScreen } from '../screens/Folders';
+import { DownloadsScreen } from '../screens/Downloads';
+import { useDownloadsStore } from '../store/downloads';
+import { useSettingsStore } from '../data/settings';
 import { ModeSwitchScreen } from '../screens/ModeSwitch';
 import { SignInScreen } from '../screens/SignIn';
 import { useAuthStore } from '../data/auth';
@@ -80,6 +83,9 @@ function ModeToast() {
  */
 function useSessionEffects(status: string) {
   useEffect(() => {
+    if (status === 'loading') return;
+    // Account settings (download quality / format) follow whoever is signed in.
+    void useSettingsStore.getState().hydrate();
     if (status === 'signedIn') {
       useLibraryStore.getState().load().finally(() => takePendingAction()?.());
     } else if (status === 'guest') {
@@ -94,6 +100,8 @@ export function RootNavigator() {
 
   useEffect(() => {
     hydrate();
+    // Picks up downloads that were running when the app last closed.
+    void useDownloadsStore.getState().hydrate();
   }, [hydrate]);
   useSessionEffects(status);
 
@@ -125,6 +133,7 @@ export function RootNavigator() {
         <Stack.Screen name="Equalizer" component={EqualizerScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Folders" component={FoldersScreen} />
+        <Stack.Screen name="Downloads" component={DownloadsScreen} />
         <Stack.Screen name="ModeSwitch" component={ModeSwitchScreen} />
         <Stack.Screen name="SignIn" component={SignInScreen} />
       </Stack.Navigator>

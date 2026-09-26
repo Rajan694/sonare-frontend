@@ -5,6 +5,7 @@ import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
 import { SongRow } from '../components/music/SongRow';
+import { DownloadAllButton } from '../components/music/DownloadAllButton';
 import { Badge } from '../components/ui/Badge';
 import { IconButton } from '../components/ui/IconButton';
 import { StateView } from '../components/ui/StateView';
@@ -129,6 +130,7 @@ export function AlbumScreen() {
                   }}
                   accessibilityLabel="Add to queue"
                 />
+                <DownloadAllButton tracks={tracks} />
               </View>
 
               <View className="flex-row items-center gap-3">

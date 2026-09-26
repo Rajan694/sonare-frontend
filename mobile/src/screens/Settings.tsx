@@ -9,6 +9,8 @@ import { Button } from '../components/ui/Button';
 import { useModeStore } from '../store/mode';
 import { useAuthStore } from '../data/auth';
 import { useSyncStatus } from '../data/sync';
+import { useSettingsStore, type AudioQuality, type DownloadFormat } from '../data/settings';
+import { useDownloadsStore } from '../store/downloads';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
 
@@ -29,6 +31,27 @@ export function SettingsScreen() {
     ]);
 
   const isGold = mode === 'offline';
+  const downloadQuality = useSettingsStore(s => s.downloadQuality);
+  const downloadFormat = useSettingsStore(s => s.downloadFormat);
+  const updateSettings = useSettingsStore(s => s.update);
+  const location = useDownloadsStore(s => s.location);
+  const doneCount = useDownloadsStore(s => Object.values(s.items).filter(d => d.status === 'done').length);
+  const activeCount = useDownloadsStore(s => Object.values(s.items).filter(d => d.status === 'queued' || d.status === 'downloading').length);
+
+  const changeLocation = async () => {
+    try {
+      await useDownloadsStore.getState().chooseLocation();
+    } catch (e: any) {
+      Alert.alert('Could not change the folder', e?.message);
+    }
+  };
+
+  const locationOptions = () =>
+    Alert.alert('Download location', `New downloads are saved to ${location.label}. Songs already downloaded stay where they are.`, [
+      { text: 'Cancel', style: 'cancel' },
+      ...(location.treeUri ? [{ text: 'Use Music/Sonare', onPress: () => void useDownloadsStore.getState().resetLocation() }] : []),
+      { text: 'Choose folder', onPress: () => void changeLocation() },
+    ]);
 
   return (
     <Screen scrollable={false} className="bg-bg">
@@ -122,6 +145,64 @@ export function SettingsScreen() {
               </Text>
             </View>
           )}
+        </View>
+
+        {/* Downloads */}
+        <View className="gap-2">
+          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Downloads</Text>
+          <View className="bg-s1 border border-ln rounded-xl overflow-hidden">
+            <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
+              <View className="gap-0.5">
+                <Text className="text-tm font-medium text-t1">Download quality</Text>
+                <Text className="text-bs text-t3">Low ≈ 50-70 kbps · Normal ≈ 128 kbps · High = best available</Text>
+              </View>
+              <SegmentedControl
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'high', label: 'High' },
+                ]}
+                value={downloadQuality}
+                onChange={v => updateSettings({ downloadQuality: v as AudioQuality })}
+              />
+            </View>
+            <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
+              <View className="gap-0.5">
+                <Text className="text-tm font-medium text-t1">File format</Text>
+                <Text className="text-bs text-t3">Saved as YouTube serves it, never re-encoded. AAC plays in more apps.</Text>
+              </View>
+              <SegmentedControl
+                options={[
+                  { value: 'opus', label: 'Opus (.webm)' },
+                  { value: 'm4a', label: 'AAC (.m4a)' },
+                ]}
+                value={downloadFormat}
+                onChange={v => updateSettings({ downloadFormat: v as DownloadFormat })}
+              />
+            </View>
+            <Pressable onPress={locationOptions} className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln" accessibilityRole="button" accessibilityLabel="Download location">
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="folder" size={18} color="#7E7E8C" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Download location</Text>
+                <Text className="text-bs text-t3" numberOfLines={1}>{location.label}</Text>
+              </View>
+              <Text className="text-bs text-acc">Change</Text>
+            </Pressable>
+            <Pressable onPress={() => navigation.navigate('Downloads')} className="flex-row items-center gap-3.5 px-4 py-3.5" accessibilityRole="button" accessibilityLabel="Manage downloads">
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="download" size={18} color="#7E7E8C" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Manage downloads</Text>
+                <Text className="text-bs text-t3">
+                  {activeCount > 0 ? `${activeCount} in progress · ${doneCount} downloaded` : `${doneCount} downloaded`}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color="#7E7E8C" />
+            </Pressable>
+          </View>
         </View>
 
         {/* Playback Settings Group */}

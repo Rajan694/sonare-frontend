@@ -19,6 +19,7 @@ import { cn } from '../lib/cn';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useNavigation } from '@react-navigation/native';
 import type { Track } from '../data/types';
+import { downloadedTracks, useDownloadsStore } from '../store/downloads';
 
 type Tab = 'songs' | 'albums' | 'artists' | 'genres' | 'folders';
 type Sort = 'addedAt' | 'playCount' | 'title';
@@ -49,8 +50,11 @@ export function LibraryScreen() {
     refetchOnFocus: true,
   });
 
+  const downloads = useDownloadsStore((state) => state.items);
   const serverTracks = (library.data?.items ?? []).filter(t => t.source === 'server');
-  const displayTracks = online ? serverTracks : [];
+  // Offline, the library is what's been downloaded to this phone.
+  const offlineTracks = React.useMemo(() => downloadedTracks(downloads), [downloads]);
+  const displayTracks = online ? serverTracks : offlineTracks;
 
   const onPlayAll = () => {
     if (displayTracks.length > 0) {
@@ -141,6 +145,12 @@ export function LibraryScreen() {
             />
             <View className="flex-row items-center gap-1">
               <IconButton
+                icon={<Icon name="download" size={16} color="#9A9AA8" />}
+                size={32}
+                onPress={() => navigation.navigate('Downloads')}
+                accessibilityLabel="Downloads"
+              />
+              <IconButton
                 icon={<Icon name="equalizer" size={16} color="#9A9AA8" />}
                 size={32}
                 onPress={() => {}}
@@ -183,7 +193,7 @@ export function LibraryScreen() {
                 Shuffle
               </Button>
               <Text className="text-bs text-t3 flex-1 text-right font-normal">
-                {library.data?.meta?.total ? `${library.data.meta.total} songs` : `${displayTracks.length} songs`}
+                {online && library.data?.meta?.total ? `${library.data.meta.total} songs` : `${displayTracks.length} songs`}
               </Text>
             </View>
           )}
@@ -213,7 +223,7 @@ export function LibraryScreen() {
                 onRetry={library.refetch}
                 empty={online
                   ? 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".'
-                  : 'No music on this device yet.'}
+                  : 'No music on this phone yet. Songs you download show up here.'}
               />
             }
             contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 140 }}

@@ -11,6 +11,9 @@ import { songCount } from '../../lib/format';
 import { usePlayerStore } from '../../store/player';
 import { useLibraryStore } from '../../store/library';
 import { useTrackMenuStore } from '../../store/trackMenu';
+import { useDownloadsStore } from '../../store/downloads';
+import { useModeStore } from '../../store/mode';
+import { confirmRemoveDownloads } from '../../lib/confirmRemoveDownloads';
 import type { Track } from '../../data/types';
 
 function MenuItem({ icon, label, onPress }: { icon: React.ComponentProps<typeof Icon>['name']; label: string; onPress: () => void }) {
@@ -87,6 +90,8 @@ function PlaylistPicker({ track }: { track: Track }) {
 function Menu({ track }: { track: Track }) {
   const { close, open, extraAction } = useTrackMenuStore();
   const favourite = useLibraryStore(s => !!s.favouriteIds[track.id]);
+  const download = useDownloadsStore(s => s.items[track.id]);
+  const online = useModeStore(s => s.mode) === 'online';
 
   const run = (fn: () => unknown) => () => {
     close();
@@ -115,6 +120,17 @@ function Menu({ track }: { track: Track }) {
           requireAccount('Create a free account to make playlists.', () => open(track, { view: 'playlists' })),
         )}
       />
+      {track.source === 'server' && (
+        download?.status === 'done' ? (
+          <MenuItem icon="trash" label="Delete download" onPress={run(() => confirmRemoveDownloads([download]))} />
+        ) : download?.status === 'queued' || download?.status === 'downloading' ? (
+          <MenuItem icon="pause" label="Pause download" onPress={run(() => useDownloadsStore.getState().pause(track.id))} />
+        ) : download ? (
+          <MenuItem icon="download" label="Resume download" onPress={run(() => useDownloadsStore.getState().resume(track.id))} />
+        ) : online ? (
+          <MenuItem icon="download" label="Download" onPress={run(() => useDownloadsStore.getState().enqueue([track]))} />
+        ) : null
+      )}
       {extraAction && <MenuItem icon="more" label={extraAction.label} onPress={run(extraAction.onPress)} />}
     </View>
   );
