@@ -10,4 +10,9 @@ export const CAPS = {
   offlineMode: native,
   downloads: native,
   nativeEq: native,
+  /** The /admin page is part of the web build only. */
+  admin: !native,
 } as const
+
+/** Which app this is, sent as X-Sonare-Client for the admin analytics. */
+export const CLIENT: 'web' | 'linux' = native ? 'linux' : 'web'

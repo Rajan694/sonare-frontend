@@ -1,4 +1,5 @@
 import type { User } from './types'
+import { CLIENT } from '../lib/caps'
 
 // Signed out is guest mode: catalog and playback work, saving needs an account (accountGate.ts).
 // In dev, VITE_DEV_EMAIL / VITE_DEV_PASSWORD sign in automatically — until someone signs out.
@@ -10,6 +11,7 @@ const USER_KEY = 'sonare_user'
 const SIGNED_OUT_KEY = 'sonare_signed_out'
 
 export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3010/api/v1'
+const JSON_HEADERS = { 'Content-Type': 'application/json', 'X-Sonare-Client': CLIENT }
 
 let currentAccessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY)
 let currentRefreshToken: string | null = localStorage.getItem(REFRESH_TOKEN_KEY)
@@ -105,7 +107,7 @@ export function clearSession() {
 export async function signIn(email: string, password: string): Promise<User> {
   const res = await fetch(`${API_BASE}/auth/login`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify({ email, password }),
   })
 
@@ -121,7 +123,7 @@ export async function signIn(email: string, password: string): Promise<User> {
 export async function signUp(email: string, password: string, displayName: string): Promise<User> {
   const res = await fetch(`${API_BASE}/auth/register`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: JSON_HEADERS,
     body: JSON.stringify({ email, password, displayName }),
   })
 
@@ -140,8 +142,8 @@ export async function signOut(): Promise<void> {
       await fetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: {
+          ...JSON_HEADERS,
           'Authorization': `Bearer ${currentAccessToken}`,
-          'Content-Type': 'application/json',
         },
         // The server revokes by refresh token; without it the session stays usable.
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
@@ -169,7 +171,7 @@ export async function refreshAccessToken(): Promise<string | null> {
     try {
       const res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: JSON_HEADERS,
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
       })
 
