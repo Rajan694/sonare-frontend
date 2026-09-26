@@ -260,7 +260,7 @@ export default function Search() {
                     )}
 
                     {/* Songs 4 rows table */}
-                    <div className="flex flex-col gap-3 min-w-0">
+                    <div className="@container flex flex-col gap-3 min-w-0">
                       <span className="text-overline text-t3 uppercase font-semibold">Songs</span>
                       <div className="flex flex-col gap-0.5">
                         {combinedTracks.slice(0, 4).map((track, i) => (

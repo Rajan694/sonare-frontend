@@ -8,13 +8,14 @@ import { useArtist, useArtistTopTracks, useArtistAlbums } from '../data/hooks'
 import { api } from '../data/api'
 import { requireAccount } from '../data/accountGate'
 import { openTrackMenu } from '../components/music/TrackMenu'
-import SongRow from '../components/music/SongRow'
+import SongRow, { SongTableHeader } from '../components/music/SongRow'
 import Artwork from '../components/music/Artwork'
-import Button from '../components/ui/Button'
-import { IconButton } from '../components/ui/Button'
+import Button, { IconButton } from '../components/ui/Button'
+import Icon from '../components/ui/Icon'
 import { EmptyState } from '../components/ui/EmptyState'
+import { Card } from '../components/ui/Card'
 import { staggerContainer } from '../lib/motion'
-import type { Track } from '../data/types'
+import type { Track, Album } from '../data/types'
 
 export default function Artist() {
   const { id } = useParams()
@@ -23,27 +24,14 @@ export default function Artist() {
   const isOffline = mode === 'offline'
 
   const { data: artist, loading: artistLoading, error: artistError } = useArtist(id)
-  const { data: topTracksData, loading: tracksLoading } = useArtistTopTracks(id, 10)
-  const { data: albumsData, loading: albumsLoading } = useArtistAlbums(id)
-  // null until the user toggles; before that the server's value applies.
-  const [following, setFollowing] = useState<boolean | null>(null)
+  const { data: tracksData, loading: tracksLoading } = useArtistTopTracks(id)
+  const { data: albumsData } = useArtistAlbums(id)
 
-  const tracks = topTracksData?.items || []
-  const albums = albumsData?.items || []
+  const [followingOverride, setFollowing] = useState<boolean | null>(null)
+  const isFollowing = followingOverride ?? (artist?.following || false)
 
-  const isFollowing = following ?? artist?.following ?? false
-
-  const toggleFollowing = () =>
-    requireAccount('Create a free account to follow artists.', async () => {
-      if (!id) return
-      const next = !isFollowing
-      setFollowing(next)
-      try {
-        await api.setArtistFollowing(id, next)
-      } catch {
-        setFollowing(!next)
-      }
-    })
+  const tracks: Track[] = tracksData?.items || []
+  const albums: Album[] = albumsData?.items || []
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
@@ -58,11 +46,23 @@ export default function Artist() {
     }
   }
 
+  const toggleFollowing = () =>
+    requireAccount('Create a free account to follow artists.', async () => {
+      if (!id) return
+      const next = !isFollowing
+      setFollowing(next)
+      try {
+        await api.setArtistFollowing(id, next)
+      } catch {
+        setFollowing(!next)
+      }
+    })
+
   if (artistLoading) {
     return (
       <div className="flex flex-col p-8 gap-6 animate-pulse">
-        <div className="flex items-end gap-6 pb-6 min-h-[280px]">
-          <div className="w-[160px] h-[160px] bg-s2/40 rounded-xl" />
+        <div className="flex items-end gap-6 pb-6">
+          <div className="w-[180px] h-[180px] bg-s2/40 rounded-full" />
           <div className="flex flex-col gap-4 grow">
             <div className="h-4 bg-s2/40 rounded w-20" />
             <div className="h-10 bg-s2/40 rounded w-1/2" />
@@ -86,44 +86,51 @@ export default function Artist() {
     )
   }
 
+  const isLocalArtist = CAPS.localLibrary && !!artist.localTrackCount
+
   return (
-    <div className="@container flex flex-col overflow-auto h-full">
-      <div className="relative flex items-end gap-6 p-8 pb-6 min-h-[280px]">
-        <div className="ambient" aria-hidden>
-          <i className="bg-acc w-[400px] h-[400px] -top-[100px] -left-[100px]" />
-          <i className="bg-s3 w-[300px] h-[300px] top-0 right-0" />
-        </div>
+    <div className="@container flex flex-col overflow-auto h-full relative">
+      {/* Artwork-derived ambient blurred background */}
+      <div className="ambient h-[340px] pointer-events-none" aria-hidden>
+        <i className="bg-acc w-[460px] h-[460px] -left-[100px] -top-[200px] opacity-25" />
+        <i className="bg-s3 w-[380px] h-[380px] left-[260px] -top-[160px] opacity-20" />
+      </div>
+
+      {/* Hero Header */}
+      <div className="relative flex flex-col @[480px]:flex-row @[480px]:items-end gap-6 p-6 @[480px]:p-8 pb-6">
         <Artwork
           src={artist.thumbnail || (id ? `/api/v1/artists/${id}/artwork?size=300` : undefined)}
           alt={artist.name}
           variant="a5"
-          size={160}
-          radius="xl"
-          className="relative"
+          size={184}
+          radius="circ"
+          rings
+          className="shadow-2xl flex-none mx-auto @[480px]:mx-0"
         />
-        <div className="flex flex-col gap-4 grow min-w-0 relative">
-          <div className="flex flex-col gap-1">
-            <span className="text-overline text-t3">Artist</span>
-            <span className="text-display text-t1">{artist.name}</span>
-            {artist.monthlyListeners && !isOffline && (
-              <span className="text-title-l text-t2">{artist.monthlyListeners.toLocaleString()} monthly listeners</span>
-            )}
-            <span className="text-body-l text-t3">
-              {CAPS.localLibrary && artist.localTrackCount ? `${artist.localTrackCount} local tracks · ` : ''}
-              {artist.albumCount ? `${artist.albumCount} albums` : ''}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button
-              variant={isOffline ? 'gold' : 'acc'}
-              icon="play"
+        <div className="flex flex-col gap-3 grow min-w-0 text-center @[480px]:text-left">
+          <span className="text-overline text-t3 uppercase font-semibold">
+            ARTIST {isLocalArtist ? '· ON THIS DEVICE' : ''}
+          </span>
+          <span className="text-display-m @[720px]:text-display text-t1 font-semibold truncate">{artist.name}</span>
+          <span className="text-body-m text-t2 truncate">
+            {artist.monthlyListeners && !isOffline ? `${artist.monthlyListeners.toLocaleString()} monthly listeners` : ''}
+            {artist.monthlyListeners && (artist.albumCount || artist.localTrackCount) ? ' · ' : ''}
+            {artist.albumCount ? `${artist.albumCount} albums` : ''}
+            {artist.localTrackCount ? `${artist.albumCount ? ' · ' : ''}${artist.localTrackCount} local songs` : ''}
+          </span>
+
+          <div className="flex items-center justify-center @[480px]:justify-start gap-3 mt-1 flex-wrap">
+            <button
+              className="playbtn playbtn-56 flex-none"
+              aria-label="Play artist"
               onClick={handlePlayAll}
               disabled={tracks.length === 0}
             >
-              Play
-            </Button>
+              <Icon name="play" size={24} />
+            </button>
             <Button
               variant="out"
+              size="lg"
               icon="shuffle"
               onClick={handleShuffle}
               disabled={tracks.length === 0}
@@ -132,62 +139,82 @@ export default function Artist() {
             </Button>
             <Button
               variant={isFollowing ? 'solid' : 'out'}
+              size="lg"
               onClick={toggleFollowing}
             >
               {isFollowing ? 'Following' : 'Follow'}
             </Button>
-            <IconButton icon="more" label="More options" size={40} disabled={tracks.length === 0} onClick={e => openTrackMenu(tracks, e)} />
+            <IconButton
+              icon="more"
+              label="More options"
+              size={44}
+              bordered
+              disabled={tracks.length === 0}
+              onClick={e => openTrackMenu(tracks, e)}
+            />
           </div>
         </div>
       </div>
 
-      <div className="flex flex-col gap-6 px-8 pb-8">
-        <div className="flex flex-col gap-2">
-          <span className="text-h2 text-t1">Popular tracks</span>
-          {tracksLoading ? (
-            <div className="flex flex-col gap-2 animate-pulse">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="srow h-14 bg-s2/30 rounded" />
-              ))}
+      {/* Popular Tracks & About Side-by-Side (or stacked on mobile) */}
+      <div className="flex flex-col gap-8 px-4 @[480px]:px-8 pb-8 relative">
+        <div className="grid grid-cols-1 @[840px]:grid-cols-[minmax(0,1fr)_300px] gap-8 items-start">
+          {/* Popular list column with its own @container */}
+          <div className="@container flex flex-col gap-3 min-w-0">
+            <span className="text-h2 text-t1 font-semibold">Popular</span>
+            {tracksLoading ? (
+              <div className="flex flex-col gap-2 animate-pulse pt-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="srow h-14 bg-s2/30 rounded" />
+                ))}
+              </div>
+            ) : tracks.length === 0 ? (
+              <div className="text-t3 py-4">No tracks found for this artist</div>
+            ) : (
+              <motion.div className="flex flex-col gap-0.5" variants={staggerContainer} initial="hidden" animate="visible">
+                {tracks.slice(0, 5).map((track: Track, i: number) => (
+                  <SongRow
+                    key={track.id}
+                    track={track}
+                    index={i + 1}
+                    isActive={currentTrack?.id === track.id}
+                    onClick={() => playTrack(track, tracks)}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </div>
+
+          {/* About Card: only render if artist has local track counts */}
+          {CAPS.localLibrary && !!artist.localTrackCount && (
+            <div className="flex flex-col gap-3">
+              <span className="text-h2 text-t1 font-semibold">About</span>
+              <div className="surf flex flex-col gap-3 p-5 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-body-s text-t3">On this device</span>
+                  <span className="text-mono-s text-gold">{artist.localTrackCount} songs</span>
+                </div>
+              </div>
             </div>
-          ) : tracks.length === 0 ? (
-            <div className="text-t3 py-4">No tracks found for this artist</div>
-          ) : (
-            <motion.div className="flex flex-col gap-0.5" variants={staggerContainer} initial="hidden" animate="visible">
-              {tracks.map((track, i) => (
-                <SongRow
-                  key={track.id}
-                  track={track}
-                  index={i + 1}
-                  isActive={currentTrack?.id === track.id}
-                  onClick={() => playTrack(track, tracks)}
-                />
-              ))}
-            </motion.div>
           )}
         </div>
 
+        {/* Albums Shelf */}
         {albums.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <span className="text-h2 text-t1">Albums</span>
-            <div className="flex gap-4 flex-wrap">
-              {albums.map((album, i) => (
-                <Link
+          <div className="flex flex-col gap-3.5">
+            <div className="shead">
+              <span className="text-h2 text-t1 font-semibold">Albums</span>
+            </div>
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+              {albums.map((album: Album, i: number) => (
+                <Card
                   key={album.id}
+                  title={album.title}
+                  subtitle={album.year ? String(album.year) : 'Album'}
+                  artVariant={`a${(((i + 1) % 12) || 12) as 1}`}
+                  thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
                   to={`/album/${album.id}`}
-                  className="acard w-[140px] no-underline text-inherit"
-                >
-                  <Artwork
-                    src={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
-                    alt={album.title}
-                    variant={`a${((i + 1) % 12) || 12}` as any}
-                    size={140}
-                  />
-                  <div className="flex flex-col gap-1">
-                    <span className="text-label-l text-t1 truncate">{album.title}</span>
-                    {album.year && <span className="text-label-s text-t3 truncate">{album.year}</span>}
-                  </div>
-                </Link>
+                />
               ))}
             </div>
           </div>
