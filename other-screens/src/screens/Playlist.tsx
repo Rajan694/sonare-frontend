@@ -162,7 +162,7 @@ export default function Playlist() {
                 <span>Synced</span>
               </span>
             )}
-            {CAPS.downloads && playlist?.downloadedCount !== undefined && playlist.downloadedCount > 0 && (
+            {CAPS.offlineDownloads && playlist?.downloadedCount !== undefined && playlist.downloadedCount > 0 && (
               <span className="badge bg-neutral">{playlist.downloadedCount} of {tracks.length} downloaded</span>
             )}
           </div>

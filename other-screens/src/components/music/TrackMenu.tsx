@@ -9,7 +9,8 @@ import { requireAccount } from '../../data/accountGate'
 import { isAuthenticated } from '../../data/auth'
 import type { Track } from '../../data/types'
 import { CAPS } from '../../lib/caps'
-import { localLibrary, useLocalLibrary } from '../../data/local'
+import { localLibrary } from '../../data/local'
+import { downloads, useDownload } from '../../data/downloads'
 import { useModeStore } from '../../store/modeStore'
 
 /**
@@ -80,7 +81,6 @@ function OpenMenu({ target }: { target: MenuTarget }) {
   const location = useLocation()
   const { playNext, enqueue } = usePlayerStore()
   const { data: playlists } = useMyPlaylists()
-  const { downloads } = useLocalLibrary()
   const { mode } = useModeStore()
   const [picking, setPicking] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -88,6 +88,7 @@ function OpenMenu({ target }: { target: MenuTarget }) {
 
   const { tracks, playlist } = target
   const single = tracks.length === 1 ? tracks[0] : null
+  const download = useDownload(single?.id ?? '')
 
   // Keep the menu on screen; anchor it to the left of the pointer near the right edge.
   useLayoutEffect(() => {
@@ -161,13 +162,18 @@ function OpenMenu({ target }: { target: MenuTarget }) {
     }
   }
 
-  async function download(track: Track) {
-    try {
-      await localLibrary.download(track)
-      showToast({ title: 'Downloaded for offline', description: track.title, icon: 'download', variant: 'gold' })
-    } catch (e) {
-      showToast({ title: 'Download failed', description: e instanceof Error ? e.message : track.title, icon: 'info' })
-    }
+  async function startDownload(track: Track) {
+    await downloads.enqueue([track])
+    showToast({ title: 'Added to downloads', description: track.title, icon: 'download', variant: 'gold' })
+  }
+
+  async function deleteDownload(track: Track) {
+    const { fileDeleted, reason } = await downloads.remove(track.id)
+    showToast(
+      fileDeleted
+        ? { title: 'Download deleted', description: track.title, icon: 'trash' }
+        : { title: 'Removed from downloads', description: reason, icon: 'info' }
+    )
   }
 
   const ownPlaylists = playlists?.items ?? []
@@ -203,12 +209,14 @@ function OpenMenu({ target }: { target: MenuTarget }) {
                   Add to playlist…
                 </MenuItem>
                 {CAPS.downloads && single && single.source !== 'local' && (
-                  downloads.has(single.id) ? (
-                    <MenuItem icon="trash" onClick={run(() => void localLibrary.removeDownload(single.id).then(() => showToast({ title: 'Download removed', description: single.title, icon: 'trash' })))}>
-                      Remove download
-                    </MenuItem>
+                  download?.status === 'done' ? (
+                    <MenuItem icon="trash" onClick={run(() => void deleteDownload(single))}>Delete download</MenuItem>
+                  ) : download?.status === 'queued' || download?.status === 'downloading' ? (
+                    <MenuItem icon="pause" onClick={run(() => void downloads.pause(single.id))}>Pause download</MenuItem>
+                  ) : download ? (
+                    <MenuItem icon="download" onClick={run(() => void downloads.resume(single.id))}>Resume download</MenuItem>
                   ) : mode === 'online' && (
-                    <MenuItem icon="download" onClick={run(() => void download(single))}>Download</MenuItem>
+                    <MenuItem icon="download" onClick={run(() => void startDownload(single))}>Download</MenuItem>
                   )
                 )}
                 {CAPS.localLibrary && single && localLibrary.localIdFor(single.id) && (

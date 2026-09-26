@@ -168,6 +168,7 @@ export const api = {
       contentLength: number
       expiresAt: number
       muxed?: boolean
+      itag?: number
     }>(`/tracks/${encodeURIComponent(id)}/stream`, {
       params: { quality, format },
     })

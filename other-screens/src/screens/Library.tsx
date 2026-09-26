@@ -227,7 +227,7 @@ export default function Library() {
                 <option value="server">Server</option>
               </select>
 
-              {CAPS.downloads && (
+              {CAPS.offlineDownloads && (
                 <button
                   className={cn('chip chip-sm inline-flex items-center gap-1.5 flex-none', downloadedOnly && 'chip-on')}
                   onClick={() => setDownloadedOnly(prev => !prev)}

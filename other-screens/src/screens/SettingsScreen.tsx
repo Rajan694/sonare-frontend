@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useSyncExternalStore } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import Icon, { type IconName } from '../components/ui/Icon'
 import Button from '../components/ui/Button'
@@ -8,17 +8,37 @@ import { CAPS } from '../lib/caps'
 import { useModeStore } from '../store/modeStore'
 import { useLocalLibrary } from '../data/local'
 import { showToast } from '../store/toastStore'
-import { useSettings, updateSettings, type UserSettings } from '../data/settings'
+import { useSettings, updateSettings, type AudioQuality, type DownloadFormat } from '../data/settings'
+import { canPickWebFolder, chooseLocation, getLocation, loadLocation, resetLocation, subscribeLocation } from '../data/downloadTargets'
+import { useDownloads } from '../data/downloads'
 import { useAuth } from '../data/hooks'
 import { signOut } from '../data/auth'
 import { formatBytes } from '../lib/utils'
 
-const QUALITIES: { id: UserSettings['downloadQuality']; label: string }[] = [
+const QUALITIES: { id: AudioQuality; label: string }[] = [
   { id: 'low', label: 'Low (data saver)' },
   { id: 'normal', label: 'Normal' },
   { id: 'high', label: 'High' },
-  { id: 'lossless', label: 'Best available' },
 ]
+
+// YouTube's audio tops out around 160 kbps Opus / 128 kbps AAC; there is no lossless.
+const DOWNLOAD_QUALITIES: { id: AudioQuality; label: string }[] = [
+  { id: 'low', label: 'Low · about 50-70 kbps' },
+  { id: 'normal', label: 'Normal · about 128 kbps' },
+  { id: 'high', label: 'High · best available' },
+]
+
+const DOWNLOAD_FORMATS: { id: DownloadFormat; label: string }[] = [
+  { id: 'opus', label: 'Opus (.webm)' },
+  { id: 'm4a', label: 'AAC (.m4a)' },
+]
+
+function useDownloadLocation() {
+  useEffect(() => {
+    void loadLocation()
+  }, [])
+  return useSyncExternalStore(subscribeLocation, getLocation)
+}
 
 interface SectionDef {
   id: string
@@ -56,6 +76,8 @@ export default function SettingsScreen() {
   const { mode, setMode } = useModeStore()
   const { user } = useAuth()
   const local = useLocalLibrary()
+  const location = useDownloadLocation()
+  const { items: downloadItems, activeCount } = useDownloads()
 
   const sections: SectionDef[] = [
     {
@@ -73,6 +95,14 @@ export default function SettingsScreen() {
       title: 'Playback',
       description: 'Audio streaming quality, gaps, and volume normalization.',
       available: true,
+    },
+    {
+      id: 'downloads',
+      label: 'Downloads',
+      icon: 'download',
+      title: 'Downloads',
+      description: 'Quality, file format and where downloaded songs are saved.',
+      available: CAPS.downloads,
     },
     {
       id: 'audio',
@@ -176,8 +206,8 @@ export default function SettingsScreen() {
         <select
           className="chip text-t1 bg-s2 border-ln2 appearance-none"
           aria-label="Streaming quality"
-          value={settings.downloadQuality}
-          onChange={e => updateSettings({ downloadQuality: e.target.value as UserSettings['downloadQuality'] })}
+          value={settings.streamQuality}
+          onChange={e => updateSettings({ streamQuality: e.target.value as AudioQuality })}
         >
           {QUALITIES.map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
         </select>
@@ -192,6 +222,90 @@ export default function SettingsScreen() {
           <Switch checked={settings.normalization} onCheckedChange={normalization => updateSettings({ normalization })} aria-label="Toggle volume normalization" />
         </Row>
       </label>
+    </div>
+  )
+
+  async function changeLocation() {
+    try {
+      if (await chooseLocation()) showToast({ title: 'Download location changed', description: 'New downloads are saved there', icon: 'folder', variant: 'gold' })
+    } catch (e) {
+      showToast({ title: 'Could not change the location', description: e instanceof Error ? e.message : undefined, icon: 'info' })
+    }
+  }
+
+  const doneCount = downloadItems.filter(d => d.status === 'done').length
+  const canChangeLocation = CAPS.offlineDownloads || canPickWebFolder
+  const locationDesc = location.kind === 'browser'
+    ? canPickWebFolder
+      ? "Your browser's Downloads folder. Choose a folder to let Sonare delete files too."
+      : "Your browser's Downloads folder (this browser can't save into other folders)"
+    : location.label
+
+  const renderDownloads = () => (
+    <div className="flex flex-col gap-4">
+      <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
+        <div className="lrow">
+          <span className="icobox"><Icon name="music" size={18} /></span>
+          <span className="flex flex-col grow min-w-0 gap-0.5">
+            <span className="text-body-m text-t1 font-medium">Download quality</span>
+            <span className="text-body-s text-t3 truncate">Applies to new downloads</span>
+          </span>
+          <select
+            className="chip text-t1 bg-s2 border-ln2 appearance-none"
+            aria-label="Download quality"
+            value={settings.downloadQuality}
+            onChange={e => updateSettings({ downloadQuality: e.target.value as AudioQuality })}
+          >
+            {DOWNLOAD_QUALITIES.map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
+          </select>
+        </div>
+        <div className="lrow">
+          <span className="icobox"><Icon name="disc" size={18} /></span>
+          <span className="flex flex-col grow min-w-0 gap-0.5">
+            <span className="text-body-m text-t1 font-medium">File format</span>
+            <span className="text-body-s text-t3 truncate">Saved as YouTube serves it, never re-encoded. AAC plays in more apps.</span>
+          </span>
+          <select
+            className="chip text-t1 bg-s2 border-ln2 appearance-none"
+            aria-label="Download format"
+            value={settings.downloadFormat}
+            onChange={e => updateSettings({ downloadFormat: e.target.value as DownloadFormat })}
+          >
+            {DOWNLOAD_FORMATS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+          </select>
+        </div>
+        <div className="lrow">
+          <span className="icobox"><Icon name="folder" size={18} /></span>
+          <span className="flex flex-col grow min-w-0 gap-0.5">
+            <span className="text-body-m text-t1 font-medium">Download location</span>
+            <span className="text-body-s text-t3 truncate" title={location.label}>{locationDesc}</span>
+          </span>
+          {canChangeLocation && (
+            <span className="flex items-center gap-2 flex-none">
+              {location.custom && (
+                <Button variant="ghost" size="sm" onClick={() => void resetLocation()}>Default</Button>
+              )}
+              <Button variant="out" size="sm" icon="folder" onClick={() => void changeLocation()}>
+                {location.kind === 'browser' ? 'Choose folder' : 'Change'}
+              </Button>
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
+        <Link to="/downloads" className="no-underline block">
+          <Row
+            icon="download"
+            label="Manage downloads"
+            desc={activeCount > 0 ? `${activeCount} in progress · ${doneCount} downloaded` : `${doneCount} downloaded`}
+          >
+            {chevron}
+          </Row>
+        </Link>
+      </div>
+      <span className="text-body-s text-t4 pl-1">
+        Changing the location only affects new downloads; existing files stay where they are.
+      </span>
     </div>
   )
 
@@ -302,6 +416,7 @@ export default function SettingsScreen() {
     switch (id) {
       case 'account': return renderAccount()
       case 'playback': return renderPlayback()
+      case 'downloads': return renderDownloads()
       case 'audio': return renderAudio()
       case 'library': return renderLibrary()
       case 'connection': return renderConnection()
@@ -332,6 +447,11 @@ export default function SettingsScreen() {
         <div className="flex flex-col gap-2">
           <span className="text-overline text-t3 pl-1">Playback</span>
           {renderPlayback()}
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <span className="text-overline text-t3 pl-1">Downloads</span>
+          {renderDownloads()}
         </div>
 
         <div className="flex flex-col gap-2">

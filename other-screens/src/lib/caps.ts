@@ -8,7 +8,10 @@ const native = isNeutralino() && window.NL_MODE === 'window'
 export const CAPS = {
   localLibrary: native,
   offlineMode: native,
-  downloads: native,
+  /** The Downloads screen: native saves into a folder, web saves through the browser. */
+  downloads: true,
+  /** Downloads join the local library, so they play from disk and in Offline mode. */
+  offlineDownloads: native,
   nativeEq: native,
   /** The /admin page is part of the web build only. */
   admin: !native,
