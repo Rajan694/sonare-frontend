@@ -15,18 +15,18 @@ export function Header({ title, left, right, className }: HeaderProps) {
   
   return (
     <View 
-      className={cn('flex-row items-center justify-between px-4 border-b border-ln', className)}
+      className={cn('flex-row items-center justify-between px-5', className)}
       style={{ paddingTop: insets.top, minHeight: 64 + insets.top }}
     >
-      <View className="flex-1 flex-row justify-start">{left}</View>
+      <View className="flex-1 flex-row justify-start items-center">{left}</View>
       {title && (
         <View className="absolute inset-x-0 items-center pointer-events-none" style={{ top: insets.top, height: 64, justifyContent: 'center' }}>
-          <Text className="text-h2 font-semibold text-t1 text-center px-4" numberOfLines={1}>
+          <Text className="text-tl font-semibold text-t1 text-center px-4" numberOfLines={1}>
             {title}
           </Text>
         </View>
       )}
-      <View className="flex-1 flex-row justify-end">{right}</View>
+      <View className="flex-1 flex-row justify-end items-center">{right}</View>
     </View>
   );
 }

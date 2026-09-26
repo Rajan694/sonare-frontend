@@ -36,7 +36,7 @@ export function TabNavigator() {
           tabBarStyle: {
             height: 64 + insets.bottom,
             paddingBottom: insets.bottom,
-            backgroundColor: '#000000',
+            backgroundColor: 'rgba(6, 6, 7, 0.92)',
             borderTopColor: '#1A1A1F',
             borderTopWidth: 1,
             position: 'absolute',
@@ -49,9 +49,9 @@ export function TabNavigator() {
             paddingTop: 8,
           },
           tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '500',
-            letterSpacing: 0.4,
+            fontSize: 10,
+            fontWeight: '600',
+            letterSpacing: 0.3,
             marginTop: 4,
           },
           tabBarActiveTintColor: mode === 'offline' ? '#FFC24D' : '#00E28A',

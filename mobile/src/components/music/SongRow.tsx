@@ -6,6 +6,7 @@ import { artworkUrl } from '../../data/config';
 import { Artwork } from './Artwork';
 import { SourceGlyph } from './SourceGlyph';
 import { EqualizerBars } from './EqualizerBars';
+import { IconButton } from '../ui/IconButton';
 import { formatDuration } from '../../lib/format';
 import Animated, { FadeIn, Layout, ReduceMotion } from 'react-native-reanimated';
 import Icon from '../ui/Icon';
@@ -41,6 +42,10 @@ export function SongRow({
   const playing = usePlayerStore(s => isActive && s.isPlaying);
   const accent = track.source === 'local' ? '#FFC24D' : '#00E28A';
 
+  const subtitle = track.album
+    ? `${track.artist} · ${track.album}`
+    : track.artist;
+
   return (
     <Animated.View
        entering={FadeIn.delay(Math.min(index || 0, 12) * 30).springify().damping(20).reduceMotion(ReduceMotion.System)}
@@ -52,34 +57,38 @@ export function SongRow({
       accessibilityRole="button"
       accessibilityLabel={`${track.title} by ${track.artist}`}
       accessibilityHint="Long press for more options"
-      className={cn('flex-row items-center px-4 py-2 min-h-[56px]', isActive && 'bg-s1', className)}
+      className={cn(
+        'flex-row items-center px-2.5 py-2 rounded-md',
+        isActive ? 'bg-s2 border border-ln2' : 'bg-transparent',
+        className
+      )}
     >
       {showIndex && index !== undefined && (
-        <View className="w-[20px] mr-2 items-center justify-center">
+        <View className="w-[22px] mr-2 items-center justify-center">
           {isActive ? (
             <EqualizerBars isPlaying={playing} color={accent} />
           ) : (
-            <Text className="text-t3 text-bm text-right font-mono w-full">{index + 1}</Text>
+            <Text className="text-t3 text-[12px] text-right font-mono w-full">{index + 1}</Text>
           )}
         </View>
       )}
 
       {showArtwork && (
         <View className="mr-3">
-          <Artwork uri={artworkUrl(track, 64)} size={44} />
+          <Artwork uri={artworkUrl(track, 64)} size={44} className="rounded-sm" />
         </View>
       )}
 
-      <View className="flex-1 justify-center mr-3 p-1">
-        <View className="flex-row items-center gap-2">
-          <Text numberOfLines={1} className={cn("text-t1 text-tm font-medium flex-shrink", isActive && (track.source === 'local' ? 'text-gold' : 'text-acc'))}>
+      <View className="flex-1 justify-center mr-2 gap-0.5 min-w-0">
+        <View className="flex-row items-center gap-1.5 min-w-0">
+          <Text numberOfLines={1} className={cn("text-tm font-medium shrink", isActive ? (track.source === 'local' ? 'text-gold' : 'text-acc') : 'text-t1')}>
             {track.title}
           </Text>
-          <SourceGlyph source={track.source} />
+          <SourceGlyph source={track.source} size={18} />
           {favourite && <Icon name="heart" size={12} color={accent} />}
         </View>
         <Text numberOfLines={1} className="text-t2 text-bs">
-          {track.artist}
+          {subtitle}
         </Text>
       </View>
 
@@ -88,6 +97,13 @@ export function SongRow({
           {formatDuration(track.durationMs)}
         </Text>
       ) : null}
+
+      <IconButton
+        icon={<Icon name="more" size={16} color="#7E7E8C" />}
+        size={32}
+        onPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
+        accessibilityLabel={`More options for ${track.title}`}
+      />
     </Pressable>
     </Animated.View>
   );

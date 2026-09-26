@@ -6,6 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-na
 interface ButtonProps {
   onPress: () => void;
   children: React.ReactNode;
+  icon?: React.ReactNode;
   accessibilityLabel?: string;
   variant?: 'accent' | 'gold' | 'outline' | 'solid' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
@@ -18,6 +19,7 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable) as any;
 export function Button({
   onPress,
   children,
+  icon,
   accessibilityLabel,
   variant = 'accent',
   size = 'md',
@@ -40,27 +42,26 @@ export function Button({
       accessibilityLabel={accessibilityLabel}
       className={cn(
         // cn() only joins classes, so a caller's justify-* can't override a default one.
-        'flex-row items-center rounded-lg',
+        'flex-row items-center rounded-full',
         !/\bjustify-/.test(className ?? '') && 'justify-center',
-        size === 'sm' && 'h-[32px] px-3 gap-1.5',
-        size === 'md' && 'h-[40px] px-4 gap-2',
-        size === 'lg' && 'h-[48px] px-5 gap-2.5',
-        variant === 'accent' && 'bg-acc',
-        variant === 'gold' && 'bg-gold',
+        size === 'sm' && 'h-[32px] px-3.5 gap-1.5',
+        size === 'md' && 'h-[40px] px-4.5 gap-2',
+        size === 'lg' && 'h-[48px] px-6 gap-2.5',
+        variant === 'accent' && 'bg-acc shadow-glow-acc',
+        variant === 'gold' && 'bg-gold shadow-glow-gold',
         variant === 'outline' && 'border border-ln2 bg-transparent',
-        variant === 'solid' && 'bg-s2',
+        variant === 'solid' && 'bg-s3 border border-ln2',
         variant === 'ghost' && 'bg-transparent',
         disabled && 'opacity-40',
         className
       )}
       style={style}
     >
+      {icon}
       {typeof children === 'string' ? (
         <Text className={cn(
-          'font-medium',
-          size === 'sm' && 'text-lm',
-          size === 'md' && 'text-tm',
-          size === 'lg' && 'text-tl',
+          'font-semibold tracking-tight',
+          size === 'sm' ? 'text-bs' : size === 'md' ? 'text-bm' : 'text-tm',
           variant === 'accent' && 'text-black',
           variant === 'gold' && 'text-black',
           (variant === 'outline' || variant === 'solid' || variant === 'ghost') && 'text-t1'

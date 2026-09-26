@@ -11,7 +11,7 @@ interface ArtworkProps {
   uri?: string;
   /** Tried when `uri` fails to load, e.g. a smaller size that always exists. */
   fallbackUri?: string;
-  size: 40 | 42 | 44 | 48 | 56 | 64 | 96 | 132 | 160 | 200 | 240;
+  size: 30 | 40 | 42 | 44 | 48 | 56 | 64 | 68 | 76 | 84 | 96 | 132 | 160 | 200 | 240;
   gradient?: [string, string];
   className?: string;
   sharedTransitionTag?: string;
