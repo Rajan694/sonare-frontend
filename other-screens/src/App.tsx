@@ -34,6 +34,8 @@ export default function App() {
   const [mode, setModeRaw] = useState<Mode>('online')
   const effectiveMode: Mode = CAPS.offlineMode ? mode : 'online'
   const { stayOffline } = useSettings()
+  const stayOfflineRef = useRef(stayOffline)
+  stayOfflineRef.current = stayOffline
   // Track whether user explicitly changed mode in this session
   const userChangedMode = useRef(false)
   // Ensure connectivity check starts at most once per launch
@@ -58,27 +60,21 @@ export default function App() {
     if (CAPS.offlineMode && stayOffline) setModeRaw('offline')
   }, [stayOffline])
 
-  // Check internet connectivity on launch for Neutralino window builds
+  // Check internet connectivity once on launch for Neutralino window builds
   useEffect(() => {
-    if (!CAPS.offlineMode || stayOffline || launchCheckStarted.current) return
+    if (!CAPS.offlineMode || launchCheckStarted.current) return
     launchCheckStarted.current = true
-    let active = true
     hasInternet().then(online => {
-      if (!active) return
-      if (!online && !userChangedMode.current) {
-        setModeRaw('offline')
-        showToast({
-          title: 'No internet connection',
-          description: 'Switched to Offline Mode - showing music on this device',
-          icon: 'smartphone',
-          variant: 'gold',
-        })
-      }
+      if (online || userChangedMode.current || stayOfflineRef.current) return
+      setModeRaw('offline')
+      showToast({
+        title: 'No internet connection',
+        description: 'Switched to Offline Mode - showing music on this device',
+        icon: 'smartphone',
+        variant: 'gold',
+      })
     })
-    return () => {
-      active = false
-    }
-  }, [stayOffline])
+  }, [])
   const [playerState, setPlayerState] = useState<PlayerState>(defaultPlayerState)
   const currentTrack: Track | null = playerState.queue[playerState.index] ?? null
 
