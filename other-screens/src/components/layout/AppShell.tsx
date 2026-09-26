@@ -9,6 +9,7 @@ import IconRail from './IconRail'
 import BottomPlayer from './BottomPlayer'
 import MiniPlayer from './MiniPlayer'
 import MobileTabBar from './MobileTabBar'
+import QueuePanel from './QueuePanel'
 import TrackMenu from '../music/TrackMenu'
 import { Toast } from '../ui/Toast'
 import TooltipLayer from '../ui/Tooltip'
@@ -17,6 +18,8 @@ import { fadeRise, transition } from '../../lib/motion'
 import { bindAccountGateNavigator } from '../../data/accountGate'
 import { usePlayerShortcuts } from './usePlayerShortcuts'
 import { useLayout } from '../../lib/layout'
+import { useAppDispatch, useAppSelector } from '../../store'
+import { closeQueue, toggleQueue } from '../../store/uiSlice'
 import { cn } from '../../lib/utils'
 
 function isTyping(el: EventTarget | null) {
@@ -28,6 +31,8 @@ export default function AppShell() {
   const navigate = useNavigate()
   const toasts = useToasts()
   const layout = useLayout()
+  const dispatch = useAppDispatch()
+  const queueOpen = useAppSelector(s => s.ui.queueOpen)
 
   // FLOWS D09/M09: the full-screen player drops all chrome.
   const immersive = location.pathname === '/now-playing'
@@ -38,22 +43,26 @@ export default function AppShell() {
   // Space, ← → and ↑ ↓ drive the player from every screen.
   usePlayerShortcuts()
 
-  // FLOWS §3: Ctrl Q toggles the queue, Esc leaves the full-screen player.
+  // FLOWS §3: Ctrl Q toggles the queue, Esc leaves the full-screen player / closes queue.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
         e.preventDefault()
-        if (location.pathname === '/queue') navigate(-1)
-        else navigate('/queue')
-      } else if (e.key === 'Escape' && !isTyping(e.target) && ['/now-playing', '/lyrics', '/equalizer'].includes(location.pathname)) {
-        // A direct visit has no in-app history to go back to.
-        if (window.history.state?.idx > 0) navigate(-1)
-        else navigate('/home')
+        dispatch(toggleQueue())
+      } else if (e.key === 'Escape' && !isTyping(e.target)) {
+        if (queueOpen) {
+          e.preventDefault()
+          dispatch(closeQueue())
+        } else if (['/now-playing', '/lyrics', '/equalizer'].includes(location.pathname)) {
+          // A direct visit has no in-app history to go back to.
+          if (window.history.state?.idx > 0) navigate(-1)
+          else navigate('/home')
+        }
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [location.pathname, navigate])
+  }, [location.pathname, navigate, queueOpen, dispatch])
 
   const toastContainer = (
     <div
@@ -78,6 +87,23 @@ export default function AppShell() {
     </div>
   )
 
+  const sideQueuePanel = (
+    <AnimatePresence>
+      {queueOpen && (
+        <motion.div
+          key="queue-panel"
+          initial={{ x: 340, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: 340, opacity: 0 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+          className="flex-none h-full overflow-hidden"
+        >
+          <QueuePanel onClose={() => dispatch(closeQueue())} />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+
   // 1. Desktop Shell (Neutralino window)
   if (layout === 'desktop') {
     return (
@@ -86,20 +112,23 @@ export default function AppShell() {
           {!immersive && <Sidebar variant="desktop" />}
           <div className="flex flex-col grow overflow-hidden min-w-0">
             {!immersive && <Topbar />}
-            <div className="flex flex-col grow overflow-hidden relative">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={location.pathname}
-                  variants={fadeRise}
-                  initial="hidden"
-                  animate="visible"
-                  exit="exit"
-                  transition={transition.normal}
-                  className="flex flex-col grow overflow-auto h-full"
-                >
-                  <Outlet />
-                </motion.div>
-              </AnimatePresence>
+            <div className="flex grow overflow-hidden relative">
+              <div className="flex flex-col grow overflow-hidden relative min-w-0">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={location.pathname}
+                    variants={fadeRise}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    transition={transition.normal}
+                    className="flex flex-col grow overflow-auto h-full"
+                  >
+                    <Outlet />
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+              {!immersive && sideQueuePanel}
             </div>
           </div>
         </div>
@@ -118,20 +147,23 @@ export default function AppShell() {
         {!immersive && <TabletTopbar />}
         <div className="flex grow overflow-hidden min-w-0">
           {!immersive && <IconRail />}
-          <div className="flex flex-col grow overflow-hidden min-w-0 relative">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                variants={fadeRise}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                transition={transition.normal}
-                className="flex flex-col grow overflow-auto h-full min-w-0"
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
+          <div className="flex grow overflow-hidden min-w-0 relative">
+            <div className="flex flex-col grow overflow-hidden min-w-0 relative">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={location.pathname}
+                  variants={fadeRise}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  transition={transition.normal}
+                  className="flex flex-col grow overflow-auto h-full min-w-0"
+                >
+                  <Outlet />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+            {!immersive && sideQueuePanel}
           </div>
         </div>
         {!immersive && <BottomPlayer />}
@@ -145,7 +177,7 @@ export default function AppShell() {
   // 3. Phone Shell (< 768px)
   if (layout === 'phone') {
     return (
-      <div className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen overflow-hidden min-w-0">
+      <div className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen overflow-hidden min-w-0 relative">
         <div className="flex flex-col grow overflow-hidden min-w-0 relative">
           <AnimatePresence mode="wait">
             <motion.div
@@ -167,6 +199,23 @@ export default function AppShell() {
             <MobileTabBar />
           </>
         )}
+
+        {/* Mobile Full-Screen Sheet for Queue */}
+        <AnimatePresence>
+          {queueOpen && (
+            <motion.div
+              key="mobile-queue-sheet"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+              className="fixed inset-0 z-50 bg-bg flex flex-col"
+            >
+              <QueuePanel onClose={() => dispatch(closeQueue())} isMobileSheet />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <TrackMenu />
         <TooltipLayer />
         {toastContainer}
@@ -180,20 +229,23 @@ export default function AppShell() {
       {!immersive && <WebTopbar />}
       <div className="flex grow overflow-hidden min-w-0">
         {!immersive && <Sidebar variant="web" />}
-        <div className="flex flex-col grow overflow-hidden min-w-0 relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              variants={fadeRise}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              transition={transition.normal}
-              className="flex flex-col grow overflow-auto h-full min-w-0"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+        <div className="flex grow overflow-hidden min-w-0 relative">
+          <div className="flex flex-col grow overflow-hidden min-w-0 relative">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={location.pathname}
+                variants={fadeRise}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={transition.normal}
+                className="flex flex-col grow overflow-auto h-full min-w-0"
+              >
+                <Outlet />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          {!immersive && sideQueuePanel}
         </div>
       </div>
       {!immersive && <BottomPlayer />}

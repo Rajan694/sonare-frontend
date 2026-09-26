@@ -13,8 +13,12 @@ import Artwork, { trackArtwork } from '../music/Artwork';
 import Waveform from '../music/Waveform';
 import { formatDuration } from '../../lib/utils';
 import * as player from '../../data/player';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { toggleQueue } from '../../store/uiSlice';
 
 export default function BottomPlayer() {
+  const dispatch = useAppDispatch();
+  const queueOpen = useAppSelector(s => s.ui.queueOpen);
   const { mode } = useModeStore();
   const {
     state,
@@ -71,9 +75,15 @@ export default function BottomPlayer() {
           <Link to="/lyrics" className="ib ib-32 hidden sm:inline-flex" aria-label="Lyrics" data-tip="Lyrics">
             <Icon name="lyrics" size={16} />
           </Link>
-          <Link to="/queue" className="ib ib-32" aria-label="Queue" data-tip="Queue" data-tip-kbd="Ctrl Q">
+          <button
+            className={cn('ib ib-32', queueOpen && 'text-acc bg-accbg')}
+            aria-label="Queue"
+            data-tip="Queue"
+            data-tip-kbd="Ctrl Q"
+            onClick={() => dispatch(toggleQueue())}
+          >
             <Icon name="list" size={16} />
-          </Link>
+          </button>
           <Link to="/equalizer" className="ib ib-32 hidden md:inline-flex" aria-label="Equalizer" data-tip="Equalizer">
             <Icon name="sliders" size={16} />
           </Link>
@@ -183,9 +193,15 @@ export default function BottomPlayer() {
         <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" data-tip="Lyrics">
           <Icon name="lyrics" size={16} />
         </Link>
-        <Link to="/queue" className="ib ib-32" aria-label="Queue" data-tip="Queue" data-tip-kbd="Ctrl Q">
+        <button
+          className={cn('ib ib-32', queueOpen && 'text-acc bg-accbg')}
+          aria-label="Queue"
+          data-tip="Queue"
+          data-tip-kbd="Ctrl Q"
+          onClick={() => dispatch(toggleQueue())}
+        >
           <Icon name="list" size={16} />
-        </Link>
+        </button>
         <Link to="/equalizer" className="ib ib-32 hidden md:inline-flex" aria-label="Equalizer" data-tip="Equalizer">
           <Icon name="sliders" size={16} />
         </Link>

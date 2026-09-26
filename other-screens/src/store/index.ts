@@ -1,6 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit'
 import { useDispatch, useSelector } from 'react-redux'
 import search, { initialSearchState, type SearchState, type SearchType } from './searchSlice'
+import ui from './uiSlice'
 
 const SAVED_SEARCH_KEY = 'sonare_search'
 const SEARCH_TYPES: SearchType[] = ['songs', 'albums', 'artists', 'playlists']
@@ -20,7 +21,7 @@ function savedSearch(): SearchState {
 }
 
 export const store = configureStore({
-  reducer: { search },
+  reducer: { search, ui },
   preloadedState: { search: savedSearch() },
 })
 

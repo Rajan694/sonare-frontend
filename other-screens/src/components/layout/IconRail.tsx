@@ -24,7 +24,7 @@ export default function IconRail() {
   }
 
   return (
-    <aside className="flex flex-col items-center flex-none w-[76px] border-r border-ln py-3.5 px-2.5 gap-1.5 bg-s0">
+    <aside className="flex flex-col items-center justify-center flex-none w-[76px] h-full border-r border-ln py-3.5 px-2.5 gap-1.5 bg-s0">
       {RAIL_ITEMS.map(item => {
         const active = isActive(item.to)
         return (
