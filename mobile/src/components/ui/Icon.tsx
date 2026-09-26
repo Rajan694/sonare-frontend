@@ -2,7 +2,7 @@ import React from 'react'
 import {
   Home, Library, ListMusic, Search, Settings, Smartphone, Cloud, Folder,
   Play, Pause, Heart, ChevronLeft, ChevronRight, ChevronDown,
-  Plus, MoreVertical, Shuffle, Repeat, GripVertical,
+  Plus, MoreVertical, Shuffle, Repeat, GripVertical, RefreshCw,
   SkipBack, SkipForward, SlidersHorizontal, ArrowLeft, Volume2,
   Headphones, Timer, BarChart3, Music, FileText, FolderX, UserRound
 } from 'lucide-react-native'
@@ -27,6 +27,7 @@ const ICONS = {
   more: MoreVertical,
   shuffle: Shuffle,
   repeat: Repeat,
+  refresh: RefreshCw,
   drag: GripVertical,
   'skip-back': SkipBack,
   'skip-forward': SkipForward,

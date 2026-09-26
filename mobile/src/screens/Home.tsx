@@ -233,11 +233,11 @@ export function HomeScreen() {
                 </View>
               )}
 
-              {/* Made for you shelf */}
+              {/* Favourites shelf */}
               {favouriteTracks.length > 0 && (
                 <View className="gap-3">
                   <View className="flex-row items-baseline justify-between">
-                    <Text className="text-h2 font-semibold text-t1">Made for you</Text>
+                    <Text className="text-h2 font-semibold text-t1">Your favourites</Text>
                     <Pressable onPress={() => navigation.navigate('Library')} className="flex-row items-center gap-0.5" accessibilityRole="button">
                       <Text className="text-t2 text-ll">All</Text>
                       <Icon name="chevron-right" size={14} color="#9A9AA8" />

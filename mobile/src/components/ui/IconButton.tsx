@@ -9,6 +9,7 @@ interface IconButtonProps {
   accessibilityLabel: string;
   size?: 28 | 32 | 40 | 44;
   variant?: 'default' | 'active' | 'bordered';
+  disabled?: boolean;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function IconButton({
   accessibilityLabel,
   size = 40,
   variant = 'default',
+  disabled = false,
   className,
 }: IconButtonProps) {
   const scale = useSharedValue(1);
@@ -33,12 +35,14 @@ export function IconButton({
       onPress={onPress}
       onPressIn={() => scale.value = withSpring(0.9, { damping: 20 })}
       onPressOut={() => scale.value = withSpring(1, { damping: 20 })}
+      disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       className={cn(
         'items-center justify-center rounded-full',
         variant === 'active' && 'bg-s3',
         variant === 'bordered' && 'border border-ln2',
+        disabled && 'opacity-40',
         className
       )}
       style={[{ width: size, height: size }, style]}

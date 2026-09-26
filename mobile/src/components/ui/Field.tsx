@@ -19,7 +19,7 @@ export function Field({ icon, clearButton, onClear, className, ...props }: Field
         className="flex-1 text-t1 text-bm font-sans p-0"
         placeholderTextColor="#7E7E8C"
       />
-      {clearButton && onClear && (
+      {clearButton && onClear ? (
         <Pressable
           onPress={onClear}
           accessibilityRole="button"
@@ -28,7 +28,7 @@ export function Field({ icon, clearButton, onClear, className, ...props }: Field
         >
           <Icon name="plus" size={14} color="#9A9AA8" style={{ transform: [{ rotate: '45deg' }] }} />
         </Pressable>
-      )}
+      ) : null}
     </View>
   );
 }
