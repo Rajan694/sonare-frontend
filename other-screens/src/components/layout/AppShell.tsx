@@ -3,7 +3,6 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { AnimatePresence, motion } from 'motion/react'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
-import WebTopbar from './WebTopbar'
 import TabletTopbar from './TabletTopbar'
 import IconRail from './IconRail'
 import BottomPlayer from './BottomPlayer'
@@ -104,12 +103,13 @@ export default function AppShell() {
     </AnimatePresence>
   )
 
-  // 1. Desktop Shell (Neutralino window)
-  if (layout === 'desktop') {
+  // 1. Desktop shell: the Neutralino window, and browsers >= 1100px (there is no
+  // separate large-screen web design, so the web build reuses D01-D16).
+  if (layout === 'desktop' || layout === 'web') {
     return (
       <div className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen min-w-[1100px] min-h-[640px] overflow-hidden">
         <div className="flex grow overflow-hidden">
-          {!immersive && <Sidebar variant="desktop" />}
+          {!immersive && <Sidebar />}
           <div className="flex flex-col grow overflow-hidden min-w-0">
             {!immersive && <Topbar />}
             <div className="flex grow overflow-hidden relative">
@@ -174,81 +174,47 @@ export default function AppShell() {
     )
   }
 
-  // 3. Phone Shell (< 768px)
-  if (layout === 'phone') {
-    return (
-      <div className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen overflow-hidden min-w-0 relative">
-        <div className="flex flex-col grow overflow-hidden min-w-0 relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              variants={fadeRise}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              transition={transition.normal}
-              className="flex flex-col grow overflow-auto h-full min-w-0"
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-        {!immersive && (
-          <>
-            <MiniPlayer />
-            <MobileTabBar />
-          </>
-        )}
-
-        {/* Mobile Full-Screen Sheet for Queue */}
-        <AnimatePresence>
-          {queueOpen && (
-            <motion.div
-              key="mobile-queue-sheet"
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
-              className="fixed inset-0 z-50 bg-bg flex flex-col"
-            >
-              <QueuePanel onClose={() => dispatch(closeQueue())} isMobileSheet />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <TrackMenu />
-        <TooltipLayer />
-        {toastContainer}
-      </div>
-    )
-  }
-
-  // 4. Web Shell (>= 1100px browser)
+  // 3. Phone shell (< 768px)
   return (
-    <div className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen overflow-hidden min-w-0">
-      {!immersive && <WebTopbar />}
-      <div className="flex grow overflow-hidden min-w-0">
-        {!immersive && <Sidebar variant="web" />}
-        <div className="flex grow overflow-hidden min-w-0 relative">
-          <div className="flex flex-col grow overflow-hidden min-w-0 relative">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                variants={fadeRise}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                transition={transition.normal}
-                className="flex flex-col grow overflow-auto h-full min-w-0"
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-          {!immersive && sideQueuePanel}
-        </div>
+    <div className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen overflow-hidden min-w-0 relative">
+      <div className="flex flex-col grow overflow-hidden min-w-0 relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={location.pathname}
+            variants={fadeRise}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            transition={transition.normal}
+            className="flex flex-col grow overflow-auto h-full min-w-0"
+          >
+            <Outlet />
+          </motion.div>
+        </AnimatePresence>
       </div>
-      {!immersive && <BottomPlayer />}
+      {!immersive && (
+        <>
+          <MiniPlayer />
+          <MobileTabBar />
+        </>
+      )}
+
+      {/* Mobile Full-Screen Sheet for Queue */}
+      <AnimatePresence>
+        {queueOpen && (
+          <motion.div
+            key="mobile-queue-sheet"
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+            className="fixed inset-0 z-50 bg-bg flex flex-col"
+          >
+            <QueuePanel onClose={() => dispatch(closeQueue())} isMobileSheet />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <TrackMenu />
       <TooltipLayer />
       {toastContainer}
