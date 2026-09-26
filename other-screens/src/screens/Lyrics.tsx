@@ -70,7 +70,7 @@ export default function Lyrics() {
 
   const showSynced = synced && lines.length > 0 && view === 'synced'
   const position = state.positionMs - offsetMs
-  const currentLine = showSynced
+  const activeLineIndex = showSynced
     ? lines.findIndex((line, i) => {
         const next = lines[i + 1]
         return position >= line.atMs && (!next || position < next.atMs)
@@ -78,9 +78,9 @@ export default function Lyrics() {
     : -1
 
   useEffect(() => {
-    if (!autoScroll || currentLine < 0) return
-    lineRefs.current[currentLine]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [currentLine, autoScroll])
+    if (!autoScroll || activeLineIndex < 0) return
+    lineRefs.current[activeLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [activeLineIndex, autoScroll])
 
   if (!currentTrack) {
     return (
@@ -282,10 +282,10 @@ export default function Lyrics() {
         {/* Right Column: Lyrics Viewport & Chips */}
         <section className="flex flex-col grow gap-4 @3xl:gap-5 min-w-0 overflow-hidden" aria-label="Lyrics">
           {hasLyrics && !editing && (
-            <div className="flex items-center justify-between gap-2 flex-none">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2 flex-none shrink-0 min-h-8">
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-nowrap shrink-0">
                 <button
-                  className={cn('chip chip-sm', showSynced && 'chip-on')}
+                  className={cn('chip chip-sm flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center', showSynced && 'chip-on')}
                   disabled={!synced || lines.length === 0}
                   onClick={() => setView('synced')}
                 >
@@ -293,13 +293,13 @@ export default function Lyrics() {
                   <span>Synced</span>
                 </button>
                 <button
-                  className={cn('chip chip-sm', !showSynced && 'chip-on')}
+                  className={cn('chip chip-sm flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center', !showSynced && 'chip-on')}
                   onClick={() => setView('plain')}
                 >
                   <span>Plain text</span>
                 </button>
                 {synced && lines.length > 0 && (
-                  <span className="chip chip-sm text-t3">
+                  <span className="chip chip-sm text-t3 flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center">
                     <Icon name="clock" size={13} />
                     <span>Offset {offsetMs > 0 ? '+' : offsetMs < 0 ? '−' : ''}{(Math.abs(offsetMs) / 1000).toFixed(1)}s</span>
                   </span>
@@ -340,7 +340,7 @@ export default function Lyrics() {
             ) : showSynced ? (
               <div className="flex flex-col gap-4 @3xl:gap-5 pt-2">
                 {lines.map((line, i) => {
-                  const active = i === currentLine
+                  const isActive = i === activeLineIndex
                   return (
                     <button
                       key={i}
@@ -348,14 +348,14 @@ export default function Lyrics() {
                         lineRefs.current[i] = el
                       }}
                       className="flex items-start gap-3.5 @3xl:gap-4 text-left bg-transparent border-0 p-0 cursor-pointer group"
-                      aria-current={active}
+                      aria-current={isActive}
                       data-tip={`Jump to ${formatDuration(line.atMs + offsetMs)}`}
                       onClick={() => seek(Math.max(0, line.atMs + offsetMs))}
                     >
                       <span
                         className={cn(
                           'text-mono-s @3xl:text-mono-m w-9 pt-1.5 flex-none font-medium',
-                          active ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t4'
+                          isActive ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t4'
                         )}
                       >
                         {formatDuration(line.atMs + offsetMs)}
@@ -363,11 +363,11 @@ export default function Lyrics() {
                       <span
                         className={cn(
                           'text-h2 @sm:text-display-m @3xl:text-display-m font-bold leading-tight transition-all duration-300',
-                          active
+                          isActive
                             ? 'text-t1 opacity-100 scale-[1.01] origin-left'
                             : 'text-t3 opacity-[0.42] group-hover:opacity-75'
                         )}
-                        style={active ? { textShadow: glow } : undefined}
+                        style={isActive ? { textShadow: glow } : undefined}
                       >
                         {line.text || '♪'}
                       </span>

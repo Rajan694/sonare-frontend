@@ -55,13 +55,13 @@ export default function Equalizer() {
       </div>
 
       {/* Preset Chips Row */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none flex-nowrap w-full flex-none shrink-0 min-h-9">
         {Object.keys(EQ_PRESETS).map(name => (
           <button
             key={name}
             type="button"
             className={cn(
-              'chip chip-sm flex-none transition-colors',
+              'chip chip-sm flex-none shrink-0 h-8 transition-colors whitespace-nowrap inline-flex items-center',
               dsp.preset === name && 'chip-on'
             )}
             disabled={!dsp.enabled}
@@ -71,7 +71,7 @@ export default function Equalizer() {
           </button>
         ))}
         {dsp.preset === CUSTOM_PRESET && (
-          <span className="chip chip-sm chip-on flex-none" aria-live="polite">
+          <span className="chip chip-sm chip-on flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center" aria-live="polite">
             {CUSTOM_PRESET}
           </span>
         )}
@@ -80,7 +80,7 @@ export default function Equalizer() {
       {/* Main Grid: EQ card (left) + Settings Toggles & Output card (right) */}
       <div className="grid grid-cols-1 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-start">
         {/* Left Column: Graphic EQ + Bass Boost & Virtualizer */}
-        <div className="surf p-5 @sm:p-6 flex flex-col gap-6 w-full">
+        <div className="surf p-4 @sm:p-6 flex flex-col gap-6 w-full overflow-hidden">
           <div className="flex items-center justify-between">
             <span className="text-title-m font-semibold text-t1">8-band graphic equalizer</span>
             <span className="text-mono-s text-t3">Range ±12 dB</span>
@@ -89,12 +89,12 @@ export default function Equalizer() {
           {/* Vertical EQ Sliders */}
           <div
             className={cn(
-              'flex items-end justify-between px-2 @sm:px-4 py-2 transition-opacity duration-200 overflow-x-auto gap-2',
+              'flex items-end justify-between px-0 @sm:px-2 py-2 transition-opacity duration-200 gap-1 @sm:gap-2 w-full',
               !dsp.enabled && 'opacity-40 pointer-events-none'
             )}
           >
             {EQ_LABELS.map((band, i) => (
-              <div key={band} className="flex flex-col items-center gap-3 min-w-[36px] flex-1">
+              <div key={band} className="flex flex-col items-center gap-2.5 min-w-0 flex-1 max-w-[48px]">
                 <Slider
                   vertical
                   bipolar
@@ -109,7 +109,7 @@ export default function Equalizer() {
                   onChange={v => setBandGain(i, v)}
                   onCommit={commitPreset}
                 />
-                <span className="text-label-s font-medium text-t3">{band}</span>
+                <span className="text-caption @sm:text-label-s font-medium text-t3 truncate text-center w-full">{band}</span>
               </div>
             ))}
           </div>
@@ -225,18 +225,6 @@ export default function Equalizer() {
               </div>
               <Badge variant={isOffline ? 'local' : 'cloud'}>Active</Badge>
             </div>
-            {CAPS.offlineMode && (
-              <div className="flex items-center gap-3 p-2 rounded-lg opacity-60">
-                <span className="icobox">
-                  <Icon name="radio" size={16} />
-                </span>
-                <div className="flex flex-col min-w-0 grow">
-                  <span className="text-body-m text-t4 truncate">Cast to device</span>
-                  <span className="text-body-s text-t4 truncate">Network audio</span>
-                </div>
-                <Badge variant="neutral">{isOffline ? 'Requires Online Mode' : 'Coming soon'}</Badge>
-              </div>
-            )}
           </div>
         </div>
       </div>
