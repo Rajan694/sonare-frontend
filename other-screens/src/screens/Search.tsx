@@ -7,12 +7,12 @@ import { usePlayerStore } from '../store/playerStore'
 import { useDebounce, useGenres, usePlaylist, notifyPlaylistsChanged } from '../data/hooks'
 import { api } from '../data/api'
 import { showToast } from '../store/toastStore'
-import { useLocalLibrary } from '../data/local'
-import SongRow from '../components/music/SongRow'
+import { useLocalLibrary, localLibrary } from '../data/local'
+import SongRow, { SongTableHeader } from '../components/music/SongRow'
 import Artwork from '../components/music/Artwork'
 import Icon from '../components/ui/Icon'
-import { Chip } from '../components/ui/ChipBadge'
-import Button from '../components/ui/Button'
+import Button, { IconButton } from '../components/ui/Button'
+import DownloadButton from '../components/music/DownloadButton'
 import { Card } from '../components/ui/Card'
 import { EmptyState } from '../components/ui/EmptyState'
 import { fadeRise, transition } from '../lib/motion'
@@ -21,24 +21,25 @@ import { useAppDispatch, useAppSelector } from '../store'
 import { runSearch, searchKey, setQuery, setType, type SearchType } from '../store/searchSlice'
 import type { Track, Album, Artist, Playlist } from '../data/types'
 
-const CHIPS: { type: SearchType; label: string }[] = [
-  { type: 'songs', label: 'Songs' },
-  { type: 'albums', label: 'Albums' },
-  { type: 'artists', label: 'Artists' },
-  { type: 'playlists', label: 'Playlists' },
+type ChipFilter = 'all' | SearchType
+
+const CHIPS: { id: ChipFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'songs', label: 'Songs' },
+  { id: 'albums', label: 'Albums' },
+  { id: 'artists', label: 'Artists' },
+  { id: 'playlists', label: 'Playlists' },
 ]
 
 export default function Search() {
   const { mode, setMode } = useModeStore()
   const { currentTrack, playTrack } = usePlayerStore()
   const dispatch = useAppDispatch()
-  // Typed into the top-bar field; the Redux store keeps it (and the results) while we're away.
-  const { query, type: active, results, resultsFor, requested, status, error } = useAppSelector(s => s.search)
+  const { query, type: activeType, results, resultsFor, requested, status, error } = useAppSelector(s => s.search)
   const [params, setParams] = useSearchParams()
-  // ?addTo=<playlist> is FLOWS M08's "Add songs" mode.
   const addTo = params.get('addTo')
+  const [activeChip, setActiveChip] = useState<ChipFilter>('all')
 
-  // ?q= links (Library → Genres) hand their query to the store and leave the URL.
   const linkedQuery = params.get('q')
   useEffect(() => {
     if (linkedQuery === null) return
@@ -66,81 +67,128 @@ export default function Search() {
       showToast({ title: 'Could not add to playlist', description: track.title, icon: 'info' })
     }
   }
+
   const isOnline = mode === 'online'
   const hasQuery = query.trim().length > 0
-
-  // Online, ask the server once typing pauses. Coming back to the page finds these results
-  // already in the store, so nothing is refetched.
   const debouncedQuery = useDebounce(query.trim(), 300)
-  const search = () => void dispatch(runSearch({ query: debouncedQuery, type: active }))
-  useEffect(() => {
-    if (isOnline && debouncedQuery) search()
-  }, [isOnline, debouncedQuery, active])
 
-  // Offline (FLOWS M04) searches files on this device and never calls the server.
+  // Map activeChip to searchSlice SearchType (when All, fetch songs as primary)
+  const querySearchType: SearchType = activeChip === 'all' ? 'songs' : activeChip
+
+  useEffect(() => {
+    if (isOnline && debouncedQuery) {
+      dispatch(runSearch({ query: debouncedQuery, type: querySearchType }))
+    }
+  }, [isOnline, debouncedQuery, querySearchType])
+
   const local = useLocalLibrary()
-  const key = searchKey(debouncedQuery, active)
+  const key = searchKey(debouncedQuery, querySearchType)
   const current = resultsFor === key
   const failed = requested === key && status === 'error'
-  // Until this query's results arrive — the debounce gap included — show the skeleton rather
-  // than the previous query's results.
   const searchLoading = isOnline && !current && !failed
   const searchError = isOnline && failed ? error : null
   const needle = query.trim().toLowerCase()
-  const localMatches = !isOnline && needle
+
+  const localMatches = needle
     ? local.tracks.filter(t => [t.title, t.artist, t.album].some(v => v?.toLowerCase().includes(needle)))
     : []
-  const shown: SearchType = isOnline ? active : 'songs'
-  const activeLabel = CHIPS.find(c => c.type === active)!.label
 
   const { data: genres } = useGenres()
 
-  const items = isOnline ? (current ? results : []) : localMatches
-  const tracks = items.filter((item): item is Track => 'durationMs' in item)
-  const albums = items.filter((item): item is Album => 'trackCount' in item && 'year' in item)
-  const artists = items.filter((item): item is Artist => 'albumCount' in item || 'following' in item)
-  const playlists = items.filter((item): item is Playlist => 'kind' in item && !('durationMs' in item))
+  const serverItems = isOnline && current ? results : []
+  // Merge items
+  const combinedTracks = isOnline
+    ? [
+        ...localMatches,
+        ...serverItems.filter((item): item is Track => 'durationMs' in item && !localMatches.some(l => l.id === item.id)),
+      ]
+    : localMatches
+
+  const totalResultsCount = isOnline
+    ? combinedTracks.length + (activeChip !== 'all' && activeChip !== 'songs' ? serverItems.length : 0)
+    : localMatches.length
 
   const handlePlay = (track: Track) => {
-    playTrack(track, tracks.length > 0 ? tracks : [track])
+    playTrack(track, combinedTracks.length > 0 ? combinedTracks : [track])
   }
 
+  // Find top result (prefer first match: album, song, or artist)
+  const topSong = combinedTracks[0]
+
   return (
-    <div className="flex flex-col overflow-hidden h-full">
+    <div className="@container flex flex-col overflow-hidden h-full">
       {addTo && (
         <div className="onstrip mx-8 mt-6 gap-3 flex-none">
           <span className="flex flex-col grow gap-px">
             <span className="text-label-l text-acc">Adding to {addToPlaylist?.name ?? 'playlist'}</span>
-            <span className="text-label-s text-t3">{added.size > 0 ? `${added.size} added — search for more` : 'Search for songs and press + to add them'}</span>
+            <span className="text-label-s text-t3">
+              {added.size > 0 ? `${added.size} added — search for more` : 'Search for songs and press + to add them'}
+            </span>
           </span>
           <Link to={`/playlist/${addTo}`} className="btn btn-acc btn-sm no-underline">Done</Link>
         </div>
       )}
-      {hasQuery && isOnline && (
-        <div className="flex items-center gap-2 px-8 pt-6 pb-4 flex-none">
-          {CHIPS.map(chip => (
-            <Chip
-              key={chip.type}
-              active={active === chip.type}
-              onClick={() => dispatch(setType(chip.type))}
-            >
-              {chip.label}
-            </Chip>
-          ))}
+
+      {/* Chips bar & Count indicator */}
+      {hasQuery && (
+        <div className="flex items-center justify-between px-8 pt-6 pb-2 flex-none flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            {CHIPS.map(chip => (
+              <button
+                key={chip.id}
+                className={cn('chip', activeChip === chip.id && 'chip-on')}
+                onClick={() => {
+                  setActiveChip(chip.id)
+                  if (chip.id !== 'all') {
+                    dispatch(setType(chip.id))
+                  }
+                }}
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2 text-body-s text-t3">
+            {isOnline ? (
+              <>
+                <Icon name="cloud" size={15} />
+                <span>Server + device · {totalResultsCount.toLocaleString()} results</span>
+              </>
+            ) : (
+              <>
+                <Icon name="smartphone" size={15} />
+                <span className="text-gold">This device only · {totalResultsCount.toLocaleString()} matches</span>
+              </>
+            )}
+          </div>
         </div>
       )}
 
-      <div className={cn('flex flex-col grow overflow-auto px-8 pb-8', !(hasQuery && isOnline) && 'pt-6')}>
+      {/* Offline banner if offline */}
+      {!isOnline && hasQuery && CAPS.offlineMode && (
+        <div className="mx-8 mt-4 offstrip flex-none">
+          <Icon name="wifi-off" size={16} />
+          <span className="text-body-m text-gold grow">Online search is unavailable in Offline Mode.</span>
+          <button className="btn btn-sm btn-out" onClick={() => setMode('online')}>
+            <Icon name="cloud" size={14} />
+            <span>Search online instead</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main content body */}
+      <div className={cn('flex flex-col grow overflow-auto px-8 pb-8', !hasQuery && 'pt-6')}>
         <AnimatePresence mode="wait">
           {hasQuery ? (
             <motion.div
-              key={debouncedQuery + shown}
+              key={debouncedQuery + activeChip + mode}
               variants={fadeRise}
               initial="hidden"
               animate="visible"
               exit="exit"
               transition={transition.normal}
-              className="flex flex-col gap-1"
+              className="flex flex-col gap-6 pt-3"
             >
               {searchLoading ? (
                 <div className="flex flex-col gap-2 animate-pulse pt-2">
@@ -151,42 +199,146 @@ export default function Search() {
               ) : searchError ? (
                 <div className="flex flex-col items-center gap-3 p-4 text-center">
                   <span className="text-red">Search error: {searchError}</span>
-                  <Button variant="out" size="sm" icon="sync" onClick={search}>Try again</Button>
+                  <Button variant="out" size="sm" icon="sync" onClick={() => dispatch(runSearch({ query: debouncedQuery, type: querySearchType }))}>
+                    Try again
+                  </Button>
                 </div>
-              ) : items.length === 0 ? (
+              ) : combinedTracks.length === 0 && serverItems.length === 0 ? (
                 <EmptyState
                   icon="search"
                   title="No results found"
-                  description={isOnline ? `No ${activeLabel.toLowerCase()} found matching "${query}"` : `Nothing on this device matches "${query}"`}
+                  description={isOnline ? `No results found matching "${query}"` : `Nothing on this device matches "${query}"`}
                 />
-              ) : shown === 'songs' ? (
-                tracks.map((track, i) => (
-                  <SongRow
-                    key={track.id}
-                    track={track}
-                    index={i + 1}
-                    isActive={currentTrack?.id === track.id}
-                    onClick={() => handlePlay(track)}
-                    onAdd={addTo ? () => void addTrack(track) : undefined}
-                    added={added.has(track.id)}
-                  />
-                ))
-              ) : shown === 'albums' ? (
+              ) : activeChip === 'all' ? (
+                <div className="flex flex-col gap-8">
+                  {/* Two column layout: Top Result card + Songs Table */}
+                  <div className="grid grid-cols-1 @4xl:grid-cols-[360px_minmax(0,1fr)] gap-7 items-start">
+                    {/* Top result card */}
+                    {topSong && (
+                      <div className="flex flex-col gap-3">
+                        <span className="text-overline text-t3 uppercase font-semibold">Top result</span>
+                        <div className="surf flex flex-col gap-4 p-5 rounded-xl">
+                          <Artwork
+                            src={topSong.thumbnail || `/api/v1/albums/${topSong.albumId}/artwork?size=240`}
+                            alt={topSong.title}
+                            variant="a2"
+                            size={168}
+                            radius="md"
+                            className="shadow-xl"
+                          />
+                          <div className="flex flex-col gap-1.5">
+                            <span className="text-heading-m text-t1 font-semibold">{topSong.title}</span>
+                            <span className="text-body-m text-t2">
+                              Song · {topSong.artist} {topSong.album ? `· ${topSong.album}` : ''}
+                            </span>
+                            <div className="flex items-center gap-2 mt-1">
+                              {topSong.source === 'local' || local.downloads.has(topSong.id) ? (
+                                <span className="badge bg-local inline-flex items-center gap-1">
+                                  <Icon name="smartphone" size={9} />
+                                  <span>On device</span>
+                                </span>
+                              ) : (
+                                <span className="badge bg-cloud inline-flex items-center gap-1">
+                                  <Icon name="cloud" size={9} />
+                                  <span>Server</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2.5 mt-2">
+                            <button
+                              className="playbtn playbtn-48"
+                              aria-label={`Play ${topSong.title}`}
+                              onClick={() => handlePlay(topSong)}
+                            >
+                              <Icon name="play" size={21} />
+                            </button>
+                            <DownloadButton tracks={[topSong]} offline={!isOnline} />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Songs 4 rows table */}
+                    <div className="flex flex-col gap-3 min-w-0">
+                      <span className="text-overline text-t3 uppercase font-semibold">Songs</span>
+                      <div className="flex flex-col gap-0.5">
+                        {combinedTracks.slice(0, 4).map((track, i) => (
+                          <SongRow
+                            key={track.id}
+                            track={track}
+                            index={i + 1}
+                            isActive={currentTrack?.id === track.id}
+                            onClick={() => handlePlay(track)}
+                            onAdd={addTo ? () => void addTrack(track) : undefined}
+                            added={added.has(track.id)}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Artists row of avatars */}
+                  <div className="flex flex-col gap-3">
+                    <span className="text-overline text-t3 uppercase font-semibold">Artists</span>
+                    <div className="flex items-center gap-6 overflow-x-auto pb-2">
+                      {Array.from(new Set(combinedTracks.map(t => t.artist))).slice(0, 6).map((artistName, i) => (
+                        <div key={artistName} className="flex flex-col items-center gap-2 w-[92px] flex-none text-center">
+                          <Artwork
+                            alt={artistName}
+                            variant={`a${((i % 12) + 1) as 1}`}
+                            size={92}
+                            radius="circ"
+                          />
+                          <span className="text-label-m text-t1 truncate w-full">{artistName}</span>
+                          <span className="text-label-s text-t3">Artist</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Offline Notice at the bottom */}
+                  {!isOnline && (
+                    <div className="surf flex items-center gap-3 p-4 rounded-xl opacity-75">
+                      <Icon name="cloud" size={18} />
+                      <div className="flex flex-col">
+                        <span className="text-body-m text-t2 font-medium">More matches on server</span>
+                        <span className="text-body-s text-t3">Go online to search and stream online catalog.</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : activeChip === 'songs' ? (
+                <div className="flex flex-col gap-2">
+                  <SongTableHeader />
+                  {combinedTracks.map((track, i) => (
+                    <SongRow
+                      key={track.id}
+                      track={track}
+                      index={i + 1}
+                      isActive={currentTrack?.id === track.id}
+                      onClick={() => handlePlay(track)}
+                      onAdd={addTo ? () => void addTrack(track) : undefined}
+                      added={added.has(track.id)}
+                    />
+                  ))}
+                </div>
+              ) : activeChip === 'albums' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
-                  {(albums.length > 0 ? albums : items).map((album: any, i) => (
+                  {(serverItems.filter((item): item is Album => 'trackCount' in item)).map((album, i) => (
                     <Card
                       key={album.id}
-                      title={album.title || album.name}
-                      subtitle={album.artist || album.uploaderName || ''}
+                      title={album.title}
+                      subtitle={album.artist}
                       artVariant={`a${(i % 12) + 1}` as any}
                       thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
                       to={`/album/${album.id}`}
                     />
                   ))}
                 </div>
-              ) : shown === 'artists' ? (
+              ) : activeChip === 'artists' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
-                  {(artists.length > 0 ? artists : items).map((artist: any, i) => (
+                  {(serverItems.filter((item): item is Artist => 'albumCount' in item || 'following' in item)).map((artist, i) => (
                     <Link
                       key={artist.id}
                       to={`/artist/${artist.id}`}
@@ -206,10 +358,10 @@ export default function Search() {
                 </div>
               ) : (
                 <div className="flex gap-4 flex-wrap pt-2">
-                  {(playlists.length > 0 ? playlists : items).map((pl: any, i) => (
+                  {(serverItems.filter((item): item is Playlist => 'kind' in item && !('durationMs' in item))).map((pl, i) => (
                     <Card
                       key={pl.id}
-                      title={pl.name || pl.title}
+                      title={pl.name}
                       subtitle={pl.kind ? `Playlist · ${pl.kind}` : 'Playlist'}
                       artVariant={`a${(i % 12) + 1}` as any}
                       thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
@@ -218,59 +370,26 @@ export default function Search() {
                   ))}
                 </div>
               )}
-
-              {CAPS.offlineMode && !isOnline && (
-                <div className="mt-6 flex flex-col gap-3">
-                  <hr className="hr" />
-                  <div className="offstrip">
-                    <Icon name="wifi-off" size={16} />
-                    <span className="flex flex-col grow gap-px">
-                      <span className="text-label-l text-gold">Offline mode active</span>
-                      <span className="text-label-s text-t3">Switch to Online mode to stream full catalog</span>
-                    </span>
-                    <button className="btn btn-gold btn-sm" onClick={() => setMode('online')}>Go online</button>
-                  </div>
-                </div>
-              )}
             </motion.div>
           ) : (
-            <motion.div
-              key="browse"
-              variants={fadeRise}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              transition={transition.normal}
-              className="flex flex-col gap-6"
-            >
-              <div className="flex flex-col gap-3.5">
-                <span className="text-h2 text-t1">Browse categories</span>
-                <div className="grid grid-cols-4 gap-3">
-                  {(genres && genres.length > 0
-                    ? genres
-                    : [
-                        { id: 'ambient', name: 'Ambient' },
-                        { id: 'electronica', name: 'Electronica' },
-                        { id: 'post-rock', name: 'Post-rock' },
-                        { id: 'indie', name: 'Indie' },
-                        { id: 'jazz', name: 'Jazz' },
-                        { id: 'classical', name: 'Classical' },
-                        { id: 'hip-hop', name: 'Hip-hop' },
-                        { id: 'folk', name: 'Folk' },
-                      ]
-                  ).map((cat, i) => (
+            <div className="flex flex-col gap-6">
+              <span className="text-title-l text-t1 font-semibold">Browse categories</span>
+              <div className="grid grid-cols-2 @md:grid-cols-4 gap-3">
+                {(genres || ['Ambient', 'Electronica', 'Post-rock', 'Indie', 'Jazz', 'Classical', 'Hip-hop', 'Folk']).map((genre, i) => {
+                  const name = typeof genre === 'string' ? genre : (genre as any).name
+                  return (
                     <button
-                      key={cat.id}
-                      className="gcard text-left cursor-pointer relative overflow-hidden"
-                      onClick={() => dispatch(setQuery(cat.name))}
+                      key={name}
+                      onClick={() => dispatch(setQuery(name))}
+                      className="gcard text-left cursor-pointer relative overflow-hidden border-0"
                     >
                       <Artwork variant={`a${(i % 12) + 1}` as any} size={56} radius="md" className="absolute top-2 right-2" />
-                      <span className="text-title-l text-t1 relative">{cat.name}</span>
+                      <span className="text-title-l text-t1 relative">{name}</span>
                     </button>
-                  ))}
-                </div>
+                  )
+                })}
               </div>
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </div>
