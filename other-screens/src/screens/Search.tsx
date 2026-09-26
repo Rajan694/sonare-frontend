@@ -297,14 +297,21 @@ export default function Search() {
                     </div>
                   </div>
 
-                  {/* Offline Notice at the bottom */}
+                  {/* Offline Notice at the bottom (matching D04 Not on this device) */}
                   {!isOnline && (
-                    <div className="surf flex items-center gap-3 p-4 rounded-xl opacity-75">
-                      <Icon name="cloud" size={18} />
-                      <div className="flex flex-col">
-                        <span className="text-body-m text-t2 font-medium">More matches on server</span>
-                        <span className="text-body-s text-t3">Go online to search and stream online catalog.</span>
+                    <div className="surf flex flex-col @[600px]:flex-row @[600px]:items-center justify-between gap-4 p-5 rounded-xl border border-ln">
+                      <div className="flex items-center gap-3.5">
+                        <span className="icobox flex-none">
+                          <Icon name="cloud" size={18} />
+                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-body-l text-t1 font-medium">Not on this device</span>
+                          <span className="text-body-s text-t3">Go online to search and stream the full catalog.</span>
+                        </div>
                       </div>
+                      <Button variant="acc" size="sm" icon="cloud" onClick={() => setMode('online')}>
+                        Go online
+                      </Button>
                     </div>
                   )}
                 </div>

@@ -6,7 +6,7 @@ import Icon from '../ui/Icon'
 const MOBILE_TABS = [
   { to: '/home', icon: 'home' as const, label: 'Home' },
   { to: '/library', icon: 'library' as const, label: 'Library' },
-  { to: '/playlist', icon: 'playlist' as const, label: 'Playlists' },
+  { to: '/playlists', icon: 'playlist' as const, label: 'Playlists' },
   { to: '/search', icon: 'search' as const, label: 'Search' },
 ] as const
 
@@ -16,7 +16,7 @@ export default function MobileTabBar() {
   function isActive(to: string) {
     if (to === '/home') return location.pathname === '/home'
     if (to === '/library') return location.pathname.startsWith('/library')
-    if (to === '/playlist') return location.pathname.startsWith('/playlist')
+    if (to === '/playlists') return location.pathname.startsWith('/playlist')
     if (to === '/search') return location.pathname.startsWith('/search')
     return false
   }

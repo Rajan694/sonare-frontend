@@ -14,7 +14,7 @@ import type { Mode } from '../../data/types'
 const WEB_NAV_ITEMS = [
   { to: '/home', label: 'Home' },
   { to: '/library', label: 'Library' },
-  { to: '/playlist', label: 'Playlists' },
+  { to: '/playlists', label: 'Playlists' },
   { to: '/search', label: 'Search' },
 ] as const
 
@@ -43,7 +43,7 @@ export default function WebTopbar() {
   function isNavActive(to: string) {
     if (to === '/home') return location.pathname === '/home'
     if (to === '/library') return location.pathname.startsWith('/library')
-    if (to === '/playlist') return location.pathname.startsWith('/playlist')
+    if (to === '/playlists') return location.pathname.startsWith('/playlist')
     if (to === '/search') return location.pathname.startsWith('/search')
     return false
   }

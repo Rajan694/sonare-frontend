@@ -21,7 +21,7 @@ const NAV_ITEMS = [
   { to: '/home', icon: 'home' as const, label: 'Home' },
   { to: '/search', icon: 'search' as const, label: 'Search' },
   { to: '/library', icon: 'library' as const, label: 'Your Library' },
-  { to: '/playlist', icon: 'playlist' as const, label: 'Playlists' },
+  { to: '/playlists', icon: 'playlist' as const, label: 'Playlists' },
 ] as const
 
 const LIBRARY_ITEMS = [
@@ -54,6 +54,7 @@ export default function Sidebar({ variant = 'desktop' }: SidebarProps) {
   const isWeb = variant === 'web'
 
   function isActive(to: string) {
+    if (to === '/playlists') return location.pathname.startsWith('/playlist')
     return location.pathname === to || (to !== '/home' && to !== '/library' && location.pathname.startsWith(to + '/'))
   }
 

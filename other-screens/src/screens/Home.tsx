@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'motion/react'
+import { CAPS } from '../lib/caps'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useTrending, useRecentlyPlayed, useAuth } from '../data/hooks'
@@ -15,10 +16,11 @@ import { Card } from '../components/ui/Card'
 import { Tile } from '../components/ui/Tile'
 import { EmptyState } from '../components/ui/EmptyState'
 import { staggerContainer, staggerItem, transition } from '../lib/motion'
+import { formatBytes } from '../lib/utils'
 import type { Track } from '../data/types'
 
 export default function Home() {
-  const { mode } = useModeStore()
+  const { mode, setMode } = useModeStore()
   const isOnline = mode === 'online'
   const { currentTrack, playTrack, isPlaying, togglePlay } = usePlayerStore()
   const { user } = useAuth()
@@ -70,7 +72,11 @@ export default function Home() {
 
   // Greeting based on real user or generic
   const userName = user?.displayName || user?.email?.split('@')[0] || ''
-  const greeting = userName ? `Welcome back, ${userName}` : 'Welcome back'
+  const greeting = isOnline
+    ? (userName ? `Welcome back, ${userName}` : 'Welcome back')
+    : 'Your device library'
+
+  const totalLocalBytes = local.tracks.reduce((acc, t) => acc + ((t as any).size || 0), 0)
 
   return (
     <motion.div
@@ -82,15 +88,33 @@ export default function Home() {
       {/* Header row */}
       <motion.div className="flex flex-col @[480px]:flex-row @[480px]:items-center justify-between gap-4" variants={staggerItem} transition={transition.normal}>
         <div className="flex flex-col gap-1">
-          <span className="text-body-s text-t3">
-            {isOnline ? 'Online mode · Connected to Sonare API' : 'Showing local library'}
-          </span>
+          {isOnline ? (
+            <span className="text-body-s text-t3">
+              Online mode · Connected to Sonare API
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-2 text-label-s text-gold font-semibold uppercase">
+              <span className="w-2 h-2 rounded-full bg-gold" />
+              <span>OFFLINE MODE</span>
+            </span>
+          )}
           <span className="text-display-m text-t1 font-semibold">
             {greeting}
           </span>
+          {!isOnline && local.tracks.length > 0 && (
+            <span className="text-body-m text-t2">
+              {local.tracks.length.toLocaleString()} songs on this device
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2.5">
           {isOnline && user && <Button variant="out" icon="sync" onClick={() => void syncNow()}>Sync now</Button>}
+          {!isOnline && CAPS.localLibrary && (
+            <Link to="/folders" className="btn btn-out">
+              <Icon name="folder" size={16} />
+              <span>Scan folders</span>
+            </Link>
+          )}
           {currentTrack ? (
             <Button variant={isOnline ? 'acc' : 'gold'} icon={isPlaying ? 'pause' : 'play'} onClick={togglePlay}>
               {isPlaying ? 'Pause' : 'Resume'}
@@ -120,19 +144,20 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Offline banner */}
+      {/* Offline banner (matching D02) */}
       {!isOnline && (
         <motion.div className="offstrip gap-3" variants={staggerItem} transition={transition.normal}>
           <Icon name="smartphone" size={16} className="text-gold flex-none" />
           <span className="flex flex-col grow gap-px">
-            <span className="text-label-l text-gold">Offline mode</span>
-            <span className="text-label-s text-t3">
-              {local.tracks.length > 0
-                ? `${local.tracks.length} songs on this device`
-                : 'No music on this device yet — add a folder or download songs while online'}
+            <span className="text-label-l text-gold">You're offline — showing music available on this device.</span>
+            <span className="text-body-s text-t3">
+              Recommendations, trending and server search are hidden until you go online.
             </span>
           </span>
-          <Link to="/folders" className="btn btn-gold btn-sm no-underline">Manage music folders</Link>
+          <button className="btn btn-sm btn-out flex-none" onClick={() => setMode('online')}>
+            <Icon name="cloud" size={14} />
+            <span>Go online</span>
+          </button>
         </motion.div>
       )}
 
@@ -159,7 +184,7 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Recently played shelf (when real data exists) */}
+      {/* Recently played / Jump back in shelf */}
       {(recentTracks.length > 0 || (!isOnline && local.tracks.length > 6)) && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
@@ -192,7 +217,7 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Trending shelf (Square cards) */}
+      {/* Trending shelf (Square cards) - Online only */}
       {isOnline && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
@@ -233,7 +258,7 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Trending / Local Song Table */}
+      {/* Song Table */}
       <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
         <div className="shead">
           <span className="text-h2 text-t1 font-semibold">

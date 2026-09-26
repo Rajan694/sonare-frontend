@@ -7,7 +7,7 @@ const RAIL_ITEMS = [
   { to: '/home', icon: 'home' as const, label: 'Home' },
   { to: '/search', icon: 'search' as const, label: 'Search' },
   { to: '/library', icon: 'library' as const, label: 'Library' },
-  { to: '/playlist', icon: 'playlist' as const, label: 'Lists' },
+  { to: '/playlists', icon: 'playlist' as const, label: 'Lists' },
   { to: '/settings', icon: 'settings' as const, label: 'Settings' },
 ] as const
 
@@ -18,7 +18,7 @@ export default function IconRail() {
     if (to === '/home') return location.pathname === '/home'
     if (to === '/search') return location.pathname.startsWith('/search')
     if (to === '/library') return location.pathname.startsWith('/library')
-    if (to === '/playlist') return location.pathname.startsWith('/playlist')
+    if (to === '/playlists') return location.pathname.startsWith('/playlist')
     if (to === '/settings') return location.pathname.startsWith('/settings')
     return false
   }

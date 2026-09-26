@@ -19,6 +19,7 @@ import Library from './screens/Library'
 import Album from './screens/Album'
 import Artist from './screens/Artist'
 import Playlist from './screens/Playlist'
+import Playlists from './screens/Playlists'
 import NowPlaying from './screens/NowPlaying'
 import Lyrics from './screens/Lyrics'
 import Queue from './screens/Queue'
@@ -339,7 +340,9 @@ export default function App() {
               <Route path="/library" element={<Library />} />
               <Route path="/album/:id?" element={<Album />} />
               <Route path="/artist/:id?" element={<Artist />} />
-              <Route path="/playlist/:id?" element={<Playlist />} />
+              <Route path="/playlists" element={<Playlists />} />
+              <Route path="/playlist" element={<Navigate to="/playlists" replace />} />
+              <Route path="/playlist/:id" element={<Playlist />} />
               <Route path="/now-playing" element={<NowPlaying />} />
               <Route path="/lyrics" element={<Lyrics />} />
               <Route path="/queue" element={<Queue />} />
