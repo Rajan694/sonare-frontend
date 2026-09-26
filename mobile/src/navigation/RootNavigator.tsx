@@ -27,20 +27,32 @@ const Stack = createNativeStackNavigator<Record<string, object | undefined>, und
 function ModeToast() {
   const mode = useModeStore((state) => state.mode);
   const prevMode = useRef(mode);
-  const [toast, setToast] = useState<{ mode: 'online' | 'offline', visible: boolean } | null>(null);
+  const [toast, setToast] = useState<{ mode: 'online' | 'offline'; title?: string; description?: string; visible: boolean } | null>(null);
 
   useEffect(() => {
     if (mode !== prevMode.current) {
       prevMode.current = mode;
-      setToast({ mode, visible: true });
+      const toastInfo = useModeStore.getState().toastInfo;
+      setToast({
+        mode,
+        title: toastInfo?.title,
+        description: toastInfo?.description,
+        visible: true,
+      });
       const timer = setTimeout(() => {
-        setToast((t) => t ? { ...t, visible: false } : null);
+        setToast((t) => (t ? { ...t, visible: false } : null));
       }, 4000);
       return () => clearTimeout(timer);
     }
   }, [mode]);
 
   if (!toast?.visible) return null;
+
+  const defaultTitle = `Switched to ${toast.mode === 'offline' ? 'Offline' : 'Online'} Mode`;
+  const defaultDesc =
+    toast.mode === 'offline'
+      ? 'Server content hidden. Playback continues from this device.'
+      : 'Server content restored. Playback continues.';
 
   return (
     <Animated.View 
@@ -51,12 +63,10 @@ function ModeToast() {
       <View className="w-2 rounded-full self-stretch bg-gold" />
       <View className="flex-1 ml-1 py-1">
          <Text className={cn("text-h2 font-medium", toast.mode === 'offline' ? "text-gold" : "text-acc")}>
-            Switched to {toast.mode === 'offline' ? 'Offline' : 'Online'} Mode
+            {toast.title ?? defaultTitle}
          </Text>
          <Text className="text-t2 text-bs mt-0.5">
-            {toast.mode === 'offline' 
-              ? 'Server content hidden. Playback continues from this device.'
-              : 'Server content restored. Playback continues.'}
+            {toast.description ?? defaultDesc}
          </Text>
       </View>
     </Animated.View>

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import type { Mode, Track } from './data/types'
 import { CAPS } from './lib/caps'
+import { hasInternet } from './lib/connectivity'
 import { ModeContext } from './store/modeStore'
 import { PlayerContext, defaultPlayerState } from './store/playerStore'
 import type { PlayerState } from './data/types'
@@ -33,10 +34,15 @@ export default function App() {
   const [mode, setModeRaw] = useState<Mode>('online')
   const effectiveMode: Mode = CAPS.offlineMode ? mode : 'online'
   const { stayOffline } = useSettings()
+  // Track whether user explicitly changed mode in this session
+  const userChangedMode = useRef(false)
+  // Ensure connectivity check starts at most once per launch
+  const launchCheckStarted = useRef(false)
   // Read inside queue updaters, which must not close over a stale mode.
   const modeRef = useRef<Mode>(effectiveMode)
   modeRef.current = effectiveMode
   const setMode = (m: Mode) => {
+    userChangedMode.current = true
     if (!CAPS.offlineMode || m === mode) return
     setModeRaw(m)
     if (m === 'online') {
@@ -50,6 +56,28 @@ export default function App() {
   // "Stay offline until I switch back" survives restarts (FLOWS 1.1).
   useEffect(() => {
     if (CAPS.offlineMode && stayOffline) setModeRaw('offline')
+  }, [stayOffline])
+
+  // Check internet connectivity on launch for Neutralino window builds
+  useEffect(() => {
+    if (!CAPS.offlineMode || stayOffline || launchCheckStarted.current) return
+    launchCheckStarted.current = true
+    let active = true
+    hasInternet().then(online => {
+      if (!active) return
+      if (!online && !userChangedMode.current) {
+        setModeRaw('offline')
+        showToast({
+          title: 'No internet connection',
+          description: 'Switched to Offline Mode - showing music on this device',
+          icon: 'smartphone',
+          variant: 'gold',
+        })
+      }
+    })
+    return () => {
+      active = false
+    }
   }, [stayOffline])
   const [playerState, setPlayerState] = useState<PlayerState>(defaultPlayerState)
   const currentTrack: Track | null = playerState.queue[playerState.index] ?? null
