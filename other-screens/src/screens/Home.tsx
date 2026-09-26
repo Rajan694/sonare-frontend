@@ -8,7 +8,7 @@ import { loadErrorMessage } from '../data/api'
 import { syncNow } from '../data/sync'
 import { useLocalLibrary, resolveLocalRefs } from '../data/local'
 import Icon from '../components/ui/Icon'
-import SongRow from '../components/music/SongRow'
+import SongRow, { SongTableHeader } from '../components/music/SongRow'
 import { trackArtwork } from '../components/music/Artwork'
 import Button from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
@@ -24,27 +24,23 @@ export default function Home() {
   const { user } = useAuth()
 
   const { data: trendingData, loading: trendingLoading, error: trendingError, refetch: refetchTrending } = useTrending('IN', 20)
-  // "See all" expands a section in place — there is no separate trending / history page.
   const [allTrending, setAllTrending] = useState(false)
   const [allRecent, setAllRecent] = useState(false)
   const { data: recentData, loading: recentLoading, error: recentError, refetch: refetchRecent } = useRecentlyPlayed(allRecent ? 50 : 10)
 
   const local = useLocalLibrary()
-  // Offline (FLOWS M02) everything on Home comes from this device.
   const trendingTracks = isOnline ? trendingData?.items || [] : local.tracks
-  // Play history repeats a track once per listen; the list shows each track once.
+  
+  const hasRealRecent = !!(recentData?.items && recentData.items.length > 0)
   const recentTracks = !isOnline
     ? local.tracks.slice(6, 26)
-    : recentData?.items && recentData.items.length > 0
+    : hasRealRecent
     ? resolveLocalRefs(recentData.items, local).filter((t, i, all) => all.findIndex(x => x.id === t.id) === i)
-    : trendingTracks.slice(0, 5)
+    : []
 
-  // Errors only replace a section that has nothing to show; a failed refetch keeps the last list.
   const trendingFailed = isOnline && !!trendingError && trendingTracks.length === 0
-  const recentFailed = isOnline && !!user && !!recentError && !recentData?.items.length
-  // Without history the list is borrowed from trending, whose own error already covers it.
-  const hideRecent = trendingFailed && !recentFailed && recentTracks.length === 0
-  // Both come from Piped, so they fail together - one retry reloads both.
+  const recentFailed = isOnline && !!user && !!recentError && !hasRealRecent
+
   const retry = () => {
     refetchTrending()
     refetchRecent()
@@ -59,7 +55,7 @@ export default function Home() {
     track: t,
   }))
 
-  const trendingCards = trendingTracks.slice(6, allTrending ? undefined : 12).map((t, i) => ({
+  const trendingCards = trendingTracks.slice(0, allTrending ? undefined : 10).map((t, i) => ({
     id: t.id,
     title: t.title,
     artist: t.artist,
@@ -72,20 +68,25 @@ export default function Home() {
     playTrack(track, queue)
   }
 
+  // Greeting based on real user or generic
+  const userName = user?.displayName || user?.email?.split('@')[0] || ''
+  const greeting = userName ? `Welcome back, ${userName}` : 'Welcome back'
+
   return (
     <motion.div
-      className="flex flex-col gap-7 p-6 pb-8 overflow-auto"
+      className="@container flex flex-col gap-7 p-4 @[480px]:p-8 pb-8 overflow-auto h-full"
       variants={staggerContainer}
       initial="hidden"
       animate="visible"
     >
-      <motion.div className="flex items-center justify-between" variants={staggerItem} transition={transition.normal}>
+      {/* Header row */}
+      <motion.div className="flex flex-col @[480px]:flex-row @[480px]:items-center justify-between gap-4" variants={staggerItem} transition={transition.normal}>
         <div className="flex flex-col gap-1">
           <span className="text-body-s text-t3">
             {isOnline ? 'Online mode · Connected to Sonare API' : 'Showing local library'}
           </span>
-          <span className="text-display-m text-t1">
-            {user ? `Welcome back${user.displayName ? `, ${user.displayName}` : ''}` : 'Welcome to Sonare'}
+          <span className="text-display-m text-t1 font-semibold">
+            {greeting}
           </span>
         </div>
         <div className="flex items-center gap-2.5">
@@ -106,6 +107,7 @@ export default function Home() {
         </div>
       </motion.div>
 
+      {/* Guest Banner */}
       {isOnline && !user && (
         <motion.div className="onstrip gap-3" variants={staggerItem} transition={transition.normal}>
           <Icon name="info" size={16} className="text-acc flex-none" />
@@ -118,6 +120,7 @@ export default function Home() {
         </motion.div>
       )}
 
+      {/* Offline banner */}
       {!isOnline && (
         <motion.div className="offstrip gap-3" variants={staggerItem} transition={transition.normal}>
           <Icon name="smartphone" size={16} className="text-gold flex-none" />
@@ -133,9 +136,9 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Quick Access Tiles */}
+      {/* Quick Access Tiles: 2 cols on phone/web/tablet, 3 cols at desktop (@[960px]:) */}
       {(tiles.length > 0 || (isOnline && trendingLoading)) && (
-        <motion.div className="grid gap-3 grid-cols-3" variants={staggerItem} transition={transition.normal}>
+        <motion.div className="grid gap-3 grid-cols-1 @[480px]:grid-cols-2 @[960px]:grid-cols-3" variants={staggerItem} transition={transition.normal}>
           {isOnline && trendingLoading && tiles.length === 0 ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="tile animate-pulse opacity-50 h-14 bg-s2/40" />
@@ -156,24 +159,61 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Trending Section */}
+      {/* Recently played shelf (when real data exists) */}
+      {(recentTracks.length > 0 || (!isOnline && local.tracks.length > 6)) && (
+        <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
+          <div className="shead">
+            <span className="text-h2 text-t1 font-semibold">
+              {!isOnline ? 'Jump back in' : 'Recently played'}
+            </span>
+            {recentTracks.length > 6 && (
+              <button
+                className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1 inline-flex items-center gap-1"
+                onClick={() => setAllRecent(v => !v)}
+              >
+                <span>{allRecent ? 'Show less' : 'See all'}</span>
+                <Icon name="chevron-right" size={14} />
+              </button>
+            )}
+          </div>
+          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+            {recentTracks.slice(0, allRecent ? undefined : 8).map((track, i) => (
+              <Card
+                key={track.id}
+                title={track.title}
+                subtitle={track.artist}
+                artVariant={`a${((i % 12) + 1) as 1}`}
+                thumbnail={trackArtwork(track, 140)}
+                to={track.albumId ? `/album/${track.albumId}` : undefined}
+                onPlay={() => handlePlay(track, recentTracks)}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {/* Trending shelf (Square cards) */}
       {isOnline && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
-            <span className="text-h2 text-t1">Trending locally this week</span>
-            {trendingTracks.length > 12 && (
-              <button className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1" onClick={() => setAllTrending(v => !v)}>
-                {allTrending ? 'Show less' : 'See all'}
+            <span className="text-h2 text-t1 font-semibold">Trending locally this week</span>
+            {trendingTracks.length > 6 && (
+              <button
+                className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1 inline-flex items-center gap-1"
+                onClick={() => setAllTrending(v => !v)}
+              >
+                <span>{allTrending ? 'Show less' : 'See all'}</span>
+                <Icon name="chevron-right" size={14} />
               </button>
             )}
           </div>
           {trendingFailed ? (
             <EmptyState icon="wifi-off" title="Could not load trending" description={loadErrorMessage(trendingError)} action={retryButton} />
           ) : (
-            <div className="flex gap-4 flex-wrap">
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
               {trendingLoading && trendingCards.length === 0 ? (
                 Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="acard w-[160px] h-[210px] animate-pulse bg-s2/40 rounded-md" />
+                  <div key={i} className="acard w-[160px] h-[210px] animate-pulse bg-s2/40 rounded-md flex-none" />
                 ))
               ) : (
                 trendingCards.map((card) => (
@@ -193,42 +233,26 @@ export default function Home() {
         </motion.div>
       )}
 
-      {/* Recently Played / Recommended Tracks */}
-      {!hideRecent && (
-        <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
-          <div className="shead">
-            <span className="text-h2 text-t1">
-              {!isOnline ? 'On this device' : recentFailed || (recentData?.items && recentData.items.length > 0) ? 'Recently played' : 'Recommended tracks'}
-            </span>
-            {isOnline && (recentData?.items.length ?? 0) >= 10 && (
-              <button className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1" onClick={() => setAllRecent(v => !v)}>
-                {allRecent ? 'Show less' : 'See all'}
-              </button>
-            )}
-          </div>
-          {recentFailed ? (
-            <EmptyState icon="wifi-off" title="Could not load recently played" description={loadErrorMessage(recentError)} action={retryButton} />
-          ) : (
-            <div className="flex flex-col gap-0.5">
-              {isOnline && recentLoading && recentTracks.length === 0 ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="srow animate-pulse opacity-50 h-14 bg-s2/30" />
-                ))
-              ) : (
-                recentTracks.map((track, i) => (
-                  <SongRow
-                    key={track.id}
-                    track={track}
-                    index={i + 1}
-                    isActive={currentTrack?.id === track.id}
-                    onClick={() => handlePlay(track, recentTracks)}
-                  />
-                ))
-              )}
-            </div>
-          )}
-        </motion.div>
-      )}
+      {/* Trending / Local Song Table */}
+      <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
+        <div className="shead">
+          <span className="text-h2 text-t1 font-semibold">
+            {isOnline ? 'Trending tracks' : 'Songs on device'}
+          </span>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <SongTableHeader />
+          {trendingTracks.slice(0, 10).map((track, i) => (
+            <SongRow
+              key={track.id}
+              track={track}
+              index={i + 1}
+              isActive={currentTrack?.id === track.id}
+              onClick={() => handlePlay(track, trendingTracks)}
+            />
+          ))}
+        </div>
+      </motion.div>
     </motion.div>
   )
 }

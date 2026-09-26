@@ -87,7 +87,7 @@ export default function Artist() {
   }
 
   return (
-    <div className="flex flex-col overflow-auto h-full">
+    <div className="@container flex flex-col overflow-auto h-full">
       <div className="relative flex items-end gap-6 p-8 pb-6 min-h-[280px]">
         <div className="ambient" aria-hidden>
           <i className="bg-acc w-[400px] h-[400px] -top-[100px] -left-[100px]" />

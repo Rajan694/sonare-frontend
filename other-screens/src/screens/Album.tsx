@@ -89,7 +89,7 @@ export default function Album() {
   const albumMeta = [album.year, album.trackCount ? `${album.trackCount} songs` : null].filter(Boolean).join(' · ')
 
   return (
-    <div className="flex flex-col overflow-auto h-full">
+    <div className="@container flex flex-col overflow-auto h-full">
       <div className="flex items-end gap-6 p-8 pb-6">
         <Artwork
           src={album.thumbnail || (id ? `/api/v1/albums/${id}/artwork?size=300` : undefined)}

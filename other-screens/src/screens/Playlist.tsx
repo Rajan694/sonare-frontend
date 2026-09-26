@@ -184,7 +184,7 @@ function Playlist({ id }: { id: string }) {
   const count = playlist?.trackCount ?? tracks.length
 
   return (
-    <div className="flex flex-col overflow-auto h-full">
+    <div className="@container flex flex-col overflow-auto h-full">
       <div className="flex items-end gap-6 p-8 pb-6">
         <Artwork
           src={playlist?.thumbnail || (defaultId ? `/api/v1/playlists/${defaultId}/artwork?size=300` : undefined)}

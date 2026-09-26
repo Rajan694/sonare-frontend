@@ -52,7 +52,6 @@ function sortTracks(list: Track[], key: SortKey, desc: boolean): Track[] {
 export default function Library() {
   const { mode } = useModeStore()
   const { currentTrack, playTrack } = usePlayerStore()
-  // The tab lives in ?view= so sidebar links (Albums, Artists, Genres) land on it.
   const [params, setParams] = useSearchParams()
   const slug = (t: Tab) => t.toLowerCase().replace(' ', '-')
   const activeTab: Tab = TABS.find(t => slug(t) === params.get('view')) ?? 'Songs'
@@ -101,7 +100,6 @@ export default function Library() {
     loading = false
   }
 
-  // Filter by source & downloaded only
   if (sourceFilter === 'local') {
     tracks = tracks.filter(t => t.source === 'local' || local.downloads.has(t.id))
   } else if (sourceFilter === 'server') {
@@ -112,7 +110,6 @@ export default function Library() {
     tracks = tracks.filter(t => t.source === 'local' || local.downloads.has(t.id))
   }
 
-  // Sorting
   if (sort) tracks = sortTracks(tracks, sort.key, sort.desc)
   const isTrackTab = activeTab === 'Songs' || activeTab === 'Favourites' || activeTab === 'Most played'
 
@@ -164,14 +161,16 @@ export default function Library() {
   return (
     <div className="@container flex flex-col gap-6 overflow-hidden h-full">
       {/* Header section */}
-      <div className="flex flex-col gap-6 px-8 pt-7 flex-none">
-        <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 px-4 @[480px]:px-8 pt-5 @[480px]:pt-7 flex-none">
+        {/* Title row */}
+        <div className="flex flex-col @[480px]:flex-row @[480px]:items-center @[480px]:justify-between gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-display-m text-t1 font-semibold">{activeTab}</span>
             <span className="text-body-m text-t2">
               {isTrackTab ? countSubtitle : activeTab}
             </span>
           </div>
+          {/* Action buttons (Shuffle / Play all) */}
           <div className="flex items-center gap-2.5">
             {CAPS.localLibrary && (
               <Link to="/folders" className="btn btn-out">
@@ -188,12 +187,12 @@ export default function Library() {
           </div>
         </div>
 
-        {/* Compact tabs row for secondary library views not in sidebar or quick switching */}
-        <div className="tabs">
+        {/* Horizontal scrollable tabs row */}
+        <div className="tabs overflow-x-auto no-scrollbar flex items-center">
           {TABS.map(tab => (
             <button
               key={tab}
-              className={cn('tab', activeTab === tab && 'on')}
+              className={cn('tab flex-none', activeTab === tab && 'on')}
               onClick={() => setActiveTab(tab)}
             >
               {tab}
@@ -204,7 +203,7 @@ export default function Library() {
         {/* Filter chips & list/grid toggle row */}
         {isTrackTab && (
           <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
               <select
                 className="chip chip-sm text-t1 bg-s2 border-ln2 appearance-none cursor-pointer"
                 aria-label="Sort order"
@@ -230,7 +229,7 @@ export default function Library() {
 
               {CAPS.downloads && (
                 <button
-                  className={cn('chip chip-sm inline-flex items-center gap-1.5', downloadedOnly && 'chip-on')}
+                  className={cn('chip chip-sm inline-flex items-center gap-1.5 flex-none', downloadedOnly && 'chip-on')}
                   onClick={() => setDownloadedOnly(prev => !prev)}
                 >
                   <Icon name="smartphone" size={13} />
@@ -252,8 +251,8 @@ export default function Library() {
             <span className="text-right">#</span>
             <span />
             {headerCell('title', 'TITLE')}
-            <span className="hidden @md:inline">{headerCell('album', 'ALBUM')}</span>
-            <span className="hidden @md:inline">SOURCE</span>
+            <span className="hidden @[720px]:inline">{headerCell('album', 'ALBUM')}</span>
+            <span>SOURCE</span>
             <span className="text-right flex items-center justify-end">
               {headerCell('durationMs', <Icon name="clock" size={13} />, 'justify-end')}
             </span>
@@ -266,7 +265,7 @@ export default function Library() {
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab + mode + view + sourceFilter + downloadedOnly}
-          className="flex flex-col gap-0.5 px-8 pb-8 overflow-auto"
+          className="flex flex-col gap-0.5 px-4 @[480px]:px-8 pb-8 overflow-auto"
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
@@ -387,7 +386,7 @@ export default function Library() {
               ))}
             </div>
           ) : activeTab === 'Genres' ? (
-            <div className="grid grid-cols-2 @md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 @[720px]:grid-cols-4 gap-3">
               {['Ambient', 'Electronica', 'Post-rock', 'Indie', 'Jazz', 'Classical', 'Hip-hop', 'Folk'].map((cat, i) => (
                 <Link
                   key={cat}
