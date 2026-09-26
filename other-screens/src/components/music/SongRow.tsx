@@ -11,6 +11,7 @@ import { motion } from 'motion/react'
 import { staggerItem, transition } from '../../lib/motion'
 import { openTrackMenu } from './TrackMenu'
 import { useLocalLibrary } from '../../data/local'
+import { downloadProgress, useDownload } from '../../data/downloads'
 import { usePlayerStore } from '../../store/playerStore'
 
 interface SongRowProps {
@@ -75,8 +76,10 @@ export default function SongRow({
 }: SongRowProps) {
   const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite)
   const { isPlaying } = usePlayerStore()
-  const { downloads, downloading } = useLocalLibrary()
-  const progress = downloading[track.id]
+  const { downloads } = useLocalLibrary()
+  const download = useDownload(track.id)
+  const inFlight = download && (download.status === 'queued' || download.status === 'downloading') ? download : undefined
+  const progress = inFlight ? downloadProgress(inFlight) ?? 0 : undefined
   const isLocal = track.source === 'local' || downloads.has(track.id)
 
   return (

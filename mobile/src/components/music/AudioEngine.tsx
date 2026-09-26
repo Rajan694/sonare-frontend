@@ -5,6 +5,7 @@ import { useAuthStore } from '../../data/auth';
 import { queuePlay } from '../../data/sync';
 import { SonarePlayer } from '../../native/SonarePlayer';
 import { usePlayerStore } from '../../store/player';
+import { localUriFor } from '../../store/downloads';
 
 // A play counts once the listener has heard 30s, or half of anything shorter. Asking for
 // a stream url doesn't count, or skipping through a queue would inflate every count.
@@ -37,11 +38,13 @@ async function loadCurrent() {
   }
   player.setBuffering(true);
   try {
-    const stream = await api.stream(track.id);
+    // Downloaded songs play from the phone, online or not.
+    const local = localUriFor(track.id);
+    const url = local ?? absoluteUrl((await api.stream(track.id)).url)!;
     if (token !== loadToken) return;
     await SonarePlayer.load({
       id: track.id,
-      url: absoluteUrl(stream.url)!,
+      url,
       title: track.title,
       artist: track.artist,
       album: track.album ?? undefined,

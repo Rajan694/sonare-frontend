@@ -97,6 +97,7 @@ export interface StreamInfo {
   contentLength: number;
   expiresAt: number;
   muxed?: boolean;
+  itag?: number;
 }
 
 export interface Folder {

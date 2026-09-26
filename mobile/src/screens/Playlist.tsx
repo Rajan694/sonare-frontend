@@ -6,6 +6,7 @@ import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { SongRow } from '../components/music/SongRow';
+import { DownloadAllButton } from '../components/music/DownloadAllButton';
 import { Badge } from '../components/ui/Badge';
 import { Sheet } from '../components/ui/Sheet';
 import { Artwork } from '../components/music/Artwork';
@@ -140,6 +141,7 @@ export function PlaylistScreen() {
                   }}
                   accessibilityLabel="Add to queue"
                 />
+                <DownloadAllButton tracks={tracks} />
               </View>
               <View className="flex-row items-center gap-3">
                 <IconButton

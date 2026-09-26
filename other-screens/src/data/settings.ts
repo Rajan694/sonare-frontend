@@ -8,11 +8,16 @@ import { isAuthenticated, onAuthChange, onAuthReady } from './auth'
  * The backend PUT overwrites every column, so the whole object is always sent — patching
  * one field must not reset the others to their defaults.
  */
+export type AudioQuality = 'low' | 'normal' | 'high'
+export type DownloadFormat = 'opus' | 'm4a'
+
 export interface UserSettings {
   eqPreset: string
   gapless: boolean
   normalization: boolean
-  downloadQuality: 'low' | 'normal' | 'high' | 'lossless'
+  streamQuality: AudioQuality
+  downloadQuality: AudioQuality
+  downloadFormat: DownloadFormat
   stayOffline: boolean
 }
 
@@ -20,8 +25,28 @@ let settings: UserSettings = {
   eqPreset: 'Flat',
   gapless: false,
   normalization: true,
+  streamQuality: 'high',
   downloadQuality: 'high',
+  downloadFormat: 'opus',
   stayOffline: false,
+}
+
+const QUALITIES: AudioQuality[] = ['low', 'normal', 'high']
+
+/** Settings quality → the backend's `quality` parameter for /tracks/:id/stream. */
+export const API_QUALITY: Record<AudioQuality, 'auto' | 'low' | 'high'> = {
+  low: 'low',
+  normal: 'auto',
+  high: 'high',
+}
+
+/** What the server sent, minus values this build doesn't know (e.g. the retired 'lossless'). */
+function sanitize(s: Partial<UserSettings>): Partial<UserSettings> {
+  const out = { ...s }
+  if (!QUALITIES.includes(out.streamQuality as AudioQuality)) delete out.streamQuality
+  if (!QUALITIES.includes(out.downloadQuality as AudioQuality)) delete out.downloadQuality
+  if (out.downloadFormat !== 'opus' && out.downloadFormat !== 'm4a') delete out.downloadFormat
+  return out
 }
 
 const listeners = new Set<() => void>()
@@ -76,7 +101,7 @@ export function loadSettings(): void {
     void api
       .getSettings()
       .then((s: Partial<UserSettings>) => {
-        settings = { ...settings, ...s }
+        settings = { ...settings, ...sanitize(s) }
         emit()
       })
       .catch(() => {

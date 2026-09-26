@@ -72,13 +72,15 @@ export const api = {
   playlistTracks: (id: string) => request<Page<Track>>(`/playlists/${enc(id)}/tracks`),
 
   // Playback
-  stream: (id: string, quality: 'auto' | 'low' | 'high' = 'auto') =>
-    request<StreamInfo>(`/tracks/${enc(id)}/stream`, { params: { quality } }),
+  stream: (id: string, quality: 'auto' | 'low' | 'high' = 'auto', format?: 'opus' | 'm4a') =>
+    request<StreamInfo>(`/tracks/${enc(id)}/stream`, { params: { quality, format } }),
   peaks: (id: string, bars: number) => request<{ peaks: number[] }>(`/tracks/${enc(id)}/peaks`, { params: { bars } }),
   lyrics: (id: string) => request<Lyrics>(`/tracks/${enc(id)}/lyrics`, { params: { prefer: 'synced' } }),
 
   // The signed-in user
   me: () => request<User>('/me'),
+  settings: () => request<Record<string, unknown>>('/me/settings'),
+  saveSettings: (body: Record<string, unknown>) => request<{ ok: boolean }>('/me/settings', { method: 'PUT', body }),
   libraryTracks: (sort: 'addedAt' | 'playCount' | 'title' = 'addedAt') =>
     request<Page<Track>>('/me/library/tracks', { params: { sort, order: sort === 'title' ? 'asc' : 'desc' } }),
   favourites: () => request<Page<Track>>('/me/favourites/tracks'),

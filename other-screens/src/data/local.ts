@@ -1,8 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { filesystem, os, storage } from '@neutralinojs/lib'
 import { CAPS } from '../lib/caps'
-import { api } from './api'
-import { API_BASE } from './auth'
 import { clean, readTags, tagsFromFileName } from './tags'
 import type { Folder, Track } from './types'
 
@@ -13,9 +11,11 @@ import type { Folder, Track } from './types'
  * index is kept in Neutralino storage: the webview's localStorage is keyed by origin,
  * and the release build serves from a random port, so it would forget between launches.
  *
- * Downloads (online → offline) are streamed into <Music>/Sonare and indexed like any
- * other local file, remembering the server track they came from so the UI can show them
- * as downloaded and the player can prefer the file over the network.
+ * Finished downloads (data/downloads.ts) are indexed like any other local file,
+ * remembering the server track they came from so the UI can show them as downloaded and
+ * the player can prefer the file over the network. They live in the "Sonare downloads"
+ * folder entry, whose rescan re-checks the files it knows rather than listing a directory:
+ * downloads may sit in more than one place after the download location changes.
  *
  * On web every method degrades to an empty library.
  */
@@ -95,11 +95,10 @@ export interface LocalSnapshot {
   /** Server track id → local track id, for downloaded copies. */
   downloads: Map<string, string>
   scanning: { done: number; total: number } | null
-  downloading: Record<string, number>
 }
 
 let index: LibraryIndex = { version: 1, folders: [], entries: [] }
-let snapshot: LocalSnapshot = { ready: !CAPS.localLibrary, folders: [], tracks: [], downloads: new Map(), scanning: null, downloading: {} }
+let snapshot: LocalSnapshot = { ready: !CAPS.localLibrary, folders: [], tracks: [], downloads: new Map(), scanning: null }
 const listeners = new Set<() => void>()
 let loadPromise: Promise<void> | null = null
 
@@ -246,27 +245,38 @@ async function listAudioFiles(dir: string): Promise<string[]> {
   return entries.filter(e => e.type === 'FILE' && AUDIO_EXT.test(e.entry)).map(e => e.path)
 }
 
-async function downloadsDir(): Promise<string> {
-  return `${await os.getPath('music')}/Sonare`
+/** Downloaded files that are still on disk; the downloads folder "scans" by checking these. */
+async function existingDownloadFiles(): Promise<string[]> {
+  const paths = index.entries.filter(e => e.folderId === DOWNLOADS_FOLDER_ID).map(e => e.path)
+  const present = await Promise.all(paths.map(p => filesystem.getStats(p).then(() => true, () => false)))
+  return paths.filter((_, i) => present[i])
 }
 
-async function ensureDownloadsFolder(): Promise<Folder> {
+/** The downloads folder entry, pointed at the current download location. */
+function ensureDownloadsFolder(path: string): Folder {
   const existing = index.folders.find(f => f.id === DOWNLOADS_FOLDER_ID)
-  const path = existing?.path ?? (await downloadsDir())
-  // Recreate it every time: the user may have deleted the folder since the last download.
-  try {
-    await filesystem.createDirectory(path)
-  } catch {
-    // Already exists.
+  if (existing) {
+    if (existing.path !== path) index = { ...index, folders: index.folders.map(f => (f === existing ? { ...f, path } : f)) }
+    return { ...existing, path }
   }
-  if (existing) return existing
   const folder: Folder = { id: DOWNLOADS_FOLDER_ID, name: 'Sonare downloads', path, trackCount: 0, bytes: 0, included: true, lastScanAt: Date.now() }
   index = { ...index, folders: [...index.folders, folder] }
   return folder
 }
 
-function safeName(s: string): string {
-  return s.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120) || 'track'
+/** A finished download, as the download manager reports it. */
+export interface DownloadedFile {
+  serverId: string
+  path: string
+  /** The download location, for the "Sonare downloads" folder entry. */
+  dir: string
+  title: string
+  artist: string
+  album: string | null
+  durationMs: number | null
+  codec?: string
+  bitrateKbps?: number
+  thumbnail?: string
 }
 
 let activeObjectUrl: string | null = null
@@ -323,7 +333,9 @@ export const localLibrary = {
     await load()
     const targets = index.folders.filter(f => !id || f.id === id)
     const before = new Set(index.entries.map(e => e.id))
-    const lists = await Promise.all(targets.map(f => listAudioFiles(f.path).catch(() => [] as string[])))
+    const lists = await Promise.all(
+      targets.map(f => (f.id === DOWNLOADS_FOLDER_ID ? existingDownloadFiles() : listAudioFiles(f.path)).catch(() => [] as string[]))
+    )
     const total = lists.reduce((n, l) => n + l.length, 0)
     let done = 0
     rebuild({ scanning: { done, total } })
@@ -420,84 +432,74 @@ export const localLibrary = {
     await persist()
   },
 
-  /** Stream a server track into <Music>/Sonare and index it as a local file. */
-  async download(track: Track): Promise<void> {
-    if (!CAPS.downloads) throw new Error('Downloads are only available in the desktop app')
+  /** Index a file the download manager just finished writing. */
+  async addDownload(file: DownloadedFile): Promise<void> {
+    if (!CAPS.localLibrary) return
     await load()
-    if (track.source === 'local' || snapshot.downloads.has(track.id)) return
-    const folder = await ensureDownloadsFolder()
-    rebuild({ downloading: { ...snapshot.downloading, [track.id]: 0 } })
-    try {
-      const stream = await api.getTrackStream(track.id)
-      const url = /^https?:\/\//.test(stream.url) ? stream.url : new URL(API_BASE).origin + stream.url
-      const res = await fetch(url)
-      if (!res.ok || !res.body) throw new Error(`Download failed (${res.status})`)
-      const total = Number(res.headers.get('content-length')) || stream.contentLength || 0
-      const reader = res.body.getReader()
-      const chunks: Uint8Array[] = []
-      let received = 0
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        chunks.push(value)
-        received += value.length
-        if (total) rebuild({ downloading: { ...snapshot.downloading, [track.id]: received / total } })
-      }
-      const bytes = new Uint8Array(received)
-      let offset = 0
-      for (const c of chunks) {
-        bytes.set(c, offset)
-        offset += c.length
-      }
-      const ext = /mp4|m4a|aac/.test(stream.mimeType) ? 'm4a' : 'webm'
-      const path = `${folder.path}/${safeName(`${track.artist} - ${track.title}`)}.${ext}`
-      await filesystem.writeBinaryFile(path, bytes.buffer)
-      const stats = await filesystem.getStats(path)
-      const entry: LocalEntry = {
-        id: `local:${hash(path)}`,
-        path,
-        folderId: folder.id,
-        size: stats.size,
-        mtime: stats.modifiedAt,
-        title: track.title,
-        artist: track.artist,
-        album: track.album,
-        durationMs: track.durationMs,
-        codec: stream.codec,
-        bitrateKbps: stream.bitrateKbps,
-        addedAt: Date.now(),
-        serverId: track.id,
-        thumbnail: track.thumbnail,
-      }
-      index = { ...index, entries: [...index.entries.filter(e => e.path !== path), entry] }
-      await persist()
-    } finally {
-      const { [track.id]: _, ...rest } = snapshot.downloading
-      rebuild({ downloading: rest })
+    const folder = ensureDownloadsFolder(file.dir)
+    const stats = await filesystem.getStats(file.path)
+    const entry: LocalEntry = {
+      id: `local:${hash(file.path)}`,
+      path: file.path,
+      folderId: folder.id,
+      size: stats.size,
+      mtime: stats.modifiedAt,
+      title: file.title,
+      artist: file.artist,
+      album: file.album,
+      durationMs: file.durationMs,
+      codec: file.codec,
+      bitrateKbps: file.bitrateKbps,
+      addedAt: Date.now(),
+      serverId: file.serverId,
+      thumbnail: file.thumbnail,
     }
-  },
-
-  /** Delete a downloaded copy from disk and the index. */
-  async removeDownload(serverId: string): Promise<void> {
-    await load()
-    const entry = index.entries.find(e => e.serverId === serverId)
-    if (!entry) return
-    try {
-      await filesystem.remove(entry.path)
-    } catch {
-      // Already gone.
-    }
-    index = { ...index, entries: index.entries.filter(e => e !== entry) }
+    // One local copy per server track: a re-download replaces the old entry.
+    index = { ...index, entries: [...index.entries.filter(e => e.path !== file.path && e.serverId !== file.serverId), entry] }
     rebuild()
     await persist()
+  },
+
+  /** Forget a download's index entry. The download manager deletes the file itself. */
+  async forgetDownload(serverId: string): Promise<void> {
+    await load()
+    if (!index.entries.some(e => e.serverId === serverId)) return
+    index = { ...index, entries: index.entries.filter(e => e.serverId !== serverId) }
+    rebuild()
+    await persist()
+  },
+
+  /** Downloads indexed before the download manager kept its own list (for a one-time import). */
+  async downloadedEntries(): Promise<(DownloadedFile & { size: number; addedAt: number })[]> {
+    await load()
+    return index.entries
+      .filter(e => e.serverId)
+      .map(e => ({
+        serverId: e.serverId!,
+        path: e.path,
+        dir: e.path.slice(0, e.path.lastIndexOf('/')),
+        title: e.title,
+        artist: e.artist,
+        album: e.album,
+        durationMs: e.durationMs,
+        codec: e.codec,
+        bitrateKbps: e.bitrateKbps,
+        thumbnail: e.thumbnail,
+        size: e.size,
+        addedAt: e.addedAt,
+      }))
   },
 
   /** Open the file's folder in the system file manager. */
   async showInFolder(trackId: string): Promise<void> {
     const entry = index.entries.find(e => e.id === localLibrary.localIdFor(trackId))
     if (!entry) return
-    await os.open(`file://${entry.path.slice(0, entry.path.lastIndexOf('/'))}`)
+    await showPathInFolder(entry.path)
   },
+}
+
+export async function showPathInFolder(path: string): Promise<void> {
+  await os.open(`file://${path.slice(0, path.lastIndexOf('/'))}`)
 }
 
 /**

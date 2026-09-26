@@ -17,6 +17,7 @@ import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import type { Track } from '../data/types';
+import { downloadedTracks, useDownloadsStore } from '../store/downloads';
 import { formatDuration } from '../lib/format';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { cn } from '../lib/cn';
@@ -50,6 +51,8 @@ export function HomeScreen() {
   const durationMs = usePlayerStore((state) => state.durationMs);
 
   const online = mode === 'online';
+  const downloads = useDownloadsStore((state) => state.items);
+  const offlineTracks = React.useMemo(() => downloadedTracks(downloads), [downloads]);
   // History and favourites belong to an account; guests just get the catalog.
   const recent = useAsync(() => api.recentlyPlayed(12), [user?.id], { enabled: online && signedIn, refetchOnFocus: true });
   // Re-read favourites when a heart is toggled anywhere (including a like made while signing in).
@@ -292,11 +295,27 @@ export function HomeScreen() {
                 <Icon name="smartphone" size={18} color="#FFC24D" />
                 <View className="flex-1 gap-0.5">
                   <Text className="text-ll font-semibold text-gold">You're offline</Text>
-                  <Text className="text-t2 text-bs">No music stored on this device yet.</Text>
+                  <Text className="text-t2 text-bs">
+                    {offlineTracks.length ? `${offlineTracks.length} downloaded ${offlineTracks.length === 1 ? 'song' : 'songs'} on this phone` : 'No music stored on this device yet.'}
+                  </Text>
                 </View>
               </View>
 
-              <StateView empty="You're offline. Music saved to this phone will show up here once downloads arrive." />
+              {offlineTracks.length > 0 ? (
+                <View>
+                  {offlineTracks.map((item, index) => (
+                    <SongRow
+                      key={item.id}
+                      track={item}
+                      index={index}
+                      isActive={currentTrack?.id === item.id}
+                      onPress={() => playTrack(item, offlineTracks)}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <StateView empty="You're offline. Songs you download show up here." />
+              )}
             </>
           )}
         </View>

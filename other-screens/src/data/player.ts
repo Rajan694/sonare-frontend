@@ -2,14 +2,7 @@ import { API_BASE } from './auth'
 import { api } from './api'
 import * as dsp from './dsp'
 import { localLibrary } from './local'
-import { getSettings, type UserSettings } from './settings'
-
-const STREAM_QUALITY: Record<UserSettings['downloadQuality'], 'auto' | 'low' | 'high'> = {
-  low: 'low',
-  normal: 'auto',
-  high: 'high',
-  lossless: 'high',
-}
+import { API_QUALITY, getSettings } from './settings'
 
 /**
  * Audio playback engine.
@@ -127,7 +120,7 @@ function el(): HTMLAudioElement {
 }
 
 async function resolveStream(trackId: string): Promise<string> {
-  const res = await api.getTrackStream(trackId, STREAM_QUALITY[getSettings().downloadQuality] ?? 'auto')
+  const res = await api.getTrackStream(trackId, API_QUALITY[getSettings().streamQuality] ?? 'auto')
   expiresAt = res.expiresAt ?? 0
   muxed = !!res.muxed
   return absolute(res.url)

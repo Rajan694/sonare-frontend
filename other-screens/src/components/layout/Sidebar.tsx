@@ -13,6 +13,7 @@ import { IconButton } from '../ui/Button'
 import Artwork from '../music/Artwork'
 import { openPlaylistMenu } from '../music/TrackMenu'
 import { useSyncStatus } from '../../data/sync'
+import { useDownloads } from '../../data/downloads'
 import type { Playlist } from '../../data/types'
 import { useAppDispatch, useAppSelector } from '../../store'
 import { toggleSidebar } from '../../store/uiSlice'
@@ -30,6 +31,7 @@ const LIBRARY_ITEMS = [
   { to: '/library?view=artists', icon: 'mic' as const, label: 'Artists' },
   { to: '/library?view=genres', icon: 'grid' as const, label: 'Genres' },
   { to: '/folders', icon: 'folder' as const, label: 'Folders' },
+  { to: '/downloads', icon: 'download' as const, label: 'Downloads' },
   { to: '/library?view=favourites', icon: 'heart' as const, label: 'Favourites' },
 ] as const
 
@@ -56,6 +58,7 @@ export default function Sidebar() {
   const tip = (label: string) => (collapsed ? { 'data-tip': label, 'data-tip-side': 'right', 'aria-label': label } : {})
   const online = !CAPS.offlineMode || mode === 'online'
   const sync = useSyncStatus()
+  const { activeCount: downloading } = useDownloads()
   const syncLabel = sync.syncing ? 'Syncing' : sync.pending ? 'Sync pending' : 'Synced'
 
   const playlists: Playlist[] = playlistsData?.items || []
@@ -120,6 +123,7 @@ export default function Sidebar() {
         {!collapsed && <span className="text-overline text-t3 px-3 pb-2">Library</span>}
         {LIBRARY_ITEMS.filter(item => {
           if (item.to === '/folders' && !CAPS.localLibrary) return false
+          if (item.to === '/downloads' && !CAPS.downloads) return false
           if (item.to === LIKED_SONGS) return false // Liked Songs is pinned under Playlists instead
           return true
         }).map(item => (
@@ -131,6 +135,9 @@ export default function Sidebar() {
           >
             <Icon name={item.icon} size={18} />
             {!collapsed && item.label}
+            {!collapsed && item.to === '/downloads' && downloading > 0 && (
+              <span className="ml-auto text-label-s text-acc font-mono" aria-label={`${downloading} downloading`}>{downloading}</span>
+            )}
           </Link>
         ))}
       </div>

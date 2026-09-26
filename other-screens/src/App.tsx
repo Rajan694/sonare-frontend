@@ -13,6 +13,7 @@ import { setSyncOnline, startBackgroundSync } from './data/sync'
 import { loadSettings, updateSettings, useSettings } from './data/settings'
 import { showToast } from './store/toastStore'
 import { localLibrary } from './data/local'
+import { downloads } from './data/downloads'
 import AppShell from './components/layout/AppShell'
 import Home from './screens/Home'
 import Search from './screens/Search'
@@ -28,6 +29,7 @@ import Equalizer from './screens/Equalizer'
 import ModeSwitch from './screens/ModeSwitch'
 import SettingsScreen from './screens/SettingsScreen'
 import Folders from './screens/Folders'
+import Downloads from './screens/Downloads'
 import SignIn from './screens/SignIn'
 import './styles.css'
 import './sonare.css'
@@ -90,6 +92,8 @@ export default function App() {
     initDevAuth()
     loadSettings()
     startBackgroundSync()
+    // Picks up downloads that were running when the app last closed.
+    void downloads.init()
   }, [])
 
   // Plays held in Offline Mode upload in the background once the app is Online again.
@@ -355,6 +359,7 @@ export default function App() {
               <Route path="/settings" element={<SettingsScreen />} />
               <Route path="/signin" element={<SignIn />} />
               {CAPS.localLibrary && <Route path="/folders" element={<Folders />} />}
+              {CAPS.downloads && <Route path="/downloads" element={<Downloads />} />}
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Route>
           </Routes>
