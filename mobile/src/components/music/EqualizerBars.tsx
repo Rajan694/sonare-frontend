@@ -50,12 +50,14 @@ function EqBar({
     height: height.value,
   }));
 
+  // Plain style, not className: NativeWind's interop reads the style array during render,
+  // which touches the shared value and trips Reanimated's strict-mode warning.
+
   const Component = Animated.View as any;
 
   return (
     <Component
-      style={[animatedStyle, { backgroundColor: color }]}
-      className="w-[3px] rounded-full"
+      style={[animatedStyle, { backgroundColor: color, width: 3, borderRadius: 999 }]}
     />
   );
 }

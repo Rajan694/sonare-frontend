@@ -7,7 +7,8 @@ import {
   Settings, SlidersHorizontal, Play, Pause, MoreHorizontal, Plus, Check,
   Download, RefreshCw, Trash2, AlignJustify, ExternalLink, Moon, Wifi, WifiOff,
   LayoutGrid, List, Clock, Star, Radio, LogOut, Info, Share,
-  Music2, Music4, ChevronDown, ChevronUp, Dot, Loader2
+  Music2, Music4, ChevronDown, ChevronUp, Dot, Loader2, UserRound, MessageSquareText, Pencil,
+  PanelLeftClose, PanelLeftOpen
 } from 'lucide-react'
 
 const ICONS = {
@@ -65,6 +66,11 @@ const ICONS = {
   'chevron-up': ChevronUp,
   dot: Dot,
   loader: Loader2,
+  user: UserRound,
+  lyrics: MessageSquareText,
+  edit: Pencil,
+  'sidebar-close': PanelLeftClose,
+  'sidebar-open': PanelLeftOpen,
 } as const
 
 export type IconName = keyof typeof ICONS

@@ -1,5 +1,5 @@
 import React from 'react';
-import { SafeAreaView, ScrollView, StatusBar, View } from 'react-native';
+import { ScrollView, StatusBar, View } from 'react-native';
 import { cn } from '../../lib/cn';
 
 interface ScreenProps {
@@ -12,7 +12,7 @@ interface ScreenProps {
 export function Screen({ children, scrollable = true, className, contentContainerClassName }: ScreenProps) {
   if (scrollable) {
     return (
-      <SafeAreaView className="flex-1 bg-bg">
+      <View className="flex-1 bg-bg">
         {/* @ts-ignore */}
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
         <ScrollView 
@@ -21,17 +21,17 @@ export function Screen({ children, scrollable = true, className, contentContaine
         >
           {children}
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-bg">
+    <View className="flex-1 bg-bg">
       {/* @ts-ignore */}
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <View className={cn('flex-1', className)}>
         {children}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

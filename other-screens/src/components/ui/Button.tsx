@@ -43,18 +43,25 @@ export default function Button({ variant = 'solid', size = 'md', icon, children,
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: IconName
+  /** Accessible name, and the tooltip unless `tip` says otherwise. */
   label: string
+  /** Shorter tooltip text, when the label spells out more (e.g. the track's title). */
+  tip?: string
+  /** Shortcut shown in the tooltip, e.g. "Space". */
+  kbd?: string
   size?: 28 | 32 | 40 | 44
   active?: boolean
   bordered?: boolean
 }
 
-export function IconButton({ icon, label, size = 40, active, bordered, className, ...props }: IconButtonProps) {
+export function IconButton({ icon, label, tip, kbd, size = 40, active, bordered, className, ...props }: IconButtonProps) {
   const dim = { 28: 'w-7 h-7', 32: 'w-8 h-8', 40: 'w-10 h-10', 44: 'w-11 h-11' }[size]
   const iconSize = { 28: 14, 32: 16, 40: 18, 44: 20 }[size]
   return (
     <button
       aria-label={label}
+      data-tip={tip ?? label}
+      data-tip-kbd={kbd}
       className={cn(
         'ib',
         dim,

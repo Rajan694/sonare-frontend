@@ -16,6 +16,9 @@
   "nativeAllowList": [
     "app.*",
     "os.*",
+    "window.*",
+    "filesystem.*",
+    "storage.*",
     "debug.log"
   ],
   "globalVariables": {
@@ -32,11 +35,11 @@
   },
   "modes": {
     "window": {
-      "title": "other-screens",
-      "width": 800,
-      "height": 500,
-      "minWidth": 400,
-      "minHeight": 200,
+      "title": "Sonare",
+      "width": 1440,
+      "height": 900,
+      "minWidth": 1100,
+      "minHeight": 680,
       "center": true,
       "fullScreen": false,
       "alwaysOnTop": false,
@@ -79,7 +82,7 @@
     "binaryVersion": "6.9.0",
     "frontendLibrary": {
       "patchFile": "/index.html",
-      "devUrl": "http://localhost:5173",
+      "devUrl": "http://localhost:5183",
       "projectPath": "./",
       "initCommand": "npm install",
       "devCommand": "npm run dev",

@@ -2,118 +2,109 @@ import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { cn } from '../../lib/cn';
 import { Track } from '../../data/types';
+import { artworkUrl } from '../../data/config';
 import { Artwork } from './Artwork';
 import { SourceGlyph } from './SourceGlyph';
 import { EqualizerBars } from './EqualizerBars';
+import { IconButton } from '../ui/IconButton';
 import { formatDuration } from '../../lib/format';
 import Animated, { FadeIn, Layout, ReduceMotion } from 'react-native-reanimated';
-import { Sheet } from '../ui/Sheet';
-import { Button } from '../ui/Button';
 import Icon from '../ui/Icon';
+import { useLibraryStore } from '../../store/library';
+import { useTrackMenuStore, type TrackMenuAction } from '../../store/trackMenu';
+import { usePlayerStore } from '../../store/player';
 
 interface SongRowProps {
   track: Track;
   onPress: () => void;
-  isPlaying?: boolean;
+  /** This row is the current track. Its bars only move while audio is actually playing. */
+  isActive?: boolean;
   showArtwork?: boolean;
   showIndex?: boolean;
   index?: number;
   className?: string;
+  /** Extra action shown in the long-press menu, e.g. "Remove from playlist". */
+  extraAction?: TrackMenuAction;
 }
 
 export function SongRow({
   track,
   onPress,
-  isPlaying = false,
+  isActive = false,
   showArtwork = true,
   showIndex = false,
   index,
   className,
+  extraAction,
 }: SongRowProps) {
-  const [sheetVisible, setSheetVisible] = React.useState(false);
+  const favourite = useLibraryStore(s => !!s.favouriteIds[track.id]);
+  // Only the active row cares, so the others never re-render on play/pause.
+  const playing = usePlayerStore(s => isActive && s.isPlaying);
+  const accent = track.source === 'local' ? '#FFC24D' : '#00E28A';
+
+  const subtitle = track.album
+    ? `${track.artist} · ${track.album}`
+    : track.artist;
 
   return (
     <Animated.View
-       entering={FadeIn.delay((index || 0) * 30).springify().damping(20).reduceMotion(ReduceMotion.System)}
+       entering={FadeIn.delay(Math.min(index || 0, 12) * 30).springify().damping(20).reduceMotion(ReduceMotion.System)}
        layout={Layout.springify().damping(20).reduceMotion(ReduceMotion.System)}
     >
     <Pressable
       onPress={onPress}
-      onLongPress={() => setSheetVisible(true)}
+      onLongPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
       accessibilityRole="button"
       accessibilityLabel={`${track.title} by ${track.artist}`}
-      className={cn('flex-row items-center px-4 py-2 min-h-[56px]', isPlaying && 'bg-s1', className)}
+      accessibilityHint="Long press for more options"
+      className={cn(
+        'flex-row items-center px-2.5 py-2 rounded-md',
+        isActive ? 'bg-s2 border border-ln2' : 'bg-transparent',
+        className
+      )}
     >
       {showIndex && index !== undefined && (
-        <View className="w-[20px] items-center justify-center">
-          {isPlaying ? (
-            <EqualizerBars isPlaying={true} color={track.source === 'local' ? '#FFC24D' : '#00E28A'} />
+        <View className="w-[22px] mr-2 items-center justify-center">
+          {isActive ? (
+            <EqualizerBars isPlaying={playing} color={accent} />
           ) : (
-            <Text className="text-t3 text-bm text-right font-mono w-full">{index + 1}</Text>
+            <Text className="text-t3 text-[12px] text-right font-mono w-full">{index + 1}</Text>
           )}
         </View>
       )}
-      
+
       {showArtwork && (
         <View className="mr-3">
-          <Artwork uri={track.albumId} size={44} />
+          <Artwork uri={artworkUrl(track, 64)} size={44} className="rounded-sm" />
         </View>
       )}
 
-      <View className="flex-1 justify-center mr-3 p-1">
-        <View className="flex-row items-center gap-2">
-          <Text numberOfLines={1} className={cn("text-t1 text-tm font-medium flex-shrink", isPlaying && (track.source === 'local' ? 'text-gold' : 'text-acc'))}>
+      <View className="flex-1 justify-center mr-2 gap-0.5 min-w-0">
+        <View className="flex-row items-center gap-1.5 min-w-0">
+          <Text numberOfLines={1} className={cn("text-tm font-medium shrink", isActive ? (track.source === 'local' ? 'text-gold' : 'text-acc') : 'text-t1')}>
             {track.title}
           </Text>
-          <SourceGlyph source={track.source} />
+          <SourceGlyph source={track.source} size={18} />
+          {favourite && <Icon name="heart" size={12} color={accent} />}
         </View>
         <Text numberOfLines={1} className="text-t2 text-bs">
-          {track.artist}
+          {subtitle}
         </Text>
       </View>
 
-      <Text className="text-t3 text-mono-s font-mono mr-1">
-        {formatDuration(track.durationMs)}
-      </Text>
-    </Pressable>
+      {track.durationMs ? (
+        <Text className="text-t3 text-mono-s font-mono mr-1">
+          {formatDuration(track.durationMs)}
+        </Text>
+      ) : null}
 
-    <Sheet visible={sheetVisible} onClose={() => setSheetVisible(false)}>
-        <View className="px-6 pb-6">
-            <View className="flex-row items-center gap-4 mb-8">
-               <Artwork uri={track.albumId} size={56} />
-               <View className="flex-1">
-                  <Text className="text-t1 text-h2 font-medium" numberOfLines={1}>{track.title}</Text>
-                  <Text className="text-t3 text-tl" numberOfLines={1}>{track.artist}</Text>
-               </View>
-            </View>
-            <View className="gap-2">
-               <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <View className="mr-3 w-[18px] items-center">
-                    <Icon name="play" size={18} color="#FFFFFF" />
-                  </View>
-                  <Text className="text-t1 text-tm">Play next</Text>
-               </Button>
-               <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <View className="mr-3 w-[18px] items-center">
-                    <Icon name="playlist" size={18} color="#FFFFFF" />
-                  </View>
-                  <Text className="text-t1 text-tm">Add to queue</Text>
-               </Button>
-               <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <View className="mr-3 w-[18px] items-center">
-                    <Icon name="heart" size={18} color="#FFFFFF" />
-                  </View>
-                  <Text className="text-t1 text-tm">Add to favourites</Text>
-               </Button>
-               <Button variant="ghost" className="justify-start px-2 py-3" onPress={() => setSheetVisible(false)}>
-                  <View className="mr-3 w-[18px] items-center">
-                    <Icon name="plus" size={18} color="#FFFFFF" />
-                  </View>
-                  <Text className="text-t1 text-tm">Add to playlist</Text>
-               </Button>
-            </View>
-        </View>
-    </Sheet>
+      <IconButton
+        icon={<Icon name="more" size={16} color="#7E7E8C" />}
+        size={32}
+        onPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
+        accessibilityLabel={`More options for ${track.title}`}
+      />
+    </Pressable>
     </Animated.View>
   );
 }

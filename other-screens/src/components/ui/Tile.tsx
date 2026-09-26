@@ -1,22 +1,51 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import Artwork from '../music/Artwork'
+import Icon from './Icon'
 
 interface TileProps {
   title: string
   subtitle: string
-  artVariant: any
-  to: string
+  artVariant?: any
+  /** Where the tile navigates. Without it, clicking the tile plays. */
+  to?: string
+  thumbnail?: string
+  /** Plays in place without leaving the screen (FLOWS M01 inner Play button). */
+  onPlay?: () => void
 }
 
-export function Tile({ title, subtitle, artVariant, to }: TileProps) {
-  return (
-    <Link to={to} className="tile no-underline text-inherit">
-      <Artwork variant={artVariant} size={44} radius="xs" />
-      <span className="flex flex-col grow min-w-0">
-        <span className="text-body-l text-t1 truncate">{title}</span>
+export function Tile({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay }: TileProps) {
+  const body = (
+    <>
+      <Artwork src={thumbnail} variant={artVariant} size={44} radius="xs" alt={title} />
+      <span className="flex flex-col grow min-w-0 pr-8">
+        <span className="text-body-l text-t1 font-medium truncate">{title}</span>
         <span className="text-body-s text-t3 truncate">{subtitle}</span>
       </span>
-    </Link>
+    </>
+  )
+
+  return (
+    <div className="relative group">
+      {to ? (
+        <Link to={to} className="tile no-underline text-inherit">{body}</Link>
+      ) : (
+        <button className="tile w-full text-left text-inherit cursor-pointer" onClick={onPlay}>{body}</button>
+      )}
+      {onPlay && (
+        <button
+          className="playbtn w-8 h-8 bg-acc absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center transition-transform hover:scale-105 shadow-md"
+          aria-label={`Play ${title}`}
+          data-tip="Play"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onPlay()
+          }}
+        >
+          <Icon name="play" size={14} />
+        </button>
+      )}
+    </div>
   )
 }

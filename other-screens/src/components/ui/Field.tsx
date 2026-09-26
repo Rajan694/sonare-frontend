@@ -2,7 +2,7 @@ import React from 'react'
 import { cn } from '../../lib/utils'
 import Icon, { type IconName } from './Icon'
 
-interface FieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
+interface FieldProps extends React.ComponentPropsWithRef<'input'> {
   icon?: IconName
   shortcut?: string
   square?: boolean

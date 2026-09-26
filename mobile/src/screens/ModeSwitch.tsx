@@ -60,7 +60,7 @@ export function ModeSwitchScreen() {
                 <Icon name="smartphone" size={12} color="#FFC24D" />
              </View>
              <Text className="text-t1 text-bs flex-1">
-               {localMode === 'offline' ? '2,184 songs stored on this device' : 'Full server library and catalogs'}
+               {localMode === 'offline' ? 'Songs stored on this device' : 'Full server library and catalogs'}
              </Text>
           </View>
           

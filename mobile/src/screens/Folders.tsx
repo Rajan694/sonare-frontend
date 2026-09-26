@@ -24,6 +24,7 @@ export function FoldersScreen() {
 
   const enabledFolders = folders.filter(f => f.enabled);
   const disabledFolders = folders.filter(f => !f.enabled);
+  const totalSongs = enabledFolders.reduce((sum, f) => sum + f.tracks, 0);
 
   return (
     <Screen scrollable={false} className="bg-s0">
@@ -38,8 +39,8 @@ export function FoldersScreen() {
         <View className="bg-s1 rounded-md p-4 mb-4 mt-2">
           <View className="flex-row justify-between items-start mb-3">
              <View>
-                <Text className="text-t1 text-tm">Device storage</Text>
-                <Text className="text-t3 text-bs mt-1">16.7 GB of music · 2,184 songs</Text>
+                <Text className="text-t1 text-tm font-medium">Device storage</Text>
+                <Text className="text-t3 text-bs mt-1">{totalSongs ? `${totalSongs} songs` : 'No songs scanned'}</Text>
              </View>
              <Text className="text-gold text-mono-s">28%</Text>
           </View>
@@ -77,7 +78,7 @@ export function FoldersScreen() {
         
         <View className="flex-row items-center mb-6 px-1">
            <View className="w-1.5 h-1.5 rounded-full bg-gold mr-2" />
-           <Text className="text-t3 text-bs">Last scan 12 min ago · 6 new songs found</Text>
+           <Text className="text-t3 text-bs">Last scan 12 min ago</Text>
         </View>
 
         <Text className="text-t3 text-ov mb-2 ml-1">Scanned folders</Text>

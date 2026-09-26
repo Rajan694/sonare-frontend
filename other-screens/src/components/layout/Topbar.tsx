@@ -1,32 +1,19 @@
-import React, { useState, useCallback } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
+import React from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Segmented } from '../ui/Segmented'
-import { cn } from '../../lib/utils'
+import { CAPS } from '../../lib/caps'
 import { useModeStore } from '../../store/modeStore'
 import Icon from '../ui/Icon'
-import { IconButton } from '../ui/Button'
-import { Field } from '../ui/Field'
-import Artwork from '../music/Artwork'
-import { transition } from '../../lib/motion'
+import Button, { IconButton } from '../ui/Button'
+import { useAuth } from '../../data/hooks'
 import type { Mode } from '../../data/types'
+import { useAppDispatch, useAppSelector } from '../../store'
+import SearchField from './SearchField'
 
-interface TopbarProps {
-  searchValue?: string
-  onSearchChange?: (v: string) => void
-}
-
-export default function Topbar({ searchValue = '', onSearchChange }: TopbarProps) {
+export default function Topbar() {
   const navigate = useNavigate()
   const { mode, setMode } = useModeStore()
-  const [localSearch, setLocalSearch] = useState(searchValue)
-
-  const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const v = e.target.value
-    setLocalSearch(v)
-    onSearchChange?.(v)
-    if (v.length > 0) navigate('/search')
-  }, [navigate, onSearchChange])
+  const { user } = useAuth()
 
   function handleModeSwitch(target: Mode) {
     if (target === mode) return
@@ -40,51 +27,55 @@ export default function Topbar({ searchValue = '', onSearchChange }: TopbarProps
   return (
     <header className="topbar">
       <span className="flex items-center gap-1 flex-none">
-        <IconButton icon="chevron-left" label="Back" size={32} />
-        <IconButton icon="chevron-right" label="Forward" size={32} />
+        <IconButton icon="chevron-left" label="Back" size={32} onClick={() => navigate(-1)} />
+        <IconButton icon="chevron-right" label="Forward" size={32} onClick={() => navigate(1)} />
       </span>
 
-      <Field
-        square
-        icon="search"
-        shortcut="Ctrl K"
-        value={localSearch}
-        onChange={handleSearchChange}
-        placeholder="Search songs, albums, artists"
-        className="flex-none w-[380px] h-[38px]"
-        aria-label="Search"
-      />
+      <div className="flex-none w-[380px]">
+        <SearchField shortcut="Ctrl K" enableSlashShortcut={false} enableCtrlKShortcut={true} />
+      </div>
 
       <span className="grow min-w-0" />
 
-      <Segmented
-        options={[
-          { id: 'online', label: 'Online', icon: 'cloud' },
-          { id: 'offline', label: 'Offline', icon: 'smartphone' }
-        ]}
-        value={mode}
-        onChange={(m) => handleModeSwitch(m as Mode)}
-        color={mode === 'offline' ? 'gold' : 'acc'}
-      />
+      {CAPS.offlineMode && (
+        <>
+          <Segmented
+            options={[
+              { id: 'online', label: 'Online', icon: 'cloud' },
+              { id: 'offline', label: 'Offline', icon: 'smartphone' }
+            ]}
+            value={mode}
+            onChange={(m) => handleModeSwitch(m as Mode)}
+            color={mode === 'offline' ? 'gold' : 'acc'}
+          />
 
-      <span className="vr flex-none h-6" />
+          <span className="vr flex-none h-6" />
+        </>
+      )}
 
-      <IconButton icon="sync" label="Sync status" size={32} />
-      <Link to="/settings" className="ib ib-32 flex-none" aria-label="Settings">
-        <Icon name="settings" size={16} />
-      </Link>
+      {!user && (
+        <Button variant="acc" size="sm" onClick={() => navigate('/signin', { state: { mode: 'signin' } })}>
+          Sign in
+        </Button>
+      )}
 
-      <button className="ib ib-32 flex-none p-0" aria-label="Your profile">
-        <Artwork variant="a5" size={26} radius="circ" />
+      {/* Profile and settings are one page, so this is its only way in. */}
+      <button
+        className="ib ib-32 flex-none p-0"
+        aria-label="Profile and settings"
+        data-tip={user ? `${user.displayName} · Profile and settings` : 'Profile and settings'}
+        onClick={() => navigate('/settings')}
+      >
+        {user ? (
+          <span className="flex items-center justify-center w-[26px] h-[26px] rounded-full bg-acc text-black text-label-l font-semibold">
+            {user.displayName.charAt(0).toUpperCase()}
+          </span>
+        ) : (
+          <span className="flex items-center justify-center w-[26px] h-[26px] rounded-full bg-s4 text-t2">
+            <Icon name="user" size={15} />
+          </span>
+        )}
       </button>
-
-      <span className="vr flex-none h-6" />
-
-      <span className="wctl flex-none">
-        <button aria-label="Minimize"><Icon name="minus" size={14} /></button>
-        <button aria-label="Maximize"><Icon name="maximize" size={14} /></button>
-        <button className="cls" aria-label="Close"><Icon name="close" size={14} /></button>
-      </span>
     </header>
   )
 }
