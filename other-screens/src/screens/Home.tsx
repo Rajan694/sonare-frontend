@@ -4,6 +4,7 @@ import { motion } from 'motion/react'
 import { useModeStore } from '../store/modeStore'
 import { usePlayerStore } from '../store/playerStore'
 import { useTrending, useRecentlyPlayed, useAuth } from '../data/hooks'
+import { loadErrorMessage } from '../data/api'
 import { syncNow } from '../data/sync'
 import { useLocalLibrary, resolveLocalRefs } from '../data/local'
 import Icon from '../components/ui/Icon'
@@ -12,6 +13,7 @@ import { trackArtwork } from '../components/music/Artwork'
 import Button from '../components/ui/Button'
 import { Card } from '../components/ui/Card'
 import { Tile } from '../components/ui/Tile'
+import { EmptyState } from '../components/ui/EmptyState'
 import { staggerContainer, staggerItem, transition } from '../lib/motion'
 import type { Track } from '../data/types'
 
@@ -21,11 +23,11 @@ export default function Home() {
   const { currentTrack, playTrack, isPlaying, togglePlay } = usePlayerStore()
   const { user } = useAuth()
 
-  const { data: trendingData, loading: trendingLoading } = useTrending('IN', 20)
+  const { data: trendingData, loading: trendingLoading, error: trendingError, refetch: refetchTrending } = useTrending('IN', 20)
   // "See all" expands a section in place — there is no separate trending / history page.
   const [allTrending, setAllTrending] = useState(false)
   const [allRecent, setAllRecent] = useState(false)
-  const { data: recentData, loading: recentLoading } = useRecentlyPlayed(allRecent ? 50 : 10)
+  const { data: recentData, loading: recentLoading, error: recentError, refetch: refetchRecent } = useRecentlyPlayed(allRecent ? 50 : 10)
 
   const local = useLocalLibrary()
   // Offline (FLOWS M02) everything on Home comes from this device.
@@ -36,6 +38,18 @@ export default function Home() {
     : recentData?.items && recentData.items.length > 0
     ? resolveLocalRefs(recentData.items, local).filter((t, i, all) => all.findIndex(x => x.id === t.id) === i)
     : trendingTracks.slice(0, 5)
+
+  // Errors only replace a section that has nothing to show; a failed refetch keeps the last list.
+  const trendingFailed = isOnline && !!trendingError && trendingTracks.length === 0
+  const recentFailed = isOnline && !!user && !!recentError && !recentData?.items.length
+  // Without history the list is borrowed from trending, whose own error already covers it.
+  const hideRecent = trendingFailed && !recentFailed && recentTracks.length === 0
+  // Both come from Piped, so they fail together - one retry reloads both.
+  const retry = () => {
+    refetchTrending()
+    refetchRecent()
+  }
+  const retryButton = <Button variant="out" size="sm" icon="sync" onClick={retry}>Try again</Button>
 
   const tiles = trendingTracks.slice(0, 6).map((t, i) => ({
     title: t.title,
@@ -120,25 +134,27 @@ export default function Home() {
       )}
 
       {/* Quick Access Tiles */}
-      <motion.div className="grid gap-3 grid-cols-3" variants={staggerItem} transition={transition.normal}>
-        {isOnline && trendingLoading && tiles.length === 0 ? (
-          Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="tile animate-pulse opacity-50 h-14 bg-s2/40" />
-          ))
-        ) : (
-          tiles.map((tile, i) => (
-            <Tile
-              key={i}
-              title={tile.title}
-              subtitle={tile.subtitle}
-              artVariant={tile.artVariant}
-              to={tile.to}
-              thumbnail={trackArtwork(tile.track, 64)}
-              onPlay={() => handlePlay(tile.track, trendingTracks)}
-            />
-          ))
-        )}
-      </motion.div>
+      {(tiles.length > 0 || (isOnline && trendingLoading)) && (
+        <motion.div className="grid gap-3 grid-cols-3" variants={staggerItem} transition={transition.normal}>
+          {isOnline && trendingLoading && tiles.length === 0 ? (
+            Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="tile animate-pulse opacity-50 h-14 bg-s2/40" />
+            ))
+          ) : (
+            tiles.map((tile, i) => (
+              <Tile
+                key={i}
+                title={tile.title}
+                subtitle={tile.subtitle}
+                artVariant={tile.artVariant}
+                to={tile.to}
+                thumbnail={trackArtwork(tile.track, 64)}
+                onPlay={() => handlePlay(tile.track, trendingTracks)}
+              />
+            ))
+          )}
+        </motion.div>
+      )}
 
       {/* Trending Section */}
       {isOnline && (
@@ -151,58 +167,68 @@ export default function Home() {
               </button>
             )}
           </div>
-          <div className="flex gap-4 flex-wrap">
-            {trendingLoading && trendingCards.length === 0 ? (
-              Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="acard w-[160px] h-[210px] animate-pulse bg-s2/40 rounded-md" />
-              ))
-            ) : (
-              trendingCards.map((card) => (
-                <Card
-                  key={card.id}
-                  title={card.title}
-                  subtitle={card.artist}
-                  artVariant={card.artVariant}
-                  to={card.to}
-                  thumbnail={trackArtwork(card.track, 140)}
-                  onPlay={() => handlePlay(card.track, trendingTracks)}
-                />
-              ))
-            )}
-          </div>
+          {trendingFailed ? (
+            <EmptyState icon="wifi-off" title="Could not load trending" description={loadErrorMessage(trendingError)} action={retryButton} />
+          ) : (
+            <div className="flex gap-4 flex-wrap">
+              {trendingLoading && trendingCards.length === 0 ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="acard w-[160px] h-[210px] animate-pulse bg-s2/40 rounded-md" />
+                ))
+              ) : (
+                trendingCards.map((card) => (
+                  <Card
+                    key={card.id}
+                    title={card.title}
+                    subtitle={card.artist}
+                    artVariant={card.artVariant}
+                    to={card.to}
+                    thumbnail={trackArtwork(card.track, 140)}
+                    onPlay={() => handlePlay(card.track, trendingTracks)}
+                  />
+                ))
+              )}
+            </div>
+          )}
         </motion.div>
       )}
 
       {/* Recently Played / Recommended Tracks */}
-      <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
-        <div className="shead">
-          <span className="text-h2 text-t1">
-            {!isOnline ? 'On this device' : recentData?.items && recentData.items.length > 0 ? 'Recently played' : 'Recommended tracks'}
-          </span>
-          {isOnline && (recentData?.items.length ?? 0) >= 10 && (
-            <button className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1" onClick={() => setAllRecent(v => !v)}>
-              {allRecent ? 'Show less' : 'See all'}
-            </button>
-          )}
-        </div>
-        <div className="flex flex-col gap-0.5">
-          {isOnline && recentLoading && recentTracks.length === 0 ? (
-            Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="srow animate-pulse opacity-50 h-14 bg-s2/30" />
-            ))
+      {!hideRecent && (
+        <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
+          <div className="shead">
+            <span className="text-h2 text-t1">
+              {!isOnline ? 'On this device' : recentFailed || (recentData?.items && recentData.items.length > 0) ? 'Recently played' : 'Recommended tracks'}
+            </span>
+            {isOnline && (recentData?.items.length ?? 0) >= 10 && (
+              <button className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1" onClick={() => setAllRecent(v => !v)}>
+                {allRecent ? 'Show less' : 'See all'}
+              </button>
+            )}
+          </div>
+          {recentFailed ? (
+            <EmptyState icon="wifi-off" title="Could not load recently played" description={loadErrorMessage(recentError)} action={retryButton} />
           ) : (
-            recentTracks.map((track, i) => (
-              <SongRow
-                key={track.id}
-                track={track}
-                index={i + 1}
-                isActive={currentTrack?.id === track.id}
-                onClick={() => handlePlay(track, recentTracks)}
-              />
-            ))
+            <div className="flex flex-col gap-0.5">
+              {isOnline && recentLoading && recentTracks.length === 0 ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="srow animate-pulse opacity-50 h-14 bg-s2/30" />
+                ))
+              ) : (
+                recentTracks.map((track, i) => (
+                  <SongRow
+                    key={track.id}
+                    track={track}
+                    index={i + 1}
+                    isActive={currentTrack?.id === track.id}
+                    onClick={() => handlePlay(track, recentTracks)}
+                  />
+                ))
+              )}
+            </div>
           )}
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </motion.div>
   )
 }

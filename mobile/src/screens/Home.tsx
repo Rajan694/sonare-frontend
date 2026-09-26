@@ -223,7 +223,9 @@ export function HomeScreen() {
                 <Text className="text-h2 font-semibold text-t1 mb-2">Trending now</Text>
                 <View className="-mx-4">
                   {trendingTracks.length === 0 ? (
-                    <StateView loading={trending.loading} error={trending.error} onRetry={trending.refetch} empty="Nothing trending right now." />
+                    // Trending failing usually means Piped is down, which also emptied the
+                    // shelves above - so retry reloads them all.
+                    <StateView loading={trending.loading} error={trending.error} onRetry={refresh} empty="Nothing trending right now." />
                   ) : (
                     trendingTracks.slice(0, 8).map((item, index) => (
                       <SongRow

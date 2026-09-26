@@ -13,6 +13,16 @@ export class ApiError extends Error {
   }
 }
 
+/** What to tell someone when a section's data did not load. */
+export function loadErrorMessage(err: unknown): string {
+  if (err instanceof ApiError && err.code === 'UPSTREAM_UNAVAILABLE') {
+    return "Sonare's music service isn't responding. Try again in a moment."
+  }
+  // fetch rejects with a TypeError when the request never reached the server.
+  if (err instanceof TypeError) return "Can't reach the Sonare server."
+  return err instanceof Error ? err.message : 'Something went wrong.'
+}
+
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>
   skipAuth?: boolean
