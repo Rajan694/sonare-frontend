@@ -1,57 +1,21 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Segmented } from '../ui/Segmented'
-import { cn } from '../../lib/utils'
 import { CAPS } from '../../lib/caps'
 import { useModeStore } from '../../store/modeStore'
 import Icon from '../ui/Icon'
 import Button, { IconButton } from '../ui/Button'
-import { Field } from '../ui/Field'
 import { syncNow } from '../../data/sync'
 import { useAuth } from '../../data/hooks'
 import type { Mode } from '../../data/types'
 import { useAppDispatch, useAppSelector } from '../../store'
-import { setQuery } from '../../store/searchSlice'
+import SearchField from './SearchField'
 
 export default function Topbar() {
   const navigate = useNavigate()
-  const location = useLocation()
   const { mode, setMode } = useModeStore()
-  const searchRef = useRef<HTMLInputElement>(null)
   const [syncing, setSyncing] = useState(false)
   const { user } = useAuth()
-
-  // The app's only search field. The query lives in the Redux store, so the Search screen
-  // shows it — and keeps its results — however you get back there.
-  const dispatch = useAppDispatch()
-  const query = useAppSelector(s => s.search.query)
-  const onSearchPage = location.pathname === '/search'
-
-  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const v = e.target.value
-    dispatch(setQuery(v))
-    // Searching opens the results. Already there, stay put (keeps ?addTo= add-to-playlist mode).
-    if (v.trim() && !onSearchPage) navigate('/search')
-  }
-
-  function handleSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
-    if (e.key === 'Enter' && !onSearchPage) navigate('/search')
-    // Hand the keyboard back to the player shortcuts.
-    else if (e.key === 'Escape') e.currentTarget.blur()
-  }
-
-  // Ctrl K focuses search from anywhere (FLOWS §3 top bar).
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        searchRef.current?.focus()
-        searchRef.current?.select()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [])
 
   function handleModeSwitch(target: Mode) {
     if (target === mode) return
@@ -75,32 +39,9 @@ export default function Topbar() {
         <IconButton icon="chevron-right" label="Forward" size={32} onClick={() => navigate(1)} />
       </span>
 
-      <Field
-        ref={searchRef}
-        square
-        icon="search"
-        shortcut={query ? undefined : 'Ctrl K'}
-        value={query}
-        onChange={handleSearchChange}
-        onKeyDown={handleSearchKey}
-        placeholder="Search songs, albums, artists"
-        className="flex-none w-[380px] h-[38px]"
-        aria-label="Search"
-      >
-        {query && (
-          <button
-            className="ib ib-28 flex-none"
-            aria-label="Clear search"
-            data-tip="Clear search"
-            onClick={() => {
-              dispatch(setQuery(''))
-              searchRef.current?.focus()
-            }}
-          >
-            <Icon name="close" size={14} />
-          </button>
-        )}
-      </Field>
+      <div className="flex-none w-[380px]">
+        <SearchField shortcut="Ctrl K" enableSlashShortcut={false} enableCtrlKShortcut={true} />
+      </div>
 
       <span className="grow min-w-0" />
 
@@ -128,7 +69,7 @@ export default function Topbar() {
           size={32}
           onClick={handleSync}
           disabled={syncing || mode === 'offline'}
-          className={cn(syncing && '[&_svg]:animate-spin')}
+          className={syncing ? '[&_svg]:animate-spin' : undefined}
         />
       )}
       {!user && (
