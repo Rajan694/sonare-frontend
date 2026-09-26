@@ -34,7 +34,7 @@ export function Tile({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay
       )}
       {onPlay && (
         <button
-          className="playbtn w-8 h-8 bg-acc absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity shadow-md"
+          className="playbtn w-8 h-8 bg-acc absolute right-3 top-1/2 -translate-y-1/2 flex items-center justify-center transition-transform hover:scale-105 shadow-md"
           aria-label={`Play ${title}`}
           data-tip="Play"
           onClick={(e) => {

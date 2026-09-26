@@ -10,7 +10,6 @@ import { showToast } from '../store/toastStore'
 import Artwork from '../components/music/Artwork'
 import Button from '../components/ui/Button'
 import Icon from '../components/ui/Icon'
-import { EmptyState } from '../components/ui/EmptyState'
 import { staggerContainer, staggerItem, transition } from '../lib/motion'
 import type { Playlist } from '../data/types'
 
@@ -25,6 +24,9 @@ export default function Playlists() {
   const playlists = isOffline
     ? rawPlaylists.filter(p => p.kind === 'local' || p.downloadedCount > 0)
     : rawPlaylists
+
+  const totalCount = playlists.length + 1
+  const countLabel = `${totalCount.toLocaleString()} ${totalCount === 1 ? 'playlist' : 'playlists'}`
 
   const handleCreatePlaylist = () =>
     requireAccount('Create a free account to make playlists.', createPlaylist)
@@ -60,7 +62,7 @@ export default function Playlists() {
         <div className="flex flex-col gap-1">
           <span className="text-display-m text-t1 font-semibold">Playlists</span>
           <span className="text-body-m text-t2">
-            {playlists.length + 1} playlists {isOffline ? 'available offline' : 'in your collection'}
+            {countLabel} {isOffline ? 'available offline' : 'in your collection'}
           </span>
         </div>
         <div className="flex items-center gap-2.5">
@@ -92,7 +94,7 @@ export default function Playlists() {
         {/* Liked Songs Card (Always First) */}
         <Link
           to="/library?view=favourites"
-          className="acard surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors"
+          className="surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors w-full"
         >
           <div className="aspect-square w-full rounded-lg bg-gradient-to-br from-[#4A3B89] to-[#1E123F] flex items-center justify-center relative overflow-hidden shadow-lg">
             <Icon name="heart" size={36} className="text-acc" />
@@ -109,7 +111,7 @@ export default function Playlists() {
         {/* User / Catalog Playlists */}
         {playlistsLoading ? (
           Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="surf2 p-3.5 rounded-xl flex flex-col gap-3 animate-pulse">
+            <div key={i} className="surf2 p-3.5 rounded-xl flex flex-col gap-3 animate-pulse w-full">
               <div className="aspect-square w-full bg-s2/40 rounded-lg" />
               <div className="h-4 bg-s2/40 rounded w-3/4" />
               <div className="h-3 bg-s2/40 rounded w-1/2" />
@@ -122,7 +124,7 @@ export default function Playlists() {
               <Link
                 key={playlist.id}
                 to={`/playlist/${playlist.id}`}
-                className="acard surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors"
+                className="surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors w-full"
               >
                 <div className="aspect-square w-full rounded-lg relative overflow-hidden shadow-lg">
                   <Artwork

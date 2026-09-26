@@ -38,7 +38,7 @@ export function SongTableHeader({
   return (
     <div
       className={cn(
-        'hidden @[480px]:grid items-center gap-4 text-label-s text-t3 pb-2.5 px-3 border-b border-ln select-none',
+        'hidden @[480px]:grid items-center gap-4 text-label-s text-t3 pb-2.5 px-3 border-b border-ln select-none shrink-0',
         'grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_58px_74px]',
         className
       )}
@@ -82,9 +82,9 @@ export default function SongRow({
   return (
     <motion.div
       className={cn(
-        'group cursor-default select-none transition-colors duration-150 rounded-[10px]',
+        'group cursor-default select-none transition-colors duration-150 rounded-[10px] shrink-0',
         'flex items-center gap-3 p-2 min-h-[60px]',
-        '@[480px]:grid @[480px]:grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[480px]:gap-4 @[480px]:px-3 @[480px]:py-[7px] @[480px]:min-h-0',
+        '@[480px]:grid @[480px]:grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[480px]:gap-4 @[480px]:px-3 @[480px]:py-[7px] @[480px]:min-h-[54px]',
         '@[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_58px_74px]',
         isActive ? 'srow-on' : 'hover:bg-s1'
       )}
