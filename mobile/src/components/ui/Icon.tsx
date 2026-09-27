@@ -1,12 +1,48 @@
-import React from 'react'
+import React from 'react';
 import {
-  Home, Library, ListMusic, Search, Settings, Smartphone, Cloud, Folder,
-  Play, Pause, Heart, ChevronLeft, ChevronRight, ChevronDown,
-  Plus, X, MoreVertical, Shuffle, Repeat, GripVertical, RefreshCw,
-  SkipBack, SkipForward, SlidersHorizontal, ArrowLeft, Volume2,
-  Headphones, Timer, BarChart3, Music, FileText, FolderX, UserRound,
-  Check, Trash2, Edit, Share2, Download, Moon, Sun, Info, LogOut
-} from 'lucide-react-native'
+  Home,
+  Library,
+  ListMusic,
+  Search,
+  Settings,
+  Smartphone,
+  Cloud,
+  Folder,
+  Play,
+  Pause,
+  Heart,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  Plus,
+  X,
+  MoreVertical,
+  Shuffle,
+  Repeat,
+  GripVertical,
+  RefreshCw,
+  SkipBack,
+  SkipForward,
+  SlidersHorizontal,
+  ArrowLeft,
+  Volume2,
+  Headphones,
+  Timer,
+  BarChart3,
+  Music,
+  FileText,
+  FolderX,
+  UserRound,
+  Check,
+  Trash2,
+  Edit,
+  Share2,
+  Download,
+  Moon,
+  Sun,
+  Info,
+  LogOut,
+} from 'lucide-react-native';
 
 const ICONS = {
   home: Home,
@@ -52,9 +88,9 @@ const ICONS = {
   sun: Sun,
   info: Info,
   logout: LogOut,
-} as const
+} as const;
 
-export type IconName = keyof typeof ICONS
+export type IconName = keyof typeof ICONS;
 
 // Deliberately no `className` prop, unlike the desktop twin in other-screens.
 // NativeWind only maps className onto components registered with cssInterop, and
@@ -62,15 +98,28 @@ export type IconName = keyof typeof ICONS
 // which drops it - so a className here would silently do nothing. Tint and sizing
 // go through `color` and `size` instead.
 interface IconProps {
-  name: IconName
-  size?: number
-  color?: string
-  strokeWidth?: number
-  style?: any
+  name: IconName;
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+  style?: any;
 }
 
-export default function Icon({ name, size = 16, color, strokeWidth = 1.6, style }: IconProps) {
-  const Component = ICONS[name]
-  if (!Component) return null
-  return <Component size={size} color={color} strokeWidth={strokeWidth} style={style} />
+export default function Icon({
+  name,
+  size = 16,
+  color,
+  strokeWidth = 1.6,
+  style,
+}: IconProps) {
+  const Component = ICONS[name];
+  if (!Component) return null;
+  return (
+    <Component
+      size={size}
+      color={color}
+      strokeWidth={strokeWidth}
+      style={style}
+    />
+  );
 }

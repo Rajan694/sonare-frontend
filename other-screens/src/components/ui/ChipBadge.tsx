@@ -1,14 +1,14 @@
-import React from 'react'
-import { cn } from '../../lib/utils'
-import type { IconName } from './Icon'
-import Icon from './Icon'
+import React from 'react';
+import { cn } from '../../lib/utils';
+import type { IconName } from './Icon';
+import Icon from './Icon';
 
 interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  active?: boolean
-  size?: 'sm' | 'md'
-  icon?: IconName
-  suffixIcon?: IconName
-  children: React.ReactNode
+  active?: boolean;
+  size?: 'sm' | 'md';
+  icon?: IconName;
+  suffixIcon?: IconName;
+  children: React.ReactNode;
 }
 
 export function Chip({ active, size = 'md', icon, suffixIcon, children, className, ...props }: ChipProps) {
@@ -18,14 +18,14 @@ export function Chip({ active, size = 'md', icon, suffixIcon, children, classNam
       {children}
       {suffixIcon && <Icon name={suffixIcon} size={size === 'sm' ? 13 : 14} />}
     </button>
-  )
+  );
 }
 
 interface BadgeProps {
-  variant?: 'local' | 'cloud' | 'dl' | 'neutral'
-  icon?: IconName
-  children: React.ReactNode
-  className?: string
+  variant?: 'local' | 'cloud' | 'dl' | 'neutral';
+  icon?: IconName;
+  children: React.ReactNode;
+  className?: string;
 }
 
 export function Badge({ variant = 'neutral', icon, children, className }: BadgeProps) {
@@ -34,5 +34,5 @@ export function Badge({ variant = 'neutral', icon, children, className }: BadgeP
       {icon && <Icon name={icon} size={12} />}
       {children}
     </span>
-  )
+  );
 }

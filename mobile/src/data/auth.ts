@@ -23,7 +23,11 @@ interface AuthStore {
   /** Restore the saved session on launch. */
   hydrate: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    displayName: string,
+  ) => Promise<void>;
   signOut: () => Promise<void>;
   /** Swap the refresh token for a new pair; returns the new access token or null. */
   refresh: () => Promise<string | null>;
@@ -41,7 +45,11 @@ async function authRequest<T>(path: string, body: unknown): Promise<T> {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  if (status < 200 || status >= 300) throw new AuthError(json?.error?.message || `Request failed (${status})`, status);
+  if (status < 200 || status >= 300)
+    throw new AuthError(
+      json?.error?.message || `Request failed (${status})`,
+      status,
+    );
   return json as T;
 }
 
@@ -79,17 +87,26 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     },
 
     signIn: async (email, password) => {
-      await startSession(await authRequest<Session>('login', { email, password }));
+      await startSession(
+        await authRequest<Session>('login', { email, password }),
+      );
     },
 
     signUp: async (email, password, displayName) => {
-      await startSession(await authRequest<Session>('register', { email, password, displayName }));
+      await startSession(
+        await authRequest<Session>('register', {
+          email,
+          password,
+          displayName,
+        }),
+      );
     },
 
     signOut: async () => {
       const { refreshToken } = get();
       // Revoke server-side too, so the refresh token can't be reused from a backup.
-      if (refreshToken) await authRequest('logout', { refreshToken }).catch(() => {});
+      if (refreshToken)
+        await authRequest('logout', { refreshToken }).catch(() => {});
       await endSession();
     },
 
@@ -102,7 +119,10 @@ export const useAuthStore = create<AuthStore>((set, get) => {
           return null;
         }
         try {
-          const pair = await authRequest<{ accessToken: string; refreshToken: string }>('refresh', { refreshToken });
+          const pair = await authRequest<{
+            accessToken: string;
+            refreshToken: string;
+          }>('refresh', { refreshToken });
           await startSession({ ...pair, user });
           return pair.accessToken;
         } catch (e) {

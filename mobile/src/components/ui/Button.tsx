@@ -1,7 +1,11 @@
 import React from 'react';
 import { Text, Pressable } from 'react-native';
 import { cn } from '../../lib/cn';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from 'react-native-reanimated';
 
 interface ButtonProps {
   onPress: () => void;
@@ -35,8 +39,8 @@ export function Button({
   return (
     <AnimatedPressable
       onPress={onPress}
-      onPressIn={() => scale.value = withSpring(0.97, { damping: 20 })}
-      onPressOut={() => scale.value = withSpring(1, { damping: 20 })}
+      onPressIn={() => (scale.value = withSpring(0.97, { damping: 20 }))}
+      onPressOut={() => (scale.value = withSpring(1, { damping: 20 }))}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -53,22 +57,29 @@ export function Button({
         variant === 'solid' && 'bg-s3 border border-ln2',
         variant === 'ghost' && 'bg-transparent',
         disabled && 'opacity-40',
-        className
+        className,
       )}
       style={style}
     >
       {icon}
       {typeof children === 'string' ? (
-        <Text className={cn(
-          'font-semibold tracking-tight',
-          size === 'sm' ? 'text-bs' : size === 'md' ? 'text-bm' : 'text-tm',
-          variant === 'accent' && 'text-black',
-          variant === 'gold' && 'text-black',
-          (variant === 'outline' || variant === 'solid' || variant === 'ghost') && 'text-t1'
-        )}>
+        <Text
+          className={cn(
+            'font-semibold tracking-tight',
+            size === 'sm' ? 'text-bs' : size === 'md' ? 'text-bm' : 'text-tm',
+            variant === 'accent' && 'text-black',
+            variant === 'gold' && 'text-black',
+            (variant === 'outline' ||
+              variant === 'solid' ||
+              variant === 'ghost') &&
+              'text-t1',
+          )}
+        >
           {children}
         </Text>
-      ) : children}
+      ) : (
+        children
+      )}
     </AnimatedPressable>
   );
 }

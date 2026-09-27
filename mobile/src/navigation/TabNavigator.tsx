@@ -14,9 +14,9 @@ import Icon from '../components/ui/Icon';
 const Tab = createBottomTabNavigator<Record<string, undefined>, undefined>();
 
 export function TabNavigator() {
-  const mode = useModeStore((state) => state.mode);
-  const toastVisible = useModeStore((state) => state.toastVisible);
-  const hideToast = useModeStore((state) => state.hideToast);
+  const mode = useModeStore(state => state.mode);
+  const toastVisible = useModeStore(state => state.toastVisible);
+  const hideToast = useModeStore(state => state.hideToast);
   // Clear the Android gesture bar / iOS home indicator; a fixed height alone puts labels under it.
   const insets = useSafeAreaInsets();
 
@@ -26,7 +26,7 @@ export function TabNavigator() {
       return () => clearTimeout(t);
     }
   }, [toastVisible, hideToast]);
-  
+
   return (
     <View className="flex-1">
       <Tab.Navigator
@@ -61,29 +61,47 @@ export function TabNavigator() {
         <Tab.Screen
           name="Home"
           component={HomeScreen}
-          options={{ tabBarIcon: ({ color }) => <Icon name="home" size={21} color={color} /> }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <Icon name="home" size={21} color={color} />
+            ),
+          }}
         />
         <Tab.Screen
           name="Library"
           component={LibraryScreen}
-          options={{ tabBarIcon: ({ color }) => <Icon name="library" size={21} color={color} /> }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <Icon name="library" size={21} color={color} />
+            ),
+          }}
         />
         <Tab.Screen
           name="Playlists"
           component={PlaylistsScreen}
-          options={{ tabBarIcon: ({ color }) => <Icon name="playlist" size={21} color={color} /> }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <Icon name="playlist" size={21} color={color} />
+            ),
+          }}
         />
         <Tab.Screen
           name="Search"
           component={SearchScreen}
-          options={{ tabBarIcon: ({ color }) => <Icon name="search" size={21} color={color} /> }}
+          options={{
+            tabBarIcon: ({ color }) => (
+              <Icon name="search" size={21} color={color} />
+            ),
+          }}
         />
       </Tab.Navigator>
       <MiniPlayer />
-      <Toast 
-        visible={toastVisible} 
-        message={mode === 'online' ? 'Online Mode enabled' : 'Offline Mode enabled'} 
-        mode={mode} 
+      <Toast
+        visible={toastVisible}
+        message={
+          mode === 'online' ? 'Online Mode enabled' : 'Offline Mode enabled'
+        }
+        mode={mode}
       />
     </View>
   );

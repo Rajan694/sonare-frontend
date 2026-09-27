@@ -1,47 +1,41 @@
-import React from 'react'
-import { cn, formatDuration } from '../../lib/utils'
-import Icon from '../ui/Icon'
-import { IconButton } from '../ui/Button'
-import { SourceGlyph } from '../ui/SourceGlyph'
-import EqualizerBars from './EqualizerBars'
-import Artwork, { trackArtwork } from './Artwork'
-import type { Track } from '../../data/types'
-import { useFavourite } from '../../data/favourites'
-import { motion } from 'motion/react'
-import { staggerItem, transition } from '../../lib/motion'
-import { openTrackMenu } from './TrackMenu'
-import { useLocalLibrary } from '../../data/local'
-import { downloadProgress, useDownload } from '../../data/downloads'
-import { usePlayerStore } from '../../store/playerStore'
+import React from 'react';
+import { cn, formatDuration } from '../../lib/utils';
+import Icon from '../ui/Icon';
+import { IconButton } from '../ui/Button';
+import { SourceGlyph } from '../ui/SourceGlyph';
+import EqualizerBars from './EqualizerBars';
+import Artwork, { trackArtwork } from './Artwork';
+import type { Track } from '../../data/types';
+import { useFavourite } from '../../data/favourites';
+import { motion } from 'motion/react';
+import { staggerItem, transition } from '../../lib/motion';
+import { openTrackMenu } from './TrackMenu';
+import { useLocalLibrary } from '../../data/local';
+import { downloadProgress, useDownload } from '../../data/downloads';
+import { usePlayerStore } from '../../store/playerStore';
 
 interface SongRowProps {
-  track: Track
-  index: number
+  track: Track;
+  index: number;
   /** The row is the current track; its bars move only while audio is actually playing. */
-  isActive?: boolean
-  onClick?: () => void
-  onContextMenu?: (e: React.MouseEvent) => void
+  isActive?: boolean;
+  onClick?: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
   /** Shows a remove (X) button — queue and own playlists. */
-  onRemove?: () => void
+  onRemove?: () => void;
   /** Add-to-playlist mode (FLOWS M08 "Add songs"): a visible + / ✓ at the row's end. */
-  onAdd?: () => void
-  added?: boolean
-  hideAlbum?: boolean
+  onAdd?: () => void;
+  added?: boolean;
+  hideAlbum?: boolean;
 }
 
-export function SongTableHeader({
-  children,
-  className,
-}: {
-  children?: React.ReactNode
-  className?: string
-}) {
+export function SongTableHeader({ children, className }: { children?: React.ReactNode; className?: string }) {
   return (
     <div
       className={cn(
         'hidden @[480px]:grid items-center gap-4 text-label-s text-t3 pb-2.5 px-3 border-b border-ln select-none shrink-0',
         'grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_58px_74px]',
-        className
+        className,
       )}
     >
       {children ? (
@@ -60,7 +54,7 @@ export function SongTableHeader({
         </>
       )}
     </div>
-  )
+  );
 }
 
 export default function SongRow({
@@ -74,13 +68,14 @@ export default function SongRow({
   added,
   hideAlbum,
 }: SongRowProps) {
-  const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite)
-  const { isPlaying } = usePlayerStore()
-  const { downloads } = useLocalLibrary()
-  const download = useDownload(track.id)
-  const inFlight = download && (download.status === 'queued' || download.status === 'downloading') ? download : undefined
-  const progress = inFlight ? downloadProgress(inFlight) ?? 0 : undefined
-  const isLocal = track.source === 'local' || downloads.has(track.id)
+  const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite);
+  const { isPlaying } = usePlayerStore();
+  const { downloads } = useLocalLibrary();
+  const download = useDownload(track.id);
+  const inFlight =
+    download && (download.status === 'queued' || download.status === 'downloading') ? download : undefined;
+  const progress = inFlight ? (downloadProgress(inFlight) ?? 0) : undefined;
+  const isLocal = track.source === 'local' || downloads.has(track.id);
 
   return (
     <motion.div
@@ -89,22 +84,18 @@ export default function SongRow({
         'flex items-center gap-3 p-2 min-h-[60px]',
         '@[480px]:grid @[480px]:grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[480px]:gap-4 @[480px]:px-3 @[480px]:py-[7px] @[480px]:min-h-[54px]',
         '@[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_58px_74px]',
-        isActive ? 'srow-on' : 'hover:bg-s1'
+        isActive ? 'srow-on' : 'hover:bg-s1',
       )}
       variants={staggerItem}
       transition={transition.normal}
       role="row"
       aria-selected={isActive}
-      onContextMenu={onContextMenu ?? (e => openTrackMenu(track, e))}
+      onContextMenu={onContextMenu ?? ((e) => openTrackMenu(track, e))}
       onDoubleClick={onClick}
     >
       {/* Index column: hidden on phone (< 480px) */}
       <span className="hidden @[480px]:flex items-center justify-end text-mono-s text-t3">
-        {isActive ? (
-          <EqualizerBars playing={isPlaying} />
-        ) : (
-          <span>{index}</span>
-        )}
+        {isActive ? <EqualizerBars playing={isPlaying} /> : <span>{index}</span>}
       </span>
 
       {/* Artwork: 48px on phone, 40px on >=480px */}
@@ -112,7 +103,7 @@ export default function SongRow({
         <Artwork
           src={trackArtwork(track)}
           alt={track.title}
-          variant={`a${((index % 12) || 12) as 1}`}
+          variant={`a${(index % 12 || 12) as 1}`}
           size={44}
           radius="sm"
         />
@@ -124,10 +115,10 @@ export default function SongRow({
           <button
             className={cn(
               'text-title-m font-medium truncate text-left bg-transparent border-0 p-0 cursor-default hover:underline',
-              isActive ? 'text-acc' : 'text-t1'
+              isActive ? 'text-acc' : 'text-t1',
             )}
             onClick={onClick}
-            onDoubleClick={e => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
             aria-label={`Play ${track.title}`}
           >
             {track.title}
@@ -168,9 +159,7 @@ export default function SongRow({
       </div>
 
       {/* Duration column */}
-      <span className="flex-none text-mono-s text-t3 text-right">
-        {formatDuration(track.durationMs)}
-      </span>
+      <span className="flex-none text-mono-s text-t3 text-right">{formatDuration(track.durationMs)}</span>
 
       {/* Actions: Heart hidden on phone (< 480px), menu visible */}
       <div className="flex items-center justify-end gap-0.5 flex-none">
@@ -181,21 +170,21 @@ export default function SongRow({
           active={favourite}
           className={cn(
             'hidden @[480px]:inline-flex',
-            !favourite && 'opacity-0 group-hover:opacity-100 transition-opacity'
+            !favourite && 'opacity-0 group-hover:opacity-100 transition-opacity',
           )}
-          onClick={e => {
-            e.stopPropagation()
-            toggleFavourite()
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleFavourite();
           }}
-          onDoubleClick={e => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
         />
         <IconButton
           icon="more"
           label="More options"
           size={28}
           className="opacity-80 @[480px]:opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={e => openTrackMenu(track, e)}
-          onDoubleClick={e => e.stopPropagation()}
+          onClick={(e) => openTrackMenu(track, e)}
+          onDoubleClick={(e) => e.stopPropagation()}
         />
         {onRemove && (
           <IconButton
@@ -204,11 +193,11 @@ export default function SongRow({
             tip="Remove"
             size={28}
             className="opacity-0 group-hover:opacity-100 transition-opacity"
-            onClick={e => {
-              e.stopPropagation()
-              onRemove()
+            onClick={(e) => {
+              e.stopPropagation();
+              onRemove();
             }}
-            onDoubleClick={e => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
           />
         )}
         {onAdd && (
@@ -220,14 +209,14 @@ export default function SongRow({
             active={added}
             disabled={added}
             bordered
-            onClick={e => {
-              e.stopPropagation()
-              onAdd()
+            onClick={(e) => {
+              e.stopPropagation();
+              onAdd();
             }}
-            onDoubleClick={e => e.stopPropagation()}
+            onDoubleClick={(e) => e.stopPropagation()}
           />
         )}
       </div>
     </motion.div>
-  )
+  );
 }

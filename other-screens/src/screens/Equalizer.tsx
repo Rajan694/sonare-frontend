@@ -1,11 +1,11 @@
-import React from 'react'
-import { CAPS } from '../lib/caps'
-import { useModeStore } from '../store/modeStore'
-import Icon from '../components/ui/Icon'
-import { Switch } from '../components/ui/Switch'
-import { Slider } from '../components/ui/Slider'
-import { Badge } from '../components/ui/ChipBadge'
-import { cn } from '../lib/utils'
+import React from 'react';
+import { CAPS } from '../lib/caps';
+import { useModeStore } from '../store/modeStore';
+import Icon from '../components/ui/Icon';
+import { Switch } from '../components/ui/Switch';
+import { Slider } from '../components/ui/Slider';
+import { Badge } from '../components/ui/ChipBadge';
+import { cn } from '../lib/utils';
 import {
   useDsp,
   setDsp,
@@ -17,21 +17,21 @@ import {
   EQ_MIN_DB,
   EQ_MAX_DB,
   CUSTOM_PRESET,
-} from '../data/dsp'
-import { useSettings, updateSettings } from '../data/settings'
+} from '../data/dsp';
+import { useSettings, updateSettings } from '../data/settings';
 
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
 function formatDb(db: number) {
-  return `${db > 0 ? '+' : ''}${db % 1 === 0 ? db : db.toFixed(1)}`
+  return `${db > 0 ? '+' : ''}${db % 1 === 0 ? db : db.toFixed(1)}`;
 }
 
 export default function Equalizer() {
-  const { mode } = useModeStore()
-  const isOffline = mode === 'offline'
-  const dsp = useDsp()
-  const settings = useSettings()
-  const variant = isOffline ? 'gold' : 'acc'
+  const { mode } = useModeStore();
+  const isOffline = mode === 'offline';
+  const dsp = useDsp();
+  const settings = useSettings();
+  const variant = isOffline ? 'gold' : 'acc';
 
   return (
     <div className="@container flex flex-col p-5 @sm:p-8 @3xl:p-10 gap-6 overflow-y-auto h-full w-full max-w-[1280px] mx-auto select-none">
@@ -39,16 +39,14 @@ export default function Equalizer() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-h2 @sm:text-display-m font-bold text-t1 tracking-tight">Audio</h1>
-          <span className="text-body-s @sm:text-body-m text-t2">
-            Equalizer, effects and audio configuration
-          </span>
+          <span className="text-body-s @sm:text-body-m text-t2">Equalizer, effects and audio configuration</span>
         </div>
         <label className="flex items-center gap-3 cursor-pointer flex-none">
           <span className="text-label-m @sm:text-title-m font-medium text-t2">Equalizer</span>
           <Switch
             variant={variant}
             checked={dsp.enabled}
-            onCheckedChange={enabled => setDsp({ enabled })}
+            onCheckedChange={(enabled) => setDsp({ enabled })}
             aria-label="Toggle equalizer"
           />
         </label>
@@ -56,13 +54,13 @@ export default function Equalizer() {
 
       {/* Preset Chips Row */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none flex-nowrap w-full flex-none shrink-0 min-h-9">
-        {Object.keys(EQ_PRESETS).map(name => (
+        {Object.keys(EQ_PRESETS).map((name) => (
           <button
             key={name}
             type="button"
             className={cn(
               'chip chip-sm flex-none shrink-0 h-8 transition-colors whitespace-nowrap inline-flex items-center',
-              dsp.preset === name && 'chip-on'
+              dsp.preset === name && 'chip-on',
             )}
             disabled={!dsp.enabled}
             onClick={() => applyPreset(name)}
@@ -71,7 +69,10 @@ export default function Equalizer() {
           </button>
         ))}
         {dsp.preset === CUSTOM_PRESET && (
-          <span className="chip chip-sm chip-on flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center" aria-live="polite">
+          <span
+            className="chip chip-sm chip-on flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center"
+            aria-live="polite"
+          >
             {CUSTOM_PRESET}
           </span>
         )}
@@ -90,7 +91,7 @@ export default function Equalizer() {
           <div
             className={cn(
               'flex items-end justify-between px-0 @sm:px-2 py-2 transition-opacity duration-200 gap-1 @sm:gap-2 w-full',
-              !dsp.enabled && 'opacity-40 pointer-events-none'
+              !dsp.enabled && 'opacity-40 pointer-events-none',
             )}
           >
             {EQ_LABELS.map((band, i) => (
@@ -106,10 +107,12 @@ export default function Equalizer() {
                   label={formatDb(dsp.gains[i])}
                   ariaLabel={`${band} Hz gain`}
                   disabled={!dsp.enabled}
-                  onChange={v => setBandGain(i, v)}
+                  onChange={(v) => setBandGain(i, v)}
                   onCommit={commitPreset}
                 />
-                <span className="text-caption @sm:text-label-s font-medium text-t3 truncate text-center w-full">{band}</span>
+                <span className="text-caption @sm:text-label-s font-medium text-t3 truncate text-center w-full">
+                  {band}
+                </span>
               </div>
             ))}
           </div>
@@ -132,7 +135,7 @@ export default function Equalizer() {
                 variant={variant}
                 ariaLabel="Bass boost"
                 disabled={!dsp.enabled}
-                onChange={bassBoost => setDsp({ bassBoost })}
+                onChange={(bassBoost) => setDsp({ bassBoost })}
                 className="w-full"
               />
             </div>
@@ -146,7 +149,7 @@ export default function Equalizer() {
                 variant={variant}
                 ariaLabel="Virtualizer"
                 disabled={!dsp.enabled}
-                onChange={virtualizer => setDsp({ virtualizer })}
+                onChange={(virtualizer) => setDsp({ virtualizer })}
                 className="w-full"
               />
             </div>
@@ -168,7 +171,7 @@ export default function Equalizer() {
               <Switch
                 variant={variant}
                 checked={settings.gapless}
-                onCheckedChange={gapless => updateSettings({ gapless })}
+                onCheckedChange={(gapless) => updateSettings({ gapless })}
                 aria-label="Toggle gapless playback"
               />
             </label>
@@ -184,7 +187,7 @@ export default function Equalizer() {
               <Switch
                 variant={variant}
                 checked={settings.normalization}
-                onCheckedChange={normalization => updateSettings({ normalization })}
+                onCheckedChange={(normalization) => updateSettings({ normalization })}
                 aria-label="Toggle volume normalization"
               />
             </label>
@@ -201,9 +204,9 @@ export default function Equalizer() {
                 className="chip chip-sm text-t1 bg-s2 border-ln2 appearance-none cursor-pointer pr-3"
                 aria-label="Playback speed"
                 value={dsp.speed}
-                onChange={e => setDsp({ speed: Number(e.target.value) })}
+                onChange={(e) => setDsp({ speed: Number(e.target.value) })}
               >
-                {SPEEDS.map(s => (
+                {SPEEDS.map((s) => (
                   <option key={s} value={s} className="bg-s2 text-t1">
                     {s}×
                   </option>
@@ -229,6 +232,5 @@ export default function Equalizer() {
         </div>
       </div>
     </div>
-  )
+  );
 }
-

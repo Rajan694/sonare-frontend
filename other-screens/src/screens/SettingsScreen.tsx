@@ -1,25 +1,32 @@
-import React, { useEffect, useSyncExternalStore } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import Icon, { type IconName } from '../components/ui/Icon'
-import Button from '../components/ui/Button'
-import { Switch } from '../components/ui/Switch'
-import { Segmented } from '../components/ui/Segmented'
-import { CAPS } from '../lib/caps'
-import { useModeStore } from '../store/modeStore'
-import { useLocalLibrary } from '../data/local'
-import { showToast } from '../store/toastStore'
-import { useSettings, updateSettings, type AudioQuality, type DownloadFormat } from '../data/settings'
-import { canPickWebFolder, chooseLocation, getLocation, loadLocation, resetLocation, subscribeLocation } from '../data/downloadTargets'
-import { useDownloads } from '../data/downloads'
-import { useAuth } from '../data/hooks'
-import { signOut } from '../data/auth'
-import { formatBytes } from '../lib/utils'
+import React, { useEffect, useSyncExternalStore } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import Icon, { type IconName } from '../components/ui/Icon';
+import Button from '../components/ui/Button';
+import { Switch } from '../components/ui/Switch';
+import { Segmented } from '../components/ui/Segmented';
+import { CAPS } from '../lib/caps';
+import { useModeStore } from '../store/modeStore';
+import { useLocalLibrary } from '../data/local';
+import { showToast } from '../store/toastStore';
+import { useSettings, updateSettings, type AudioQuality, type DownloadFormat } from '../data/settings';
+import {
+  canPickWebFolder,
+  chooseLocation,
+  getLocation,
+  loadLocation,
+  resetLocation,
+  subscribeLocation,
+} from '../data/downloadTargets';
+import { useDownloads } from '../data/downloads';
+import { useAuth } from '../data/hooks';
+import { signOut } from '../data/auth';
+import { formatBytes } from '../lib/utils';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
   { id: 'low', label: 'Low (data saver)' },
   { id: 'normal', label: 'Normal' },
   { id: 'high', label: 'High' },
-]
+];
 
 // What YouTube offers per format: Opus in three steps, AAC in two. There is no lossless.
 const DOWNLOAD_QUALITIES: Record<DownloadFormat, { id: AudioQuality; label: string }[]> = {
@@ -33,58 +40,65 @@ const DOWNLOAD_QUALITIES: Record<DownloadFormat, { id: AudioQuality; label: stri
     { id: 'normal', label: 'Normal · 128 kbps (same as High)' },
     { id: 'high', label: 'High · 128 kbps' },
   ],
-}
+};
 
 const DOWNLOAD_FORMATS: { id: DownloadFormat; label: string }[] = [
   { id: 'opus', label: 'Opus (.webm)' },
   { id: 'm4a', label: 'AAC (.m4a)' },
-]
+];
 
 function useDownloadLocation() {
   useEffect(() => {
-    void loadLocation()
-  }, [])
-  return useSyncExternalStore(subscribeLocation, getLocation)
+    void loadLocation();
+  }, []);
+  return useSyncExternalStore(subscribeLocation, getLocation);
 }
 
 interface SectionDef {
-  id: string
-  label: string
-  icon: IconName
-  title: string
-  description: string
-  available: boolean
+  id: string;
+  label: string;
+  icon: IconName;
+  title: string;
+  description: string;
+  available: boolean;
 }
 
-function Row({ icon, label, desc, children }: {
-  icon: IconName
-  label: string
-  desc?: string
-  children?: React.ReactNode
+function Row({
+  icon,
+  label,
+  desc,
+  children,
+}: {
+  icon: IconName;
+  label: string;
+  desc?: string;
+  children?: React.ReactNode;
 }) {
   return (
     <div className="lrow">
-      <span className="icobox"><Icon name={icon} size={18} /></span>
+      <span className="icobox">
+        <Icon name={icon} size={18} />
+      </span>
       <span className="flex flex-col grow min-w-0 gap-0.5">
         <span className="text-body-m text-t1 font-medium">{label}</span>
         {desc && <span className="text-body-s text-t3 truncate">{desc}</span>}
       </span>
       {children}
     </div>
-  )
+  );
 }
 
-const chevron = <Icon name="chevron-right" size={16} className="text-t4 flex-none" />
+const chevron = <Icon name="chevron-right" size={16} className="text-t4 flex-none" />;
 
 export default function SettingsScreen() {
-  const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const settings = useSettings()
-  const { mode, setMode } = useModeStore()
-  const { user } = useAuth()
-  const local = useLocalLibrary()
-  const location = useDownloadLocation()
-  const { items: downloadItems, activeCount } = useDownloads()
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const settings = useSettings();
+  const { mode, setMode } = useModeStore();
+  const { user } = useAuth();
+  const local = useLocalLibrary();
+  const location = useDownloadLocation();
+  const { items: downloadItems, activeCount } = useDownloads();
 
   const sections: SectionDef[] = [
     {
@@ -152,24 +166,24 @@ export default function SettingsScreen() {
       description: 'Application details and version information.',
       available: true,
     },
-  ]
+  ];
 
-  const activeSections = sections.filter(s => s.available)
-  const currentSectionId = searchParams.get('section') || 'account'
-  const currentSection = activeSections.find(s => s.id === currentSectionId) || activeSections[0]
+  const activeSections = sections.filter((s) => s.available);
+  const currentSectionId = searchParams.get('section') || 'account';
+  const currentSection = activeSections.find((s) => s.id === currentSectionId) || activeSections[0];
 
   function setSection(id: string) {
-    setSearchParams({ section: id })
+    setSearchParams({ section: id });
   }
 
   async function handleSignOut() {
-    await signOut()
-    showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' })
+    await signOut();
+    showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' });
   }
 
-  const totalLocalBytes = local.folders.reduce((n, f) => n + f.bytes, 0)
-  const totalLocalTracks = local.folders.filter(f => f.included).reduce((n, f) => n + f.trackCount, 0)
-  const totalFoldersCount = local.folders.length
+  const totalLocalBytes = local.folders.reduce((n, f) => n + f.bytes, 0);
+  const totalLocalTracks = local.folders.filter((f) => f.included).reduce((n, f) => n + f.trackCount, 0);
+  const totalFoldersCount = local.folders.length;
 
   const renderAccount = () => (
     <div className="flex flex-col gap-6">
@@ -183,7 +197,9 @@ export default function SettingsScreen() {
               <span className="text-title-l text-t1 truncate">{user.displayName || 'Signed in'}</span>
               <span className="text-body-s text-t3 truncate">{user.email}</span>
             </span>
-            <Button variant="out" icon="logout" onClick={handleSignOut}>Sign out</Button>
+            <Button variant="out" icon="logout" onClick={handleSignOut}>
+              Sign out
+            </Button>
           </>
         ) : (
           <>
@@ -192,20 +208,28 @@ export default function SettingsScreen() {
             </span>
             <span className="flex flex-col grow min-w-0">
               <span className="text-title-l text-t1">Listening as a guest</span>
-              <span className="text-body-s text-t3">Create a free account to sync playlists, favourites and history.</span>
+              <span className="text-body-s text-t3">
+                Create a free account to sync playlists, favourites and history.
+              </span>
             </span>
-            <Button variant="acc" onClick={() => navigate('/signin', { state: { mode: 'signup' } })}>Create account</Button>
-            <Button variant="out" onClick={() => navigate('/signin', { state: { mode: 'signin' } })}>Sign in</Button>
+            <Button variant="acc" onClick={() => navigate('/signin', { state: { mode: 'signup' } })}>
+              Create account
+            </Button>
+            <Button variant="out" onClick={() => navigate('/signin', { state: { mode: 'signin' } })}>
+              Sign in
+            </Button>
           </>
         )}
       </div>
     </div>
-  )
+  );
 
   const renderPlayback = () => (
     <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
       <div className="lrow">
-        <span className="icobox"><Icon name="music" size={18} /></span>
+        <span className="icobox">
+          <Icon name="music" size={18} />
+        </span>
         <span className="flex flex-col grow min-w-0 gap-0.5">
           <span className="text-body-m text-t1 font-medium">Streaming quality</span>
           <span className="text-body-s text-t3 truncate">Applies from the next track</span>
@@ -214,45 +238,70 @@ export default function SettingsScreen() {
           className="chip text-t1 bg-s2 border-ln2 appearance-none"
           aria-label="Streaming quality"
           value={settings.streamQuality}
-          onChange={e => updateSettings({ streamQuality: e.target.value as AudioQuality })}
+          onChange={(e) => updateSettings({ streamQuality: e.target.value as AudioQuality })}
         >
-          {QUALITIES.map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
+          {QUALITIES.map((q) => (
+            <option key={q.id} value={q.id}>
+              {q.label}
+            </option>
+          ))}
         </select>
       </div>
       <label className="cursor-pointer">
         <Row icon="music2" label="Gapless playback" desc="Seamless album transitions">
-          <Switch checked={settings.gapless} onCheckedChange={gapless => updateSettings({ gapless })} aria-label="Toggle gapless playback" />
+          <Switch
+            checked={settings.gapless}
+            onCheckedChange={(gapless) => updateSettings({ gapless })}
+            aria-label="Toggle gapless playback"
+          />
         </Row>
       </label>
       <label className="cursor-pointer">
         <Row icon="volume" label="Volume normalization" desc="Evens out loud and quiet tracks">
-          <Switch checked={settings.normalization} onCheckedChange={normalization => updateSettings({ normalization })} aria-label="Toggle volume normalization" />
+          <Switch
+            checked={settings.normalization}
+            onCheckedChange={(normalization) => updateSettings({ normalization })}
+            aria-label="Toggle volume normalization"
+          />
         </Row>
       </label>
     </div>
-  )
+  );
 
   async function changeLocation() {
     try {
-      if (await chooseLocation()) showToast({ title: 'Download location changed', description: 'New downloads are saved there', icon: 'folder', variant: 'gold' })
+      if (await chooseLocation())
+        showToast({
+          title: 'Download location changed',
+          description: 'New downloads are saved there',
+          icon: 'folder',
+          variant: 'gold',
+        });
     } catch (e) {
-      showToast({ title: 'Could not change the location', description: e instanceof Error ? e.message : undefined, icon: 'info' })
+      showToast({
+        title: 'Could not change the location',
+        description: e instanceof Error ? e.message : undefined,
+        icon: 'info',
+      });
     }
   }
 
-  const doneCount = downloadItems.filter(d => d.status === 'done').length
-  const canChangeLocation = CAPS.offlineDownloads || canPickWebFolder
-  const locationDesc = location.kind === 'browser'
-    ? canPickWebFolder
-      ? "Your browser's Downloads folder. Choose a folder to let Sonare delete files too."
-      : "Your browser's Downloads folder (this browser can't save into other folders)"
-    : location.label
+  const doneCount = downloadItems.filter((d) => d.status === 'done').length;
+  const canChangeLocation = CAPS.offlineDownloads || canPickWebFolder;
+  const locationDesc =
+    location.kind === 'browser'
+      ? canPickWebFolder
+        ? "Your browser's Downloads folder. Choose a folder to let Sonare delete files too."
+        : "Your browser's Downloads folder (this browser can't save into other folders)"
+      : location.label;
 
   const renderDownloads = () => (
     <div className="flex flex-col gap-4">
       <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
         <div className="lrow">
-          <span className="icobox"><Icon name="music" size={18} /></span>
+          <span className="icobox">
+            <Icon name="music" size={18} />
+          </span>
           <span className="flex flex-col grow min-w-0 gap-0.5">
             <span className="text-body-m text-t1 font-medium">Download quality</span>
             <span className="text-body-s text-t3 truncate">Applies to new downloads</span>
@@ -261,36 +310,54 @@ export default function SettingsScreen() {
             className="chip text-t1 bg-s2 border-ln2 appearance-none"
             aria-label="Download quality"
             value={settings.downloadQuality}
-            onChange={e => updateSettings({ downloadQuality: e.target.value as AudioQuality })}
+            onChange={(e) => updateSettings({ downloadQuality: e.target.value as AudioQuality })}
           >
-            {DOWNLOAD_QUALITIES[settings.downloadFormat].map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
+            {DOWNLOAD_QUALITIES[settings.downloadFormat].map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="lrow">
-          <span className="icobox"><Icon name="disc" size={18} /></span>
+          <span className="icobox">
+            <Icon name="disc" size={18} />
+          </span>
           <span className="flex flex-col grow min-w-0 gap-0.5">
             <span className="text-body-m text-t1 font-medium">File format</span>
-            <span className="text-body-s text-t3 truncate">Saved as YouTube serves it, never re-encoded. AAC plays in more apps.</span>
+            <span className="text-body-s text-t3 truncate">
+              Saved as YouTube serves it, never re-encoded. AAC plays in more apps.
+            </span>
           </span>
           <select
             className="chip text-t1 bg-s2 border-ln2 appearance-none"
             aria-label="Download format"
             value={settings.downloadFormat}
-            onChange={e => updateSettings({ downloadFormat: e.target.value as DownloadFormat })}
+            onChange={(e) => updateSettings({ downloadFormat: e.target.value as DownloadFormat })}
           >
-            {DOWNLOAD_FORMATS.map(f => <option key={f.id} value={f.id}>{f.label}</option>)}
+            {DOWNLOAD_FORMATS.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="lrow">
-          <span className="icobox"><Icon name="folder" size={18} /></span>
+          <span className="icobox">
+            <Icon name="folder" size={18} />
+          </span>
           <span className="flex flex-col grow min-w-0 gap-0.5">
             <span className="text-body-m text-t1 font-medium">Download location</span>
-            <span className="text-body-s text-t3 truncate" title={location.label}>{locationDesc}</span>
+            <span className="text-body-s text-t3 truncate" title={location.label}>
+              {locationDesc}
+            </span>
           </span>
           {canChangeLocation && (
             <span className="flex items-center gap-2 flex-none">
               {location.custom && (
-                <Button variant="ghost" size="sm" onClick={() => void resetLocation()}>Default</Button>
+                <Button variant="ghost" size="sm" onClick={() => void resetLocation()}>
+                  Default
+                </Button>
               )}
               <Button variant="out" size="sm" icon="folder" onClick={() => void changeLocation()}>
                 {location.kind === 'browser' ? 'Choose folder' : 'Change'}
@@ -314,25 +381,29 @@ export default function SettingsScreen() {
         Changing the location only affects new downloads; existing files stay where they are.
       </span>
     </div>
-  )
+  );
 
   const renderAudio = () => (
     <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
       <Link to="/equalizer" className="no-underline block">
-        <Row icon="sliders" label="Equalizer & Audio" desc="EQ presets, bass boost, virtualizer, speed">{chevron}</Row>
+        <Row icon="sliders" label="Equalizer & Audio" desc="EQ presets, bass boost, virtualizer, speed">
+          {chevron}
+        </Row>
       </Link>
     </div>
-  )
+  );
 
   const renderLibrary = () => (
     <div className="flex flex-col gap-4">
       <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
         <Link to="/folders" className="no-underline block">
-          <Row icon="folder" label="Local music folders" desc="Manage scanned music folders on this device">{chevron}</Row>
+          <Row icon="folder" label="Local music folders" desc="Manage scanned music folders on this device">
+            {chevron}
+          </Row>
         </Link>
       </div>
     </div>
-  )
+  );
 
   const renderConnection = () => (
     <div className="flex flex-col gap-6">
@@ -350,10 +421,10 @@ export default function SettingsScreen() {
               { id: 'offline', label: 'Offline', icon: 'smartphone' },
             ]}
             value={mode}
-            onChange={m => {
-              if (m === mode) return
-              if (m === 'offline') navigate('/mode-switch')
-              else setMode('online')
+            onChange={(m) => {
+              if (m === mode) return;
+              if (m === 'offline') navigate('/mode-switch');
+              else setMode('online');
             }}
             color={mode === 'offline' ? 'gold' : 'acc'}
           />
@@ -393,45 +464,65 @@ export default function SettingsScreen() {
 
       <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
         <label className="cursor-pointer">
-          <Row icon="wifi-off" label="Stay offline until I switch back" desc="Start in Offline mode until I switch back">
-            <Switch variant="gold" checked={settings.stayOffline} onCheckedChange={stayOffline => updateSettings({ stayOffline })} aria-label="Stay offline" />
+          <Row
+            icon="wifi-off"
+            label="Stay offline until I switch back"
+            desc="Start in Offline mode until I switch back"
+          >
+            <Switch
+              variant="gold"
+              checked={settings.stayOffline}
+              onCheckedChange={(stayOffline) => updateSettings({ stayOffline })}
+              aria-label="Stay offline"
+            />
           </Row>
         </label>
       </div>
 
       {CAPS.localLibrary && (
         <div className="flex items-center gap-3">
-          <Button variant="out" icon="folder" onClick={() => navigate('/folders')}>Manage music folders</Button>
+          <Button variant="out" icon="folder" onClick={() => navigate('/folders')}>
+            Manage music folders
+          </Button>
         </div>
       )}
     </div>
-  )
+  );
 
   const renderAppearance = () => (
     <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
       <Row icon="moon" label="Theme" desc="Dark (always on)" />
     </div>
-  )
+  );
 
   const renderAbout = () => (
     <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
       <Row icon="info" label="About Sonare" desc="Version 1.0.0 · Offline-first music player" />
     </div>
-  )
+  );
 
   const renderSectionContent = (id: string) => {
     switch (id) {
-      case 'account': return renderAccount()
-      case 'playback': return renderPlayback()
-      case 'downloads': return renderDownloads()
-      case 'audio': return renderAudio()
-      case 'library': return renderLibrary()
-      case 'connection': return renderConnection()
-      case 'appearance': return renderAppearance()
-      case 'about': return renderAbout()
-      default: return renderAccount()
+      case 'account':
+        return renderAccount();
+      case 'playback':
+        return renderPlayback();
+      case 'downloads':
+        return renderDownloads();
+      case 'audio':
+        return renderAudio();
+      case 'library':
+        return renderLibrary();
+      case 'connection':
+        return renderConnection();
+      case 'appearance':
+        return renderAppearance();
+      case 'about':
+        return renderAbout();
+      default:
+        return renderAccount();
     }
-  }
+  };
 
   return (
     <div className="@container flex flex-col h-full overflow-hidden bg-bg">
@@ -489,8 +580,8 @@ export default function SettingsScreen() {
         {/* Left Sub-nav */}
         <div className="flex flex-col flex-none w-56 border-r border-ln p-6 gap-1 overflow-y-auto">
           <span className="text-overline text-t3 px-3 pb-3">Settings</span>
-          {activeSections.map(sec => {
-            const on = sec.id === currentSection.id
+          {activeSections.map((sec) => {
+            const on = sec.id === currentSection.id;
             return (
               <button
                 key={sec.id}
@@ -500,7 +591,7 @@ export default function SettingsScreen() {
                 <Icon name={sec.icon} size={18} />
                 <span>{sec.label}</span>
               </button>
-            )
+            );
           })}
         </div>
 
@@ -511,11 +602,9 @@ export default function SettingsScreen() {
             <span className="text-body-m text-t2">{currentSection.description}</span>
           </div>
 
-          <div className="flex flex-col gap-6 max-w-[800px]">
-            {renderSectionContent(currentSection.id)}
-          </div>
+          <div className="flex flex-col gap-6 max-w-[800px]">{renderSectionContent(currentSection.id)}</div>
         </div>
       </div>
     </div>
-  )
+  );
 }

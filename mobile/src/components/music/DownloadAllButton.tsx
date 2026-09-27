@@ -21,7 +21,9 @@ export function DownloadAllButton({ tracks }: { tracks: Track[] }) {
 
   const mine = server.map(t => items[t.id]);
   const done = mine.filter((d): d is DownloadItem => d?.status === 'done');
-  const active = mine.some(d => d?.status === 'queued' || d?.status === 'downloading');
+  const active = mine.some(
+    d => d?.status === 'queued' || d?.status === 'downloading',
+  );
   const all = done.length === server.length;
 
   if (!online && !all) return null;
@@ -31,15 +33,32 @@ export function DownloadAllButton({ tracks }: { tracks: Track[] }) {
     if (all) return confirmRemoveDownloads(done);
     useDownloadsStore.getState().enqueue(server);
     const left = server.length - done.length;
-    Alert.alert('Added to downloads', `${left} ${left === 1 ? 'song' : 'songs'} will be saved to ${useDownloadsStore.getState().location.label}.`);
+    Alert.alert(
+      'Added to downloads',
+      `${left} ${left === 1 ? 'song' : 'songs'} will be saved to ${
+        useDownloadsStore.getState().location.label
+      }.`,
+    );
   };
 
   return (
     <IconButton
-      icon={<Icon name={all ? 'check' : 'download'} size={20} color={all || active ? '#00E28A' : '#9A9AA8'} />}
+      icon={
+        <Icon
+          name={all ? 'check' : 'download'}
+          size={20}
+          color={all || active ? '#00E28A' : '#9A9AA8'}
+        />
+      }
       size={44}
       onPress={onPress}
-      accessibilityLabel={all ? 'Delete downloads' : active ? 'Downloading, open Downloads' : 'Download all'}
+      accessibilityLabel={
+        all
+          ? 'Delete downloads'
+          : active
+          ? 'Downloading, open Downloads'
+          : 'Download all'
+      }
     />
   );
 }

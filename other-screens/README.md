@@ -23,14 +23,14 @@ straight into it. Don't hand-edit anything in there.
 
 Run these from the repo root instead, if you prefer: `../runFE.sh <web|linux|windows>`.
 
-| Command | What it does |
-| --- | --- |
-| `npx neu run` | Starts the Vite dev server and opens the native window (HMR) |
-| `npx neu run -- --mode=browser` | Same, but opens in your browser |
-| `npx neu build --release` | Builds the React app, then packages Neutralino binaries into `dist/` |
-| `npm run build` | React/TS build only (typecheck + Vite) |
-| `npm run typecheck` | Types only |
-| `npm run dev` | Plain Vite dev server, no Neutralino runtime |
+| Command                         | What it does                                                         |
+| ------------------------------- | -------------------------------------------------------------------- |
+| `npx neu run`                   | Starts the Vite dev server and opens the native window (HMR)         |
+| `npx neu run -- --mode=browser` | Same, but opens in your browser                                      |
+| `npx neu build --release`       | Builds the React app, then packages Neutralino binaries into `dist/` |
+| `npm run build`                 | React/TS build only (typecheck + Vite)                               |
+| `npm run typecheck`             | Types only                                                           |
+| `npm run dev`                   | Plain Vite dev server, no Neutralino runtime                         |
 
 `neu run` and `neu build` invoke Vite themselves through `cli.frontendLibrary` in
 `neutralino.config.json` — don't start `npm run dev` alongside them, the dev server

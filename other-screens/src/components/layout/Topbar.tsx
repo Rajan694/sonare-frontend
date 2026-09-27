@@ -1,26 +1,26 @@
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Segmented } from '../ui/Segmented'
-import { CAPS } from '../../lib/caps'
-import { useModeStore } from '../../store/modeStore'
-import Icon from '../ui/Icon'
-import Button, { IconButton } from '../ui/Button'
-import { useAuth } from '../../data/hooks'
-import type { Mode } from '../../data/types'
-import { useAppDispatch, useAppSelector } from '../../store'
-import SearchField from './SearchField'
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Segmented } from '../ui/Segmented';
+import { CAPS } from '../../lib/caps';
+import { useModeStore } from '../../store/modeStore';
+import Icon from '../ui/Icon';
+import Button, { IconButton } from '../ui/Button';
+import { useAuth } from '../../data/hooks';
+import type { Mode } from '../../data/types';
+import { useAppDispatch, useAppSelector } from '../../store';
+import SearchField from './SearchField';
 
 export default function Topbar() {
-  const navigate = useNavigate()
-  const { mode, setMode } = useModeStore()
-  const { user } = useAuth()
+  const navigate = useNavigate();
+  const { mode, setMode } = useModeStore();
+  const { user } = useAuth();
 
   function handleModeSwitch(target: Mode) {
-    if (target === mode) return
+    if (target === mode) return;
     if (target === 'offline') {
-      navigate('/mode-switch')
+      navigate('/mode-switch');
     } else {
-      setMode('online')
+      setMode('online');
     }
   }
 
@@ -42,7 +42,7 @@ export default function Topbar() {
           <Segmented
             options={[
               { id: 'online', label: 'Online', icon: 'cloud' },
-              { id: 'offline', label: 'Offline', icon: 'smartphone' }
+              { id: 'offline', label: 'Offline', icon: 'smartphone' },
             ]}
             value={mode}
             onChange={(m) => handleModeSwitch(m as Mode)}
@@ -77,5 +77,5 @@ export default function Topbar() {
         )}
       </button>
     </header>
-  )
+  );
 }

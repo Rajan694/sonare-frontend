@@ -1,62 +1,62 @@
-import React, { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { CAPS } from '../lib/caps'
-import { useModeStore } from '../store/modeStore'
-import { usePlayerStore } from '../store/playerStore'
-import { useArtist, useArtistTopTracks, useArtistAlbums } from '../data/hooks'
-import { api } from '../data/api'
-import { requireAccount } from '../data/accountGate'
-import { openTrackMenu } from '../components/music/TrackMenu'
-import SongRow, { SongTableHeader } from '../components/music/SongRow'
-import Artwork from '../components/music/Artwork'
-import Button, { IconButton } from '../components/ui/Button'
-import Icon from '../components/ui/Icon'
-import { EmptyState } from '../components/ui/EmptyState'
-import { Card } from '../components/ui/Card'
-import { staggerContainer } from '../lib/motion'
-import type { Track, Album } from '../data/types'
+import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { CAPS } from '../lib/caps';
+import { useModeStore } from '../store/modeStore';
+import { usePlayerStore } from '../store/playerStore';
+import { useArtist, useArtistTopTracks, useArtistAlbums } from '../data/hooks';
+import { api } from '../data/api';
+import { requireAccount } from '../data/accountGate';
+import { openTrackMenu } from '../components/music/TrackMenu';
+import SongRow, { SongTableHeader } from '../components/music/SongRow';
+import Artwork from '../components/music/Artwork';
+import Button, { IconButton } from '../components/ui/Button';
+import Icon from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { Card } from '../components/ui/Card';
+import { staggerContainer } from '../lib/motion';
+import type { Track, Album } from '../data/types';
 
 export default function Artist() {
-  const { id } = useParams()
-  const { mode } = useModeStore()
-  const { currentTrack, playTrack } = usePlayerStore()
-  const isOffline = mode === 'offline'
+  const { id } = useParams();
+  const { mode } = useModeStore();
+  const { currentTrack, playTrack } = usePlayerStore();
+  const isOffline = mode === 'offline';
 
-  const { data: artist, loading: artistLoading, error: artistError } = useArtist(id)
-  const { data: tracksData, loading: tracksLoading } = useArtistTopTracks(id)
-  const { data: albumsData } = useArtistAlbums(id)
+  const { data: artist, loading: artistLoading, error: artistError } = useArtist(id);
+  const { data: tracksData, loading: tracksLoading } = useArtistTopTracks(id);
+  const { data: albumsData } = useArtistAlbums(id);
 
-  const [followingOverride, setFollowing] = useState<boolean | null>(null)
-  const isFollowing = followingOverride ?? (artist?.following || false)
+  const [followingOverride, setFollowing] = useState<boolean | null>(null);
+  const isFollowing = followingOverride ?? (artist?.following || false);
 
-  const tracks: Track[] = tracksData?.items || []
-  const albums: Album[] = albumsData?.items || []
+  const tracks: Track[] = tracksData?.items || [];
+  const albums: Album[] = albumsData?.items || [];
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      playTrack(tracks[0], tracks)
+      playTrack(tracks[0], tracks);
     }
-  }
+  };
 
   const handleShuffle = () => {
     if (tracks.length > 0) {
-      const shuffled = [...tracks].sort(() => Math.random() - 0.5)
-      playTrack(shuffled[0], shuffled)
+      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+      playTrack(shuffled[0], shuffled);
     }
-  }
+  };
 
   const toggleFollowing = () =>
     requireAccount('Create a free account to follow artists.', async () => {
-      if (!id) return
-      const next = !isFollowing
-      setFollowing(next)
+      if (!id) return;
+      const next = !isFollowing;
+      setFollowing(next);
       try {
-        await api.setArtistFollowing(id, next)
+        await api.setArtistFollowing(id, next);
       } catch {
-        setFollowing(!next)
+        setFollowing(!next);
       }
-    })
+    });
 
   if (artistLoading) {
     return (
@@ -70,7 +70,7 @@ export default function Artist() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (artistError || !artist) {
@@ -79,14 +79,18 @@ export default function Artist() {
         <EmptyState
           icon="mic"
           title="Artist not found"
-          description={artistError?.message || "Could not load artist profile"}
-          action={<Link to="/home" className="btn btn-acc">Back to Home</Link>}
+          description={artistError?.message || 'Could not load artist profile'}
+          action={
+            <Link to="/home" className="btn btn-acc">
+              Back to Home
+            </Link>
+          }
         />
       </div>
-    )
+    );
   }
 
-  const isLocalArtist = CAPS.localLibrary && !!artist.localTrackCount
+  const isLocalArtist = CAPS.localLibrary && !!artist.localTrackCount;
 
   return (
     <div className="@container flex flex-col overflow-auto h-full relative">
@@ -113,7 +117,9 @@ export default function Artist() {
           </span>
           <span className="text-display-m @[720px]:text-display text-t1 font-semibold truncate">{artist.name}</span>
           <span className="text-body-m text-t2 truncate">
-            {artist.monthlyListeners && !isOffline ? `${artist.monthlyListeners.toLocaleString()} monthly listeners` : ''}
+            {artist.monthlyListeners && !isOffline
+              ? `${artist.monthlyListeners.toLocaleString()} monthly listeners`
+              : ''}
             {artist.monthlyListeners && (artist.albumCount || artist.localTrackCount) ? ' · ' : ''}
             {artist.albumCount ? `${artist.albumCount} albums` : ''}
             {artist.localTrackCount ? `${artist.albumCount ? ' · ' : ''}${artist.localTrackCount} local songs` : ''}
@@ -128,20 +134,10 @@ export default function Artist() {
             >
               <Icon name="play" size={24} />
             </button>
-            <Button
-              variant="out"
-              size="lg"
-              icon="shuffle"
-              onClick={handleShuffle}
-              disabled={tracks.length === 0}
-            >
+            <Button variant="out" size="lg" icon="shuffle" onClick={handleShuffle} disabled={tracks.length === 0}>
               Shuffle
             </Button>
-            <Button
-              variant={isFollowing ? 'solid' : 'out'}
-              size="lg"
-              onClick={toggleFollowing}
-            >
+            <Button variant={isFollowing ? 'solid' : 'out'} size="lg" onClick={toggleFollowing}>
               {isFollowing ? 'Following' : 'Follow'}
             </Button>
             <IconButton
@@ -150,7 +146,7 @@ export default function Artist() {
               size={44}
               bordered
               disabled={tracks.length === 0}
-              onClick={e => openTrackMenu(tracks, e)}
+              onClick={(e) => openTrackMenu(tracks, e)}
             />
           </div>
         </div>
@@ -171,7 +167,12 @@ export default function Artist() {
             ) : tracks.length === 0 ? (
               <div className="text-t3 py-4">No tracks found for this artist</div>
             ) : (
-              <motion.div className="flex flex-col gap-0.5" variants={staggerContainer} initial="hidden" animate="visible">
+              <motion.div
+                className="flex flex-col gap-0.5"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+              >
                 {tracks.slice(0, 5).map((track: Track, i: number) => (
                   <SongRow
                     key={track.id}
@@ -211,7 +212,7 @@ export default function Artist() {
                   key={album.id}
                   title={album.title}
                   subtitle={album.year ? String(album.year) : 'Album'}
-                  artVariant={`a${(((i + 1) % 12) || 12) as 1}`}
+                  artVariant={`a${((i + 1) % 12 || 12) as 1}`}
                   thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
                   to={`/album/${album.id}`}
                 />
@@ -221,5 +222,5 @@ export default function Artist() {
         )}
       </div>
     </div>
-  )
+  );
 }

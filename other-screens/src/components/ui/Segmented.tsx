@@ -1,30 +1,30 @@
-import React from 'react'
-import { motion, LayoutGroup } from 'motion/react'
-import { cn } from '../../lib/utils'
-import Icon, { type IconName } from './Icon'
-import { transition } from '../../lib/motion'
+import React from 'react';
+import { motion, LayoutGroup } from 'motion/react';
+import { cn } from '../../lib/utils';
+import Icon, { type IconName } from './Icon';
+import { transition } from '../../lib/motion';
 
 interface SegmentOptions {
-  id: string
-  label: string
-  icon?: IconName
+  id: string;
+  label: string;
+  icon?: IconName;
 }
 
 interface SegmentedProps {
-  options: SegmentOptions[]
-  value: string
-  onChange: (id: string) => void
-  color?: 'acc' | 'gold'
-  className?: string
+  options: SegmentOptions[];
+  value: string;
+  onChange: (id: string) => void;
+  color?: 'acc' | 'gold';
+  className?: string;
 }
 
 export function Segmented({ options, value, onChange, color = 'acc', className }: SegmentedProps) {
-  const activeClass = color === 'acc' ? 'seg-on-cloud' : 'seg-on-dev'
+  const activeClass = color === 'acc' ? 'seg-on-cloud' : 'seg-on-dev';
   return (
     <LayoutGroup>
       <span className={cn('seg', className)}>
-        {options.map(opt => {
-          const isActive = value === opt.id
+        {options.map((opt) => {
+          const isActive = value === opt.id;
           return (
             <button
               key={opt.id}
@@ -43,9 +43,9 @@ export function Segmented({ options, value, onChange, color = 'acc', className }
                 />
               )}
             </button>
-          )
+          );
         })}
       </span>
     </LayoutGroup>
-  )
+  );
 }

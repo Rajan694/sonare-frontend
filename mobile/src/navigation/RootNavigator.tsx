@@ -22,15 +22,27 @@ import { navigationRef, takePendingAction } from '../data/accountGate';
 import { TrackMenuHost } from '../components/music/TrackMenuHost';
 import { useModeStore } from '../store/mode';
 import { View, Text, ActivityIndicator } from 'react-native';
-import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
+import Animated, {
+  FadeInUp,
+  FadeOutUp,
+  ReduceMotion,
+} from 'react-native-reanimated';
 import { cn } from '../lib/cn';
 
-const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
+const Stack = createNativeStackNavigator<
+  Record<string, object | undefined>,
+  undefined
+>();
 
 function ModeToast() {
-  const mode = useModeStore((state) => state.mode);
+  const mode = useModeStore(state => state.mode);
   const prevMode = useRef(mode);
-  const [toast, setToast] = useState<{ mode: 'online' | 'offline'; title?: string; description?: string; visible: boolean } | null>(null);
+  const [toast, setToast] = useState<{
+    mode: 'online' | 'offline';
+    title?: string;
+    description?: string;
+    visible: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (mode !== prevMode.current) {
@@ -43,7 +55,7 @@ function ModeToast() {
         visible: true,
       });
       const timer = setTimeout(() => {
-        setToast((t) => (t ? { ...t, visible: false } : null));
+        setToast(t => (t ? { ...t, visible: false } : null));
       }, 4000);
       return () => clearTimeout(timer);
     }
@@ -51,26 +63,35 @@ function ModeToast() {
 
   if (!toast?.visible) return null;
 
-  const defaultTitle = `Switched to ${toast.mode === 'offline' ? 'Offline' : 'Online'} Mode`;
+  const defaultTitle = `Switched to ${
+    toast.mode === 'offline' ? 'Offline' : 'Online'
+  } Mode`;
   const defaultDesc =
     toast.mode === 'offline'
       ? 'Server content hidden. Playback continues from this device.'
       : 'Server content restored. Playback continues.';
 
   return (
-    <Animated.View 
-       entering={FadeInUp.springify().damping(20).reduceMotion(ReduceMotion.System)} 
-       exiting={FadeOutUp.reduceMotion(ReduceMotion.System)} 
-       className="absolute top-12 left-4 right-4 bg-s1 rounded-2xl border border-gold/30 p-3 shadow-2xl flex-row items-center gap-3 z-50 pointer-events-none"
+    <Animated.View
+      entering={FadeInUp.springify()
+        .damping(20)
+        .reduceMotion(ReduceMotion.System)}
+      exiting={FadeOutUp.reduceMotion(ReduceMotion.System)}
+      className="absolute top-12 left-4 right-4 bg-s1 rounded-2xl border border-gold/30 p-3 shadow-2xl flex-row items-center gap-3 z-50 pointer-events-none"
     >
       <View className="w-2 rounded-full self-stretch bg-gold" />
       <View className="flex-1 ml-1 py-1">
-         <Text className={cn("text-h2 font-medium", toast.mode === 'offline' ? "text-gold" : "text-acc")}>
-            {toast.title ?? defaultTitle}
-         </Text>
-         <Text className="text-t2 text-bs mt-0.5">
-            {toast.description ?? defaultDesc}
-         </Text>
+        <Text
+          className={cn(
+            'text-h2 font-medium',
+            toast.mode === 'offline' ? 'text-gold' : 'text-acc',
+          )}
+        >
+          {toast.title ?? defaultTitle}
+        </Text>
+        <Text className="text-t2 text-bs mt-0.5">
+          {toast.description ?? defaultDesc}
+        </Text>
       </View>
     </Animated.View>
   );
@@ -87,7 +108,10 @@ function useSessionEffects(status: string) {
     // Account settings (download quality / format) follow whoever is signed in.
     void useSettingsStore.getState().hydrate();
     if (status === 'signedIn') {
-      useLibraryStore.getState().load().finally(() => takePendingAction()?.());
+      useLibraryStore
+        .getState()
+        .load()
+        .finally(() => takePendingAction()?.());
     } else if (status === 'guest') {
       useLibraryStore.getState().reset();
     }

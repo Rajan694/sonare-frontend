@@ -1,18 +1,21 @@
-import React, { useMemo } from 'react'
-import { motion, useReducedMotion } from 'motion/react'
+import React, { useMemo } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 
 interface EqualizerBarsProps {
-  playing?: boolean
+  playing?: boolean;
 }
 
 export default function EqualizerBars({ playing = true }: EqualizerBarsProps) {
-  const reduceMotion = useReducedMotion()
+  const reduceMotion = useReducedMotion();
 
-  const bars = useMemo(() => [
-    { delay: 0, heights: [14, 6, 12, 4, 10] },
-    { delay: 0.15, heights: [6, 12, 4, 14, 8] },
-    { delay: 0.3, heights: [10, 4, 14, 6, 12] },
-  ], [])
+  const bars = useMemo(
+    () => [
+      { delay: 0, heights: [14, 6, 12, 4, 10] },
+      { delay: 0.15, heights: [6, 12, 4, 14, 8] },
+      { delay: 0.3, heights: [10, 4, 14, 6, 12] },
+    ],
+    [],
+  );
 
   // Paused (or reduced motion): the bars hold still at a fixed shape.
   if (reduceMotion || !playing) {
@@ -22,7 +25,7 @@ export default function EqualizerBars({ playing = true }: EqualizerBarsProps) {
         <i className="h-[6px]" />
         <i className="h-[14px]" />
       </span>
-    )
+    );
   }
 
   return (
@@ -30,7 +33,7 @@ export default function EqualizerBars({ playing = true }: EqualizerBarsProps) {
       {bars.map((bar, i) => (
         <motion.i
           key={i}
-          animate={{ height: bar.heights.map(h => `${h}px`) }}
+          animate={{ height: bar.heights.map((h) => `${h}px`) }}
           transition={{
             duration: 0.6,
             repeat: Infinity,
@@ -42,5 +45,5 @@ export default function EqualizerBars({ playing = true }: EqualizerBarsProps) {
         />
       ))}
     </span>
-  )
+  );
 }

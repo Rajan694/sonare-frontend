@@ -1,107 +1,107 @@
-import type { User } from './types'
-import { CLIENT } from '../lib/caps'
+import type { User } from './types';
+import { CLIENT } from '../lib/caps';
 
 // Signed out is guest mode: catalog and playback work, saving needs an account (accountGate.ts).
 // In dev, VITE_DEV_EMAIL / VITE_DEV_PASSWORD sign in automatically — until someone signs out.
 
-const ACCESS_TOKEN_KEY = 'sonare_access_token'
-const REFRESH_TOKEN_KEY = 'sonare_refresh_token'
-const USER_KEY = 'sonare_user'
+const ACCESS_TOKEN_KEY = 'sonare_access_token';
+const REFRESH_TOKEN_KEY = 'sonare_refresh_token';
+const USER_KEY = 'sonare_user';
 /** Set by an explicit sign-out so dev auto-login doesn't sign straight back in on reload. */
-const SIGNED_OUT_KEY = 'sonare_signed_out'
+const SIGNED_OUT_KEY = 'sonare_signed_out';
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3010/api/v1'
-const JSON_HEADERS = { 'Content-Type': 'application/json', 'X-Sonare-Client': CLIENT }
+export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3010/api/v1';
+const JSON_HEADERS = { 'Content-Type': 'application/json', 'X-Sonare-Client': CLIENT };
 
-let currentAccessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY)
-let currentRefreshToken: string | null = localStorage.getItem(REFRESH_TOKEN_KEY)
+let currentAccessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY);
+let currentRefreshToken: string | null = localStorage.getItem(REFRESH_TOKEN_KEY);
 let currentUser: User | null = (() => {
   try {
-    const raw = localStorage.getItem(USER_KEY)
-    return raw ? JSON.parse(raw) : null
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? JSON.parse(raw) : null;
   } catch {
-    return null
+    return null;
   }
-})()
+})();
 
-let isAuthSettled = !import.meta.env.VITE_DEV_EMAIL || !!currentAccessToken || !!localStorage.getItem(SIGNED_OUT_KEY)
-let authSettlePromise: Promise<void> | null = null
+let isAuthSettled = !import.meta.env.VITE_DEV_EMAIL || !!currentAccessToken || !!localStorage.getItem(SIGNED_OUT_KEY);
+let authSettlePromise: Promise<void> | null = null;
 
-type AuthListener = (user: User | null) => void
-const listeners = new Set<AuthListener>()
-const authSettleListeners = new Set<() => void>()
+type AuthListener = (user: User | null) => void;
+const listeners = new Set<AuthListener>();
+const authSettleListeners = new Set<() => void>();
 
 function notifyListeners() {
-  listeners.forEach(fn => fn(currentUser))
+  listeners.forEach((fn) => fn(currentUser));
 }
 
 export function isAuthReady(): boolean {
-  return isAuthSettled
+  return isAuthSettled;
 }
 
 export function onAuthReady(fn: () => void): () => void {
   if (isAuthSettled) {
-    fn()
-    return () => {}
+    fn();
+    return () => {};
   }
-  authSettleListeners.add(fn)
+  authSettleListeners.add(fn);
   return () => {
-    authSettleListeners.delete(fn)
-  }
+    authSettleListeners.delete(fn);
+  };
 }
 
 function markAuthSettled() {
-  isAuthSettled = true
-  authSettleListeners.forEach(fn => fn())
-  authSettleListeners.clear()
+  isAuthSettled = true;
+  authSettleListeners.forEach((fn) => fn());
+  authSettleListeners.clear();
 }
 
 export function onAuthChange(fn: AuthListener): () => void {
-  listeners.add(fn)
+  listeners.add(fn);
   return () => {
-    listeners.delete(fn)
-  }
+    listeners.delete(fn);
+  };
 }
 
 export function getAccessToken(): string | null {
-  return currentAccessToken
+  return currentAccessToken;
 }
 
 export function getRefreshToken(): string | null {
-  return currentRefreshToken
+  return currentRefreshToken;
 }
 
 export function getCurrentUser(): User | null {
-  return currentUser
+  return currentUser;
 }
 
 export function isAuthenticated(): boolean {
-  return !!currentAccessToken
+  return !!currentAccessToken;
 }
 
 export function setSession(accessToken: string, refreshToken: string, user: User) {
-  currentAccessToken = accessToken
-  currentRefreshToken = refreshToken
-  currentUser = user
+  currentAccessToken = accessToken;
+  currentRefreshToken = refreshToken;
+  currentUser = user;
 
-  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken)
-  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken)
-  localStorage.setItem(USER_KEY, JSON.stringify(user))
-  localStorage.removeItem(SIGNED_OUT_KEY)
+  localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
+  localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  localStorage.removeItem(SIGNED_OUT_KEY);
 
-  notifyListeners()
+  notifyListeners();
 }
 
 export function clearSession() {
-  currentAccessToken = null
-  currentRefreshToken = null
-  currentUser = null
+  currentAccessToken = null;
+  currentRefreshToken = null;
+  currentUser = null;
 
-  localStorage.removeItem(ACCESS_TOKEN_KEY)
-  localStorage.removeItem(REFRESH_TOKEN_KEY)
-  localStorage.removeItem(USER_KEY)
+  localStorage.removeItem(ACCESS_TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 
-  notifyListeners()
+  notifyListeners();
 }
 
 export async function signIn(email: string, password: string): Promise<User> {
@@ -109,15 +109,15 @@ export async function signIn(email: string, password: string): Promise<User> {
     method: 'POST',
     headers: JSON_HEADERS,
     body: JSON.stringify({ email, password }),
-  })
+  });
 
-  const json = await res.json()
+  const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.error?.message || `Login failed with status ${res.status}`)
+    throw new Error(json.error?.message || `Login failed with status ${res.status}`);
   }
 
-  setSession(json.accessToken, json.refreshToken, json.user)
-  return json.user
+  setSession(json.accessToken, json.refreshToken, json.user);
+  return json.user;
 }
 
 export async function signUp(email: string, password: string, displayName: string): Promise<User> {
@@ -125,15 +125,15 @@ export async function signUp(email: string, password: string, displayName: strin
     method: 'POST',
     headers: JSON_HEADERS,
     body: JSON.stringify({ email, password, displayName }),
-  })
+  });
 
-  const json = await res.json()
+  const json = await res.json();
   if (!res.ok) {
-    throw new Error(json.error?.message || `Registration failed with status ${res.status}`)
+    throw new Error(json.error?.message || `Registration failed with status ${res.status}`);
   }
 
-  setSession(json.accessToken, json.refreshToken, json.user)
-  return json.user
+  setSession(json.accessToken, json.refreshToken, json.user);
+  return json.user;
 }
 
 export async function signOut(): Promise<void> {
@@ -143,28 +143,28 @@ export async function signOut(): Promise<void> {
         method: 'POST',
         headers: {
           ...JSON_HEADERS,
-          'Authorization': `Bearer ${currentAccessToken}`,
+          Authorization: `Bearer ${currentAccessToken}`,
         },
         // The server revokes by refresh token; without it the session stays usable.
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
-      })
+      });
     }
   } catch {
     // Ignore network error on logout
   } finally {
-    clearSession()
-    localStorage.setItem(SIGNED_OUT_KEY, '1')
+    clearSession();
+    localStorage.setItem(SIGNED_OUT_KEY, '1');
   }
 }
 
-let refreshPromise: Promise<string | null> | null = null
+let refreshPromise: Promise<string | null> | null = null;
 
 export async function refreshAccessToken(): Promise<string | null> {
-  if (refreshPromise) return refreshPromise
+  if (refreshPromise) return refreshPromise;
 
   if (!currentRefreshToken) {
-    clearSession()
-    return null
+    clearSession();
+    return null;
   }
 
   refreshPromise = (async () => {
@@ -173,72 +173,72 @@ export async function refreshAccessToken(): Promise<string | null> {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
-      })
+      });
 
       if (!res.ok) {
-        clearSession()
-        return null
+        clearSession();
+        return null;
       }
 
-      const json = await res.json()
-      currentAccessToken = json.accessToken
-      currentRefreshToken = json.refreshToken || currentRefreshToken
+      const json = await res.json();
+      currentAccessToken = json.accessToken;
+      currentRefreshToken = json.refreshToken || currentRefreshToken;
 
-      localStorage.setItem(ACCESS_TOKEN_KEY, currentAccessToken!)
+      localStorage.setItem(ACCESS_TOKEN_KEY, currentAccessToken!);
       if (json.refreshToken) {
-        localStorage.setItem(REFRESH_TOKEN_KEY, currentRefreshToken!)
+        localStorage.setItem(REFRESH_TOKEN_KEY, currentRefreshToken!);
       }
 
-      return currentAccessToken
+      return currentAccessToken;
     } catch {
-      clearSession()
-      return null
+      clearSession();
+      return null;
     } finally {
-      refreshPromise = null
+      refreshPromise = null;
     }
-  })()
+  })();
 
-  return refreshPromise
+  return refreshPromise;
 }
 
 export async function initDevAuth(): Promise<void> {
   // Someone who signed out stays a guest; dev auto-login is only for a fresh start.
   if (currentAccessToken || localStorage.getItem(SIGNED_OUT_KEY)) {
-    markAuthSettled()
-    return
+    markAuthSettled();
+    return;
   }
 
-  const devEmail = import.meta.env.VITE_DEV_EMAIL
-  const devPassword = import.meta.env.VITE_DEV_PASSWORD
+  const devEmail = import.meta.env.VITE_DEV_EMAIL;
+  const devPassword = import.meta.env.VITE_DEV_PASSWORD;
 
   if (!devEmail || !devPassword) {
-    markAuthSettled()
-    return
+    markAuthSettled();
+    return;
   }
 
-  if (authSettlePromise) return authSettlePromise
+  if (authSettlePromise) return authSettlePromise;
 
   authSettlePromise = (async () => {
     try {
       // 1. Attempt signIn first
-      await signIn(devEmail, devPassword)
+      await signIn(devEmail, devPassword);
     } catch {
       // 2. If signIn fails, attempt signUp
       try {
-        await signUp(devEmail, devPassword, 'Rajan')
+        await signUp(devEmail, devPassword, 'Rajan');
       } catch {
         // 3. If signUp returned 409 / conflict, retry signIn once more
         try {
-          await signIn(devEmail, devPassword)
+          await signIn(devEmail, devPassword);
         } catch (finalErr) {
-          console.warn('[Auth] Dev auto-login failed:', finalErr)
+          console.warn('[Auth] Dev auto-login failed:', finalErr);
         }
       }
     } finally {
-      markAuthSettled()
-      authSettlePromise = null
+      markAuthSettled();
+      authSettlePromise = null;
     }
-  })()
+  })();
 
-  return authSettlePromise
+  return authSettlePromise;
 }

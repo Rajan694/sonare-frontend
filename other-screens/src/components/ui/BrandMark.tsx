@@ -1,11 +1,11 @@
-import { useId } from 'react'
+import { useId } from 'react';
 
 /**
  * The Sonare logo tile (design-system/sonare-logo, green tile). Header sizes are under
  * 32px, so it draws the logo's small three-bar version - the five-bar one thins out there.
  */
 export function BrandMark({ size = 28, className }: { size?: number; className?: string }) {
-  const gradient = `sonare-${useId().replace(/[^\w-]/g, '')}`
+  const gradient = `sonare-${useId().replace(/[^\w-]/g, '')}`;
   return (
     <svg viewBox="0 0 256 256" width={size} height={size} className={className} aria-hidden="true">
       <defs>
@@ -19,5 +19,5 @@ export function BrandMark({ size = 28, className }: { size?: number; className?:
       <rect x="108" y="40" width="40" height="176" rx="20" fill="#000" />
       <rect x="174" y="68" width="40" height="120" rx="20" fill="#000" />
     </svg>
-  )
+  );
 }

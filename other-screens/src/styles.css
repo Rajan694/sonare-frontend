@@ -1,35 +1,35 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   /* ===== COLORS ===== */
   --color-bg: #000000;
   --color-s0: #060607;
-  --color-s1: #0B0B0D;
+  --color-s1: #0b0b0d;
   --color-s2: #111114;
-  --color-s3: #17171B;
-  --color-s4: #1E1E23;
-  --color-ln: #1A1A1F;
-  --color-ln2: #26262C;
-  --color-ln3: #33333B;
-  
-  --color-t1: #FFFFFF;
-  --color-t2: #9A9AA8;
-  --color-t3: #7E7E8C;
-  --color-t4: #5A5A66;
+  --color-s3: #17171b;
+  --color-s4: #1e1e23;
+  --color-ln: #1a1a1f;
+  --color-ln2: #26262c;
+  --color-ln3: #33333b;
+
+  --color-t1: #ffffff;
+  --color-t2: #9a9aa8;
+  --color-t3: #7e7e8c;
+  --color-t4: #5a5a66;
   --color-tinv: #000000;
 
-  --color-acc: #00E28A;
-  --color-acc2: #1FE795;
-  --color-acc3: #00C074;
-  --color-accbg: rgba(0,226,138,0.12);
-  --color-accbg2: rgba(0,226,138,0.20);
-  
-  --color-gold: #FFC24D;
-  --color-goldbg: rgba(255,194,77,0.12);
-  --color-goldbg2: rgba(255,194,77,0.22);
-  
-  --color-red: #FF4D5E;
-  --color-blue: #4DA3FF;
+  --color-acc: #00e28a;
+  --color-acc2: #1fe795;
+  --color-acc3: #00c074;
+  --color-accbg: rgba(0, 226, 138, 0.12);
+  --color-accbg2: rgba(0, 226, 138, 0.2);
+
+  --color-gold: #ffc24d;
+  --color-goldbg: rgba(255, 194, 77, 0.12);
+  --color-goldbg2: rgba(255, 194, 77, 0.22);
+
+  --color-red: #ff4d5e;
+  --color-blue: #4da3ff;
 
   /* ===== SPACING ===== */
   --spacing-2xs: 2px;
@@ -68,21 +68,21 @@
      like `32px 36px 700` is not a font-size - every size fell back to 16px. */
 
   /* ===== SHADOWS ===== */
-  --shadow-e1: 0 1px 2px rgba(0,0,0,.40), 0 0 1px rgba(0,0,0,.24);
-  --shadow-e2: 0 4px 12px -2px rgba(0,0,0,.50), 0 1px 2px rgba(0,0,0,.30);
-  --shadow-e3: 0 12px 32px -6px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35);
-  --shadow-e4: 0 24px 64px -12px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40);
-  --shadow-eplayer: 0 -8px 32px -8px rgba(0,0,0,.75);
-  --shadow-glow: 0 4px 20px -4px rgba(0,226,138,.35);
-  --shadow-glow-s: 0 6px 28px -2px rgba(0,226,138,.55);
-  --shadow-glow-g: 0 4px 20px -4px rgba(255,194,77,.32);
+  --shadow-e1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.24);
+  --shadow-e2: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-e3: 0 12px 32px -6px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --shadow-e4: 0 24px 64px -12px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-eplayer: 0 -8px 32px -8px rgba(0, 0, 0, 0.75);
+  --shadow-glow: 0 4px 20px -4px rgba(0, 226, 138, 0.35);
+  --shadow-glow-s: 0 6px 28px -2px rgba(0, 226, 138, 0.55);
+  --shadow-glow-g: 0 4px 20px -4px rgba(255, 194, 77, 0.32);
 
   /* ===== MOTION ===== */
-  --ease-smooth: cubic-bezier(0.4, 0.0, 0.2, 1);
-  --ease-in: cubic-bezier(0.4, 0.0, 1, 1);
-  --ease-out: cubic-bezier(0.0, 0.0, 0.2, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
   --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
-  
+
   --animate-fast: 150ms;
   --animate-normal: 250ms;
   --animate-slow: 400ms;
@@ -93,28 +93,28 @@
 :root {
   --bg: #000000;
   --s0: #060607;
-  --s1: #0B0B0D;
+  --s1: #0b0b0d;
   --s2: #111114;
-  --s3: #17171B;
-  --s4: #1E1E23;
-  --ln: #1A1A1F;
-  --ln2: #26262C;
-  --ln3: #33333B;
-  --t1: #FFFFFF;
-  --t2: #9A9AA8;
-  --t3: #7E7E8C;
-  --t4: #5A5A66;
+  --s3: #17171b;
+  --s4: #1e1e23;
+  --ln: #1a1a1f;
+  --ln2: #26262c;
+  --ln3: #33333b;
+  --t1: #ffffff;
+  --t2: #9a9aa8;
+  --t3: #7e7e8c;
+  --t4: #5a5a66;
   --tinv: #000000;
-  --acc: #00E28A;
-  --acc2: #1FE795;
-  --acc3: #00C074;
-  --accbg: rgba(0,226,138,.12);
-  --accbg2: rgba(0,226,138,.20);
-  --gold: #FFC24D;
-  --goldbg: rgba(255,194,77,.12);
-  --goldbg2: rgba(255,194,77,.22);
-  --red: #FF4D5E;
-  --blue: #4DA3FF;
+  --acc: #00e28a;
+  --acc2: #1fe795;
+  --acc3: #00c074;
+  --accbg: rgba(0, 226, 138, 0.12);
+  --accbg2: rgba(0, 226, 138, 0.2);
+  --gold: #ffc24d;
+  --goldbg: rgba(255, 194, 77, 0.12);
+  --goldbg2: rgba(255, 194, 77, 0.22);
+  --red: #ff4d5e;
+  --blue: #4da3ff;
   --r-xs: 4px;
   --r-sm: 8px;
   --r-md: 12px;
@@ -124,18 +124,19 @@
   --r-full: 999px;
   --font: 'Geist', 'Geist Sans', system-ui, -apple-system, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
-  --e1: 0 1px 2px rgba(0,0,0,.40), 0 0 1px rgba(0,0,0,.24);
-  --e2: 0 4px 12px -2px rgba(0,0,0,.50), 0 1px 2px rgba(0,0,0,.30);
-  --e3: 0 12px 32px -6px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35);
-  --e4: 0 24px 64px -12px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40);
-  --eplayer: 0 -8px 32px -8px rgba(0,0,0,.75);
-  --glow: 0 4px 20px -4px rgba(0,226,138,.35);
-  --glow-s: 0 6px 28px -2px rgba(0,226,138,.55);
-  --glow-g: 0 4px 20px -4px rgba(255,194,77,.32);
+  --e1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 1px rgba(0, 0, 0, 0.24);
+  --e2: 0 4px 12px -2px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.3);
+  --e3: 0 12px 32px -6px rgba(0, 0, 0, 0.6), 0 2px 6px rgba(0, 0, 0, 0.35);
+  --e4: 0 24px 64px -12px rgba(0, 0, 0, 0.7), 0 4px 12px rgba(0, 0, 0, 0.4);
+  --eplayer: 0 -8px 32px -8px rgba(0, 0, 0, 0.75);
+  --glow: 0 4px 20px -4px rgba(0, 226, 138, 0.35);
+  --glow-s: 0 6px 28px -2px rgba(0, 226, 138, 0.55);
+  --glow-g: 0 4px 20px -4px rgba(255, 194, 77, 0.32);
   color-scheme: dark;
 }
 
-html, body {
+html,
+body {
   background: var(--bg);
   color-scheme: dark;
   -webkit-print-color-adjust: exact !important;
@@ -147,7 +148,7 @@ body {
   color: var(--t1);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: "ss01", "cv01";
+  font-feature-settings: 'ss01', 'cv01';
   -webkit-user-select: none;
   user-select: none;
   cursor: default;
@@ -175,7 +176,7 @@ body {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(0, 226, 138, .55);
+  background: rgba(0, 226, 138, 0.55);
   background-clip: padding-box;
   border: 2px solid transparent;
   border-radius: 999px;
@@ -190,7 +191,7 @@ body {
 @supports not selector(::-webkit-scrollbar) {
   * {
     scrollbar-width: thin;
-    scrollbar-color: rgba(0, 226, 138, .55) transparent;
+    scrollbar-color: rgba(0, 226, 138, 0.55) transparent;
   }
 }
 

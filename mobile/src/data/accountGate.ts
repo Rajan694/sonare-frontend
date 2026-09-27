@@ -2,7 +2,8 @@ import { createNavigationContainerRef } from '@react-navigation/native';
 import { useAuthStore } from './auth';
 
 /** Lets code outside components (stores, gates) navigate. */
-export const navigationRef = createNavigationContainerRef<Record<string, object | undefined>>();
+export const navigationRef =
+  createNavigationContainerRef<Record<string, object | undefined>>();
 
 let pending: (() => unknown) | null = null;
 

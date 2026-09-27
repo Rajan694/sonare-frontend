@@ -1,17 +1,17 @@
-import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { Menu, MenuItem } from '../ui/Menu'
-import { usePlayerStore } from '../../store/playerStore'
-import { showToast } from '../../store/toastStore'
-import { useMyPlaylists, notifyPlaylistsChanged } from '../../data/hooks'
-import { api } from '../../data/api'
-import { requireAccount } from '../../data/accountGate'
-import { isAuthenticated } from '../../data/auth'
-import type { Track } from '../../data/types'
-import { CAPS } from '../../lib/caps'
-import { localLibrary } from '../../data/local'
-import { downloads, useDownload } from '../../data/downloads'
-import { useModeStore } from '../../store/modeStore'
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Menu, MenuItem } from '../ui/Menu';
+import { usePlayerStore } from '../../store/playerStore';
+import { showToast } from '../../store/toastStore';
+import { useMyPlaylists, notifyPlaylistsChanged } from '../../data/hooks';
+import { api } from '../../data/api';
+import { requireAccount } from '../../data/accountGate';
+import { isAuthenticated } from '../../data/auth';
+import type { Track } from '../../data/types';
+import { CAPS } from '../../lib/caps';
+import { localLibrary } from '../../data/local';
+import { downloads, useDownload } from '../../data/downloads';
+import { useModeStore } from '../../store/modeStore';
 
 /**
  * One context menu for every track list (FLOWS §3 D05): right-click a row, or press its
@@ -20,172 +20,184 @@ import { useModeStore } from '../../store/modeStore'
  */
 
 interface MenuTarget {
-  tracks: Track[]
+  tracks: Track[];
   /** One of the user's playlists: the menu ends with "Delete playlist". */
-  playlist?: { id: string; name: string }
-  x: number
-  y: number
+  playlist?: { id: string; name: string };
+  x: number;
+  y: number;
 }
 
-let target: MenuTarget | null = null
-const listeners = new Set<() => void>()
+let target: MenuTarget | null = null;
+const listeners = new Set<() => void>();
 
 function set(next: MenuTarget | null) {
-  target = next
-  for (const l of listeners) l()
+  target = next;
+  for (const l of listeners) l();
 }
 
 /** Open at the pointer (right-click) or under the clicked button. */
 export function openTrackMenu(tracks: Track | Track[], e: React.MouseEvent, playlist?: MenuTarget['playlist']): void {
-  e.preventDefault()
-  e.stopPropagation()
-  const list = Array.isArray(tracks) ? tracks : [tracks]
-  if (list.length === 0 && !playlist) return
+  e.preventDefault();
+  e.stopPropagation();
+  const list = Array.isArray(tracks) ? tracks : [tracks];
+  if (list.length === 0 && !playlist) return;
   if (e.type === 'contextmenu') {
-    set({ tracks: list, playlist, x: e.clientX, y: e.clientY })
+    set({ tracks: list, playlist, x: e.clientX, y: e.clientY });
   } else {
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    set({ tracks: list, playlist, x: r.right, y: r.bottom + 4 })
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    set({ tracks: list, playlist, x: r.right, y: r.bottom + 4 });
   }
 }
 
 /** A playlist whose tracks aren't loaded (sidebar, playlist cards): only playlist actions. */
 export function openPlaylistMenu(playlist: { id: string; name: string }, e: React.MouseEvent): void {
-  openTrackMenu([], e, playlist)
+  openTrackMenu([], e, playlist);
 }
 
 export function closeTrackMenu(): void {
-  set(null)
+  set(null);
 }
 
 export default function TrackMenu() {
   const current = useSyncExternalStore(
-    fn => {
-      listeners.add(fn)
-      return () => listeners.delete(fn)
+    (fn) => {
+      listeners.add(fn);
+      return () => listeners.delete(fn);
     },
-    () => target
-  )
-  const location = useLocation()
+    () => target,
+  );
+  const location = useLocation();
 
   useEffect(() => {
-    closeTrackMenu()
-  }, [location.pathname])
+    closeTrackMenu();
+  }, [location.pathname]);
 
-  if (!current) return null
-  return <OpenMenu key={`${current.x},${current.y}`} target={current} />
+  if (!current) return null;
+  return <OpenMenu key={`${current.x},${current.y}`} target={current} />;
 }
 
 function OpenMenu({ target }: { target: MenuTarget }) {
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { playNext, enqueue } = usePlayerStore()
-  const { data: playlists } = useMyPlaylists()
-  const { mode } = useModeStore()
-  const [picking, setPicking] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  const [pos, setPos] = useState({ left: target.x, top: target.y })
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { playNext, enqueue } = usePlayerStore();
+  const { data: playlists } = useMyPlaylists();
+  const { mode } = useModeStore();
+  const [picking, setPicking] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: target.x, top: target.y });
 
-  const { tracks, playlist } = target
-  const single = tracks.length === 1 ? tracks[0] : null
-  const download = useDownload(single?.id ?? '')
+  const { tracks, playlist } = target;
+  const single = tracks.length === 1 ? tracks[0] : null;
+  const download = useDownload(single?.id ?? '');
 
   // Keep the menu on screen; anchor it to the left of the pointer near the right edge.
   useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    const { width, height } = el.getBoundingClientRect()
+    const el = ref.current;
+    if (!el) return;
+    const { width, height } = el.getBoundingClientRect();
     setPos({
       left: Math.max(8, Math.min(target.x, window.innerWidth - width - 8)),
       top: Math.max(8, Math.min(target.y, window.innerHeight - height - 8)),
-    })
-  }, [target.x, target.y, picking])
+    });
+  }, [target.x, target.y, picking]);
 
   useEffect(() => {
     function onPointerDown(e: PointerEvent) {
-      if (!ref.current?.contains(e.target as Node)) closeTrackMenu()
+      if (!ref.current?.contains(e.target as Node)) closeTrackMenu();
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeTrackMenu()
+      if (e.key === 'Escape') closeTrackMenu();
     }
-    window.addEventListener('pointerdown', onPointerDown, true)
-    window.addEventListener('keydown', onKey)
-    window.addEventListener('blur', closeTrackMenu)
+    window.addEventListener('pointerdown', onPointerDown, true);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('blur', closeTrackMenu);
     return () => {
-      window.removeEventListener('pointerdown', onPointerDown, true)
-      window.removeEventListener('keydown', onKey)
-      window.removeEventListener('blur', closeTrackMenu)
-    }
-  }, [])
+      window.removeEventListener('pointerdown', onPointerDown, true);
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('blur', closeTrackMenu);
+    };
+  }, []);
 
   function run(fn: () => void) {
     return () => {
-      fn()
-      closeTrackMenu()
-    }
+      fn();
+      closeTrackMenu();
+    };
   }
 
   async function addToPlaylist(id: string, name: string) {
-    closeTrackMenu()
+    closeTrackMenu();
     try {
-      await api.addTracksToPlaylist(id, tracks.map(t => t.id))
-      notifyPlaylistsChanged()
-      showToast({ title: `Added to ${name}`, description: single?.title ?? `${tracks.length} songs`, icon: 'playlist', variant: 'acc' })
+      await api.addTracksToPlaylist(
+        id,
+        tracks.map((t) => t.id),
+      );
+      notifyPlaylistsChanged();
+      showToast({
+        title: `Added to ${name}`,
+        description: single?.title ?? `${tracks.length} songs`,
+        icon: 'playlist',
+        variant: 'acc',
+      });
     } catch {
-      showToast({ title: 'Could not add to playlist', icon: 'info' })
+      showToast({ title: 'Could not add to playlist', icon: 'info' });
     }
   }
 
   async function addToNewPlaylist() {
-    const name = window.prompt('New playlist name', single ? single.title : 'New playlist')?.trim()
-    if (!name) return
-    closeTrackMenu()
+    const name = window.prompt('New playlist name', single ? single.title : 'New playlist')?.trim();
+    if (!name) return;
+    closeTrackMenu();
     try {
-      const created = await api.createPlaylist({ name, kind: 'synced' })
-      await addToPlaylist(created.id, created.name)
+      const created = await api.createPlaylist({ name, kind: 'synced' });
+      await addToPlaylist(created.id, created.name);
     } catch {
-      showToast({ title: 'Could not create playlist', icon: 'info' })
+      showToast({ title: 'Could not create playlist', icon: 'info' });
     }
   }
 
   async function deletePlaylist(p: { id: string; name: string }) {
-    closeTrackMenu()
-    if (!window.confirm(`Delete the playlist "${p.name}"? This can't be undone.`)) return
+    closeTrackMenu();
+    if (!window.confirm(`Delete the playlist "${p.name}"? This can't be undone.`)) return;
     try {
-      await api.deleteMyPlaylist(p.id)
-      notifyPlaylistsChanged()
-      showToast({ title: 'Playlist deleted', description: p.name, icon: 'trash' })
+      await api.deleteMyPlaylist(p.id);
+      notifyPlaylistsChanged();
+      showToast({ title: 'Playlist deleted', description: p.name, icon: 'trash' });
       // Deleted from its own page: that page is gone now.
-      if (decodeURIComponent(location.pathname) === `/playlist/${p.id}`) navigate('/playlist', { replace: true })
+      if (decodeURIComponent(location.pathname) === `/playlist/${p.id}`) navigate('/playlist', { replace: true });
     } catch {
-      showToast({ title: 'Could not delete playlist', description: p.name, icon: 'info' })
+      showToast({ title: 'Could not delete playlist', description: p.name, icon: 'info' });
     }
   }
 
   async function startDownload(track: Track) {
-    await downloads.enqueue([track])
-    showToast({ title: 'Added to downloads', description: track.title, icon: 'download', variant: 'gold' })
+    await downloads.enqueue([track]);
+    showToast({ title: 'Added to downloads', description: track.title, icon: 'download', variant: 'gold' });
   }
 
   async function deleteDownload(track: Track) {
-    const { fileDeleted, reason } = await downloads.remove(track.id)
+    const { fileDeleted, reason } = await downloads.remove(track.id);
     showToast(
       fileDeleted
         ? { title: 'Download deleted', description: track.title, icon: 'trash' }
-        : { title: 'Removed from downloads', description: reason, icon: 'info' }
-    )
+        : { title: 'Removed from downloads', description: reason, icon: 'info' },
+    );
   }
 
-  const ownPlaylists = playlists?.items ?? []
+  const ownPlaylists = playlists?.items ?? [];
 
   return (
     <div ref={ref} className="fixed z-50" style={pos} role="menu">
       <Menu className="min-w-[220px] max-h-[360px] overflow-auto">
         {picking ? (
           <>
-            <MenuItem icon="chevron-left" onClick={() => setPicking(false)}>Back</MenuItem>
-            <MenuItem icon="plus" onClick={addToNewPlaylist}>New playlist…</MenuItem>
-            {ownPlaylists.map(p => (
+            <MenuItem icon="chevron-left" onClick={() => setPicking(false)}>
+              Back
+            </MenuItem>
+            <MenuItem icon="plus" onClick={addToNewPlaylist}>
+              New playlist…
+            </MenuItem>
+            {ownPlaylists.map((p) => (
               <MenuItem key={p.id} icon="playlist" onClick={() => void addToPlaylist(p.id, p.name)}>
                 {p.name}
               </MenuItem>
@@ -195,50 +207,75 @@ function OpenMenu({ target }: { target: MenuTarget }) {
           <>
             {tracks.length > 0 && (
               <>
-                {single && <MenuItem icon="play" onClick={run(() => playNext(single))}>Play next</MenuItem>}
-                <MenuItem icon="list" onClick={run(() => enqueue(tracks))}>Add to queue</MenuItem>
+                {single && (
+                  <MenuItem icon="play" onClick={run(() => playNext(single))}>
+                    Play next
+                  </MenuItem>
+                )}
+                <MenuItem icon="list" onClick={run(() => enqueue(tracks))}>
+                  Add to queue
+                </MenuItem>
                 <MenuItem
                   icon="playlist"
                   onClick={() => {
                     // Playlists live in the account: a guest is sent to sign in, then comes back here.
-                    if (isAuthenticated()) return setPicking(true)
-                    closeTrackMenu()
-                    requireAccount('Create a free account to make playlists.', () => {})
+                    if (isAuthenticated()) return setPicking(true);
+                    closeTrackMenu();
+                    requireAccount('Create a free account to make playlists.', () => {});
                   }}
                 >
                   Add to playlist…
                 </MenuItem>
-                {CAPS.downloads && single && single.source !== 'local' && (
-                  download?.status === 'done' ? (
-                    <MenuItem icon="trash" onClick={run(() => void deleteDownload(single))}>Delete download</MenuItem>
+                {CAPS.downloads &&
+                  single &&
+                  single.source !== 'local' &&
+                  (download?.status === 'done' ? (
+                    <MenuItem icon="trash" onClick={run(() => void deleteDownload(single))}>
+                      Delete download
+                    </MenuItem>
                   ) : download?.status === 'queued' || download?.status === 'downloading' ? (
-                    <MenuItem icon="pause" onClick={run(() => void downloads.pause(single.id))}>Pause download</MenuItem>
+                    <MenuItem icon="pause" onClick={run(() => void downloads.pause(single.id))}>
+                      Pause download
+                    </MenuItem>
                   ) : download ? (
-                    <MenuItem icon="download" onClick={run(() => void downloads.resume(single.id))}>Resume download</MenuItem>
-                  ) : mode === 'online' && (
-                    <MenuItem icon="download" onClick={run(() => void startDownload(single))}>Download</MenuItem>
-                  )
-                )}
+                    <MenuItem icon="download" onClick={run(() => void downloads.resume(single.id))}>
+                      Resume download
+                    </MenuItem>
+                  ) : (
+                    mode === 'online' && (
+                      <MenuItem icon="download" onClick={run(() => void startDownload(single))}>
+                        Download
+                      </MenuItem>
+                    )
+                  ))}
                 {CAPS.localLibrary && single && localLibrary.localIdFor(single.id) && (
-                  <MenuItem icon="folder" onClick={run(() => void localLibrary.showInFolder(single.id))}>Show in folder</MenuItem>
+                  <MenuItem icon="folder" onClick={run(() => void localLibrary.showInFolder(single.id))}>
+                    Show in folder
+                  </MenuItem>
                 )}
                 {single?.albumId && (
-                  <MenuItem icon="disc" onClick={run(() => navigate(`/album/${single.albumId}`))}>Go to album</MenuItem>
+                  <MenuItem icon="disc" onClick={run(() => navigate(`/album/${single.albumId}`))}>
+                    Go to album
+                  </MenuItem>
                 )}
                 {single?.artistId && (
-                  <MenuItem icon="mic" onClick={run(() => navigate(`/artist/${single.artistId}`))}>Go to artist</MenuItem>
+                  <MenuItem icon="mic" onClick={run(() => navigate(`/artist/${single.artistId}`))}>
+                    Go to artist
+                  </MenuItem>
                 )}
               </>
             )}
             {playlist && (
               <>
                 {tracks.length > 0 && <hr className="hr mx-2 my-[5px]" />}
-                <MenuItem icon="trash" danger onClick={() => void deletePlaylist(playlist)}>Delete playlist</MenuItem>
+                <MenuItem icon="trash" danger onClick={() => void deletePlaylist(playlist)}>
+                  Delete playlist
+                </MenuItem>
               </>
             )}
           </>
         )}
       </Menu>
     </div>
-  )
+  );
 }

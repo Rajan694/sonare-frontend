@@ -11,7 +11,13 @@ interface ToastProps {
   mode?: 'online' | 'offline';
 }
 
-export function Toast({ visible, message, subtext, icon, mode = 'online' }: ToastProps) {
+export function Toast({
+  visible,
+  message,
+  subtext,
+  icon,
+  mode = 'online',
+}: ToastProps) {
   return (
     <View className="absolute bottom-20 left-0 right-0 items-center pointer-events-none z-50">
       <MotiView
@@ -19,15 +25,24 @@ export function Toast({ visible, message, subtext, icon, mode = 'online' }: Toas
           opacity: visible ? 1 : 0,
           translateY: visible ? 0 : 20,
         }}
-        transition={{
-          type: 'spring',
-          damping: 20,
-          stiffness: 300,
-        } as MotiTransitionProp}
+        transition={
+          {
+            type: 'spring',
+            damping: 20,
+            stiffness: 300,
+          } as MotiTransitionProp
+        }
       >
         <View className="bg-s2 border border-ln rounded-lg p-3 flex-row items-center gap-3 w-80 shadow-e3">
           {icon && (
-            <View className={cn('w-8 h-8 rounded-full items-center justify-center', mode === 'online' ? 'bg-accbg2 text-acc' : 'bg-goldbg2 text-gold')}>
+            <View
+              className={cn(
+                'w-8 h-8 rounded-full items-center justify-center',
+                mode === 'online'
+                  ? 'bg-accbg2 text-acc'
+                  : 'bg-goldbg2 text-gold',
+              )}
+            >
               {icon}
             </View>
           )}

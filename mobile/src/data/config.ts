@@ -17,7 +17,10 @@ export function absoluteUrl(path?: string | null): string | undefined {
 type ArtSize = 64 | 140 | 300 | 640;
 
 /** Absolute artwork url for anything with a `thumbnail`, at the nearest server size. */
-export function artworkUrl(item?: { thumbnail?: string } | null, size: ArtSize = 140): string | undefined {
+export function artworkUrl(
+  item?: { thumbnail?: string } | null,
+  size: ArtSize = 140,
+): string | undefined {
   const url = absoluteUrl(item?.thumbnail);
   if (!url || !url.includes('/artwork') || url.includes('size=')) return url;
   return `${url}${url.includes('?') ? '&' : '?'}size=${size}`;

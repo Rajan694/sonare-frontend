@@ -1,29 +1,29 @@
-import React from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { cn } from '../../lib/utils'
-import { CAPS } from '../../lib/caps'
-import { useModeStore } from '../../store/modeStore'
-import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../../data/hooks'
-import { requireAccount } from '../../data/accountGate'
-import { api } from '../../data/api'
-import Icon from '../ui/Icon'
-import { BrandMark } from '../ui/BrandMark'
-import { showToast } from '../../store/toastStore'
-import { IconButton } from '../ui/Button'
-import Artwork from '../music/Artwork'
-import { openPlaylistMenu } from '../music/TrackMenu'
-import { useSyncStatus } from '../../data/sync'
-import { useDownloads } from '../../data/downloads'
-import type { Playlist } from '../../data/types'
-import { useAppDispatch, useAppSelector } from '../../store'
-import { toggleSidebar } from '../../store/uiSlice'
+import React from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { cn } from '../../lib/utils';
+import { CAPS } from '../../lib/caps';
+import { useModeStore } from '../../store/modeStore';
+import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../../data/hooks';
+import { requireAccount } from '../../data/accountGate';
+import { api } from '../../data/api';
+import Icon from '../ui/Icon';
+import { BrandMark } from '../ui/BrandMark';
+import { showToast } from '../../store/toastStore';
+import { IconButton } from '../ui/Button';
+import Artwork from '../music/Artwork';
+import { openPlaylistMenu } from '../music/TrackMenu';
+import { useSyncStatus } from '../../data/sync';
+import { useDownloads } from '../../data/downloads';
+import type { Playlist } from '../../data/types';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { toggleSidebar } from '../../store/uiSlice';
 
 const NAV_ITEMS = [
   { to: '/home', icon: 'home' as const, label: 'Home' },
   { to: '/search', icon: 'search' as const, label: 'Search' },
   { to: '/library', icon: 'library' as const, label: 'Your Library' },
   { to: '/playlists', icon: 'playlist' as const, label: 'Playlists' },
-] as const
+] as const;
 
 const LIBRARY_ITEMS = [
   { to: '/library', icon: 'music' as const, label: 'Songs' },
@@ -33,60 +33,69 @@ const LIBRARY_ITEMS = [
   { to: '/folders', icon: 'folder' as const, label: 'Folders' },
   { to: '/downloads', icon: 'download' as const, label: 'Downloads' },
   { to: '/library?view=favourites', icon: 'heart' as const, label: 'Favourites' },
-] as const
+] as const;
 
 function playlistIcon(kind: Playlist['kind']) {
-  if (kind === 'local') return { icon: 'smartphone' as const, cls: 'text-gold' }
-  if (kind === 'synced') return { icon: 'sync' as const, cls: 'text-blue' }
-  return { icon: 'cloud' as const, cls: 'text-acc' }
+  if (kind === 'local') return { icon: 'smartphone' as const, cls: 'text-gold' };
+  if (kind === 'synced') return { icon: 'sync' as const, cls: 'text-blue' };
+  return { icon: 'cloud' as const, cls: 'text-acc' };
 }
 
-const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4'] as const
+const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4'] as const;
 
-const LIKED_SONGS = '/library?view=favourites'
+const LIKED_SONGS = '/library?view=favourites';
 
 export default function Sidebar() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const { mode } = useModeStore()
-  const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists()
-  const { user } = useAuth()
-  const collapsed = useAppSelector(s => s.ui.sidebarCollapsed)
-  const dispatch = useAppDispatch()
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { mode } = useModeStore();
+  const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists();
+  const { user } = useAuth();
+  const collapsed = useAppSelector((s) => s.ui.sidebarCollapsed);
+  const dispatch = useAppDispatch();
 
   /** Collapsed, every row is icon-only: its name moves to a tooltip beside the rail. */
-  const tip = (label: string) => (collapsed ? { 'data-tip': label, 'data-tip-side': 'right', 'aria-label': label } : {})
-  const online = !CAPS.offlineMode || mode === 'online'
-  const sync = useSyncStatus()
-  const { activeCount: downloading } = useDownloads()
-  const syncLabel = sync.syncing ? 'Syncing' : sync.pending ? 'Sync pending' : 'Synced'
+  const tip = (label: string) =>
+    collapsed ? { 'data-tip': label, 'data-tip-side': 'right', 'aria-label': label } : {};
+  const online = !CAPS.offlineMode || mode === 'online';
+  const sync = useSyncStatus();
+  const { activeCount: downloading } = useDownloads();
+  const syncLabel = sync.syncing ? 'Syncing' : sync.pending ? 'Sync pending' : 'Synced';
 
-  const playlists: Playlist[] = playlistsData?.items || []
+  const playlists: Playlist[] = playlistsData?.items || [];
 
   function isActive(to: string) {
-    if (to === '/playlists') return location.pathname.startsWith('/playlist')
-    return location.pathname === to || (to !== '/home' && to !== '/library' && location.pathname.startsWith(to + '/'))
+    if (to === '/playlists') return location.pathname.startsWith('/playlist');
+    return location.pathname === to || (to !== '/home' && to !== '/library' && location.pathname.startsWith(to + '/'));
   }
 
-  const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist)
+  const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist);
 
   const createPlaylist = async () => {
-    const name = window.prompt('Enter playlist name:')
+    const name = window.prompt('Enter playlist name:');
     if (name?.trim()) {
       try {
-        const created = await api.createPlaylist({ name: name.trim(), kind: 'synced' })
-        notifyPlaylistsChanged()
-        navigate(`/playlist/${created.id}`)
+        const created = await api.createPlaylist({ name: name.trim(), kind: 'synced' });
+        notifyPlaylistsChanged();
+        navigate(`/playlist/${created.id}`);
       } catch (e: any) {
-        showToast({ title: 'Could not create playlist', description: e?.message, icon: 'info' })
+        showToast({ title: 'Could not create playlist', description: e?.message, icon: 'info' });
       }
     }
-  }
+  };
 
   return (
     // Width is inline: .side (sonare.css) is unlayered and would beat a Tailwind width class.
-    <aside className="side transition-[width] duration-200 ease-out overflow-hidden" style={{ width: collapsed ? 72 : 260 }}>
-      <div className={cn('flex items-center gap-2.5 flex-none border-b border-ln h-16', collapsed ? 'justify-center' : 'pl-[18px] pr-3')}>
+    <aside
+      className="side transition-[width] duration-200 ease-out overflow-hidden"
+      style={{ width: collapsed ? 72 : 260 }}
+    >
+      <div
+        className={cn(
+          'flex items-center gap-2.5 flex-none border-b border-ln h-16',
+          collapsed ? 'justify-center' : 'pl-[18px] pr-3',
+        )}
+      >
         {!collapsed && (
           <>
             <BrandMark size={28} className="flex-none" />
@@ -104,7 +113,7 @@ export default function Sidebar() {
       </div>
 
       <div className="flex flex-col flex-none py-3 px-2.5 gap-0.5">
-        {NAV_ITEMS.map(item => (
+        {NAV_ITEMS.map((item) => (
           <Link
             key={item.to}
             to={item.to}
@@ -121,22 +130,28 @@ export default function Sidebar() {
 
       <div className="flex flex-col flex-none pt-3 px-2.5 pb-1.5 gap-0.5">
         {!collapsed && <span className="text-overline text-t3 px-3 pb-2">Library</span>}
-        {LIBRARY_ITEMS.filter(item => {
-          if (item.to === '/folders' && !CAPS.localLibrary) return false
-          if (item.to === '/downloads' && !CAPS.downloads) return false
-          if (item.to === LIKED_SONGS) return false // Liked Songs is pinned under Playlists instead
-          return true
-        }).map(item => (
+        {LIBRARY_ITEMS.filter((item) => {
+          if (item.to === '/folders' && !CAPS.localLibrary) return false;
+          if (item.to === '/downloads' && !CAPS.downloads) return false;
+          if (item.to === LIKED_SONGS) return false; // Liked Songs is pinned under Playlists instead
+          return true;
+        }).map((item) => (
           <Link
             key={item.label}
             to={item.to}
-            className={cn('sitem', collapsed && 'justify-center px-0', location.pathname + location.search === item.to && 'on')}
+            className={cn(
+              'sitem',
+              collapsed && 'justify-center px-0',
+              location.pathname + location.search === item.to && 'on',
+            )}
             {...tip(item.label)}
           >
             <Icon name={item.icon} size={18} />
             {!collapsed && item.label}
             {!collapsed && item.to === '/downloads' && downloading > 0 && (
-              <span className="ml-auto text-label-s text-acc font-mono" aria-label={`${downloading} downloading`}>{downloading}</span>
+              <span className="ml-auto text-label-s text-acc font-mono" aria-label={`${downloading} downloading`}>
+                {downloading}
+              </span>
             )}
           </Link>
         ))}
@@ -147,13 +162,23 @@ export default function Sidebar() {
       <div className="flex flex-col grow py-3 px-2.5 gap-0.5 overflow-hidden">
         <div className={cn('flex items-center pb-2', collapsed ? 'justify-center' : 'justify-between px-3')}>
           {!collapsed && <span className="text-overline text-t3">Playlists</span>}
-          <IconButton icon="plus" label="New playlist" size={28} onClick={handleCreatePlaylist} data-tip-side={collapsed ? 'right' : undefined} />
+          <IconButton
+            icon="plus"
+            label="New playlist"
+            size={28}
+            onClick={handleCreatePlaylist}
+            data-tip-side={collapsed ? 'right' : undefined}
+          />
         </div>
 
         <div className="flex flex-col gap-0.5 overflow-y-auto grow">
           <Link
             to={LIKED_SONGS}
-            className={cn('sitem h-11', collapsed && 'justify-center px-0', location.pathname + location.search === LIKED_SONGS && 'on')}
+            className={cn(
+              'sitem h-11',
+              collapsed && 'justify-center px-0',
+              location.pathname + location.search === LIKED_SONGS && 'on',
+            )}
             {...tip('Liked Songs')}
           >
             <span className="art-r-xs flex items-center justify-center flex-none w-[30px] h-[30px] bg-accbg text-acc">
@@ -171,20 +196,29 @@ export default function Sidebar() {
               <div key={i} className="sitem h-11 animate-pulse bg-s2/30 rounded" />
             ))
           ) : !user ? (
-            collapsed ? null : <Link to="/signin" state={{ mode: 'signup', reason: 'Create a free account to make playlists and sync them across devices.' }} className="text-body-s text-t3 px-3 py-2 no-underline hover:text-t1">
-              Sign in to make playlists
-            </Link>
+            collapsed ? null : (
+              <Link
+                to="/signin"
+                state={{
+                  mode: 'signup',
+                  reason: 'Create a free account to make playlists and sync them across devices.',
+                }}
+                className="text-body-s text-t3 px-3 py-2 no-underline hover:text-t1"
+              >
+                Sign in to make playlists
+              </Link>
+            )
           ) : playlists.length === 0 ? (
             !collapsed && <span className="text-body-s text-t3 px-3 py-2">No playlists created</span>
           ) : (
             playlists.map((pl, i) => {
-              const { icon, cls } = playlistIcon(pl.kind)
+              const { icon, cls } = playlistIcon(pl.kind);
               return (
                 <Link
                   key={pl.id}
                   to={`/playlist/${pl.id}`}
                   className={cn('sitem h-11', collapsed && 'justify-center px-0')}
-                  onContextMenu={e => openPlaylistMenu(pl, e)}
+                  onContextMenu={(e) => openPlaylistMenu(pl, e)}
                   {...tip(pl.name)}
                 >
                   <Artwork
@@ -208,7 +242,7 @@ export default function Sidebar() {
                     </>
                   )}
                 </Link>
-              )
+              );
             })
           )}
         </div>
@@ -216,7 +250,12 @@ export default function Sidebar() {
 
       <div className={cn('flex flex-col flex-none border-t border-ln', collapsed ? 'items-center py-4' : 'p-3')}>
         {online && !user ? (
-          <Link to="/signin" state={{ mode: 'signin' }} className={cn('no-underline', collapsed ? 'flex p-2' : 'onstrip')} {...tip('Online · Guest — sign in to sync')}>
+          <Link
+            to="/signin"
+            state={{ mode: 'signin' }}
+            className={cn('no-underline', collapsed ? 'flex p-2' : 'onstrip')}
+            {...tip('Online · Guest — sign in to sync')}
+          >
             <span className="dot dot-acc" />
             {!collapsed && (
               <span className="flex flex-col grow gap-px">
@@ -237,7 +276,11 @@ export default function Sidebar() {
                   {online ? `ONLINE · ${syncLabel.toUpperCase()}` : 'OFFLINE MODE'}
                 </span>
                 <span className="text-label-s text-t3">
-                  {!online ? 'Local files only' : sync.pending ? `${sync.pending} ${sync.pending === 1 ? 'play' : 'plays'} waiting to sync` : 'Connected to Sonare'}
+                  {!online
+                    ? 'Local files only'
+                    : sync.pending
+                      ? `${sync.pending} ${sync.pending === 1 ? 'play' : 'plays'} waiting to sync`
+                      : 'Connected to Sonare'}
                 </span>
               </span>
             )}
@@ -245,5 +288,5 @@ export default function Sidebar() {
         )}
       </div>
     </aside>
-  )
+  );
 }

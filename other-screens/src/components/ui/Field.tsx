@@ -1,12 +1,12 @@
-import React from 'react'
-import { cn } from '../../lib/utils'
-import Icon, { type IconName } from './Icon'
+import React from 'react';
+import { cn } from '../../lib/utils';
+import Icon, { type IconName } from './Icon';
 
 interface FieldProps extends React.ComponentPropsWithRef<'input'> {
-  icon?: IconName
-  shortcut?: string
-  square?: boolean
-  children?: React.ReactNode
+  icon?: IconName;
+  shortcut?: string;
+  square?: boolean;
+  children?: React.ReactNode;
 }
 
 export function Field({ icon, shortcut, square, children, className, ...props }: FieldProps) {
@@ -21,5 +21,5 @@ export function Field({ icon, shortcut, square, children, className, ...props }:
       {shortcut && <span className="kbd flex-none">{shortcut}</span>}
       {children}
     </label>
-  )
+  );
 }

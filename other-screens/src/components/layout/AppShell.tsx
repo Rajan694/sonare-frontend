@@ -1,83 +1,83 @@
-import React, { useEffect } from 'react'
-import { Outlet, useLocation, useNavigate } from 'react-router-dom'
-import { AnimatePresence, motion } from 'motion/react'
-import Sidebar from './Sidebar'
-import Topbar from './Topbar'
-import TabletTopbar from './TabletTopbar'
-import IconRail from './IconRail'
-import BottomPlayer from './BottomPlayer'
-import MiniPlayer from './MiniPlayer'
-import MobileTabBar from './MobileTabBar'
-import QueuePanel from './QueuePanel'
-import TrackMenu from '../music/TrackMenu'
-import { Toast } from '../ui/Toast'
-import TooltipLayer from '../ui/Tooltip'
-import { useToasts, dismissToast } from '../../store/toastStore'
-import { fadeRise, transition } from '../../lib/motion'
-import { bindAccountGateNavigator } from '../../data/accountGate'
-import { usePlayerShortcuts } from './usePlayerShortcuts'
-import { useLayout } from '../../lib/layout'
-import { useAppDispatch, useAppSelector } from '../../store'
-import { closeQueue, toggleQueue, toggleSidebar } from '../../store/uiSlice'
-import { cn } from '../../lib/utils'
+import React, { useEffect } from 'react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { AnimatePresence, motion } from 'motion/react';
+import Sidebar from './Sidebar';
+import Topbar from './Topbar';
+import TabletTopbar from './TabletTopbar';
+import IconRail from './IconRail';
+import BottomPlayer from './BottomPlayer';
+import MiniPlayer from './MiniPlayer';
+import MobileTabBar from './MobileTabBar';
+import QueuePanel from './QueuePanel';
+import TrackMenu from '../music/TrackMenu';
+import { Toast } from '../ui/Toast';
+import TooltipLayer from '../ui/Tooltip';
+import { useToasts, dismissToast } from '../../store/toastStore';
+import { fadeRise, transition } from '../../lib/motion';
+import { bindAccountGateNavigator } from '../../data/accountGate';
+import { usePlayerShortcuts } from './usePlayerShortcuts';
+import { useLayout } from '../../lib/layout';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { closeQueue, toggleQueue, toggleSidebar } from '../../store/uiSlice';
+import { cn } from '../../lib/utils';
 
 function isTyping(el: EventTarget | null) {
-  return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName))
+  return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
 }
 
 export default function AppShell() {
-  const location = useLocation()
-  const navigate = useNavigate()
-  const toasts = useToasts()
-  const layout = useLayout()
-  const dispatch = useAppDispatch()
-  const queueOpen = useAppSelector(s => s.ui.queueOpen)
+  const location = useLocation();
+  const navigate = useNavigate();
+  const toasts = useToasts();
+  const layout = useLayout();
+  const dispatch = useAppDispatch();
+  const queueOpen = useAppSelector((s) => s.ui.queueOpen);
 
   // FLOWS D09/M09: the full-screen player drops all chrome.
-  const immersive = location.pathname === '/now-playing'
+  const immersive = location.pathname === '/now-playing';
   // Ctrl B only means something where the full sidebar is on screen.
-  const sidebarShown = (layout === 'desktop' || layout === 'web') && !immersive
+  const sidebarShown = (layout === 'desktop' || layout === 'web') && !immersive;
 
   // Lets the account gate send a guest to /signin from anywhere.
-  useEffect(() => bindAccountGateNavigator(navigate), [navigate])
+  useEffect(() => bindAccountGateNavigator(navigate), [navigate]);
 
   // Space, ← → and ↑ ↓ drive the player from every screen.
-  usePlayerShortcuts()
+  usePlayerShortcuts();
 
   // FLOWS §3: Ctrl Q toggles the queue, Esc leaves the full-screen player / closes queue.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
-        e.preventDefault()
-        dispatch(toggleQueue())
+        e.preventDefault();
+        dispatch(toggleQueue());
       } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b' && sidebarShown && !isTyping(e.target)) {
-        e.preventDefault()
-        dispatch(toggleSidebar())
+        e.preventDefault();
+        dispatch(toggleSidebar());
       } else if (e.key === 'Escape' && !isTyping(e.target)) {
         if (queueOpen) {
-          e.preventDefault()
-          dispatch(closeQueue())
+          e.preventDefault();
+          dispatch(closeQueue());
         } else if (['/now-playing', '/lyrics', '/equalizer'].includes(location.pathname)) {
           // A direct visit has no in-app history to go back to.
-          if (window.history.state?.idx > 0) navigate(-1)
-          else navigate('/home')
+          if (window.history.state?.idx > 0) navigate(-1);
+          else navigate('/home');
         }
       }
     }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [location.pathname, navigate, queueOpen, dispatch, sidebarShown])
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [location.pathname, navigate, queueOpen, dispatch, sidebarShown]);
 
   const toastContainer = (
     <div
       className={cn(
         'fixed right-4 sm:right-6 z-50 flex flex-col gap-2 items-end pointer-events-none [&>*]:pointer-events-auto',
-        layout === 'phone' ? 'bottom-[136px]' : 'bottom-[104px]'
+        layout === 'phone' ? 'bottom-[136px]' : 'bottom-[104px]',
       )}
       role="status"
       aria-live="polite"
     >
-      {toasts.map(t => (
+      {toasts.map((t) => (
         <Toast
           key={t.id}
           show
@@ -89,7 +89,7 @@ export default function AppShell() {
         />
       ))}
     </div>
-  )
+  );
 
   const sideQueuePanel = (
     <AnimatePresence>
@@ -106,7 +106,7 @@ export default function AppShell() {
         </motion.div>
       )}
     </AnimatePresence>
-  )
+  );
 
   // 1. Desktop shell: the Neutralino window, and browsers >= 1100px (there is no
   // separate large-screen web design, so the web build reuses D01-D16).
@@ -142,7 +142,7 @@ export default function AppShell() {
         <TooltipLayer />
         {toastContainer}
       </div>
-    )
+    );
   }
 
   // 2. Tablet Shell (768px - 1099px)
@@ -176,7 +176,7 @@ export default function AppShell() {
         <TooltipLayer />
         {toastContainer}
       </div>
-    )
+    );
   }
 
   // 3. Phone shell (< 768px)
@@ -224,5 +224,5 @@ export default function AppShell() {
       <TooltipLayer />
       {toastContainer}
     </div>
-  )
+  );
 }

@@ -6,15 +6,17 @@ export function formatDuration(ms: number): string {
 }
 
 export function generatePeaks(trackId: string, count: number): number[] {
-  const seed = trackId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const seed = trackId
+    .split('')
+    .reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const peaks: number[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const x = (seed + i * 137) % 100;
     const height = 4 + (Math.sin(x * 0.1) * 0.5 + 0.5) * 18;
     peaks.push(Math.round(height));
   }
-  
+
   return peaks;
 }
 

@@ -1,51 +1,51 @@
-import React, { useState } from 'react'
-import { os } from '@neutralinojs/lib'
-import { useLocalLibrary, localLibrary } from '../data/local'
-import { showToast } from '../store/toastStore'
-import Button, { IconButton } from '../components/ui/Button'
-import Icon from '../components/ui/Icon'
-import { Switch } from '../components/ui/Switch'
-import { EmptyState } from '../components/ui/EmptyState'
-import { cn, formatBytes } from '../lib/utils'
+import React, { useState } from 'react';
+import { os } from '@neutralinojs/lib';
+import { useLocalLibrary, localLibrary } from '../data/local';
+import { showToast } from '../store/toastStore';
+import Button, { IconButton } from '../components/ui/Button';
+import Icon from '../components/ui/Icon';
+import { Switch } from '../components/ui/Switch';
+import { EmptyState } from '../components/ui/EmptyState';
+import { cn, formatBytes } from '../lib/utils';
 
 function scannedAgo(ts: number) {
-  if (!ts) return 'Not scanned yet'
-  const mins = Math.round((Date.now() - ts) / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins} min ago`
-  const hours = Math.round(mins / 60)
-  return hours < 24 ? `${hours} h ago` : new Date(ts).toLocaleDateString()
+  if (!ts) return 'Not scanned yet';
+  const mins = Math.round((Date.now() - ts) / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  return hours < 24 ? `${hours} h ago` : new Date(ts).toLocaleDateString();
 }
 
 export default function Folders() {
-  const { folders, ready, scanning } = useLocalLibrary()
-  const [busy, setBusy] = useState(false)
+  const { folders, ready, scanning } = useLocalLibrary();
+  const [busy, setBusy] = useState(false);
 
   async function run(label: string, fn: () => Promise<unknown>) {
-    setBusy(true)
+    setBusy(true);
     try {
-      await fn()
+      await fn();
     } catch (e) {
-      showToast({ title: `${label} failed`, description: e instanceof Error ? e.message : undefined, icon: 'info' })
+      showToast({ title: `${label} failed`, description: e instanceof Error ? e.message : undefined, icon: 'info' });
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   const addFolder = () =>
     run('Adding folder', async () => {
-      const folder = await localLibrary.addFolder()
-      if (folder) showToast({ title: `Added ${folder.name}`, icon: 'folder', variant: 'gold' })
-    })
+      const folder = await localLibrary.addFolder();
+      if (folder) showToast({ title: `Added ${folder.name}`, icon: 'folder', variant: 'gold' });
+    });
 
   const rescan = (id?: string) =>
     run('Rescan', async () => {
-      const r = await localLibrary.rescan(id)
-      showToast({ title: 'Library rescanned', description: `${r.added} added · ${r.removed} removed`, icon: 'sync' })
-    })
+      const r = await localLibrary.rescan(id);
+      showToast({ title: 'Library rescanned', description: `${r.added} added · ${r.removed} removed`, icon: 'sync' });
+    });
 
-  const totalBytes = folders.reduce((n, f) => n + f.bytes, 0)
-  const totalTracks = folders.filter(f => f.included).reduce((n, f) => n + f.trackCount, 0)
+  const totalBytes = folders.reduce((n, f) => n + f.bytes, 0);
+  const totalTracks = folders.filter((f) => f.included).reduce((n, f) => n + f.trackCount, 0);
 
   return (
     <div className="@container flex flex-col p-4 @[480px]:p-8 gap-6 overflow-y-auto h-full bg-bg">
@@ -76,7 +76,9 @@ export default function Folders() {
         <div className="surf2 flex flex-col gap-2.5 p-4 rounded-xl border border-ln2" role="status">
           <div className="flex items-center justify-between">
             <span className="text-body-m text-t1 font-medium">Scanning folders…</span>
-            <span className="text-mono-s text-gold">{scanning.done} / {scanning.total} files</span>
+            <span className="text-mono-s text-gold">
+              {scanning.done} / {scanning.total} files
+            </span>
           </div>
           <span className="track track-gold h-2 rounded-full overflow-hidden">
             <i style={{ width: `${scanning.total ? (scanning.done / scanning.total) * 100 : 0}%` }} />
@@ -99,7 +101,8 @@ export default function Folders() {
                 <div className="flex flex-col gap-0.5">
                   <span className="text-title-m text-t1 font-semibold">Device storage</span>
                   <span className="text-body-s text-t3">
-                    {formatBytes(totalBytes)} of music across {folders.length} folders · {totalTracks.toLocaleString()} songs indexed
+                    {formatBytes(totalBytes)} of music across {folders.length} folders · {totalTracks.toLocaleString()}{' '}
+                    songs indexed
                   </span>
                 </div>
               </div>
@@ -108,14 +111,14 @@ export default function Folders() {
               </span>
               <div className="flex flex-wrap items-center gap-5 pt-1">
                 {folders.slice(0, 4).map((f, i) => {
-                  const colors = ['var(--gold)', 'var(--blue)', 'var(--acc)', 'var(--t4)']
+                  const colors = ['var(--gold)', 'var(--blue)', 'var(--acc)', 'var(--t4)'];
                   return (
                     <span key={f.id} className="flex items-center gap-2">
                       <i className="dot" style={{ background: colors[i % colors.length] }} />
                       <span className="text-body-s text-t2 truncate max-w-[120px]">{f.name}</span>
                       <span className="text-body-s text-t3 font-mono">{formatBytes(f.bytes)}</span>
                     </span>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -147,7 +150,7 @@ export default function Folders() {
               </div>
 
               {/* Rows */}
-              {folders.map(folder => (
+              {folders.map((folder) => (
                 <div
                   key={folder.id}
                   className="flex flex-col @[680px]:grid @[680px]:grid-cols-[36px_minmax(0,1.8fr)_minmax(0,2.2fr)_80px_80px_100px_140px] gap-3 @[680px]:gap-4 items-start @[680px]:items-center px-4 @[480px]:px-5 py-3.5 hover:bg-s2/50 transition-colors"
@@ -163,9 +166,7 @@ export default function Folders() {
                     <span className="@[680px]:hidden text-mono-s text-t3 truncate">{folder.path}</span>
                   </div>
 
-                  <span className="hidden @[680px]:block text-mono-s text-t3 truncate">
-                    {folder.path}
-                  </span>
+                  <span className="hidden @[680px]:block text-mono-s text-t3 truncate">{folder.path}</span>
 
                   <span className="hidden @[680px]:block text-mono-s text-t2 text-right">
                     {folder.trackCount.toLocaleString()}
@@ -175,9 +176,7 @@ export default function Folders() {
                     {formatBytes(folder.bytes)}
                   </span>
 
-                  <span className="hidden @[680px]:block text-body-s text-t3">
-                    {scannedAgo(folder.lastScanAt)}
-                  </span>
+                  <span className="hidden @[680px]:block text-body-s text-t3">{scannedAgo(folder.lastScanAt)}</span>
 
                   <div className="flex items-center justify-between @[680px]:justify-end w-full @[680px]:w-auto gap-2 pt-2 @[680px]:pt-0 border-t @[680px]:border-t-0 border-ln">
                     <span className="@[680px]:hidden text-body-s text-t3 font-mono">
@@ -209,7 +208,7 @@ export default function Folders() {
                       <Switch
                         variant="gold"
                         checked={folder.included}
-                        onCheckedChange={included => void localLibrary.setIncluded(folder.id, included)}
+                        onCheckedChange={(included) => void localLibrary.setIncluded(folder.id, included)}
                         aria-label={`${folder.included ? 'Exclude' : 'Include'} ${folder.name}`}
                       />
                     </div>
@@ -227,9 +226,13 @@ export default function Folders() {
           icon="folder"
           title="No music folders added"
           description="Add a folder on your device to listen to local FLAC, MP3, AAC, Opus and WAV files offline."
-          action={<Button variant="gold" icon="plus" onClick={addFolder}>Add folder</Button>}
+          action={
+            <Button variant="gold" icon="plus" onClick={addFolder}>
+              Add folder
+            </Button>
+          }
         />
       )}
     </div>
-  )
+  );
 }

@@ -1,26 +1,26 @@
-import React from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { useModeStore } from '../store/modeStore'
-import { usePlayerStore } from '../store/playerStore'
-import { usePeaks } from '../data/hooks'
-import { useFavourite } from '../data/favourites'
-import Artwork, { trackArtwork } from '../components/music/Artwork'
-import Waveform from '../components/music/Waveform'
-import { IconButton } from '../components/ui/Button'
-import Icon from '../components/ui/Icon'
-import { SourceGlyph } from '../components/ui/SourceGlyph'
-import { Slider } from '../components/ui/Slider'
-import { EmptyState } from '../components/ui/EmptyState'
-import { formatDuration } from '../lib/utils'
-import { cn } from '../lib/utils'
-import * as player from '../data/player'
+import React from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { useModeStore } from '../store/modeStore';
+import { usePlayerStore } from '../store/playerStore';
+import { usePeaks } from '../data/hooks';
+import { useFavourite } from '../data/favourites';
+import Artwork, { trackArtwork } from '../components/music/Artwork';
+import Waveform from '../components/music/Waveform';
+import { IconButton } from '../components/ui/Button';
+import Icon from '../components/ui/Icon';
+import { SourceGlyph } from '../components/ui/SourceGlyph';
+import { Slider } from '../components/ui/Slider';
+import { EmptyState } from '../components/ui/EmptyState';
+import { formatDuration } from '../lib/utils';
+import { cn } from '../lib/utils';
+import * as player from '../data/player';
 
 export default function NowPlaying() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
   // Leave full screen: back where the user came from, or Home on a direct visit.
-  const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/home'))
-  const { mode } = useModeStore()
+  const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/home'));
+  const { mode } = useModeStore();
   const {
     state,
     currentTrack,
@@ -38,12 +38,12 @@ export default function NowPlaying() {
     toggleShuffle,
     cycleRepeat,
     playTrack,
-  } = usePlayerStore()
-  const isOffline = mode === 'offline'
+  } = usePlayerStore();
+  const isOffline = mode === 'offline';
 
-  const { data: peaksData } = usePeaks(currentTrack?.id)
-  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite)
-  const peaks = currentTrack?.peaks || peaksData?.peaks
+  const { data: peaksData } = usePeaks(currentTrack?.id);
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
+  const peaks = currentTrack?.peaks || peaksData?.peaks;
 
   if (!currentTrack) {
     return (
@@ -52,38 +52,44 @@ export default function NowPlaying() {
           icon="music"
           title="Nothing playing"
           description="Choose a song from your library or search to start playback"
-          action={<Link to="/home" className="btn btn-acc">Go to Home</Link>}
+          action={
+            <Link to="/home" className="btn btn-acc">
+              Go to Home
+            </Link>
+          }
         />
       </div>
-    )
+    );
   }
 
-  const durationMs = liveDurationMs || currentTrack.durationMs || 1
-  const positionRatio = state.positionMs / durationMs
-  const remainingMs = Math.max(0, durationMs - state.positionMs)
+  const durationMs = liveDurationMs || currentTrack.durationMs || 1;
+  const positionRatio = state.positionMs / durationMs;
+  const remainingMs = Math.max(0, durationMs - state.positionMs);
 
   // Next 4 upcoming tracks from queue
-  const currentIndex = state.index >= 0 ? state.index : 0
-  const upcomingQueue = state.queue.slice(currentIndex + 1, currentIndex + 5)
+  const currentIndex = state.index >= 0 ? state.index : 0;
+  const upcomingQueue = state.queue.slice(currentIndex + 1, currentIndex + 5);
 
   // Eyebrow source
   const sourceEyebrow = currentTrack.album ? (
     <span className="flex flex-col items-center justify-center gap-0.5 min-w-0">
       <span className="text-overline text-t3 uppercase tracking-wider">PLAYING FROM ALBUM</span>
-      <span className="text-label-m text-t1 truncate max-w-[200px] @sm:max-w-[320px] font-medium">{currentTrack.album}</span>
+      <span className="text-label-m text-t1 truncate max-w-[200px] @sm:max-w-[320px] font-medium">
+        {currentTrack.album}
+      </span>
     </span>
-  ) : null
+  ) : null;
 
   // Codec/bitrate/origin metadata
-  const metaParts: string[] = []
-  if (currentTrack.codec) metaParts.push(currentTrack.codec)
-  if (currentTrack.bitrateKbps) metaParts.push(`${currentTrack.bitrateKbps} kbps`)
+  const metaParts: string[] = [];
+  if (currentTrack.codec) metaParts.push(currentTrack.codec);
+  if (currentTrack.bitrateKbps) metaParts.push(`${currentTrack.bitrateKbps} kbps`);
   if (currentTrack.source === 'local') {
     if (currentTrack.localPath) {
-      const parts = currentTrack.localPath.split('/')
-      parts.pop() // filename
-      const folder = parts.slice(-2).join('/')
-      if (folder) metaParts.push(`/${folder}`)
+      const parts = currentTrack.localPath.split('/');
+      parts.pop(); // filename
+      const folder = parts.slice(-2).join('/');
+      if (folder) metaParts.push(`/${folder}`);
     }
   }
 
@@ -94,14 +100,14 @@ export default function NowPlaying() {
         <i
           className={cn(
             isOffline ? 'bg-gold' : 'bg-[#2A5AA8]',
-            'w-[400px] h-[400px] @3xl:w-[700px] @3xl:h-[700px] -top-[120px] @3xl:-top-[200px] -left-[100px] @3xl:-left-[180px]'
+            'w-[400px] h-[400px] @3xl:w-[700px] @3xl:h-[700px] -top-[120px] @3xl:-top-[200px] -left-[100px] @3xl:-left-[180px]',
           )}
           style={{ opacity: isOffline ? 0.18 : 0.45 }}
         />
         <i
           className={cn(
             isOffline ? 'bg-[#A86B25]' : 'bg-[#0F7A5E]',
-            'w-[350px] h-[350px] @3xl:w-[560px] @3xl:h-[560px] top-[100px] @3xl:top-[140px] -right-[100px] @3xl:-right-[140px]'
+            'w-[350px] h-[350px] @3xl:w-[560px] @3xl:h-[560px] top-[100px] @3xl:top-[140px] -right-[100px] @3xl:-right-[140px]',
           )}
           style={{ opacity: isOffline ? 0.2 : 0.4 }}
         />
@@ -128,7 +134,7 @@ export default function NowPlaying() {
           <span
             className={cn(
               'inline-flex items-center gap-1.5 h-6.5 px-2.5 rounded-full text-label-s font-semibold',
-              isOffline ? 'bg-goldbg text-gold' : 'bg-accbg text-acc'
+              isOffline ? 'bg-goldbg text-gold' : 'bg-accbg text-acc',
             )}
           >
             <Icon name={isOffline ? 'smartphone' : 'cloud'} size={12} />
@@ -159,7 +165,7 @@ export default function NowPlaying() {
               rings
               className={cn(
                 'w-[280px] h-[280px] @sm:w-[320px] @sm:h-[320px] @xl:w-[380px] @xl:h-[380px] @3xl:w-[400px] @3xl:h-[400px] @5xl:w-[440px] @5xl:h-[440px]',
-                'shadow-e4 transition-all duration-300'
+                'shadow-e4 transition-all duration-300',
               )}
             />
           </motion.div>
@@ -202,15 +208,13 @@ export default function NowPlaying() {
               <span
                 className={cn(
                   'inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-label-s font-semibold flex-none',
-                  currentTrack.source === 'local' ? 'bg-goldbg text-gold' : 'bg-accbg text-acc'
+                  currentTrack.source === 'local' ? 'bg-goldbg text-gold' : 'bg-accbg text-acc',
                 )}
               >
                 <Icon name={currentTrack.source === 'local' ? 'smartphone' : 'cloud'} size={12} />
                 <span>{currentTrack.source === 'local' ? 'ON DEVICE' : 'STREAMING'}</span>
               </span>
-              {metaParts.length > 0 && (
-                <span className="text-mono-s text-t3 truncate">{metaParts.join(' · ')}</span>
-              )}
+              {metaParts.length > 0 && <span className="text-mono-s text-t3 truncate">{metaParts.join(' · ')}</span>}
             </div>
           </div>
 
@@ -252,7 +256,7 @@ export default function NowPlaying() {
             <button
               className={cn(
                 'playbtn playbtn-56 flex-none transition-transform active:scale-95',
-                isOffline ? 'bg-gold text-black shadow-glow-g' : 'bg-acc text-black shadow-glow-s'
+                isOffline ? 'bg-gold text-black shadow-glow-g' : 'bg-acc text-black shadow-glow-s',
               )}
               aria-label={isPlaying ? 'Pause' : 'Play'}
               data-tip={isPlaying ? 'Pause' : 'Play'}
@@ -266,23 +270,10 @@ export default function NowPlaying() {
                 className={cn(isLoading && 'animate-spin')}
               />
             </button>
-            <IconButton
-              icon="skip-forward"
-              label="Next track"
-              kbd="→→"
-              size={44}
-              onClick={next}
-              className="text-t1"
-            />
+            <IconButton icon="skip-forward" label="Next track" kbd="→→" size={44} onClick={next} className="text-t1" />
             <IconButton
               icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'}
-              label={
-                state.repeat === 'one'
-                  ? 'Repeat one'
-                  : state.repeat === 'all'
-                  ? 'Repeat all'
-                  : 'Repeat off'
-              }
+              label={state.repeat === 'one' ? 'Repeat one' : state.repeat === 'all' ? 'Repeat all' : 'Repeat off'}
               size={40}
               active={state.repeat !== 'off'}
               onClick={cycleRepeat}
@@ -330,7 +321,7 @@ export default function NowPlaying() {
                 value={volume * 100}
                 variant={isOffline ? 'gold' : 'acc'}
                 ariaLabel="Volume"
-                onChange={v => setVolume(v / 100)}
+                onChange={(v) => setVolume(v / 100)}
                 className="w-full"
               />
             </div>
@@ -353,13 +344,7 @@ export default function NowPlaying() {
                     onClick={() => playTrack(track)}
                     className="flex items-center gap-3 p-1.5 rounded-lg hover:bg-s2/80 transition-colors cursor-pointer group"
                   >
-                    <Artwork
-                      src={trackArtwork(track, 64)}
-                      alt={track.title}
-                      variant="a1"
-                      size={34}
-                      radius="sm"
-                    />
+                    <Artwork src={trackArtwork(track, 64)} alt={track.title} variant="a1" size={34} radius="sm" />
                     <div className="flex flex-col min-w-0 flex-1">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="text-label-m text-t1 truncate group-hover:text-acc transition-colors font-medium">
@@ -370,9 +355,7 @@ export default function NowPlaying() {
                       <span className="text-label-s text-t3 truncate">{track.artist}</span>
                     </div>
                     {track.durationMs && (
-                      <span className="text-mono-s text-t3 flex-none pr-1">
-                        {formatDuration(track.durationMs)}
-                      </span>
+                      <span className="text-mono-s text-t3 flex-none pr-1">{formatDuration(track.durationMs)}</span>
                     )}
                   </div>
                 ))}
@@ -383,6 +366,5 @@ export default function NowPlaying() {
       </div>
       <div className="h-4 flex-none" />
     </div>
-  )
+  );
 }
-

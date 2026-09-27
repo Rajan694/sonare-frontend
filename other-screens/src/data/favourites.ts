@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api } from './api'
-import { requireAccount } from './accountGate'
+import { useCallback, useEffect, useState } from 'react';
+import { api } from './api';
+import { requireAccount } from './accountGate';
 
 /**
  * Favourite state that survives across screens.
@@ -10,39 +10,39 @@ import { requireAccount } from './accountGate'
  * overlay of user-made changes that every heart reads on top of the fetched value.
  */
 
-const overrides = new Map<string, boolean>()
-const listeners = new Set<() => void>()
+const overrides = new Map<string, boolean>();
+const listeners = new Set<() => void>();
 
 function emit() {
-  for (const l of listeners) l()
+  for (const l of listeners) l();
 }
 
 function subscribe(fn: () => void): () => void {
-  listeners.add(fn)
+  listeners.add(fn);
   return () => {
-    listeners.delete(fn)
-  }
+    listeners.delete(fn);
+  };
 }
 
 /** The effective favourite state: a local toggle wins over whatever the server last returned. */
 export function isFavourite(trackId: string, serverValue: boolean): boolean {
-  const o = overrides.get(trackId)
-  return o === undefined ? serverValue : o
+  const o = overrides.get(trackId);
+  return o === undefined ? serverValue : o;
 }
 
 export async function setFavourite(trackId: string, next: boolean): Promise<void> {
-  const previous = overrides.get(trackId)
+  const previous = overrides.get(trackId);
   // Optimistic: flip immediately so the heart feels instant.
-  overrides.set(trackId, next)
-  emit()
+  overrides.set(trackId, next);
+  emit();
   try {
-    await api.setTrackFavourite(trackId, next)
+    await api.setTrackFavourite(trackId, next);
   } catch (e) {
     // Roll back to whatever we knew before rather than leaving a lie on screen.
-    if (previous === undefined) overrides.delete(trackId)
-    else overrides.set(trackId, previous)
-    emit()
-    throw e
+    if (previous === undefined) overrides.delete(trackId);
+    else overrides.set(trackId, previous);
+    emit();
+    throw e;
   }
 }
 
@@ -51,21 +51,21 @@ export async function setFavourite(trackId: string, next: boolean): Promise<void
  * the returned state folds in any local toggle.
  */
 export function useFavourite(trackId: string | undefined, serverValue: boolean | undefined) {
-  const [, force] = useState(0)
+  const [, force] = useState(0);
 
-  useEffect(() => subscribe(() => force(n => n + 1)), [])
+  useEffect(() => subscribe(() => force((n) => n + 1)), []);
 
-  const favourite = trackId ? isFavourite(trackId, !!serverValue) : false
+  const favourite = trackId ? isFavourite(trackId, !!serverValue) : false;
 
   const toggle = useCallback(() => {
-    if (!trackId) return
+    if (!trackId) return;
     // Favourites live in the account; a guest is asked to sign in first, then it's saved.
     requireAccount('Create a free account to save songs you love.', () =>
       setFavourite(trackId, !isFavourite(trackId, !!serverValue)).catch(() => {
         // setFavourite already rolled the UI back; nothing useful to show here.
       }),
-    )
-  }, [trackId, serverValue])
+    );
+  }, [trackId, serverValue]);
 
-  return { favourite, toggle }
+  return { favourite, toggle };
 }

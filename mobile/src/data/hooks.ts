@@ -15,7 +15,10 @@ export interface AsyncState<T> {
 export function useAsync<T>(
   load: () => Promise<T>,
   deps: unknown[],
-  { enabled = true, refetchOnFocus = false }: { enabled?: boolean; refetchOnFocus?: boolean } = {},
+  {
+    enabled = true,
+    refetchOnFocus = false,
+  }: { enabled?: boolean; refetchOnFocus?: boolean } = {},
 ): AsyncState<T> {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(enabled);
@@ -35,9 +38,13 @@ export function useAsync<T>(
     let live = true;
     setLoading(true);
     setError(null);
-    loadRef.current()
+    loadRef
+      .current()
       .then(res => live && setData(res))
-      .catch(err => live && setError(err instanceof Error ? err : new Error(String(err))))
+      .catch(
+        err =>
+          live && setError(err instanceof Error ? err : new Error(String(err))),
+      )
       .finally(() => live && setLoading(false));
     return () => {
       live = false;

@@ -24,7 +24,7 @@ export function SegmentedControl({
   className,
 }: SegmentedControlProps) {
   const [containerWidth, setContainerWidth] = React.useState(160);
-  const activeIndex = options.findIndex((opt) => opt.value === value);
+  const activeIndex = options.findIndex(opt => opt.value === value);
   const slidePosition = useSharedValue(activeIndex);
 
   React.useEffect(() => {
@@ -49,23 +49,33 @@ export function SegmentedControl({
   const Component = Animated.View as any;
 
   return (
-    <View 
-      className={cn('flex-row bg-s1 rounded-full p-[3px] relative border border-ln2', className)}
+    <View
+      className={cn(
+        'flex-row bg-s1 rounded-full p-[3px] relative border border-ln2',
+        className,
+      )}
       style={{ gap: 2 }}
-      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+      onLayout={e => setContainerWidth(e.nativeEvent.layout.width)}
     >
-      <View style={{ position: 'absolute', top: 3, bottom: 3, left: 3, right: 3 }} collapsable={false}>
+      <View
+        style={{ position: 'absolute', top: 3, bottom: 3, left: 3, right: 3 }}
+        collapsable={false}
+      >
         <Component
           style={animatedStyle}
           className={cn(
             'rounded-full absolute top-0 bottom-0',
             variant === 'default' && 'bg-s3',
-            variant === 'cloud-device' && value === 'online' && 'bg-[rgba(0,226,138,0.20)] border border-[rgba(0,226,138,0.35)]',
-            variant === 'cloud-device' && value === 'offline' && 'bg-[rgba(255,194,77,0.22)] border border-[rgba(255,194,77,0.35)]'
+            variant === 'cloud-device' &&
+              value === 'online' &&
+              'bg-[rgba(0,226,138,0.20)] border border-[rgba(0,226,138,0.35)]',
+            variant === 'cloud-device' &&
+              value === 'offline' &&
+              'bg-[rgba(255,194,77,0.22)] border border-[rgba(255,194,77,0.35)]',
           )}
         />
       </View>
-      {options.map((option) => {
+      {options.map(option => {
         const isActive = value === option.value;
         return (
           <Pressable
@@ -76,21 +86,34 @@ export function SegmentedControl({
             accessibilityState={{ selected: isActive }}
             className="flex-1 h-[30px] px-3 flex-row items-center justify-center gap-1.5 z-10 rounded-full"
           >
-            {variant === 'cloud-device' && (
-              option.value === 'online' ? (
-                <Icon name="cloud" size={14} color={isActive ? '#00E28A' : '#7E7E8C'} />
+            {variant === 'cloud-device' &&
+              (option.value === 'online' ? (
+                <Icon
+                  name="cloud"
+                  size={14}
+                  color={isActive ? '#00E28A' : '#7E7E8C'}
+                />
               ) : (
-                <Icon name="smartphone" size={14} color={isActive ? '#FFC24D' : '#7E7E8C'} />
-              )
-            )}
+                <Icon
+                  name="smartphone"
+                  size={14}
+                  color={isActive ? '#FFC24D' : '#7E7E8C'}
+                />
+              ))}
             <Text
               numberOfLines={1}
               className={cn(
                 'text-[12px] font-semibold tracking-[0.2px] text-center',
                 isActive && variant === 'default' && 'text-t1',
-                isActive && variant === 'cloud-device' && option.value === 'online' && 'text-acc',
-                isActive && variant === 'cloud-device' && option.value === 'offline' && 'text-gold',
-                !isActive && 'text-t3'
+                isActive &&
+                  variant === 'cloud-device' &&
+                  option.value === 'online' &&
+                  'text-acc',
+                isActive &&
+                  variant === 'cloud-device' &&
+                  option.value === 'offline' &&
+                  'text-gold',
+                !isActive && 'text-t3',
               )}
             >
               {option.label}

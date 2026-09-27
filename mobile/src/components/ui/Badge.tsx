@@ -18,17 +18,19 @@ export function Badge({ label, icon, variant, className }: BadgeProps) {
         variant === 'cloud' && 'bg-[rgba(0,226,138,0.20)]',
         variant === 'download' && 'bg-[rgba(77,163,255,0.18)]',
         variant === 'neutral' && 'bg-s3',
-        className
+        className,
       )}
     >
       {icon}
-      <Text className={cn(
-        'text-[10px] font-semibold tracking-[0.4px] uppercase',
-        variant === 'local' && 'text-gold',
-        variant === 'cloud' && 'text-acc',
-        variant === 'download' && 'text-blue',
-        variant === 'neutral' && 'text-t2'
-      )}>
+      <Text
+        className={cn(
+          'text-[10px] font-semibold tracking-[0.4px] uppercase',
+          variant === 'local' && 'text-gold',
+          variant === 'cloud' && 'text-acc',
+          variant === 'download' && 'text-blue',
+          variant === 'neutral' && 'text-t2',
+        )}
+      >
         {label}
       </Text>
     </View>

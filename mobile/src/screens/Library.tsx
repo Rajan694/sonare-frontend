@@ -34,26 +34,37 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function LibraryScreen() {
   const navigation = useNavigation<any>();
-  const setMode = useModeStore((state) => state.setMode);
-  const mode = useModeStore((state) => state.mode);
-  const playTrack = usePlayerStore((state) => state.playTrack);
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
-  const favouriteCount = useLibraryStore((state) => Object.keys(state.favouriteIds).length);
+  const setMode = useModeStore(state => state.setMode);
+  const mode = useModeStore(state => state.mode);
+  const playTrack = usePlayerStore(state => state.playTrack);
+  const currentTrack = usePlayerStore(state => state.currentTrack);
+  const favouriteCount = useLibraryStore(
+    state => Object.keys(state.favouriteIds).length,
+  );
   const [activeTab, setActiveTab] = useState<Tab>('songs');
   const [sort, setSort] = useState<Sort>('addedAt');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const userId = useAuthStore((state) => state.user?.id);
+  const userId = useAuthStore(state => state.user?.id);
 
   const online = mode === 'online';
-  const library = useAsync(() => api.libraryTracks(sort), [sort, favouriteCount, userId], {
-    enabled: online && !!userId,
-    refetchOnFocus: true,
-  });
+  const library = useAsync(
+    () => api.libraryTracks(sort),
+    [sort, favouriteCount, userId],
+    {
+      enabled: online && !!userId,
+      refetchOnFocus: true,
+    },
+  );
 
-  const downloads = useDownloadsStore((state) => state.items);
-  const serverTracks = (library.data?.items ?? []).filter(t => t.source === 'server');
+  const downloads = useDownloadsStore(state => state.items);
+  const serverTracks = (library.data?.items ?? []).filter(
+    t => t.source === 'server',
+  );
   // Offline, the library is what's been downloaded to this phone.
-  const offlineTracks = React.useMemo(() => downloadedTracks(downloads), [downloads]);
+  const offlineTracks = React.useMemo(
+    () => downloadedTracks(downloads),
+    [downloads],
+  );
   const displayTracks = online ? serverTracks : offlineTracks;
 
   const onPlayAll = () => {
@@ -85,7 +96,7 @@ export function LibraryScreen() {
               { value: 'offline', label: 'Offline' },
             ]}
             value={mode}
-            onChange={(value) => {
+            onChange={value => {
               if (value === 'offline' && mode === 'online') {
                 navigation.navigate('ModeSwitch', { targetMode: 'offline' });
               } else {
@@ -107,7 +118,7 @@ export function LibraryScreen() {
         <View className="flex-1">
           {/* Sub-tabs row */}
           <View className="flex-row border-b border-ln px-3.5">
-            {TABS.map((tab) => {
+            {TABS.map(tab => {
               const isActive = activeTab === tab.id;
               return (
                 <Pressable
@@ -121,7 +132,12 @@ export function LibraryScreen() {
                   }}
                   className="h-[40px] px-3.5 justify-center relative"
                 >
-                  <Text className={cn('text-bm font-medium', isActive ? 'text-t1' : 'text-t3')}>
+                  <Text
+                    className={cn(
+                      'text-bm font-medium',
+                      isActive ? 'text-t1' : 'text-t3',
+                    )}
+                  >
                     {tab.label}
                   </Text>
                   {isActive && (
@@ -136,10 +152,21 @@ export function LibraryScreen() {
           <View className="flex-row items-center justify-between px-5 py-3">
             <Chip
               size="sm"
-              label={sort === 'addedAt' ? 'Recently added' : sort === 'playCount' ? 'Most played' : 'A-Z'}
+              label={
+                sort === 'addedAt'
+                  ? 'Recently added'
+                  : sort === 'playCount'
+                  ? 'Most played'
+                  : 'A-Z'
+              }
               icon={<Icon name="shuffle" size={13} color="#9A9AA8" />}
               onPress={() => {
-                const nextSort: Sort = sort === 'addedAt' ? 'playCount' : sort === 'playCount' ? 'title' : 'addedAt';
+                const nextSort: Sort =
+                  sort === 'addedAt'
+                    ? 'playCount'
+                    : sort === 'playCount'
+                    ? 'title'
+                    : 'addedAt';
                 setSort(nextSort);
               }}
             />
@@ -157,14 +184,26 @@ export function LibraryScreen() {
                 accessibilityLabel="Filter"
               />
               <IconButton
-                icon={<Icon name="playlist" size={16} color={viewMode === 'list' ? '#00E28A' : '#9A9AA8'} />}
+                icon={
+                  <Icon
+                    name="playlist"
+                    size={16}
+                    color={viewMode === 'list' ? '#00E28A' : '#9A9AA8'}
+                  />
+                }
                 size={32}
                 variant={viewMode === 'list' ? 'active' : 'default'}
                 onPress={() => setViewMode('list')}
                 accessibilityLabel="List view"
               />
               <IconButton
-                icon={<Icon name="library" size={16} color={viewMode === 'grid' ? '#00E28A' : '#9A9AA8'} />}
+                icon={
+                  <Icon
+                    name="library"
+                    size={16}
+                    color={viewMode === 'grid' ? '#00E28A' : '#9A9AA8'}
+                  />
+                }
                 size={32}
                 variant={viewMode === 'grid' ? 'active' : 'default'}
                 onPress={() => setViewMode('grid')}
@@ -193,7 +232,9 @@ export function LibraryScreen() {
                 Shuffle
               </Button>
               <Text className="text-bs text-t3 flex-1 text-right font-normal">
-                {online && library.data?.meta?.total ? `${library.data.meta.total} songs` : `${displayTracks.length} songs`}
+                {online && library.data?.meta?.total
+                  ? `${library.data.meta.total} songs`
+                  : `${displayTracks.length} songs`}
               </Text>
             </View>
           )}
@@ -201,7 +242,7 @@ export function LibraryScreen() {
           {/* Track List */}
           <FlatList
             data={displayTracks}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => item.id}
             renderItem={({ item, index }) => (
               <SongRow
                 track={item}
@@ -213,7 +254,12 @@ export function LibraryScreen() {
             )}
             refreshControl={
               online ? (
-                <RefreshControl refreshing={false} onRefresh={library.refetch} tintColor="#00E28A" colors={['#00E28A']} />
+                <RefreshControl
+                  refreshing={false}
+                  onRefresh={library.refetch}
+                  tintColor="#00E28A"
+                  colors={['#00E28A']}
+                />
               ) : undefined
             }
             ListEmptyComponent={
@@ -221,12 +267,17 @@ export function LibraryScreen() {
                 loading={online && library.loading && !library.data}
                 error={library.error}
                 onRetry={library.refetch}
-                empty={online
-                  ? 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".'
-                  : 'No music on this phone yet. Songs you download show up here.'}
+                empty={
+                  online
+                    ? 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".'
+                    : 'No music on this phone yet. Songs you download show up here.'
+                }
               />
             }
-            contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 140 }}
+            contentContainerStyle={{
+              paddingHorizontal: 12,
+              paddingBottom: 140,
+            }}
           />
         </View>
       )}

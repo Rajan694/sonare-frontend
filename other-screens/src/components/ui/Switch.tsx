@@ -1,10 +1,10 @@
-import React from 'react'
-import { cn } from '../../lib/utils'
+import React from 'react';
+import { cn } from '../../lib/utils';
 
 interface SwitchProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  checked: boolean
-  onCheckedChange?: (checked: boolean) => void
-  variant?: 'acc' | 'gold'
+  checked: boolean;
+  onCheckedChange?: (checked: boolean) => void;
+  variant?: 'acc' | 'gold';
 }
 
 export function Switch({ checked, onCheckedChange, variant = 'acc', className, ...props }: SwitchProps) {
@@ -18,5 +18,5 @@ export function Switch({ checked, onCheckedChange, variant = 'acc', className, .
     >
       <i aria-hidden />
     </button>
-  )
+  );
 }

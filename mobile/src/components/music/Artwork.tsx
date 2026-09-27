@@ -1,28 +1,67 @@
 import React from 'react';
 import { cn } from '../../lib/cn';
 import Animated from 'react-native-reanimated';
-import Svg, { Defs, LinearGradient, Stop, Rect, Circle } from 'react-native-svg';
+import Svg, {
+  Defs,
+  LinearGradient,
+  Stop,
+  Rect,
+  Circle,
+} from 'react-native-svg';
 import { artGradients } from '../../data/gradients';
 
 // cn() only joins classes, so a caller's rounded-* can't override a default one.
-const radius = (className?: string) => (/\brounded-/.test(className ?? '') ? '' : 'rounded-md');
+const radius = (className?: string) =>
+  /\brounded-/.test(className ?? '') ? '' : 'rounded-md';
 
 interface ArtworkProps {
   uri?: string;
   /** Tried when `uri` fails to load, e.g. a smaller size that always exists. */
   fallbackUri?: string;
-  size: 30 | 40 | 42 | 44 | 48 | 52 | 56 | 64 | 68 | 76 | 84 | 96 | 124 | 132 | 160 | 200 | 240 | 306 | 314;
+  size:
+    | 30
+    | 40
+    | 42
+    | 44
+    | 48
+    | 52
+    | 56
+    | 64
+    | 68
+    | 76
+    | 84
+    | 96
+    | 124
+    | 132
+    | 160
+    | 200
+    | 240
+    | 306
+    | 314;
   gradient?: [string, string];
   className?: string;
   sharedTransitionTag?: string;
   rings?: boolean;
 }
 
-export function Artwork({ uri: primaryUri, fallbackUri, size, gradient, className, sharedTransitionTag, rings }: ArtworkProps) {
+export function Artwork({
+  uri: primaryUri,
+  fallbackUri,
+  size,
+  gradient,
+  className,
+  sharedTransitionTag,
+  rings,
+}: ArtworkProps) {
   const AnimatedImageComponent = Animated.Image as any;
   const AnimatedViewComponent = Animated.View as any;
   const [failed, setFailed] = React.useState<Record<string, true>>({});
-  const uri = primaryUri && !failed[primaryUri] ? primaryUri : fallbackUri && !failed[fallbackUri] ? fallbackUri : undefined;
+  const uri =
+    primaryUri && !failed[primaryUri]
+      ? primaryUri
+      : fallbackUri && !failed[fallbackUri]
+      ? fallbackUri
+      : undefined;
 
   const isHttp = uri?.startsWith('http') || uri?.startsWith('file://');
   const gradKey = uri && artGradients[uri] ? uri : null;
@@ -44,7 +83,7 @@ export function Artwork({ uri: primaryUri, fallbackUri, size, gradient, classNam
   // Draw gradient matching the specific variant or a valid gradient
   if (gradKey || gradient) {
     const stops = gradKey ? artGradients[gradKey] : gradient!;
-    
+
     return (
       <AnimatedViewComponent
         className={cn(radius(className), 'overflow-hidden', className)}
@@ -54,18 +93,42 @@ export function Artwork({ uri: primaryUri, fallbackUri, size, gradient, classNam
         <Svg width={size} height={size}>
           <Defs>
             <LinearGradient id="grad" x1="0%" y1="0%" x2="82%" y2="100%">
-               <Stop offset="0%" stopColor={stops[0]} />
-               <Stop offset={stops.length > 2 ? "45%" : "100%"} stopColor={stops[1]} />
-               {stops.length > 2 && <Stop offset="100%" stopColor={stops[2]} />}
+              <Stop offset="0%" stopColor={stops[0]} />
+              <Stop
+                offset={stops.length > 2 ? '45%' : '100%'}
+                stopColor={stops[1]}
+              />
+              {stops.length > 2 && <Stop offset="100%" stopColor={stops[2]} />}
             </LinearGradient>
           </Defs>
           <Rect width="100%" height="100%" fill="url(#grad)" />
-          
+
           {hasRings && (
             <>
-              <Circle cx={size/2} cy={size/2} r={size * 0.3} stroke="rgba(255,255,255,0.06)" strokeWidth="1" fill="none" />
-              <Circle cx={size/2} cy={size/2} r={size * 0.55} stroke="rgba(255,255,255,0.04)" strokeWidth="1" fill="none" />
-              <Circle cx={size/2} cy={size/2} r={size * 0.8} stroke="rgba(255,255,255,0.02)" strokeWidth="1" fill="none" />
+              <Circle
+                cx={size / 2}
+                cy={size / 2}
+                r={size * 0.3}
+                stroke="rgba(255,255,255,0.06)"
+                strokeWidth="1"
+                fill="none"
+              />
+              <Circle
+                cx={size / 2}
+                cy={size / 2}
+                r={size * 0.55}
+                stroke="rgba(255,255,255,0.04)"
+                strokeWidth="1"
+                fill="none"
+              />
+              <Circle
+                cx={size / 2}
+                cy={size / 2}
+                r={size * 0.8}
+                stroke="rgba(255,255,255,0.02)"
+                strokeWidth="1"
+                fill="none"
+              />
             </>
           )}
         </Svg>

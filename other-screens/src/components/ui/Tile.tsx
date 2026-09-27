@@ -1,17 +1,17 @@
-import React from 'react'
-import { Link } from 'react-router-dom'
-import Artwork from '../music/Artwork'
-import Icon from './Icon'
+import React from 'react';
+import { Link } from 'react-router-dom';
+import Artwork from '../music/Artwork';
+import Icon from './Icon';
 
 interface TileProps {
-  title: string
-  subtitle: string
-  artVariant?: any
+  title: string;
+  subtitle: string;
+  artVariant?: any;
   /** Where the tile navigates. Without it, clicking the tile plays. */
-  to?: string
-  thumbnail?: string
+  to?: string;
+  thumbnail?: string;
   /** Plays in place without leaving the screen (FLOWS M01 inner Play button). */
-  onPlay?: () => void
+  onPlay?: () => void;
 }
 
 export function Tile({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay }: TileProps) {
@@ -23,14 +23,18 @@ export function Tile({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay
         <span className="text-body-s text-t3 truncate">{subtitle}</span>
       </span>
     </>
-  )
+  );
 
   return (
     <div className="relative group">
       {to ? (
-        <Link to={to} className="tile no-underline text-inherit">{body}</Link>
+        <Link to={to} className="tile no-underline text-inherit">
+          {body}
+        </Link>
       ) : (
-        <button className="tile w-full text-left text-inherit cursor-pointer" onClick={onPlay}>{body}</button>
+        <button className="tile w-full text-left text-inherit cursor-pointer" onClick={onPlay}>
+          {body}
+        </button>
       )}
       {onPlay && (
         <button
@@ -38,14 +42,14 @@ export function Tile({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay
           aria-label={`Play ${title}`}
           data-tip="Play"
           onClick={(e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            onPlay()
+            e.preventDefault();
+            e.stopPropagation();
+            onPlay();
           }}
         >
           <Icon name="play" size={14} />
         </button>
       )}
     </div>
-  )
+  );
 }

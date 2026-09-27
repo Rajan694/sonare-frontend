@@ -1,86 +1,86 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { usePlayerStore } from '../store/playerStore'
-import { useModeStore } from '../store/modeStore'
-import { showToast } from '../store/toastStore'
-import { useAsync, useLyrics } from '../data/hooks'
-import { localLibrary } from '../data/local'
-import { api } from '../data/api'
-import { requireAccount } from '../data/accountGate'
-import { isAuthenticated } from '../data/auth'
-import Artwork, { trackArtwork } from '../components/music/Artwork'
-import Button, { IconButton } from '../components/ui/Button'
-import Icon from '../components/ui/Icon'
-import { Switch } from '../components/ui/Switch'
-import { EmptyState } from '../components/ui/EmptyState'
-import { cn, formatDuration } from '../lib/utils'
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { usePlayerStore } from '../store/playerStore';
+import { useModeStore } from '../store/modeStore';
+import { showToast } from '../store/toastStore';
+import { useAsync, useLyrics } from '../data/hooks';
+import { localLibrary } from '../data/local';
+import { api } from '../data/api';
+import { requireAccount } from '../data/accountGate';
+import { isAuthenticated } from '../data/auth';
+import Artwork, { trackArtwork } from '../components/music/Artwork';
+import Button, { IconButton } from '../components/ui/Button';
+import Icon from '../components/ui/Icon';
+import { Switch } from '../components/ui/Switch';
+import { EmptyState } from '../components/ui/EmptyState';
+import { cn, formatDuration } from '../lib/utils';
 
-const OFFSET_STEP_MS = 250
-const AUTOSCROLL_KEY = 'sonare_lyrics_autoscroll'
+const OFFSET_STEP_MS = 250;
+const AUTOSCROLL_KEY = 'sonare_lyrics_autoscroll';
 
-const PROVIDERS: Record<string, string> = { lrclib: 'LRCLIB', genius: 'Genius', tags: 'File tags', user: 'Your edit' }
+const PROVIDERS: Record<string, string> = { lrclib: 'LRCLIB', genius: 'Genius', tags: 'File tags', user: 'Your edit' };
 
 function readAutoScroll(): boolean {
   try {
-    return localStorage.getItem(AUTOSCROLL_KEY) !== 'false'
+    return localStorage.getItem(AUTOSCROLL_KEY) !== 'false';
   } catch {
-    return true
+    return true;
   }
 }
 
 function toLrc(lines: { atMs: number; text: string }[]): string {
   return lines
-    .map(l => {
-      const m = Math.floor(l.atMs / 60000)
-      const s = ((l.atMs % 60000) / 1000).toFixed(2).padStart(5, '0')
-      return `[${String(m).padStart(2, '0')}:${s}]${l.text}`
+    .map((l) => {
+      const m = Math.floor(l.atMs / 60000);
+      const s = ((l.atMs % 60000) / 1000).toFixed(2).padStart(5, '0');
+      return `[${String(m).padStart(2, '0')}:${s}]${l.text}`;
     })
-    .join('\n')
+    .join('\n');
 }
 
 export default function Lyrics() {
-  const navigate = useNavigate()
-  const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/now-playing'))
-  const { state, currentTrack, seek } = usePlayerStore()
-  const { mode } = useModeStore()
-  const isOffline = mode === 'offline'
+  const navigate = useNavigate();
+  const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/now-playing'));
+  const { state, currentTrack, seek } = usePlayerStore();
+  const { mode } = useModeStore();
+  const isOffline = mode === 'offline';
 
   // Local files keep lyrics on the device (saved edits or a sidecar .lrc); the server
   // only knows catalog tracks.
-  const isLocal = currentTrack?.source === 'local'
-  const server = useLyrics(currentTrack?.id)
-  const local = useAsync(() => localLibrary.lyrics(currentTrack!.id), [currentTrack?.id], { enabled: !!isLocal })
-  const { data: lyricsData, loading, refetch } = isLocal ? local : server
-  const lines = lyricsData?.lines || currentTrack?.lyrics?.lines || []
-  const synced = lyricsData?.synced ?? currentTrack?.lyrics?.synced ?? lines.length > 0
+  const isLocal = currentTrack?.source === 'local';
+  const server = useLyrics(currentTrack?.id);
+  const local = useAsync(() => localLibrary.lyrics(currentTrack!.id), [currentTrack?.id], { enabled: !!isLocal });
+  const { data: lyricsData, loading, refetch } = isLocal ? local : server;
+  const lines = lyricsData?.lines || currentTrack?.lyrics?.lines || [];
+  const synced = lyricsData?.synced ?? currentTrack?.lyrics?.synced ?? lines.length > 0;
 
   // Positive offset shows each line later; negative, earlier.
-  const [offsetMs, setOffsetMs] = useState(0)
-  const [autoScroll, setAutoScroll] = useState(readAutoScroll)
+  const [offsetMs, setOffsetMs] = useState(0);
+  const [autoScroll, setAutoScroll] = useState(readAutoScroll);
   // Synced lyrics can also be read as plain text, without timestamps or the moving highlight.
-  const [view, setView] = useState<'synced' | 'plain'>('synced')
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState('')
-  const lineRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const fileInput = useRef<HTMLInputElement>(null)
+  const [view, setView] = useState<'synced' | 'plain'>('synced');
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const lineRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setOffsetMs(lyricsData?.offsetMs ?? currentTrack?.lyrics?.offsetMs ?? 0)
-  }, [lyricsData, currentTrack?.id])
+    setOffsetMs(lyricsData?.offsetMs ?? currentTrack?.lyrics?.offsetMs ?? 0);
+  }, [lyricsData, currentTrack?.id]);
 
-  const showSynced = synced && lines.length > 0 && view === 'synced'
-  const position = state.positionMs - offsetMs
+  const showSynced = synced && lines.length > 0 && view === 'synced';
+  const position = state.positionMs - offsetMs;
   const activeLineIndex = showSynced
     ? lines.findIndex((line, i) => {
-        const next = lines[i + 1]
-        return position >= line.atMs && (!next || position < next.atMs)
+        const next = lines[i + 1];
+        return position >= line.atMs && (!next || position < next.atMs);
       })
-    : -1
+    : -1;
 
   useEffect(() => {
-    if (!autoScroll || activeLineIndex < 0) return
-    lineRefs.current[activeLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [activeLineIndex, autoScroll])
+    if (!autoScroll || activeLineIndex < 0) return;
+    lineRefs.current[activeLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [activeLineIndex, autoScroll]);
 
   if (!currentTrack) {
     return (
@@ -89,82 +89,86 @@ export default function Lyrics() {
           icon="lyrics"
           title="No track selected"
           description="Start playing a song to view lyrics"
-          action={<Link to="/home" className="btn btn-acc">Go to Home</Link>}
+          action={
+            <Link to="/home" className="btn btn-acc">
+              Go to Home
+            </Link>
+          }
         />
       </div>
-    )
+    );
   }
 
-  const trackId = currentTrack.id
-  const plainText = lyricsData?.plain ?? (lines.length > 0 ? lines.map(l => l.text).join('\n') : '')
-  const hasLyrics = lines.length > 0 || !!plainText
+  const trackId = currentTrack.id;
+  const plainText = lyricsData?.plain ?? (lines.length > 0 ? lines.map((l) => l.text).join('\n') : '');
+  const hasLyrics = lines.length > 0 || !!plainText;
   const source =
     lyricsData?.provider === 'lrc'
       ? `${(currentTrack.localPath?.split(/[\\/]/).pop() ?? currentTrack.title).replace(/\.[^.]+$/, '')}.lrc`
-      : lyricsData?.provider && PROVIDERS[lyricsData.provider]
+      : lyricsData?.provider && PROVIDERS[lyricsData.provider];
 
   // Server lyrics are saved to the account; a guest signs in first and then carries on here.
-  const needsAccount = !isLocal && !isAuthenticated()
-  const askToSignIn = () => requireAccount('Create a free account to fix lyrics and their timing.', () => {})
+  const needsAccount = !isLocal && !isAuthenticated();
+  const askToSignIn = () => requireAccount('Create a free account to fix lyrics and their timing.', () => {});
 
   function changeOffset(delta: number) {
-    if (needsAccount) return askToSignIn()
-    const next = offsetMs + delta
-    setOffsetMs(next)
-    const save = isLocal ? localLibrary.setLyricsOffset(trackId, next) : api.updateLyricsOffset(trackId, next)
+    if (needsAccount) return askToSignIn();
+    const next = offsetMs + delta;
+    setOffsetMs(next);
+    const save = isLocal ? localLibrary.setLyricsOffset(trackId, next) : api.updateLyricsOffset(trackId, next);
     void save.catch(() => {
-      showToast({ title: 'Could not save lyric offset', icon: 'info' })
-    })
+      showToast({ title: 'Could not save lyric offset', icon: 'info' });
+    });
   }
 
   function toggleAutoScroll(on: boolean) {
-    setAutoScroll(on)
+    setAutoScroll(on);
     try {
-      localStorage.setItem(AUTOSCROLL_KEY, String(on))
+      localStorage.setItem(AUTOSCROLL_KEY, String(on));
     } catch {
       // Preference just won't persist.
     }
   }
 
   function startEditing() {
-    if (needsAccount) return askToSignIn()
-    setDraft(synced ? toLrc(lines) : plainText)
-    setEditing(true)
+    if (needsAccount) return askToSignIn();
+    setDraft(synced ? toLrc(lines) : plainText);
+    setEditing(true);
   }
 
   function importFile() {
-    if (needsAccount) return askToSignIn()
-    fileInput.current?.click()
+    if (needsAccount) return askToSignIn();
+    fileInput.current?.click();
   }
 
   // An imported .lrc (or .txt) opens in the editor, to check before saving.
   async function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
     try {
-      setDraft(await file.text())
-      setEditing(true)
+      setDraft(await file.text());
+      setEditing(true);
     } catch {
-      showToast({ title: 'Could not read that file', icon: 'info' })
+      showToast({ title: 'Could not read that file', icon: 'info' });
     }
   }
 
   async function saveEdit() {
-    const text = draft.trim()
-    const isLrc = /^\[\d{1,2}:\d{2}(\.\d+)?\]/m.test(text)
+    const text = draft.trim();
+    const isLrc = /^\[\d{1,2}:\d{2}(\.\d+)?\]/m.test(text);
     try {
-      const body = isLrc ? { lrc: text } : { plain: text }
-      await (isLocal ? localLibrary.saveLyrics(trackId, body) : api.saveLyrics(trackId, body))
-      setEditing(false)
-      refetch()
-      showToast({ title: 'Lyrics saved', icon: 'check', variant: 'acc' })
+      const body = isLrc ? { lrc: text } : { plain: text };
+      await (isLocal ? localLibrary.saveLyrics(trackId, body) : api.saveLyrics(trackId, body));
+      setEditing(false);
+      refetch();
+      showToast({ title: 'Lyrics saved', icon: 'check', variant: 'acc' });
     } catch {
-      showToast({ title: 'Could not save lyrics', icon: 'info' })
+      showToast({ title: 'Could not save lyrics', icon: 'info' });
     }
   }
 
-  const glow = isOffline ? '0 0 30px rgba(255,194,77,.35)' : '0 0 30px rgba(0,226,138,.35)'
+  const glow = isOffline ? '0 0 30px rgba(255,194,77,.35)' : '0 0 30px rgba(0,226,138,.35)';
 
   return (
     <div className="@container relative flex flex-col w-full h-full overflow-hidden bg-bg text-t1 select-none">
@@ -173,7 +177,7 @@ export default function Lyrics() {
         <i
           className={cn(
             isOffline ? 'bg-gold' : 'bg-[#2A5AA8]',
-            'w-[400px] h-[400px] @3xl:w-[560px] @3xl:h-[560px] -top-[160px] @3xl:-top-[280px] -left-[100px] @3xl:-left-[180px]'
+            'w-[400px] h-[400px] @3xl:w-[560px] @3xl:h-[560px] -top-[160px] @3xl:-top-[280px] -left-[100px] @3xl:-left-[180px]',
           )}
           style={{ opacity: isOffline ? 0.16 : 0.45 }}
         />
@@ -185,7 +189,11 @@ export default function Lyrics() {
 
       {/* Mobile Top bar (< 3xl) */}
       <header className="relative z-10 flex @3xl:hidden items-center justify-between flex-none h-14 px-4 border-b border-ln bg-s0/40 backdrop-blur-md">
-        <button onClick={exit} className="ib ib-32 text-t2 hover:text-t1 flex items-center justify-center" aria-label="Back">
+        <button
+          onClick={exit}
+          className="ib ib-32 text-t2 hover:text-t1 flex items-center justify-center"
+          aria-label="Back"
+        >
           <Icon name="chevron-left" size={20} />
         </button>
         <span className="text-title-m font-semibold text-t1">Lyrics</span>
@@ -216,12 +224,7 @@ export default function Lyrics() {
           {hasLyrics && (
             <div className="flex flex-wrap items-center gap-2">
               {source && (
-                <span
-                  className={cn(
-                    'badge',
-                    isLocal ? 'bg-local' : 'bg-cloud'
-                  )}
-                >
+                <span className={cn('badge', isLocal ? 'bg-local' : 'bg-cloud')}>
                   <Icon name={isLocal ? 'smartphone' : 'cloud'} size={10} />
                   <span>{source}</span>
                 </span>
@@ -253,7 +256,13 @@ export default function Lyrics() {
                 Import .lrc
               </Button>
             </div>
-            <input ref={fileInput} type="file" accept=".lrc,.txt,text/plain" className="hidden" onChange={onFileChosen} />
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".lrc,.txt,text/plain"
+              className="hidden"
+              onChange={onFileChosen}
+            />
 
             {/* Sync offset control */}
             {synced && lines.length > 0 && (
@@ -266,8 +275,18 @@ export default function Lyrics() {
                   </span>
                 </span>
                 <span className="flex items-center gap-0.5">
-                  <IconButton icon="minus" label="Show lyrics earlier" size={28} onClick={() => changeOffset(-OFFSET_STEP_MS)} />
-                  <IconButton icon="plus" label="Show lyrics later" size={28} onClick={() => changeOffset(OFFSET_STEP_MS)} />
+                  <IconButton
+                    icon="minus"
+                    label="Show lyrics earlier"
+                    size={28}
+                    onClick={() => changeOffset(-OFFSET_STEP_MS)}
+                  />
+                  <IconButton
+                    icon="plus"
+                    label="Show lyrics later"
+                    size={28}
+                    onClick={() => changeOffset(OFFSET_STEP_MS)}
+                  />
                 </span>
               </div>
             )}
@@ -285,7 +304,10 @@ export default function Lyrics() {
             <div className="flex items-center justify-between gap-2 flex-none shrink-0 min-h-8">
               <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none flex-nowrap shrink-0">
                 <button
-                  className={cn('chip chip-sm flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center', showSynced && 'chip-on')}
+                  className={cn(
+                    'chip chip-sm flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center',
+                    showSynced && 'chip-on',
+                  )}
                   disabled={!synced || lines.length === 0}
                   onClick={() => setView('synced')}
                 >
@@ -293,7 +315,10 @@ export default function Lyrics() {
                   <span>Synced</span>
                 </button>
                 <button
-                  className={cn('chip chip-sm flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center', !showSynced && 'chip-on')}
+                  className={cn(
+                    'chip chip-sm flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center',
+                    !showSynced && 'chip-on',
+                  )}
                   onClick={() => setView('plain')}
                 >
                   <span>Plain text</span>
@@ -301,7 +326,10 @@ export default function Lyrics() {
                 {synced && lines.length > 0 && (
                   <span className="chip chip-sm text-t3 flex-none shrink-0 h-8 whitespace-nowrap inline-flex items-center">
                     <Icon name="clock" size={13} />
-                    <span>Offset {offsetMs > 0 ? '+' : offsetMs < 0 ? '−' : ''}{(Math.abs(offsetMs) / 1000).toFixed(1)}s</span>
+                    <span>
+                      Offset {offsetMs > 0 ? '+' : offsetMs < 0 ? '−' : ''}
+                      {(Math.abs(offsetMs) / 1000).toFixed(1)}s
+                    </span>
                   </span>
                 )}
               </div>
@@ -316,7 +344,7 @@ export default function Lyrics() {
                 </span>
                 <textarea
                   value={draft}
-                  onChange={e => setDraft(e.target.value)}
+                  onChange={(e) => setDraft(e.target.value)}
                   className="surf2 min-h-[380px] p-4 text-body-m text-t1 font-mono bg-s1 border border-ln2 rounded-lg outline-none focus:border-acc resize-y"
                   aria-label="Lyrics editor"
                   autoFocus
@@ -340,12 +368,12 @@ export default function Lyrics() {
             ) : showSynced ? (
               <div className="flex flex-col gap-4 @3xl:gap-5 pt-2">
                 {lines.map((line, i) => {
-                  const isActive = i === activeLineIndex
+                  const isActive = i === activeLineIndex;
                   return (
                     <button
                       key={i}
-                      ref={el => {
-                        lineRefs.current[i] = el
+                      ref={(el) => {
+                        lineRefs.current[i] = el;
                       }}
                       className="flex items-start gap-3.5 @3xl:gap-4 text-left bg-transparent border-0 p-0 cursor-pointer group"
                       aria-current={isActive}
@@ -355,7 +383,7 @@ export default function Lyrics() {
                       <span
                         className={cn(
                           'text-mono-s @3xl:text-mono-m w-9 pt-1.5 flex-none font-medium',
-                          isActive ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t4'
+                          isActive ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t4',
                         )}
                       >
                         {formatDuration(line.atMs + offsetMs)}
@@ -365,14 +393,14 @@ export default function Lyrics() {
                           'text-h2 @sm:text-display-m @3xl:text-display-m font-bold leading-tight transition-all duration-300',
                           isActive
                             ? 'text-t1 opacity-100 scale-[1.01] origin-left'
-                            : 'text-t3 opacity-[0.42] group-hover:opacity-75'
+                            : 'text-t3 opacity-[0.42] group-hover:opacity-75',
                         )}
                         style={isActive ? { textShadow: glow } : undefined}
                       >
                         {line.text || '♪'}
                       </span>
                     </button>
-                  )
+                  );
                 })}
               </div>
             ) : plainText ? (
@@ -388,6 +416,5 @@ export default function Lyrics() {
         </section>
       </div>
     </div>
-  )
+  );
 }
-

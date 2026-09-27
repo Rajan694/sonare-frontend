@@ -21,9 +21,22 @@ export function BrandMark({ size = 56 }: { size?: number }) {
   const gradient = `sonare-${useId().replace(/[^\w-]/g, '')}`;
   const bars = size > 32 ? DISPLAY : SMALL;
   return (
-    <Svg width={size} height={size} viewBox="0 0 256 256" accessibilityElementsHidden importantForAccessibility="no">
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 256 256"
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+    >
       <Defs>
-        <LinearGradient id={gradient} x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+        <LinearGradient
+          id={gradient}
+          x1="0"
+          y1="0"
+          x2="256"
+          y2="256"
+          gradientUnits="userSpaceOnUse"
+        >
           <Stop offset="0" stopColor="#00E28A" />
           <Stop offset="1" stopColor="#00C074" />
         </LinearGradient>

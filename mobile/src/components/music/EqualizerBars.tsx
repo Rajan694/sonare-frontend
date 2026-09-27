@@ -38,8 +38,8 @@ function EqBar({
             duration: 350 + Math.random() * 200,
           }),
           -1,
-          true
-        )
+          true,
+        ),
       );
     } else {
       height.value = withTiming(BASE_HEIGHT, { duration: 300 });
@@ -57,15 +57,27 @@ function EqBar({
 
   return (
     <Component
-      style={[animatedStyle, { backgroundColor: color, width: 3, borderRadius: 999 }]}
+      style={[
+        animatedStyle,
+        { backgroundColor: color, width: 3, borderRadius: 999 },
+      ]}
     />
   );
 }
 
-export function EqualizerBars({ isPlaying, color, className }: EqualizerBarsProps) {
+export function EqualizerBars({
+  isPlaying,
+  color,
+  className,
+}: EqualizerBarsProps) {
   return (
-    <View className={cn('flex-row items-end justify-center gap-1 h-[16px] w-[20px]', className)}>
-      {[0, 1, 2].map((i) => (
+    <View
+      className={cn(
+        'flex-row items-end justify-center gap-1 h-[16px] w-[20px]',
+        className,
+      )}
+    >
+      {[0, 1, 2].map(i => (
         <EqBar key={i} index={i} isPlaying={isPlaying} color={color} />
       ))}
     </View>

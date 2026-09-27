@@ -1,5 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  ActivityIndicator,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { IconButton } from '../components/ui/IconButton';
@@ -22,19 +28,26 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function SignInScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const params = useRoute<any>().params as { reason?: string; mode?: Mode } | undefined;
+  const params = useRoute<any>().params as
+    | { reason?: string; mode?: Mode }
+    | undefined;
   const reason = params?.reason;
   const succeeded = useRef(false);
 
   // Leaving without signing in (close, back gesture) abandons the guest's pending action.
-  useEffect(() => () => {
-    if (!succeeded.current) clearPendingAction();
-  }, []);
+  useEffect(
+    () => () => {
+      if (!succeeded.current) clearPendingAction();
+    },
+    [],
+  );
 
   const signIn = useAuthStore(s => s.signIn);
   const signUp = useAuthStore(s => s.signUp);
   // A gate-triggered visit is usually a new listener: open on "Create account".
-  const [mode, setMode] = useState<Mode>(params?.mode ?? (reason ? 'signup' : 'signin'));
+  const [mode, setMode] = useState<Mode>(
+    params?.mode ?? (reason ? 'signup' : 'signin'),
+  );
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -46,7 +59,8 @@ export function SignInScreen() {
   const validate = (password: string): string | null => {
     if (isSignUp && !name.trim()) return 'Tell us what to call you';
     if (!EMAIL_RE.test(email.trim())) return 'Enter a valid email address';
-    if (isSignUp && password.length < 8) return 'Use at least 8 characters for your password';
+    if (isSignUp && password.length < 8)
+      return 'Use at least 8 characters for your password';
     if (!password) return 'Enter your password';
     return null;
   };
@@ -63,12 +77,17 @@ export function SignInScreen() {
     setError(null);
     try {
       succeeded.current = true;
-      if (isSignUp) await signUp(email.trim().toLowerCase(), password, name.trim());
+      if (isSignUp)
+        await signUp(email.trim().toLowerCase(), password, name.trim());
       else await signIn(email.trim().toLowerCase(), password);
       if (navigation.canGoBack()) navigation.goBack();
     } catch (e: any) {
       succeeded.current = false;
-      setError(e?.message === 'Network request failed' ? "Can't reach the Sonare server" : e?.message || 'Something went wrong');
+      setError(
+        e?.message === 'Network request failed'
+          ? "Can't reach the Sonare server"
+          : e?.message || 'Something went wrong',
+      );
     } finally {
       setBusy(false);
     }
@@ -83,7 +102,11 @@ export function SignInScreen() {
     <ScrollView
       className="flex-1 bg-bg"
       keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{ flexGrow: 1, paddingTop: insets.top + 8, paddingBottom: insets.bottom + 24 }}
+      contentContainerStyle={{
+        flexGrow: 1,
+        paddingTop: insets.top + 8,
+        paddingBottom: insets.bottom + 24,
+      }}
     >
       <View className="px-3 h-[48px] flex-row items-center">
         {navigation.canGoBack() && (
@@ -147,19 +170,41 @@ export function SignInScreen() {
         </View>
 
         {error && (
-          <Text className="text-red text-bm mt-3" accessibilityLiveRegion="polite">
+          <Text
+            className="text-red text-bm mt-3"
+            accessibilityLiveRegion="polite"
+          >
             {error}
           </Text>
         )}
 
-        <Button variant="accent" size="lg" onPress={() => submit()} disabled={busy} className="mt-6" accessibilityLabel={isSignUp ? 'Create account' : 'Sign in'}>
-          {busy ? <ActivityIndicator color="#000000" /> : isSignUp ? 'Create account' : 'Sign in'}
+        <Button
+          variant="accent"
+          size="lg"
+          onPress={() => submit()}
+          disabled={busy}
+          className="mt-6"
+          accessibilityLabel={isSignUp ? 'Create account' : 'Sign in'}
+        >
+          {busy ? (
+            <ActivityIndicator color="#000000" />
+          ) : isSignUp ? (
+            'Create account'
+          ) : (
+            'Sign in'
+          )}
         </Button>
 
-        <Pressable onPress={switchMode} className="mt-6 py-2 items-center" accessibilityRole="button">
+        <Pressable
+          onPress={switchMode}
+          className="mt-6 py-2 items-center"
+          accessibilityRole="button"
+        >
           <Text className="text-t2 text-bm">
             {isSignUp ? 'Already have an account? ' : 'New to Sonare? '}
-            <Text className="text-acc font-medium">{isSignUp ? 'Sign in' : 'Create an account'}</Text>
+            <Text className="text-acc font-medium">
+              {isSignUp ? 'Sign in' : 'Create an account'}
+            </Text>
           </Text>
         </Pressable>
       </View>

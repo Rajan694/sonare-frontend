@@ -1,90 +1,90 @@
-import React, { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { CAPS } from '../lib/caps'
-import { useModeStore } from '../store/modeStore'
-import { usePlayerStore } from '../store/playerStore'
-import { usePlaylist, usePlaylistTracks, useAuth, notifyPlaylistsChanged } from '../data/hooks'
-import { api } from '../data/api'
-import { showToast } from '../store/toastStore'
-import { openTrackMenu } from '../components/music/TrackMenu'
-import DownloadButton from '../components/music/DownloadButton'
-import SongRow, { SongTableHeader } from '../components/music/SongRow'
-import Artwork from '../components/music/Artwork'
-import Button, { IconButton } from '../components/ui/Button'
-import Icon from '../components/ui/Icon'
-import { EmptyState } from '../components/ui/EmptyState'
-import { staggerContainer } from '../lib/motion'
-import { cn, formatDuration } from '../lib/utils'
-import type { Track } from '../data/types'
+import React, { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { CAPS } from '../lib/caps';
+import { useModeStore } from '../store/modeStore';
+import { usePlayerStore } from '../store/playerStore';
+import { usePlaylist, usePlaylistTracks, useAuth, notifyPlaylistsChanged } from '../data/hooks';
+import { api } from '../data/api';
+import { showToast } from '../store/toastStore';
+import { openTrackMenu } from '../components/music/TrackMenu';
+import DownloadButton from '../components/music/DownloadButton';
+import SongRow, { SongTableHeader } from '../components/music/SongRow';
+import Artwork from '../components/music/Artwork';
+import Button, { IconButton } from '../components/ui/Button';
+import Icon from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { staggerContainer } from '../lib/motion';
+import { cn, formatDuration } from '../lib/utils';
+import type { Track } from '../data/types';
 
 export default function Playlist() {
-  const { id: rawId } = useParams()
-  const { mode } = useModeStore()
-  const isOffline = mode === 'offline'
-  const { currentTrack, playTrack } = usePlayerStore()
-  const navigate = useNavigate()
-  const { user } = useAuth()
+  const { id: rawId } = useParams();
+  const { mode } = useModeStore();
+  const isOffline = mode === 'offline';
+  const { currentTrack, playTrack } = usePlayerStore();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const id = rawId || ''
-  const { data: playlist, loading: playlistLoading } = usePlaylist(id)
-  const { data: tracksData, loading: tracksLoading, refetch: refetchTracks } = usePlaylistTracks(id)
+  const id = rawId || '';
+  const { data: playlist, loading: playlistLoading } = usePlaylist(id);
+  const { data: tracksData, loading: tracksLoading, refetch: refetchTracks } = usePlaylistTracks(id);
 
-  const isOwn = playlist?.kind === 'local' || (!!user && playlist?.kind === 'synced')
+  const isOwn = playlist?.kind === 'local' || (!!user && playlist?.kind === 'synced');
 
-  const [dragFrom, setDragFrom] = useState<number | null>(null)
-  const [dropAt, setDropAt] = useState<number | null>(null)
-  const [localTracks, setLocalTracks] = useState<Track[] | null>(null)
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [dropAt, setDropAt] = useState<number | null>(null);
+  const [localTracks, setLocalTracks] = useState<Track[] | null>(null);
 
-  const tracks = localTracks ?? tracksData?.items ?? []
+  const tracks = localTracks ?? tracksData?.items ?? [];
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      playTrack(tracks[0], tracks)
+      playTrack(tracks[0], tracks);
     }
-  }
+  };
 
   const handleShuffle = () => {
     if (tracks.length > 0) {
-      const shuffled = [...tracks].sort(() => Math.random() - 0.5)
-      playTrack(shuffled[0], shuffled)
+      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+      playTrack(shuffled[0], shuffled);
     }
-  }
+  };
 
   async function removeAt(index: number) {
-    if (!id || !isOwn) return
-    const removed = tracks[index]
-    if (!removed) return
-    const nextTracks = tracks.filter((_, i) => i !== index)
-    setLocalTracks(nextTracks)
+    if (!id || !isOwn) return;
+    const removed = tracks[index];
+    if (!removed) return;
+    const nextTracks = tracks.filter((_, i) => i !== index);
+    setLocalTracks(nextTracks);
     try {
-      await api.removeTracksFromPlaylist(id, { index })
-      notifyPlaylistsChanged()
+      await api.removeTracksFromPlaylist(id, { index });
+      notifyPlaylistsChanged();
       showToast({
         title: 'Removed from playlist',
         description: removed.title,
         icon: 'trash',
-      })
+      });
     } catch {
-      setLocalTracks(null)
-      refetchTracks()
-      showToast({ title: 'Could not remove song', icon: 'info' })
+      setLocalTracks(null);
+      refetchTracks();
+      showToast({ title: 'Could not remove song', icon: 'info' });
     }
   }
 
   async function reorder(from: number, to: number) {
-    if (!id || !isOwn || from === to) return
-    const nextTracks = [...tracks]
-    const [moved] = nextTracks.splice(from, 1)
-    nextTracks.splice(to, 0, moved)
-    setLocalTracks(nextTracks)
+    if (!id || !isOwn || from === to) return;
+    const nextTracks = [...tracks];
+    const [moved] = nextTracks.splice(from, 1);
+    nextTracks.splice(to, 0, moved);
+    setLocalTracks(nextTracks);
     try {
-      await api.reorderPlaylistTracks(id, { from, to })
-      notifyPlaylistsChanged()
+      await api.reorderPlaylistTracks(id, { from, to });
+      notifyPlaylistsChanged();
     } catch {
-      setLocalTracks(null)
-      refetchTracks()
-      showToast({ title: 'Could not reorder songs', icon: 'info' })
+      setLocalTracks(null);
+      refetchTracks();
+      showToast({ title: 'Could not reorder songs', icon: 'info' });
     }
   }
 
@@ -100,24 +100,20 @@ export default function Playlist() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (!playlist) {
     return (
       <div className="flex items-center justify-center h-full p-8">
-        <EmptyState
-          icon="playlist"
-          title="Playlist not found"
-          description="Could not load playlist details"
-        />
+        <EmptyState icon="playlist" title="Playlist not found" description="Could not load playlist details" />
       </div>
-    )
+    );
   }
 
-  const displayName = playlist.name
-  const totalDurationMs = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0)
-  const durationStr = totalDurationMs > 0 ? formatDuration(totalDurationMs) : null
+  const displayName = playlist.name;
+  const totalDurationMs = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0);
+  const durationStr = totalDurationMs > 0 ? formatDuration(totalDurationMs) : null;
 
   return (
     <div className="@container flex flex-col overflow-auto h-full relative">
@@ -163,7 +159,9 @@ export default function Playlist() {
               </span>
             )}
             {CAPS.offlineDownloads && playlist?.downloadedCount !== undefined && playlist.downloadedCount > 0 && (
-              <span className="badge bg-neutral">{playlist.downloadedCount} of {tracks.length} downloaded</span>
+              <span className="badge bg-neutral">
+                {playlist.downloadedCount} of {tracks.length} downloaded
+              </span>
             )}
           </div>
 
@@ -176,13 +174,7 @@ export default function Playlist() {
             >
               <Icon name="play" size={24} />
             </button>
-            <Button
-              variant="out"
-              size="lg"
-              icon="shuffle"
-              onClick={handleShuffle}
-              disabled={tracks.length === 0}
-            >
+            <Button variant="out" size="lg" icon="shuffle" onClick={handleShuffle} disabled={tracks.length === 0}>
               Shuffle
             </Button>
             <DownloadButton tracks={tracks} offline={isOffline} />
@@ -202,7 +194,7 @@ export default function Playlist() {
               size={44}
               bordered
               disabled={tracks.length === 0 && !isOwn}
-              onClick={e => openTrackMenu(tracks, e, isOwn ? { id, name: displayName } : undefined)}
+              onClick={(e) => openTrackMenu(tracks, e, isOwn ? { id, name: displayName } : undefined)}
             />
           </div>
         </div>
@@ -218,18 +210,9 @@ export default function Playlist() {
             ))}
           </div>
         ) : tracks.length === 0 ? (
-          <EmptyState
-            icon="music"
-            title="Empty playlist"
-            description="Add tracks to this playlist to get started"
-          />
+          <EmptyState icon="music" title="Empty playlist" description="Add tracks to this playlist to get started" />
         ) : (
-          <motion.div
-            className="flex flex-col gap-0.5"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
+          <motion.div className="flex flex-col gap-0.5" variants={staggerContainer} initial="hidden" animate="visible">
             {tracks.map((track, i) => {
               const row = (
                 <SongRow
@@ -240,35 +223,35 @@ export default function Playlist() {
                   onClick={() => playTrack(track, tracks)}
                   onRemove={isOwn ? () => void removeAt(i) : undefined}
                 />
-              )
-              if (!isOwn) return row
+              );
+              if (!isOwn) return row;
               return (
                 <div
                   key={track.id}
                   draggable
-                  onDragStart={e => {
-                    e.dataTransfer.effectAllowed = 'move'
-                    setDragFrom(i)
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDragFrom(i);
                   }}
-                  onDragOver={e => {
-                    if (dragFrom === null) return
-                    e.preventDefault()
-                    setDropAt(i)
+                  onDragOver={(e) => {
+                    if (dragFrom === null) return;
+                    e.preventDefault();
+                    setDropAt(i);
                   }}
-                  onDrop={e => {
-                    e.preventDefault()
-                    if (dragFrom !== null) void reorder(dragFrom, i)
-                    setDragFrom(null)
-                    setDropAt(null)
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (dragFrom !== null) void reorder(dragFrom, i);
+                    setDragFrom(null);
+                    setDropAt(null);
                   }}
                   onDragEnd={() => {
-                    setDragFrom(null)
-                    setDropAt(null)
+                    setDragFrom(null);
+                    setDropAt(null);
                   }}
                   className={cn(
                     'flex items-center gap-1 rounded border-t-2 border-transparent',
                     dragFrom === i && 'opacity-40',
-                    dropAt === i && dragFrom !== i && 'border-acc'
+                    dropAt === i && dragFrom !== i && 'border-acc',
                   )}
                 >
                   <span className="flex-none text-t4 cursor-grab px-1 select-none" aria-hidden>
@@ -284,11 +267,11 @@ export default function Playlist() {
                     />
                   </div>
                 </div>
-              )
+              );
             })}
           </motion.div>
         )}
       </div>
     </div>
-  )
+  );
 }

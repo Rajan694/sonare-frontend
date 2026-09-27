@@ -1,9 +1,9 @@
-import { isNeutralino } from '../neutralino'
+import { isNeutralino } from '../neutralino';
 
 // Native features need the Neutralino *window*. `./runFE.sh web` also runs Neutralino
 // (`neu run -- --mode=browser`), which injects NL_* globals but blocks filesystem.* —
 // that is the web build, so it gets the web capability set.
-const native = isNeutralino() && window.NL_MODE === 'window'
+const native = isNeutralino() && window.NL_MODE === 'window';
 
 export const CAPS = {
   localLibrary: native,
@@ -15,7 +15,7 @@ export const CAPS = {
   nativeEq: native,
   /** The /admin page is part of the web build only. */
   admin: !native,
-} as const
+} as const;
 
 /** Which app this is, sent as X-Sonare-Client for the admin analytics. */
-export const CLIENT: 'web' | 'linux' = native ? 'linux' : 'web'
+export const CLIENT: 'web' | 'linux' = native ? 'linux' : 'web';

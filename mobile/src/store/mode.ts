@@ -12,29 +12,36 @@ interface ModeStore {
   toastVisible: boolean;
   toastInfo: ModeToastInfo | null;
   userChangedMode: boolean;
-  setMode: (mode: Mode, reason?: { title: string; description: string }) => void;
+  setMode: (
+    mode: Mode,
+    reason?: { title: string; description: string },
+  ) => void;
   toggleMode: () => void;
   hideToast: () => void;
 }
 
-export const useModeStore = create<ModeStore>((set) => ({
+export const useModeStore = create<ModeStore>(set => ({
   mode: 'online',
   toastVisible: false,
   toastInfo: null,
   userChangedMode: false,
   setMode: (mode, reason) =>
-    set((state) => {
+    set(state => {
       // If called with no reason, it is considered a manual user change
       const isUserAction = !reason;
       return {
         mode,
         toastVisible: true,
-        toastInfo: { mode, title: reason?.title, description: reason?.description },
+        toastInfo: {
+          mode,
+          title: reason?.title,
+          description: reason?.description,
+        },
         userChangedMode: isUserAction ? true : state.userChangedMode,
       };
     }),
   toggleMode: () =>
-    set((state) => ({
+    set(state => ({
       mode: state.mode === 'online' ? 'offline' : 'online',
       toastVisible: true,
       toastInfo: null,

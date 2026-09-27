@@ -29,13 +29,13 @@ export function Switch({
         value && variant === 'default' && 'bg-acc',
         value && variant === 'gold' && 'bg-gold',
         !value && 'bg-ln3',
-        disabled && 'opacity-40'
+        disabled && 'opacity-40',
       )}
     >
       <View
         className={cn(
           'w-[22px] h-[22px] rounded-full bg-white',
-          value ? 'ml-auto' : 'mr-auto'
+          value ? 'ml-auto' : 'mr-auto',
         )}
       />
     </Pressable>

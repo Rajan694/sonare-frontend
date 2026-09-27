@@ -1,15 +1,14 @@
-import React, { useEffect, useState } from 'react'
-import Button from '../components/ui/Button'
-import { cn } from '../lib/utils'
-import { adminApi, AdminApiError, type LatestCommit, type Setting } from './api'
-import { fmtDateTime, Notice, PageHeader, Panel, useLoad } from './ui'
-import ExtractorCommitHelp from './ExtractorCommitHelp'
+import React, { useEffect, useState } from 'react';
+import Button from '../components/ui/Button';
+import { cn } from '../lib/utils';
+import { adminApi, AdminApiError, type LatestCommit, type Setting } from './api';
+import { fmtDateTime, Notice, PageHeader, Panel, useLoad } from './ui';
+import ExtractorCommitHelp from './ExtractorCommitHelp';
 
 export default function Configuration() {
-  const { data, setData, error } = useLoad(() => adminApi.config(), [])
+  const { data, setData, error } = useLoad(() => adminApi.config(), []);
 
-  const replace = (s: Setting) =>
-    setData(d => d && { settings: d.settings.map(x => (x.key === s.key ? s : x)) })
+  const replace = (s: Setting) => setData((d) => d && { settings: d.settings.map((x) => (x.key === s.key ? s : x)) });
 
   return (
     <>
@@ -17,9 +16,15 @@ export default function Configuration() {
         title="Configuration"
         subtitle="System-wide settings, stored in the system_configuration table. Leave one empty to use its default."
       />
-      {error && <div className="mb-4"><Notice>{error}</Notice></div>}
+      {error && (
+        <div className="mb-4">
+          <Notice>{error}</Notice>
+        </div>
+      )}
       <div className="flex flex-col gap-4 max-w-[768px]">
-        {data?.settings.map(s => <SettingCard key={s.key} setting={s} onSaved={replace} />)}
+        {data?.settings.map((s) => (
+          <SettingCard key={s.key} setting={s} onSaved={replace} />
+        ))}
         {data && (
           <p className="text-body-s text-t3">
             Settings marked <span className="text-gold">Next Piped deploy</span> are read by Piped only when it is built
@@ -31,69 +36,71 @@ export default function Configuration() {
         )}
       </div>
     </>
-  )
+  );
 }
 
 function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: Setting) => void }) {
-  const [draft, setDraft] = useState(s.value ?? '')
-  const [saving, setSaving] = useState(false)
-  const [problem, setProblem] = useState<{ message: string; canForce: boolean } | null>(null)
-  const [saved, setSaved] = useState(false)
-  const [latest, setLatest] = useState<LatestCommit | null>(null)
-  const [findingLatest, setFindingLatest] = useState(false)
+  const [draft, setDraft] = useState(s.value ?? '');
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<{ message: string; canForce: boolean } | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [latest, setLatest] = useState<LatestCommit | null>(null);
+  const [findingLatest, setFindingLatest] = useState(false);
 
-  useEffect(() => setDraft(s.value ?? ''), [s.value])
+  useEffect(() => setDraft(s.value ?? ''), [s.value]);
 
-  const next = draft.trim() === '' ? null : draft.trim()
-  const dirty = next !== s.value
-  const live = s.applies === 'live'
+  const next = draft.trim() === '' ? null : draft.trim();
+  const dirty = next !== s.value;
+  const live = s.applies === 'live';
 
   /** Puts the newest dev commit in the field; saving is still up to the admin. */
   async function fillLatest() {
-    setFindingLatest(true)
-    setProblem(null)
-    setSaved(false)
+    setFindingLatest(true);
+    setProblem(null);
+    setSaved(false);
     try {
-      const commit = await adminApi.latestExtractorCommit()
-      setLatest(commit)
-      setDraft(commit.sha)
+      const commit = await adminApi.latestExtractorCommit();
+      setLatest(commit);
+      setDraft(commit.sha);
     } catch (e) {
-      setProblem({ message: (e as Error).message, canForce: false })
+      setProblem({ message: (e as Error).message, canForce: false });
     } finally {
-      setFindingLatest(false)
+      setFindingLatest(false);
     }
   }
 
   async function save(value: string | null, force = false) {
-    setSaving(true)
-    setProblem(null)
-    setSaved(false)
+    setSaving(true);
+    setProblem(null);
+    setSaved(false);
     try {
-      onSaved(await adminApi.saveSetting(s.key, value, force))
-      setSaved(true)
+      onSaved(await adminApi.saveSetting(s.key, value, force));
+      setSaved(true);
     } catch (e) {
-      const err = e as AdminApiError
-      setProblem({ message: err.message, canForce: err.code === 'CHECK_FAILED' })
+      const err = e as AdminApiError;
+      setProblem({ message: err.message, canForce: err.code === 'CHECK_FAILED' });
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
   }
 
-  let inUse: React.ReactNode
+  let inUse: React.ReactNode;
   if (s.effective) {
     inUse = live
-      ? (s.value ? 'saved here' : `from ${s.fallbackSource}`)
-      : `in ${s.fallbackSource.replace(/^.* in /, '')}`
+      ? s.value
+        ? 'saved here'
+        : `from ${s.fallbackSource}`
+      : `in ${s.fallbackSource.replace(/^.* in /, '')}`;
   } else {
-    inUse = live ? 'not set' : 'config.properties not found - run ./installPiped.sh'
+    inUse = live ? 'not set' : 'config.properties not found - run ./installPiped.sh';
   }
 
   return (
     <Panel>
       <form
-        onSubmit={e => {
-          e.preventDefault()
-          if (dirty) void save(next)
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (dirty) void save(next);
         }}
         className="flex flex-col gap-4"
       >
@@ -119,10 +126,10 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
             <span className="text-label-l text-t2">Value</span>
             <input
               value={draft}
-              onChange={e => {
-                setDraft(e.target.value)
-                setProblem(null)
-                setSaved(false)
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setProblem(null);
+                setSaved(false);
               }}
               placeholder={s.fallback ?? ''}
               spellCheck={false}
@@ -136,9 +143,13 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
                 {findingLatest ? 'Finding…' : 'Fill in latest'}
               </Button>
             )}
-            <Button type="submit" variant="acc" disabled={!dirty || saving}>{saving ? 'Saving…' : 'Save'}</Button>
+            <Button type="submit" variant="acc" disabled={!dirty || saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
             {s.value !== null && (
-              <Button type="button" variant="out" disabled={saving} onClick={() => void save(null)}>Use default</Button>
+              <Button type="button" variant="out" disabled={saving} onClick={() => void save(null)}>
+                Use default
+              </Button>
             )}
           </div>
         </div>
@@ -150,9 +161,15 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
             ) : (
               <>
                 Filled in the newest commit on dev
-                {latest.message && <>: <span className="text-t1">{latest.message}</span></>}
+                {latest.message && (
+                  <>
+                    : <span className="text-t1">{latest.message}</span>
+                  </>
+                )}
                 {latest.date && <span className="text-t3"> ({fmtDateTime(latest.date)})</span>}.{' '}
-                <a href={latest.url} target="_blank" rel="noreferrer" className="text-acc hover:underline">View on GitHub</a>
+                <a href={latest.url} target="_blank" rel="noreferrer" className="text-acc hover:underline">
+                  View on GitHub
+                </a>
                 , then Save to use it.
               </>
             )}
@@ -183,7 +200,11 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
         )}
         {saved && !s.pending && !problem && (
           <p role="status" className="text-label-m text-acc">
-            {live ? 'Saved. The backend is using it now.' : s.value === null ? 'Saved. Piped keeps its current value.' : 'Saved.'}
+            {live
+              ? 'Saved. The backend is using it now.'
+              : s.value === null
+                ? 'Saved. Piped keeps its current value.'
+                : 'Saved.'}
           </p>
         )}
 
@@ -194,5 +215,5 @@ function SettingCard({ setting: s, onSaved }: { setting: Setting; onSaved: (s: S
         </p>
       </form>
     </Panel>
-  )
+  );
 }

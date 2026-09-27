@@ -14,10 +14,13 @@ export function SourceGlyph({ source, size = 18 }: SourceGlyphProps) {
   return (
     <View
       className="items-center justify-center rounded-sm"
-      style={{ 
-        width: size, 
-        height: size, 
-        backgroundColor: source === 'local' ? 'rgba(255, 194, 77, 0.15)' : 'rgba(0, 226, 138, 0.15)' 
+      style={{
+        width: size,
+        height: size,
+        backgroundColor:
+          source === 'local'
+            ? 'rgba(255, 194, 77, 0.15)'
+            : 'rgba(0, 226, 138, 0.15)',
       }}
     >
       {source === 'local' ? (

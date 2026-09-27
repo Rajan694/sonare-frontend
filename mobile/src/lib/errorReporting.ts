@@ -24,7 +24,11 @@ function toError(value: unknown): Error {
 
 type ErrorKind = 'uncaught' | 'unhandledRejection';
 
-export function reportError(value: unknown, fatal = false, kind: ErrorKind = 'uncaught'): void {
+export function reportError(
+  value: unknown,
+  fatal = false,
+  kind: ErrorKind = 'uncaught',
+): void {
   const err = toError(value);
   // Network failures are routine here (offline mode), not bugs.
   if (/^Network request (failed|timed out)$/.test(err.message)) return;
@@ -39,9 +43,16 @@ export function reportError(value: unknown, fatal = false, kind: ErrorKind = 'un
     body: JSON.stringify({
       source: 'mobile',
       level: 'error',
-      message: `${err.name && err.name !== 'Error' ? `${err.name}: ` : ''}${err.message || '(no message)'}`.slice(0, 2000),
+      message: `${err.name && err.name !== 'Error' ? `${err.name}: ` : ''}${
+        err.message || '(no message)'
+      }`.slice(0, 2000),
       stack: err.stack?.slice(0, 16_000),
-      context: { os: Platform.OS, osVersion: String(Platform.Version), fatal, kind },
+      context: {
+        os: Platform.OS,
+        osVersion: String(Platform.Version),
+        fatal,
+        kind,
+      },
     }),
     timeoutMs: 10_000,
   }).catch(() => {});
@@ -70,7 +81,8 @@ interface HermesInternalLike {
  * dev still hands each rejection to its options afterwards.
  */
 function trackRejections(): void {
-  const hermes = (globalThis as { HermesInternal?: HermesInternalLike }).HermesInternal;
+  const hermes = (globalThis as { HermesInternal?: HermesInternalLike })
+    .HermesInternal;
   // hermesEnabled=true (android/gradle.properties); JSC's promise polyfill isn't covered.
   if (!hermes?.hasPromise?.() || !hermes.enablePromiseRejectionTracker) return;
 
@@ -79,7 +91,8 @@ function trackRejections(): void {
     try {
       // No public export for React Native's default tracker options.
       // eslint-disable-next-line @react-native/no-deep-imports
-      devOptions = require('react-native/Libraries/promiseRejectionTrackingOptions').default;
+      devOptions =
+        require('react-native/Libraries/promiseRejectionTrackingOptions').default;
     } catch {
       // Moved in a newer React Native: reports still go out, only the dev warning is lost.
     }

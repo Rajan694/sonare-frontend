@@ -1,17 +1,17 @@
-import React, { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom'
-import { Activity, AlertTriangle, KeyRound, LayoutDashboard, LogOut, SlidersHorizontal } from 'lucide-react'
-import { BrandMark } from '../components/ui/BrandMark'
-import Button from '../components/ui/Button'
-import { cn } from '../lib/utils'
-import { adminApi, isSignedIn, onSessionChange, signOut, type AdminAccount } from './api'
-import { Notice, TextInput } from './ui'
-import Overview from './Overview'
-import ApiMetrics from './ApiMetrics'
-import ErrorLogs from './ErrorLogs'
-import Configuration from './Configuration'
-import Account from './Account'
-import '../sonare.css'
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
+import { Activity, AlertTriangle, KeyRound, LayoutDashboard, LogOut, SlidersHorizontal } from 'lucide-react';
+import { BrandMark } from '../components/ui/BrandMark';
+import Button from '../components/ui/Button';
+import { cn } from '../lib/utils';
+import { adminApi, isSignedIn, onSessionChange, signOut, type AdminAccount } from './api';
+import { Notice, TextInput } from './ui';
+import Overview from './Overview';
+import ApiMetrics from './ApiMetrics';
+import ErrorLogs from './ErrorLogs';
+import Configuration from './Configuration';
+import Account from './Account';
+import '../sonare.css';
 
 // /admin on the web build (main.tsx never loads this in the Linux window). Not linked from
 // the app; it asks for the admin username and password.
@@ -22,31 +22,31 @@ const NAV = [
   { to: '/admin/errors', label: 'Errors', icon: AlertTriangle },
   { to: '/admin/config', label: 'Configuration', icon: SlidersHorizontal },
   { to: '/admin/account', label: 'Account', icon: KeyRound },
-]
+];
 
 export default function AdminApp() {
-  const [signedIn, setSignedIn] = useState(isSignedIn())
-  const [account, setAccount] = useState<AdminAccount | null>(null)
+  const [signedIn, setSignedIn] = useState(isSignedIn());
+  const [account, setAccount] = useState<AdminAccount | null>(null);
 
   useEffect(() => {
-    document.title = 'Sonare admin'
-    const robots = document.createElement('meta')
-    robots.name = 'robots'
-    robots.content = 'noindex, nofollow'
-    document.head.appendChild(robots)
-    return () => robots.remove()
-  }, [])
+    document.title = 'Sonare admin';
+    const robots = document.createElement('meta');
+    robots.name = 'robots';
+    robots.content = 'noindex, nofollow';
+    document.head.appendChild(robots);
+    return () => robots.remove();
+  }, []);
 
-  useEffect(() => onSessionChange(setSignedIn), [])
+  useEffect(() => onSessionChange(setSignedIn), []);
 
   // A token from earlier in this tab may have expired; /me finds out (a 401 signs out).
   useEffect(() => {
     if (!signedIn) {
-      setAccount(null)
-      return
+      setAccount(null);
+      return;
     }
-    adminApi.me().then(setAccount, () => {})
-  }, [signedIn])
+    adminApi.me().then(setAccount, () => {});
+  }, [signedIn]);
 
   return (
     <div className="min-h-screen bg-bg text-t1 font-sans">
@@ -67,21 +67,26 @@ export default function AdminApp() {
         <SignIn onSignedIn={setAccount} />
       )}
     </div>
-  )
+  );
 }
 
 function Shell({ account }: { account: AdminAccount | null }) {
   const link = ({ isActive }: { isActive: boolean }) =>
-    cn('sitem hover:bg-s2 hover:text-t1 flex-none', isActive && 'bg-s3 text-t1')
+    cn('sitem hover:bg-s2 hover:text-t1 flex-none', isActive && 'bg-s3 text-t1');
 
   return (
     <div className="lg:flex">
       <aside className="lg:w-60 lg:h-screen lg:sticky lg:top-0 lg:border-r border-b lg:border-b-0 border-ln bg-s0 flex lg:flex-col">
         <div className="hidden lg:flex items-center gap-2.5 px-5 h-16">
           <BrandMark size={26} />
-          <span className="text-title-m">Sonare <span className="text-t3 font-normal">admin</span></span>
+          <span className="text-title-m">
+            Sonare <span className="text-t3 font-normal">admin</span>
+          </span>
         </div>
-        <nav className="flex lg:flex-col gap-1 px-3 py-2 lg:py-0 overflow-x-auto no-scrollbar flex-1" aria-label="Admin sections">
+        <nav
+          className="flex lg:flex-col gap-1 px-3 py-2 lg:py-0 overflow-x-auto no-scrollbar flex-1"
+          aria-label="Admin sections"
+        >
           {NAV.map(({ to, label, icon: Glyph, end }) => (
             <NavLink key={to} to={to} end={end} className={link}>
               <Glyph size={17} aria-hidden /> {label}
@@ -103,39 +108,44 @@ function Shell({ account }: { account: AdminAccount | null }) {
           <div className="mb-6">
             <Notice tone="warn">
               This account still has its initial password.{' '}
-              <NavLink to="/admin/account" className="underline font-semibold">Change it</NavLink>
+              <NavLink to="/admin/account" className="underline font-semibold">
+                Change it
+              </NavLink>
             </Notice>
           </div>
         )}
         <Outlet />
       </main>
     </div>
-  )
+  );
 }
 
 function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(null)
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
     try {
-      onSignedIn(await adminApi.login(username.trim(), password))
+      onSignedIn(await adminApi.login(username.trim(), password));
     } catch (err) {
-      setError((err as Error).message)
-      setPassword('')
+      setError((err as Error).message);
+      setPassword('');
     } finally {
-      setBusy(false)
+      setBusy(false);
     }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <form onSubmit={submit} className="w-full max-w-[384px] bg-s1 border border-ln rounded-xl p-8 flex flex-col gap-5 shadow-e3">
+      <form
+        onSubmit={submit}
+        className="w-full max-w-[384px] bg-s1 border border-ln rounded-xl p-8 flex flex-col gap-5 shadow-e3"
+      >
         <div className="flex items-center gap-3">
           <BrandMark size={32} />
           <div>
@@ -144,12 +154,21 @@ function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
           </div>
         </div>
         <TextInput
-          label="Username" autoComplete="username" autoFocus required spellCheck={false}
-          value={username} onChange={e => setUsername(e.target.value)}
+          label="Username"
+          autoComplete="username"
+          autoFocus
+          required
+          spellCheck={false}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <TextInput
-          label="Password" type="password" autoComplete="current-password" required
-          value={password} onChange={e => setPassword(e.target.value)}
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
         />
         {error && <Notice>{error}</Notice>}
         <Button type="submit" variant="acc" size="lg" disabled={busy || !username.trim() || !password}>
@@ -157,5 +176,5 @@ function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
         </Button>
       </form>
     </div>
-  )
+  );
 }

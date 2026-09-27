@@ -9,14 +9,19 @@ interface ScreenProps {
   contentContainerClassName?: string;
 }
 
-export function Screen({ children, scrollable = true, className, contentContainerClassName }: ScreenProps) {
+export function Screen({
+  children,
+  scrollable = true,
+  className,
+  contentContainerClassName,
+}: ScreenProps) {
   if (scrollable) {
     return (
       <View className="flex-1 bg-bg">
         {/* @ts-ignore */}
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <ScrollView 
-          className={cn('flex-1', className)} 
+        <ScrollView
+          className={cn('flex-1', className)}
           contentContainerClassName={cn('flex-grow', contentContainerClassName)}
         >
           {children}
@@ -29,9 +34,7 @@ export function Screen({ children, scrollable = true, className, contentContaine
     <View className="flex-1 bg-bg">
       {/* @ts-ignore */}
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
-      <View className={cn('flex-1', className)}>
-        {children}
-      </View>
+      <View className={cn('flex-1', className)}>{children}</View>
     </View>
   );
 }

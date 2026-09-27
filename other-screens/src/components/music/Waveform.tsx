@@ -1,20 +1,22 @@
-import React, { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { cn, formatDuration, generatePeaks } from '../../lib/utils'
+import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { cn, formatDuration, generatePeaks } from '../../lib/utils';
 
-/** `.wave` bars are 2px wide with a 2px gap (sonare.css); the playhead bar is 1px wider. */
-const BAR_PITCH_PX = 4
+/** `.wave` bars have a 2px gap (sonare.css); the playhead bar is 1px wider than the rest. */
+const BAR_GAP_PX = 2;
+/** Narrowest a bar may get before we draw fewer of them. */
+const MIN_BAR_PX = 2;
 
 interface WaveformProps {
-  peaks?: number[]
+  peaks?: number[];
   /** The most bars to draw; fewer are drawn when the rail is too narrow to fit them. */
-  barCount?: number
-  positionRatio?: number
+  barCount?: number;
+  positionRatio?: number;
   /** Used for the hover / scrub timecode. */
-  durationMs?: number
-  offline?: boolean
-  className?: string
+  durationMs?: number;
+  offline?: boolean;
+  className?: string;
   /** Called once on release with the chosen fraction of the track (0..1). */
-  onSeek?: (ratio: number) => void
+  onSeek?: (ratio: number) => void;
 }
 
 export default function Waveform({
@@ -26,80 +28,82 @@ export default function Waveform({
   className,
   onSeek,
 }: WaveformProps) {
-  const ref = useRef<HTMLSpanElement>(null)
-  // Bars have a fixed width, so a rail narrower than barCount of them would spill its
-  // bars over whatever sits next to it (the bottom player's duration label). Draw only
-  // as many as fit; measured before paint so the overflow never shows.
-  const [fitCount, setFitCount] = useState(barCount)
+  const ref = useRef<HTMLSpanElement>(null);
+  // Bars are sized to fill the rail: availableWidth / count. A rail too narrow for barCount
+  // bars of MIN_BAR_PX draws fewer, so they never spill over whatever sits next to it (the
+  // bottom player's duration label). Measured before paint so the overflow never shows.
+  const [railWidth, setRailWidth] = useState(0);
   useLayoutEffect(() => {
-    const el = ref.current
-    if (!el) return
-    // n bars take n * pitch - 1px (no trailing gap, one wider playhead bar).
-    const measure = () => setFitCount(Math.max(1, Math.floor((el.getBoundingClientRect().width + 1) / BAR_PITCH_PX)))
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-  const count = Math.min(barCount, fitCount)
+    const el = ref.current;
+    if (!el) return;
+    const measure = () => setRailWidth(el.getBoundingClientRect().width);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  // n bars take n * (bar + gap) - gap + 1px for the wider playhead bar.
+  const fitCount = Math.max(1, Math.floor((railWidth - 1 + BAR_GAP_PX) / (MIN_BAR_PX + BAR_GAP_PX)));
+  const count = railWidth > 0 ? Math.min(barCount, fitCount) : barCount;
+  const barWidth = railWidth > 0 ? (railWidth - 1 - BAR_GAP_PX * (count - 1)) / count : MIN_BAR_PX;
 
   // Bars as a fraction of the rail height. Server peaks arrive normalised to 0..1 and the
   // generated placeholder is in pixels, so scale whichever we have by its own maximum.
   const bars = useMemo(() => {
-    let raw: number[] = peaks && peaks.length > 0 ? peaks : generatePeaks(count)
+    let raw: number[] = peaks && peaks.length > 0 ? peaks : generatePeaks(count);
     if (raw.length !== count) {
-      const src = raw
+      const src = raw;
       raw = Array.from({ length: count }, (_, i) => {
-        const idx = (i / count) * src.length
-        const lo = Math.floor(idx)
-        const hi = Math.min(lo + 1, src.length - 1)
-        return src[lo] * (1 - (idx - lo)) + src[hi] * (idx - lo)
-      })
+        const idx = (i / count) * src.length;
+        const lo = Math.floor(idx);
+        const hi = Math.min(lo + 1, src.length - 1);
+        return src[lo] * (1 - (idx - lo)) + src[hi] * (idx - lo);
+      });
     }
-    const max = Math.max(...raw) || 1
-    return raw.map(v => Math.max(0.12, v / max))
-  }, [peaks, count])
+    const max = Math.max(...raw) || 1;
+    return raw.map((v) => Math.max(0.12, v / max));
+  }, [peaks, count]);
 
-  const [hoverRatio, setHoverRatio] = useState<number | null>(null)
-  const [scrubRatio, setScrubRatio] = useState<number | null>(null)
+  const [hoverRatio, setHoverRatio] = useState<number | null>(null);
+  const [scrubRatio, setScrubRatio] = useState<number | null>(null);
 
-  const shownRatio = scrubRatio ?? positionRatio
-  const playheadIdx = Math.floor(Math.max(0, Math.min(1, shownRatio)) * count)
+  const shownRatio = scrubRatio ?? positionRatio;
+  const playheadIdx = Math.floor(Math.max(0, Math.min(1, shownRatio)) * count);
 
   function ratioAt(e: React.PointerEvent) {
-    const rect = ref.current!.getBoundingClientRect()
-    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    const rect = ref.current!.getBoundingClientRect();
+    return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
   }
 
   function onPointerDown(e: React.PointerEvent<HTMLSpanElement>) {
-    if (!onSeek || e.button !== 0) return
-    e.currentTarget.setPointerCapture(e.pointerId)
-    setScrubRatio(ratioAt(e))
+    if (!onSeek || e.button !== 0) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setScrubRatio(ratioAt(e));
   }
 
   function onPointerMove(e: React.PointerEvent<HTMLSpanElement>) {
-    if (!onSeek) return
-    const r = ratioAt(e)
-    setHoverRatio(r)
-    if (scrubRatio !== null) setScrubRatio(r)
+    if (!onSeek) return;
+    const r = ratioAt(e);
+    setHoverRatio(r);
+    if (scrubRatio !== null) setScrubRatio(r);
   }
 
   function onPointerUp(e: React.PointerEvent<HTMLSpanElement>) {
-    if (scrubRatio === null) return
-    onSeek?.(ratioAt(e))
-    setScrubRatio(null)
+    if (scrubRatio === null) return;
+    onSeek?.(ratioAt(e));
+    setScrubRatio(null);
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
-    if (!onSeek || durationMs <= 0) return
-    const stepRatio = 5000 / durationMs
-    if (e.key === 'ArrowRight') onSeek(Math.min(1, positionRatio + stepRatio))
-    else if (e.key === 'ArrowLeft') onSeek(Math.max(0, positionRatio - stepRatio))
-    else return
-    e.preventDefault()
+    if (!onSeek || durationMs <= 0) return;
+    const stepRatio = 5000 / durationMs;
+    if (e.key === 'ArrowRight') onSeek(Math.min(1, positionRatio + stepRatio));
+    else if (e.key === 'ArrowLeft') onSeek(Math.max(0, positionRatio - stepRatio));
+    else return;
+    e.preventDefault();
   }
 
-  const tipRatio = scrubRatio ?? hoverRatio
+  const tipRatio = scrubRatio ?? hoverRatio;
 
   return (
     <span
@@ -116,7 +120,7 @@ export default function Waveform({
         'wave relative min-w-0 touch-none outline-none',
         offline && 'wave-gold',
         onSeek && 'cursor-pointer',
-        className
+        className,
       )}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
@@ -126,16 +130,16 @@ export default function Waveform({
       onKeyDown={onKeyDown}
     >
       {bars.map((h, i) => {
-        const isHead = i === playheadIdx
-        const isPlayed = i < playheadIdx
+        const isHead = i === playheadIdx;
+        const isPlayed = i < playheadIdx;
         return (
           <i
             key={i}
             className={isHead ? 'hd' : isPlayed ? 'on' : undefined}
-            style={{ height: `${h * 100}%` }}
+            style={{ height: `${h * 100}%`, width: isHead ? barWidth + 1 : barWidth }}
             aria-hidden
           />
-        )
+        );
       })}
       {onSeek && tipRatio !== null && durationMs > 0 && (
         <span
@@ -147,5 +151,5 @@ export default function Waveform({
         </span>
       )}
     </span>
-  )
+  );
 }

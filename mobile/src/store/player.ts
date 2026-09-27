@@ -34,8 +34,10 @@ interface PlayerStore {
   onTrackEnded: () => void;
 }
 
-const shuffled = (tracks: Track[], first: Track) =>
-  [first, ...tracks.filter(t => t.id !== first.id).sort(() => Math.random() - 0.5)];
+const shuffled = (tracks: Track[], first: Track) => [
+  first,
+  ...tracks.filter(t => t.id !== first.id).sort(() => Math.random() - 0.5),
+];
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
   currentTrack: null,
@@ -63,17 +65,22 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     });
   },
 
-  setCurrentTrack: (currentTrack) =>
-    set({ currentTrack, positionMs: 0, durationMs: currentTrack?.durationMs ?? 0, error: null }),
-  setQueue: (queue) => set({ queue }),
-  setIsPlaying: (isPlaying) => set({ isPlaying }),
-  setPositionMs: (positionMs) => set({ positionMs }),
-  setDurationMs: (durationMs) => set({ durationMs }),
-  setBuffering: (buffering) => set({ buffering }),
-  setError: (error) => set({ error, ...(error && { isPlaying: false }) }),
-  seekTo: (ms) => set({ positionMs: ms, seekRequest: { ms, nonce: Date.now() } }),
+  setCurrentTrack: currentTrack =>
+    set({
+      currentTrack,
+      positionMs: 0,
+      durationMs: currentTrack?.durationMs ?? 0,
+      error: null,
+    }),
+  setQueue: queue => set({ queue }),
+  setIsPlaying: isPlaying => set({ isPlaying }),
+  setPositionMs: positionMs => set({ positionMs }),
+  setDurationMs: durationMs => set({ durationMs }),
+  setBuffering: buffering => set({ buffering }),
+  setError: error => set({ error, ...(error && { isPlaying: false }) }),
+  seekTo: ms => set({ positionMs: ms, seekRequest: { ms, nonce: Date.now() } }),
 
-  playNextInQueue: (track) => {
+  playNextInQueue: track => {
     const { queue, currentTrack } = get();
     if (!currentTrack) return get().playTrack(track);
     const rest = queue.filter(t => t.id !== track.id);
@@ -81,7 +88,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     set({ queue: [...rest.slice(0, at), track, ...rest.slice(at)] });
   },
 
-  addToQueue: (track) => {
+  addToQueue: track => {
     const { queue, currentTrack } = get();
     if (!currentTrack) return get().playTrack(track);
     set({ queue: [...queue.filter(t => t.id !== track.id), track] });
@@ -89,12 +96,17 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
 
   toggleShuffle: () => {
     const { shuffle, queue, currentTrack } = get();
-    set({ shuffle: !shuffle, ...(!shuffle && currentTrack && { queue: shuffled(queue, currentTrack) }) });
+    set({
+      shuffle: !shuffle,
+      ...(!shuffle && currentTrack && { queue: shuffled(queue, currentTrack) }),
+    });
   },
 
-  cycleRepeat: () => set((state) => ({
-    repeat: state.repeat === 'off' ? 'all' : state.repeat === 'all' ? 'one' : 'off',
-  })),
+  cycleRepeat: () =>
+    set(state => ({
+      repeat:
+        state.repeat === 'off' ? 'all' : state.repeat === 'all' ? 'one' : 'off',
+    })),
 
   playNext: () => {
     const { queue, currentTrack, repeat } = get();
@@ -134,7 +146,9 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   onTrackEnded: () => {
     const { repeat, queue, currentTrack } = get();
     if (repeat === 'one') return get().seekTo(0);
-    const isLast = !currentTrack || queue.findIndex(t => t.id === currentTrack.id) >= queue.length - 1;
+    const isLast =
+      !currentTrack ||
+      queue.findIndex(t => t.id === currentTrack.id) >= queue.length - 1;
     if (isLast && repeat === 'off') {
       set({ isPlaying: false });
       get().seekTo(0);

@@ -30,16 +30,20 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       api.myPlaylists().catch(() => null),
     ]);
     set({
-      ...(favs && { favouriteIds: Object.fromEntries(favs.items.map(t => [t.id, true as const])) }),
+      ...(favs && {
+        favouriteIds: Object.fromEntries(
+          favs.items.map(t => [t.id, true as const]),
+        ),
+      }),
       ...(lists && { playlists: lists.items }),
     });
   },
 
   reset: () => set({ favouriteIds: {}, playlists: [] }),
 
-  isFavourite: (trackId) => !!get().favouriteIds[trackId],
+  isFavourite: trackId => !!get().favouriteIds[trackId],
 
-  toggleFavourite: async (track) => {
+  toggleFavourite: async track => {
     const next = !get().favouriteIds[track.id];
     const apply = (on: boolean) =>
       set(state => {
@@ -63,19 +67,21 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     set({ playlists: lists.items });
   },
 
-  createPlaylist: async (name) => {
+  createPlaylist: async name => {
     const playlist = await api.createPlaylist(name);
     set(state => ({ playlists: [playlist, ...state.playlists] }));
     return playlist;
   },
 
-  deletePlaylist: async (id) => {
+  deletePlaylist: async id => {
     await api.deletePlaylist(id);
     set(state => ({ playlists: state.playlists.filter(p => p.id !== id) }));
   },
 
   addToPlaylist: async (playlistId, track) => {
     await api.addToPlaylist(playlistId, [track.id]);
-    await get().reloadPlaylists().catch(() => {});
+    await get()
+      .reloadPlaylists()
+      .catch(() => {});
   },
 }));

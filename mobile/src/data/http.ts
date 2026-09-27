@@ -41,8 +41,10 @@ export function httpRequest(
     xhr.open(method, url);
     xhr.timeout = timeoutMs;
     // Tells the backend's admin analytics which app the request came from.
-    if (url.startsWith(API_ORIGIN)) xhr.setRequestHeader('X-Sonare-Client', 'mobile');
-    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
+    if (url.startsWith(API_ORIGIN))
+      xhr.setRequestHeader('X-Sonare-Client', 'mobile');
+    for (const [name, value] of Object.entries(headers))
+      xhr.setRequestHeader(name, value);
     xhr.onload = () => {
       let json: any = null;
       try {

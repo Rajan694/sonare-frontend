@@ -20,8 +20,15 @@ import { useModeStore } from '../store/mode';
  * background, so this avoids React effects and `fetch` (api.ts goes through XHR).
  */
 
-type TrackRef = { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string };
-export type PendingPlay = { trackRef: TrackRef; at: number; ms: number; userId?: string };
+type TrackRef =
+  | { kind: 'server'; id: string }
+  | { kind: 'local'; fingerprint: string };
+export type PendingPlay = {
+  trackRef: TrackRef;
+  at: number;
+  ms: number;
+  userId?: string;
+};
 
 const QUEUE_KEY = 'sonare.pendingPlays';
 const RETRY_FIRST_MS = 5_000;
@@ -29,12 +36,14 @@ const RETRY_MAX_MS = 5 * 60_000;
 
 /** Split a namespaced id (contract 8.1) into a TrackRef; the backend stores the bare id. */
 function trackRef(trackId: string): TrackRef {
-  if (trackId.startsWith('local:')) return { kind: 'local', fingerprint: trackId.slice('local:'.length) };
+  if (trackId.startsWith('local:'))
+    return { kind: 'local', fingerprint: trackId.slice('local:'.length) };
   return { kind: 'server', id: trackId.replace(/^yt:/, '') };
 }
 
 function playKey(p: PendingPlay): string {
-  const ref = p.trackRef.kind === 'local' ? p.trackRef.fingerprint : p.trackRef.id;
+  const ref =
+    p.trackRef.kind === 'local' ? p.trackRef.fingerprint : p.trackRef.id;
   return `${p.userId ?? ''}|${p.trackRef.kind}|${ref}|${p.at}`;
 }
 
@@ -59,7 +68,9 @@ function load(): Promise<void> {
 
 function save() {
   const snapshot = JSON.stringify(queue);
-  saving = saving.then(() => AsyncStorage.setItem(QUEUE_KEY, snapshot)).catch(() => {});
+  saving = saving
+    .then(() => AsyncStorage.setItem(QUEUE_KEY, snapshot))
+    .catch(() => {});
 }
 
 function pendingFor(userId: string | undefined): PendingPlay[] {
@@ -74,12 +85,16 @@ interface SyncStatus {
   syncing: boolean;
 }
 
-export const useSyncStatus = create<SyncStatus>(() => ({ pending: 0, syncing: false }));
+export const useSyncStatus = create<SyncStatus>(() => ({
+  pending: 0,
+  syncing: false,
+}));
 
 function publish(syncing = useSyncStatus.getState().syncing) {
   const pending = pendingFor(useAuthStore.getState().user?.id).length;
   const now = useSyncStatus.getState();
-  if (now.pending !== pending || now.syncing !== syncing) useSyncStatus.setState({ pending, syncing });
+  if (now.pending !== pending || now.syncing !== syncing)
+    useSyncStatus.setState({ pending, syncing });
 }
 
 // ── Uploading ────────────────────────────────────────────────────────────────
@@ -100,7 +115,12 @@ function scheduleRetry() {
 
 /** A 4xx other than auth/rate-limit means the server will never take these plays. */
 function rejected(e: unknown): boolean {
-  return e instanceof ApiError && e.status >= 400 && e.status < 500 && ![401, 403, 408, 429].includes(e.status);
+  return (
+    e instanceof ApiError &&
+    e.status >= 400 &&
+    e.status < 500 &&
+    ![401, 403, 408, 429].includes(e.status)
+  );
 }
 
 function drop(done: PendingPlay[]) {
@@ -113,7 +133,12 @@ async function flush(): Promise<void> {
   await load();
   const auth = useAuthStore.getState();
   const plays = pendingFor(auth.user?.id);
-  if (useModeStore.getState().mode !== 'online' || auth.status !== 'signedIn' || !networkUp || !plays.length) {
+  if (
+    useModeStore.getState().mode !== 'online' ||
+    auth.status !== 'signedIn' ||
+    !networkUp ||
+    !plays.length
+  ) {
     return publish(false);
   }
   publish(true);
@@ -148,7 +173,12 @@ export function requestSync(): void {
 
 /** Queue a play the listener has actually heard; it uploads in the background. */
 export function queuePlay(trackId: string, at: number, ms: number): void {
-  queue.push({ trackRef: trackRef(trackId), at, ms: Math.round(ms), userId: useAuthStore.getState().user?.id });
+  queue.push({
+    trackRef: trackRef(trackId),
+    at,
+    ms: Math.round(ms),
+    userId: useAuthStore.getState().user?.id,
+  });
   // Before the saved queue is loaded, saving now would overwrite it; load() merges instead.
   void load().then(() => {
     save();

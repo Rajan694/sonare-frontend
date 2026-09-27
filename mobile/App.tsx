@@ -15,13 +15,14 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
-    hasInternet().then((online) => {
+    hasInternet().then(online => {
       if (!active) return;
       const { userChangedMode, setMode } = useModeStore.getState();
       if (!online && !userChangedMode) {
         setMode('offline', {
           title: 'No internet connection',
-          description: 'Switched to Offline Mode - showing music on this device',
+          description:
+            'Switched to Offline Mode - showing music on this device',
         });
       }
     });

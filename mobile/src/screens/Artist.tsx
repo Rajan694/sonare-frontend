@@ -19,15 +19,15 @@ import Icon from '../components/ui/Icon';
 export function ArtistScreen() {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
-  const playTrack = usePlayerStore((state) => state.playTrack);
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
-  const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
-  const shuffle = usePlayerStore((state) => state.shuffle);
-  const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
+  const playTrack = usePlayerStore(state => state.playTrack);
+  const currentTrack = usePlayerStore(state => state.currentTrack);
+  const isPlaying = usePlayerStore(state => state.isPlaying);
+  const setIsPlaying = usePlayerStore(state => state.setIsPlaying);
+  const shuffle = usePlayerStore(state => state.shuffle);
+  const toggleShuffle = usePlayerStore(state => state.toggleShuffle);
 
   // Following is per account, so re-read it when someone signs in or out.
-  const userId = useAuthStore((state) => state.user?.id);
+  const userId = useAuthStore(state => state.user?.id);
   const artist = useAsync(() => api.artist(id), [id, userId]);
   const top = useAsync(() => api.artistTopTracks(id, 20), [id]);
   const albums = useAsync(() => api.artistAlbums(id), [id]);
@@ -50,7 +50,8 @@ export function ArtistScreen() {
     playTrack(tracks[Math.floor(Math.random() * tracks.length)], tracks);
   };
 
-  const isCurrentArtistPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
+  const isCurrentArtistPlaying =
+    isPlaying && currentTrack && tracks.some(t => t.id === currentTrack.id);
 
   return (
     <Screen scrollable={false}>
@@ -63,9 +64,7 @@ export function ArtistScreen() {
             accessibilityLabel="Go back"
           />
         }
-        right={
-          <Text className="text-ll font-medium text-t2 mr-2">Artist</Text>
-        }
+        right={<Text className="text-ll font-medium text-t2 mr-2">Artist</Text>}
       />
 
       <FlatList
@@ -74,16 +73,24 @@ export function ArtistScreen() {
         ListHeaderComponent={
           <View>
             <View className="px-5 pt-2 pb-4 items-center">
-              <Artwork uri={artworkUrl(info, 300)} size={132} rings className="rounded-full mb-3 shadow-e4" />
+              <Artwork
+                uri={artworkUrl(info, 300)}
+                size={132}
+                rings
+                className="rounded-full mb-3 shadow-e4"
+              />
               <View className="items-center gap-1 mb-3">
-                <Text className="text-h1 font-semibold text-t1 text-center">{info?.name ?? ' '}</Text>
+                <Text className="text-h1 font-semibold text-t1 text-center">
+                  {info?.name ?? ' '}
+                </Text>
                 {info?.monthlyListeners ? (
                   <Text className="text-t3 text-bs">
                     {info.monthlyListeners.toLocaleString()} monthly listeners
                   </Text>
                 ) : info?.albumCount ? (
                   <Text className="text-t3 text-bs">
-                    {info.albumCount} {info.albumCount === 1 ? 'album' : 'albums'}
+                    {info.albumCount}{' '}
+                    {info.albumCount === 1 ? 'album' : 'albums'}
                   </Text>
                 ) : null}
               </View>
@@ -94,12 +101,22 @@ export function ArtistScreen() {
                   size="sm"
                   onPress={toggleFollow}
                   accessibilityLabel={following ? 'Unfollow' : 'Follow'}
-                  icon={following ? <Icon name="heart" size={14} color="#00E28A" /> : undefined}
+                  icon={
+                    following ? (
+                      <Icon name="heart" size={14} color="#00E28A" />
+                    ) : undefined
+                  }
                 >
                   {following ? 'Following' : 'Follow'}
                 </Button>
                 <IconButton
-                  icon={<Icon name="shuffle" size={19} color={shuffle ? '#00E28A' : '#FFFFFF'} />}
+                  icon={
+                    <Icon
+                      name="shuffle"
+                      size={19}
+                      color={shuffle ? '#00E28A' : '#FFFFFF'}
+                    />
+                  }
                   size={40}
                   variant="bordered"
                   onPress={shufflePlay}
@@ -119,7 +136,11 @@ export function ArtistScreen() {
                   accessibilityLabel="Play artist"
                   className="w-12 h-12 rounded-full items-center justify-center bg-acc shadow-glow-acc"
                 >
-                  <Icon name={isCurrentArtistPlaying ? 'pause' : 'play'} size={21} color="#000000" />
+                  <Icon
+                    name={isCurrentArtistPlaying ? 'pause' : 'play'}
+                    size={21}
+                    color="#000000"
+                  />
                 </Pressable>
               </View>
             </View>
@@ -144,12 +165,40 @@ export function ArtistScreen() {
               <View className="flex-row items-baseline justify-between px-5 mb-3">
                 <Text className="text-h2 font-semibold text-t1">Albums</Text>
               </View>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="overflow-visible -mx-5 px-5" contentContainerStyle={{ gap: 12 }}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                className="overflow-visible -mx-5 px-5"
+                contentContainerStyle={{ gap: 12 }}
+              >
                 {albums.data!.items.map(a => (
-                  <Pressable key={a.id} onPress={() => navigation.push('Album', { id: a.id })} className="w-[124px]" accessibilityRole="button" accessibilityLabel={a.title}>
-                    <Artwork uri={artworkUrl(a, 300)} size={124} rings className="rounded-md mb-2" />
-                    <Text className="text-t1 text-tm font-medium truncate" numberOfLines={1}>{a.title}</Text>
-                    {a.year ? <Text className="text-t2 text-bs truncate" numberOfLines={1}>{a.year}</Text> : null}
+                  <Pressable
+                    key={a.id}
+                    onPress={() => navigation.push('Album', { id: a.id })}
+                    className="w-[124px]"
+                    accessibilityRole="button"
+                    accessibilityLabel={a.title}
+                  >
+                    <Artwork
+                      uri={artworkUrl(a, 300)}
+                      size={124}
+                      rings
+                      className="rounded-md mb-2"
+                    />
+                    <Text
+                      className="text-t1 text-tm font-medium truncate"
+                      numberOfLines={1}
+                    >
+                      {a.title}
+                    </Text>
+                    {a.year ? (
+                      <Text
+                        className="text-t2 text-bs truncate"
+                        numberOfLines={1}
+                      >
+                        {a.year}
+                      </Text>
+                    ) : null}
                   </Pressable>
                 ))}
               </ScrollView>
@@ -157,7 +206,12 @@ export function ArtistScreen() {
           ) : null
         }
         ListEmptyComponent={
-          <StateView loading={top.loading} error={top.error || artist.error} onRetry={top.refetch} empty="No songs found for this artist." />
+          <StateView
+            loading={top.loading}
+            error={top.error || artist.error}
+            onRetry={top.refetch}
+            empty="No songs found for this artist."
+          />
         }
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 128 }}
       />

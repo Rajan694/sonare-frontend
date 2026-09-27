@@ -2,7 +2,7 @@ const plugin = require('tailwindcss/plugin');
 
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./App.{js,jsx,ts,tsx}", "./src/**/*.{js,jsx,ts,tsx}"],
+  content: ['./App.{js,jsx,ts,tsx}', './src/**/*.{js,jsx,ts,tsx}'],
   // NativeWind v4 requires its preset; without it Metro's withNativeWind throws.
   presets: [require('nativewind/preset')],
   theme: {
@@ -35,29 +35,50 @@ module.exports = {
         mono: ['JetBrains Mono', 'monospace'],
       },
       fontSize: {
-        'dis': ['40px', { lineHeight: '44px', letterSpacing: '-0.6px', fontWeight: '700' }],
-        'dis2': ['32px', { lineHeight: '36px', letterSpacing: '-0.4px', fontWeight: '700' }],
-        'h1': ['24px', { lineHeight: '30px', letterSpacing: '-0.2px', fontWeight: '600' }],
-        'h2': ['20px', { lineHeight: '26px', letterSpacing: '-0.1px', fontWeight: '600' }],
-        'tl': ['17px', { lineHeight: '24px', fontWeight: '600' }],
-        'tm': ['15px', { lineHeight: '22px', fontWeight: '500' }],
-        'bl': ['15px', { lineHeight: '22px', fontWeight: '400' }],
-        'bm': ['14px', { lineHeight: '20px', fontWeight: '400' }],
-        'bs': ['13px', { lineHeight: '18px', fontWeight: '400' }],
-        'll': ['13px', { lineHeight: '16px', fontWeight: '500' }],
-        'lm': ['12px', { lineHeight: '16px', letterSpacing: '0.2px', fontWeight: '500' }],
-        'ls': ['11px', { lineHeight: '14px', letterSpacing: '0.4px', fontWeight: '500' }],
-        'ov': ['11px', { lineHeight: '14px', letterSpacing: '0.9px', fontWeight: '600' }],
-        'mono': ['13px', { lineHeight: '16px', fontWeight: '500' }],
+        dis: [
+          '40px',
+          { lineHeight: '44px', letterSpacing: '-0.6px', fontWeight: '700' },
+        ],
+        dis2: [
+          '32px',
+          { lineHeight: '36px', letterSpacing: '-0.4px', fontWeight: '700' },
+        ],
+        h1: [
+          '24px',
+          { lineHeight: '30px', letterSpacing: '-0.2px', fontWeight: '600' },
+        ],
+        h2: [
+          '20px',
+          { lineHeight: '26px', letterSpacing: '-0.1px', fontWeight: '600' },
+        ],
+        tl: ['17px', { lineHeight: '24px', fontWeight: '600' }],
+        tm: ['15px', { lineHeight: '22px', fontWeight: '500' }],
+        bl: ['15px', { lineHeight: '22px', fontWeight: '400' }],
+        bm: ['14px', { lineHeight: '20px', fontWeight: '400' }],
+        bs: ['13px', { lineHeight: '18px', fontWeight: '400' }],
+        ll: ['13px', { lineHeight: '16px', fontWeight: '500' }],
+        lm: [
+          '12px',
+          { lineHeight: '16px', letterSpacing: '0.2px', fontWeight: '500' },
+        ],
+        ls: [
+          '11px',
+          { lineHeight: '14px', letterSpacing: '0.4px', fontWeight: '500' },
+        ],
+        ov: [
+          '11px',
+          { lineHeight: '14px', letterSpacing: '0.9px', fontWeight: '600' },
+        ],
+        mono: ['13px', { lineHeight: '16px', fontWeight: '500' }],
         'mono-s': ['11px', { lineHeight: '14px', fontWeight: '500' }],
       },
       spacing: {
         '2xs': '2px',
-        'xs': '4px',
-        'sm': '6px',
-        'md': '8px',
-        'lg': '12px',
-        'xl': '16px',
+        xs: '4px',
+        sm: '6px',
+        md: '8px',
+        lg: '12px',
+        xl: '16px',
         '2xl': '20px',
         '3xl': '24px',
         '4xl': '32px',
@@ -68,28 +89,28 @@ module.exports = {
         '9xl': '120px',
       },
       borderRadius: {
-        'xs': '4px',
-        'sm': '8px',
-        'md': '12px',
-        'lg': '16px',
-        'xl': '20px',
+        xs: '4px',
+        sm: '8px',
+        md: '12px',
+        lg: '16px',
+        xl: '20px',
         '2xl': '28px',
         '3xl': '40px',
-        'full': '999px',
+        full: '999px',
       },
       boxShadow: {
-        'e1': '0 1px 2px rgba(0,0,0,.40), 0 0 1px rgba(0,0,0,.24)',
-        'e2': '0 4px 12px -2px rgba(0,0,0,.50), 0 1px 2px rgba(0,0,0,.30)',
-        'e3': '0 12px 32px -6px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35)',
-        'e4': '0 24px 64px -12px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40)',
-        'player': '0 -8px 32px -8px rgba(0,0,0,.75)',
+        e1: '0 1px 2px rgba(0,0,0,.40), 0 0 1px rgba(0,0,0,.24)',
+        e2: '0 4px 12px -2px rgba(0,0,0,.50), 0 1px 2px rgba(0,0,0,.30)',
+        e3: '0 12px 32px -6px rgba(0,0,0,.60), 0 2px 6px rgba(0,0,0,.35)',
+        e4: '0 24px 64px -12px rgba(0,0,0,.70), 0 4px 12px rgba(0,0,0,.40)',
+        player: '0 -8px 32px -8px rgba(0,0,0,.75)',
         'glow-acc': '0 6px 28px -2px rgba(0,226,138,.55)',
         'glow-gold': '0 4px 20px -4px rgba(255,194,77,.32)',
       },
     },
   },
   plugins: [
-    plugin(function({ addUtilities }) {
+    plugin(function ({ addUtilities }) {
       addUtilities({
         '.srow': {
           flexDirection: 'row',
@@ -204,4 +225,4 @@ module.exports = {
       });
     }),
   ],
-}
+};

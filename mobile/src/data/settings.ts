@@ -13,7 +13,11 @@ export type AudioQuality = 'low' | 'normal' | 'high';
 export type DownloadFormat = 'opus' | 'm4a';
 
 /** Settings quality → the backend's `quality` parameter for /tracks/:id/stream. */
-export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = { low: 'low', normal: 'normal', high: 'high' };
+export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = {
+  low: 'low',
+  normal: 'normal',
+  high: 'high',
+};
 
 const STORAGE_KEY = 'sonare.settings';
 const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
@@ -22,13 +26,19 @@ interface SettingsStore {
   downloadQuality: AudioQuality;
   downloadFormat: DownloadFormat;
   hydrate: () => Promise<void>;
-  update: (patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat'>>) => void;
+  update: (
+    patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat'>>,
+  ) => void;
 }
 
 function pick(s: Record<string, unknown>) {
   return {
-    ...(QUALITIES.includes(s.downloadQuality as AudioQuality) && { downloadQuality: s.downloadQuality as AudioQuality }),
-    ...((s.downloadFormat === 'opus' || s.downloadFormat === 'm4a') && { downloadFormat: s.downloadFormat as DownloadFormat }),
+    ...(QUALITIES.includes(s.downloadQuality as AudioQuality) && {
+      downloadQuality: s.downloadQuality as AudioQuality,
+    }),
+    ...((s.downloadFormat === 'opus' || s.downloadFormat === 'm4a') && {
+      downloadFormat: s.downloadFormat as DownloadFormat,
+    }),
   };
 }
 
@@ -50,7 +60,13 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     if (useAuthStore.getState().status !== 'signedIn') return;
     try {
       set(pick(await api.settings()));
-      void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ downloadQuality: get().downloadQuality, downloadFormat: get().downloadFormat }));
+      void AsyncStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({
+          downloadQuality: get().downloadQuality,
+          downloadFormat: get().downloadFormat,
+        }),
+      );
     } catch {
       // Offline: the phone's copy applies.
     }
@@ -59,7 +75,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   update: patch => {
     set(patch);
     const { downloadQuality, downloadFormat } = get();
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ downloadQuality, downloadFormat }));
+    void AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ downloadQuality, downloadFormat }),
+    );
     if (useAuthStore.getState().status !== 'signedIn') return;
     unsaved = { ...unsaved, ...patch };
     clearTimeout(saveTimer);

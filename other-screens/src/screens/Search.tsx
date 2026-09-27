@@ -1,27 +1,27 @@
-import React, { useEffect, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'motion/react'
-import { CAPS } from '../lib/caps'
-import { useModeStore } from '../store/modeStore'
-import { usePlayerStore } from '../store/playerStore'
-import { useDebounce, useGenres, usePlaylist, notifyPlaylistsChanged } from '../data/hooks'
-import { api } from '../data/api'
-import { showToast } from '../store/toastStore'
-import { useLocalLibrary, localLibrary } from '../data/local'
-import SongRow, { SongTableHeader } from '../components/music/SongRow'
-import Artwork from '../components/music/Artwork'
-import Icon from '../components/ui/Icon'
-import Button, { IconButton } from '../components/ui/Button'
-import DownloadButton from '../components/music/DownloadButton'
-import { Card } from '../components/ui/Card'
-import { EmptyState } from '../components/ui/EmptyState'
-import { fadeRise, transition } from '../lib/motion'
-import { cn } from '../lib/utils'
-import { useAppDispatch, useAppSelector } from '../store'
-import { runSearch, searchKey, setQuery, setType, type SearchType } from '../store/searchSlice'
-import type { Track, Album, Artist, Playlist } from '../data/types'
+import React, { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'motion/react';
+import { CAPS } from '../lib/caps';
+import { useModeStore } from '../store/modeStore';
+import { usePlayerStore } from '../store/playerStore';
+import { useDebounce, useGenres, usePlaylist, notifyPlaylistsChanged } from '../data/hooks';
+import { api } from '../data/api';
+import { showToast } from '../store/toastStore';
+import { useLocalLibrary, localLibrary } from '../data/local';
+import SongRow, { SongTableHeader } from '../components/music/SongRow';
+import Artwork from '../components/music/Artwork';
+import Icon from '../components/ui/Icon';
+import Button, { IconButton } from '../components/ui/Button';
+import DownloadButton from '../components/music/DownloadButton';
+import { Card } from '../components/ui/Card';
+import { EmptyState } from '../components/ui/EmptyState';
+import { fadeRise, transition } from '../lib/motion';
+import { cn } from '../lib/utils';
+import { useAppDispatch, useAppSelector } from '../store';
+import { runSearch, searchKey, setQuery, setType, type SearchType } from '../store/searchSlice';
+import type { Track, Album, Artist, Playlist } from '../data/types';
 
-type ChipFilter = 'all' | SearchType
+type ChipFilter = 'all' | SearchType;
 
 const CHIPS: { id: ChipFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -29,91 +29,93 @@ const CHIPS: { id: ChipFilter; label: string }[] = [
   { id: 'albums', label: 'Albums' },
   { id: 'artists', label: 'Artists' },
   { id: 'playlists', label: 'Playlists' },
-]
+];
 
 export default function Search() {
-  const { mode, setMode } = useModeStore()
-  const { currentTrack, playTrack } = usePlayerStore()
-  const dispatch = useAppDispatch()
-  const { query, type: activeType, results, resultsFor, requested, status, error } = useAppSelector(s => s.search)
-  const [params, setParams] = useSearchParams()
-  const addTo = params.get('addTo')
-  const [activeChip, setActiveChip] = useState<ChipFilter>('all')
+  const { mode, setMode } = useModeStore();
+  const { currentTrack, playTrack } = usePlayerStore();
+  const dispatch = useAppDispatch();
+  const { query, type: activeType, results, resultsFor, requested, status, error } = useAppSelector((s) => s.search);
+  const [params, setParams] = useSearchParams();
+  const addTo = params.get('addTo');
+  const [activeChip, setActiveChip] = useState<ChipFilter>('all');
 
-  const linkedQuery = params.get('q')
+  const linkedQuery = params.get('q');
   useEffect(() => {
-    if (linkedQuery === null) return
-    dispatch(setQuery(linkedQuery))
-    const next = new URLSearchParams(params)
-    next.delete('q')
-    setParams(next, { replace: true })
-  }, [linkedQuery])
+    if (linkedQuery === null) return;
+    dispatch(setQuery(linkedQuery));
+    const next = new URLSearchParams(params);
+    next.delete('q');
+    setParams(next, { replace: true });
+  }, [linkedQuery]);
 
-  const { data: addToPlaylist } = usePlaylist(addTo ?? undefined)
-  const [added, setAdded] = useState<Set<string>>(new Set())
+  const { data: addToPlaylist } = usePlaylist(addTo ?? undefined);
+  const [added, setAdded] = useState<Set<string>>(new Set());
 
   async function addTrack(track: Track) {
-    if (!addTo) return
-    setAdded(prev => new Set(prev).add(track.id))
+    if (!addTo) return;
+    setAdded((prev) => new Set(prev).add(track.id));
     try {
-      await api.addTracksToPlaylist(addTo, [track.id])
-      notifyPlaylistsChanged()
+      await api.addTracksToPlaylist(addTo, [track.id]);
+      notifyPlaylistsChanged();
     } catch {
-      setAdded(prev => {
-        const next = new Set(prev)
-        next.delete(track.id)
-        return next
-      })
-      showToast({ title: 'Could not add to playlist', description: track.title, icon: 'info' })
+      setAdded((prev) => {
+        const next = new Set(prev);
+        next.delete(track.id);
+        return next;
+      });
+      showToast({ title: 'Could not add to playlist', description: track.title, icon: 'info' });
     }
   }
 
-  const isOnline = mode === 'online'
-  const hasQuery = query.trim().length > 0
-  const debouncedQuery = useDebounce(query.trim(), 300)
+  const isOnline = mode === 'online';
+  const hasQuery = query.trim().length > 0;
+  const debouncedQuery = useDebounce(query.trim(), 300);
 
   // Map activeChip to searchSlice SearchType (when All, fetch songs as primary)
-  const querySearchType: SearchType = activeChip === 'all' ? 'songs' : activeChip
+  const querySearchType: SearchType = activeChip === 'all' ? 'songs' : activeChip;
 
   useEffect(() => {
     if (isOnline && debouncedQuery) {
-      dispatch(runSearch({ query: debouncedQuery, type: querySearchType }))
+      dispatch(runSearch({ query: debouncedQuery, type: querySearchType }));
     }
-  }, [isOnline, debouncedQuery, querySearchType])
+  }, [isOnline, debouncedQuery, querySearchType]);
 
-  const local = useLocalLibrary()
-  const key = searchKey(debouncedQuery, querySearchType)
-  const current = resultsFor === key
-  const failed = requested === key && status === 'error'
-  const searchLoading = isOnline && !current && !failed
-  const searchError = isOnline && failed ? error : null
-  const needle = query.trim().toLowerCase()
+  const local = useLocalLibrary();
+  const key = searchKey(debouncedQuery, querySearchType);
+  const current = resultsFor === key;
+  const failed = requested === key && status === 'error';
+  const searchLoading = isOnline && !current && !failed;
+  const searchError = isOnline && failed ? error : null;
+  const needle = query.trim().toLowerCase();
 
   const localMatches = needle
-    ? local.tracks.filter(t => [t.title, t.artist, t.album].some(v => v?.toLowerCase().includes(needle)))
-    : []
+    ? local.tracks.filter((t) => [t.title, t.artist, t.album].some((v) => v?.toLowerCase().includes(needle)))
+    : [];
 
-  const { data: genres } = useGenres()
+  const { data: genres } = useGenres();
 
-  const serverItems = isOnline && current ? results : []
+  const serverItems = isOnline && current ? results : [];
   // Merge items
   const combinedTracks = isOnline
     ? [
         ...localMatches,
-        ...serverItems.filter((item): item is Track => 'durationMs' in item && !localMatches.some(l => l.id === item.id)),
+        ...serverItems.filter(
+          (item): item is Track => 'durationMs' in item && !localMatches.some((l) => l.id === item.id),
+        ),
       ]
-    : localMatches
+    : localMatches;
 
   const totalResultsCount = isOnline
     ? combinedTracks.length + (activeChip !== 'all' && activeChip !== 'songs' ? serverItems.length : 0)
-    : localMatches.length
+    : localMatches.length;
 
   const handlePlay = (track: Track) => {
-    playTrack(track, combinedTracks.length > 0 ? combinedTracks : [track])
-  }
+    playTrack(track, combinedTracks.length > 0 ? combinedTracks : [track]);
+  };
 
   // Find top result (prefer first match: album, song, or artist)
-  const topSong = combinedTracks[0]
+  const topSong = combinedTracks[0];
 
   return (
     <div className="@container flex flex-col overflow-hidden h-full">
@@ -125,7 +127,9 @@ export default function Search() {
               {added.size > 0 ? `${added.size} added — search for more` : 'Search for songs and press + to add them'}
             </span>
           </span>
-          <Link to={`/playlist/${addTo}`} className="btn btn-acc btn-sm no-underline">Done</Link>
+          <Link to={`/playlist/${addTo}`} className="btn btn-acc btn-sm no-underline">
+            Done
+          </Link>
         </div>
       )}
 
@@ -133,14 +137,14 @@ export default function Search() {
       {hasQuery && (
         <div className="flex items-center justify-between px-8 pt-6 pb-2 flex-none flex-wrap gap-3">
           <div className="flex items-center gap-2">
-            {CHIPS.map(chip => (
+            {CHIPS.map((chip) => (
               <button
                 key={chip.id}
                 className={cn('chip', activeChip === chip.id && 'chip-on')}
                 onClick={() => {
-                  setActiveChip(chip.id)
+                  setActiveChip(chip.id);
                   if (chip.id !== 'all') {
-                    dispatch(setType(chip.id))
+                    dispatch(setType(chip.id));
                   }
                 }}
               >
@@ -199,7 +203,12 @@ export default function Search() {
               ) : searchError ? (
                 <div className="flex flex-col items-center gap-3 p-4 text-center">
                   <span className="text-red">Search error: {searchError}</span>
-                  <Button variant="out" size="sm" icon="sync" onClick={() => dispatch(runSearch({ query: debouncedQuery, type: querySearchType }))}>
+                  <Button
+                    variant="out"
+                    size="sm"
+                    icon="sync"
+                    onClick={() => dispatch(runSearch({ query: debouncedQuery, type: querySearchType }))}
+                  >
                     Try again
                   </Button>
                 </div>
@@ -207,7 +216,9 @@ export default function Search() {
                 <EmptyState
                   icon="search"
                   title="No results found"
-                  description={isOnline ? `No results found matching "${query}"` : `Nothing on this device matches "${query}"`}
+                  description={
+                    isOnline ? `No results found matching "${query}"` : `Nothing on this device matches "${query}"`
+                  }
                 />
               ) : activeChip === 'all' ? (
                 <div className="flex flex-col gap-8">
@@ -282,18 +293,18 @@ export default function Search() {
                   <div className="flex flex-col gap-3">
                     <span className="text-overline text-t3 uppercase font-semibold">Artists</span>
                     <div className="flex items-center gap-6 overflow-x-auto pb-2">
-                      {Array.from(new Set(combinedTracks.map(t => t.artist))).slice(0, 6).map((artistName, i) => (
-                        <div key={artistName} className="flex flex-col items-center gap-2 w-[92px] flex-none text-center">
-                          <Artwork
-                            alt={artistName}
-                            variant={`a${((i % 12) + 1) as 1}`}
-                            size={92}
-                            radius="circ"
-                          />
-                          <span className="text-label-m text-t1 truncate w-full">{artistName}</span>
-                          <span className="text-label-s text-t3">Artist</span>
-                        </div>
-                      ))}
+                      {Array.from(new Set(combinedTracks.map((t) => t.artist)))
+                        .slice(0, 6)
+                        .map((artistName, i) => (
+                          <div
+                            key={artistName}
+                            className="flex flex-col items-center gap-2 w-[92px] flex-none text-center"
+                          >
+                            <Artwork alt={artistName} variant={`a${((i % 12) + 1) as 1}`} size={92} radius="circ" />
+                            <span className="text-label-m text-t1 truncate w-full">{artistName}</span>
+                            <span className="text-label-s text-t3">Artist</span>
+                          </div>
+                        ))}
                     </div>
                   </div>
 
@@ -332,49 +343,55 @@ export default function Search() {
                 </div>
               ) : activeChip === 'albums' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
-                  {(serverItems.filter((item): item is Album => 'trackCount' in item)).map((album, i) => (
-                    <Card
-                      key={album.id}
-                      title={album.title}
-                      subtitle={album.artist}
-                      artVariant={`a${(i % 12) + 1}` as any}
-                      thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
-                      to={`/album/${album.id}`}
-                    />
-                  ))}
+                  {serverItems
+                    .filter((item): item is Album => 'trackCount' in item)
+                    .map((album, i) => (
+                      <Card
+                        key={album.id}
+                        title={album.title}
+                        subtitle={album.artist}
+                        artVariant={`a${(i % 12) + 1}` as any}
+                        thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
+                        to={`/album/${album.id}`}
+                      />
+                    ))}
                 </div>
               ) : activeChip === 'artists' ? (
                 <div className="flex gap-4 flex-wrap pt-2">
-                  {(serverItems.filter((item): item is Artist => 'albumCount' in item || 'following' in item)).map((artist, i) => (
-                    <Link
-                      key={artist.id}
-                      to={`/artist/${artist.id}`}
-                      className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
-                    >
-                      <Artwork
-                        src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
-                        alt={artist.name}
-                        variant={`a${(i % 12) + 1}` as any}
-                        size={110}
-                        radius="circ"
-                      />
-                      <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
-                      <span className="text-label-s text-t3 truncate">Artist</span>
-                    </Link>
-                  ))}
+                  {serverItems
+                    .filter((item): item is Artist => 'albumCount' in item || 'following' in item)
+                    .map((artist, i) => (
+                      <Link
+                        key={artist.id}
+                        to={`/artist/${artist.id}`}
+                        className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
+                      >
+                        <Artwork
+                          src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
+                          alt={artist.name}
+                          variant={`a${(i % 12) + 1}` as any}
+                          size={110}
+                          radius="circ"
+                        />
+                        <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
+                        <span className="text-label-s text-t3 truncate">Artist</span>
+                      </Link>
+                    ))}
                 </div>
               ) : (
                 <div className="flex gap-4 flex-wrap pt-2">
-                  {(serverItems.filter((item): item is Playlist => 'kind' in item && !('durationMs' in item))).map((pl, i) => (
-                    <Card
-                      key={pl.id}
-                      title={pl.name}
-                      subtitle={pl.kind ? `Playlist · ${pl.kind}` : 'Playlist'}
-                      artVariant={`a${(i % 12) + 1}` as any}
-                      thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
-                      to={`/playlist/${pl.id}`}
-                    />
-                  ))}
+                  {serverItems
+                    .filter((item): item is Playlist => 'kind' in item && !('durationMs' in item))
+                    .map((pl, i) => (
+                      <Card
+                        key={pl.id}
+                        title={pl.name}
+                        subtitle={pl.kind ? `Playlist · ${pl.kind}` : 'Playlist'}
+                        artVariant={`a${(i % 12) + 1}` as any}
+                        thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
+                        to={`/playlist/${pl.id}`}
+                      />
+                    ))}
                 </div>
               )}
             </motion.div>
@@ -382,18 +399,25 @@ export default function Search() {
             <div className="flex flex-col gap-6">
               <span className="text-title-l text-t1 font-semibold">Browse categories</span>
               <div className="grid grid-cols-2 @md:grid-cols-4 gap-3">
-                {(genres || ['Ambient', 'Electronica', 'Post-rock', 'Indie', 'Jazz', 'Classical', 'Hip-hop', 'Folk']).map((genre, i) => {
-                  const name = typeof genre === 'string' ? genre : (genre as any).name
+                {(
+                  genres || ['Ambient', 'Electronica', 'Post-rock', 'Indie', 'Jazz', 'Classical', 'Hip-hop', 'Folk']
+                ).map((genre, i) => {
+                  const name = typeof genre === 'string' ? genre : (genre as any).name;
                   return (
                     <button
                       key={name}
                       onClick={() => dispatch(setQuery(name))}
                       className="gcard text-left cursor-pointer relative overflow-hidden border-0"
                     >
-                      <Artwork variant={`a${(i % 12) + 1}` as any} size={56} radius="md" className="absolute top-2 right-2" />
+                      <Artwork
+                        variant={`a${(i % 12) + 1}` as any}
+                        size={56}
+                        radius="md"
+                        className="absolute top-2 right-2"
+                      />
                       <span className="text-title-l text-t1 relative">{name}</span>
                     </button>
-                  )
+                  );
                 })}
               </div>
             </div>
@@ -401,5 +425,5 @@ export default function Search() {
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

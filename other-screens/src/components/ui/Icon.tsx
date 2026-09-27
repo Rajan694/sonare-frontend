@@ -1,15 +1,66 @@
-import React from 'react'
-import { cn } from '../../lib/utils'
+import React from 'react';
+import { cn } from '../../lib/utils';
 import {
-  Home, Search, Library, ListMusic, Music, Disc, Mic2, Grid3X3, Folder, Heart,
-  ChevronLeft, ChevronRight, Cloud, Smartphone, Shuffle, SkipBack, SkipForward,
-  Repeat, Repeat1, Volume2, VolumeX, Minimize2, Maximize2, X, Minus,
-  Settings, SlidersHorizontal, Play, Pause, MoreHorizontal, Plus, Check,
-  Download, RefreshCw, Trash2, AlignJustify, ExternalLink, Moon, Wifi, WifiOff,
-  LayoutGrid, List, Clock, Star, Radio, LogOut, Info, Share,
-  Music2, Music4, ChevronDown, ChevronUp, Dot, Loader2, UserRound, MessageSquareText, Pencil,
-  PanelLeftClose, PanelLeftOpen
-} from 'lucide-react'
+  Home,
+  Search,
+  Library,
+  ListMusic,
+  Music,
+  Disc,
+  Mic2,
+  Grid3X3,
+  Folder,
+  Heart,
+  ChevronLeft,
+  ChevronRight,
+  Cloud,
+  Smartphone,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  Repeat,
+  Repeat1,
+  Volume2,
+  VolumeX,
+  Minimize2,
+  Maximize2,
+  X,
+  Minus,
+  Settings,
+  SlidersHorizontal,
+  Play,
+  Pause,
+  MoreHorizontal,
+  Plus,
+  Check,
+  Download,
+  RefreshCw,
+  Trash2,
+  AlignJustify,
+  ExternalLink,
+  Moon,
+  Wifi,
+  WifiOff,
+  LayoutGrid,
+  List,
+  Clock,
+  Star,
+  Radio,
+  LogOut,
+  Info,
+  Share,
+  Music2,
+  Music4,
+  ChevronDown,
+  ChevronUp,
+  Dot,
+  Loader2,
+  UserRound,
+  MessageSquareText,
+  Pencil,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from 'lucide-react';
 
 const ICONS = {
   home: Home,
@@ -71,27 +122,28 @@ const ICONS = {
   edit: Pencil,
   'sidebar-close': PanelLeftClose,
   'sidebar-open': PanelLeftOpen,
-} as const
+} as const;
 
-export type IconName = keyof typeof ICONS
+export type IconName = keyof typeof ICONS;
 
 interface IconProps {
-  name: IconName
-  size?: number
-  className?: string
-  strokeWidth?: number
-  'aria-hidden'?: boolean
+  name: IconName;
+  size?: number;
+  className?: string;
+  strokeWidth?: number;
+  'aria-hidden'?: boolean;
 }
 
-export default function Icon({ name, size = 16, className, strokeWidth = 1.6, 'aria-hidden': ariaHidden = true }: IconProps) {
-  const Component = ICONS[name]
-  if (!Component) return null
+export default function Icon({
+  name,
+  size = 16,
+  className,
+  strokeWidth = 1.6,
+  'aria-hidden': ariaHidden = true,
+}: IconProps) {
+  const Component = ICONS[name];
+  if (!Component) return null;
   return (
-    <Component
-      size={size}
-      className={cn('flex-none', className)}
-      aria-hidden={ariaHidden}
-      strokeWidth={strokeWidth}
-    />
-  )
+    <Component size={size} className={cn('flex-none', className)} aria-hidden={ariaHidden} strokeWidth={strokeWidth} />
+  );
 }

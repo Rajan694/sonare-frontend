@@ -18,7 +18,7 @@ import { toggleQueue } from '../../store/uiSlice';
 
 export default function BottomPlayer() {
   const dispatch = useAppDispatch();
-  const queueOpen = useAppSelector(s => s.ui.queueOpen);
+  const queueOpen = useAppSelector((s) => s.ui.queueOpen);
   const { mode } = useModeStore();
   const {
     state,
@@ -58,7 +58,13 @@ export default function BottomPlayer() {
           <div className="flex items-center justify-center gap-2 sm:gap-3.5">
             <IconButton icon="shuffle" label="Shuffle" size={28} disabled />
             <IconButton icon="skip-back" label="Previous track" size={32} disabled />
-            <button className={cn('playbtn playbtn-40', isOffline ? 'bg-gold' : 'bg-acc')} aria-label="Play" data-tip="Play" data-tip-kbd="Space" disabled>
+            <button
+              className={cn('playbtn playbtn-40', isOffline ? 'bg-gold' : 'bg-acc')}
+              aria-label="Play"
+              data-tip="Play"
+              data-tip-kbd="Space"
+              disabled
+            >
               <Icon name="play" size={18} />
             </button>
             <IconButton icon="skip-forward" label="Next track" size={32} disabled />

@@ -1,61 +1,61 @@
-import React, { useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { CAPS } from '../lib/caps'
-import { useModeStore } from '../store/modeStore'
-import { usePlayerStore } from '../store/playerStore'
-import { useAlbum, useAlbumTracks, useLibraryAlbums } from '../data/hooks'
-import { api } from '../data/api'
-import { requireAccount } from '../data/accountGate'
-import { openTrackMenu } from '../components/music/TrackMenu'
-import DownloadButton from '../components/music/DownloadButton'
-import SongRow, { SongTableHeader } from '../components/music/SongRow'
-import Artwork from '../components/music/Artwork'
-import Button, { IconButton } from '../components/ui/Button'
-import Icon from '../components/ui/Icon'
-import { EmptyState } from '../components/ui/EmptyState'
-import { staggerContainer } from '../lib/motion'
-import { formatDuration } from '../lib/utils'
-import type { Track } from '../data/types'
+import React, { useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { CAPS } from '../lib/caps';
+import { useModeStore } from '../store/modeStore';
+import { usePlayerStore } from '../store/playerStore';
+import { useAlbum, useAlbumTracks, useLibraryAlbums } from '../data/hooks';
+import { api } from '../data/api';
+import { requireAccount } from '../data/accountGate';
+import { openTrackMenu } from '../components/music/TrackMenu';
+import DownloadButton from '../components/music/DownloadButton';
+import SongRow, { SongTableHeader } from '../components/music/SongRow';
+import Artwork from '../components/music/Artwork';
+import Button, { IconButton } from '../components/ui/Button';
+import Icon from '../components/ui/Icon';
+import { EmptyState } from '../components/ui/EmptyState';
+import { staggerContainer } from '../lib/motion';
+import { formatDuration } from '../lib/utils';
+import type { Track } from '../data/types';
 
 export default function Album() {
-  const { id } = useParams()
-  const { mode } = useModeStore()
-  const { currentTrack, playTrack } = usePlayerStore()
-  const isOffline = mode === 'offline'
+  const { id } = useParams();
+  const { mode } = useModeStore();
+  const { currentTrack, playTrack } = usePlayerStore();
+  const isOffline = mode === 'offline';
 
-  const { data: album, loading: albumLoading, error: albumError } = useAlbum(id)
-  const { data: tracksData, loading: tracksLoading } = useAlbumTracks(id)
-  const { data: savedAlbums } = useLibraryAlbums()
-  const [favouriteOverride, setFavourite] = useState<boolean | null>(null)
-  const favourite = favouriteOverride ?? !!savedAlbums?.items.some(a => a.id === id)
+  const { data: album, loading: albumLoading, error: albumError } = useAlbum(id);
+  const { data: tracksData, loading: tracksLoading } = useAlbumTracks(id);
+  const { data: savedAlbums } = useLibraryAlbums();
+  const [favouriteOverride, setFavourite] = useState<boolean | null>(null);
+  const favourite = favouriteOverride ?? !!savedAlbums?.items.some((a) => a.id === id);
 
-  const tracks = tracksData?.items || []
+  const tracks = tracksData?.items || [];
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      playTrack(tracks[0], tracks)
+      playTrack(tracks[0], tracks);
     }
-  }
+  };
 
   const handleShuffle = () => {
     if (tracks.length > 0) {
-      const shuffled = [...tracks].sort(() => Math.random() - 0.5)
-      playTrack(shuffled[0], shuffled)
+      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
+      playTrack(shuffled[0], shuffled);
     }
-  }
+  };
 
   const toggleFavourite = () =>
     requireAccount('Create a free account to save albums you love.', async () => {
-      if (!id) return
-      const next = !favourite
-      setFavourite(next)
+      if (!id) return;
+      const next = !favourite;
+      setFavourite(next);
       try {
-        await api.setAlbumFavourite(id, next)
+        await api.setAlbumFavourite(id, next);
       } catch {
-        setFavourite(!next)
+        setFavourite(!next);
       }
-    })
+    });
 
   if (albumLoading) {
     return (
@@ -69,7 +69,7 @@ export default function Album() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   if (albumError || !album) {
@@ -78,23 +78,29 @@ export default function Album() {
         <EmptyState
           icon="disc"
           title="Album not found"
-          description={albumError?.message || "Could not load album details"}
-          action={<Link to="/home" className="btn btn-acc">Back to Home</Link>}
+          description={albumError?.message || 'Could not load album details'}
+          action={
+            <Link to="/home" className="btn btn-acc">
+              Back to Home
+            </Link>
+          }
         />
       </div>
-    )
+    );
   }
 
-  const totalDurationMs = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0)
-  const durationStr = totalDurationMs > 0 ? formatDuration(totalDurationMs) : null
+  const totalDurationMs = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0);
+  const durationStr = totalDurationMs > 0 ? formatDuration(totalDurationMs) : null;
   const albumMeta = [
     album.artist,
     album.year,
-    album.trackCount ? `${album.trackCount} songs` : (tracks.length > 0 ? `${tracks.length} songs` : null),
+    album.trackCount ? `${album.trackCount} songs` : tracks.length > 0 ? `${tracks.length} songs` : null,
     durationStr,
-  ].filter(Boolean).join(' · ')
+  ]
+    .filter(Boolean)
+    .join(' · ');
 
-  const isLocalAlbum = album.source === 'local' || tracks.every(t => t.source === 'local')
+  const isLocalAlbum = album.source === 'local' || tracks.every((t) => t.source === 'local');
 
   return (
     <div className="@container flex flex-col overflow-auto h-full relative">
@@ -122,10 +128,14 @@ export default function Album() {
           <span className="text-display-m @[720px]:text-display text-t1 font-semibold truncate">{album.title}</span>
           <span className="text-body-m text-t2 truncate">
             {album.artistId ? (
-              <Link to={`/artist/${album.artistId}`} className="text-t2 no-underline hover:text-t1 hover:underline">{album.artist}</Link>
-            ) : album.artist}
+              <Link to={`/artist/${album.artistId}`} className="text-t2 no-underline hover:text-t1 hover:underline">
+                {album.artist}
+              </Link>
+            ) : (
+              album.artist
+            )}
             {album.year ? ` · ${album.year}` : ''}
-            {album.trackCount ? ` · ${album.trackCount} songs` : (tracks.length > 0 ? ` · ${tracks.length} songs` : '')}
+            {album.trackCount ? ` · ${album.trackCount} songs` : tracks.length > 0 ? ` · ${tracks.length} songs` : ''}
             {durationStr ? ` · ${durationStr}` : ''}
           </span>
 
@@ -153,13 +163,7 @@ export default function Album() {
             >
               <Icon name="play" size={24} />
             </button>
-            <Button
-              variant="out"
-              size="lg"
-              icon="shuffle"
-              onClick={handleShuffle}
-              disabled={tracks.length === 0}
-            >
+            <Button variant="out" size="lg" icon="shuffle" onClick={handleShuffle} disabled={tracks.length === 0}>
               Shuffle
             </Button>
             <DownloadButton tracks={tracks} offline={isOffline} />
@@ -177,7 +181,7 @@ export default function Album() {
               size={44}
               bordered
               disabled={tracks.length === 0}
-              onClick={e => openTrackMenu(tracks, e)}
+              onClick={(e) => openTrackMenu(tracks, e)}
             />
           </div>
         </div>
@@ -193,12 +197,7 @@ export default function Album() {
             ))}
           </div>
         ) : (
-          <motion.div
-            className="flex flex-col gap-0.5"
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-          >
+          <motion.div className="flex flex-col gap-0.5" variants={staggerContainer} initial="hidden" animate="visible">
             {tracks.map((track, i) => (
               <SongRow
                 key={track.id}
@@ -212,5 +211,5 @@ export default function Album() {
         )}
       </div>
     </div>
-  )
+  );
 }

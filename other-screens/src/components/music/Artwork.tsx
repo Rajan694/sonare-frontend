@@ -1,17 +1,17 @@
-import React, { useState } from 'react'
-import { cn } from '../../lib/utils'
-import { API_BASE } from '../../data/auth'
+import React, { useState } from 'react';
+import { cn } from '../../lib/utils';
+import { API_BASE } from '../../data/auth';
 
-type ArtVariant = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10' | 'a11' | 'a12'
+type ArtVariant = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10' | 'a11' | 'a12';
 
 export interface ArtworkProps {
-  src?: string | null
-  alt?: string
-  variant?: ArtVariant
-  size?: number
-  radius?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'circ'
-  rings?: boolean
-  className?: string
+  src?: string | null;
+  alt?: string;
+  variant?: ArtVariant;
+  size?: number;
+  radius?: 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'circ';
+  rings?: boolean;
+  className?: string;
 }
 
 const radiusClass = {
@@ -21,32 +21,35 @@ const radiusClass = {
   lg: 'art-r-lg',
   xl: 'art-r-xl',
   circ: 'art-circ',
-}
+};
 
 /** Artwork for a track: its own thumbnail, else the server's — local files have none. */
-export function trackArtwork(track: { id: string; source: string; thumbnail?: string }, size?: 64 | 140 | 300 | 640): string | undefined {
-  if (track.thumbnail) return track.thumbnail
-  if (track.source === 'local') return undefined
-  return `/api/v1/tracks/${track.id}/artwork${size ? `?size=${size}` : ''}`
+export function trackArtwork(
+  track: { id: string; source: string; thumbnail?: string },
+  size?: 64 | 140 | 300 | 640,
+): string | undefined {
+  if (track.thumbnail) return track.thumbnail;
+  if (track.source === 'local') return undefined;
+  return `/api/v1/tracks/${track.id}/artwork${size ? `?size=${size}` : ''}`;
 }
 
 export function resolveArtworkUrl(url?: string | null, targetSize?: number): string | undefined {
-  if (!url) return undefined
-  let resolved = url
+  if (!url) return undefined;
+  let resolved = url;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    const origin = API_BASE.replace(/\/api\/v1\/?$/, '')
-    resolved = `${origin}${url.startsWith('/') ? '' : '/'}${url}`
+    const origin = API_BASE.replace(/\/api\/v1\/?$/, '');
+    resolved = `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
   }
 
   if (targetSize && resolved.includes('/artwork')) {
-    const sizeParam = targetSize <= 64 ? 64 : targetSize <= 140 ? 140 : targetSize <= 300 ? 300 : 640
-    const separator = resolved.includes('?') ? '&' : '?'
+    const sizeParam = targetSize <= 64 ? 64 : targetSize <= 140 ? 140 : targetSize <= 300 ? 300 : 640;
+    const separator = resolved.includes('?') ? '&' : '?';
     if (!resolved.includes('size=')) {
-      resolved = `${resolved}${separator}size=${sizeParam}`
+      resolved = `${resolved}${separator}size=${sizeParam}`;
     }
   }
 
-  return resolved
+  return resolved;
 }
 
 export default function Artwork({
@@ -56,12 +59,12 @@ export default function Artwork({
   size,
   radius = 'md',
   rings = false,
-  className
+  className,
 }: ArtworkProps) {
-  const [loaded, setLoaded] = useState(false)
-  const [error, setError] = useState(false)
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState(false);
 
-  const resolvedSrc = resolveArtworkUrl(src, size)
+  const resolvedSrc = resolveArtworkUrl(src, size);
 
   return (
     <span
@@ -70,7 +73,7 @@ export default function Artwork({
         variant,
         radiusClass[radius],
         rings && 'art-rings',
-        className
+        className,
       )}
       style={size ? { width: `${size}px`, height: `${size}px` } : undefined}
       aria-hidden={!alt}
@@ -84,10 +87,10 @@ export default function Artwork({
           onError={() => setError(true)}
           className={cn(
             'absolute inset-0 w-full h-full object-cover transition-opacity duration-300',
-            loaded ? 'opacity-100' : 'opacity-0'
+            loaded ? 'opacity-100' : 'opacity-0',
           )}
         />
       )}
     </span>
-  )
+  );
 }

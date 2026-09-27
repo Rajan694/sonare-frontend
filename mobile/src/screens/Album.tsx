@@ -20,25 +20,30 @@ import Icon from '../components/ui/Icon';
 export function AlbumScreen() {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
-  const playTrack = usePlayerStore((state) => state.playTrack);
-  const currentTrack = usePlayerStore((state) => state.currentTrack);
-  const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
-  const shuffle = usePlayerStore((state) => state.shuffle);
-  const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
+  const playTrack = usePlayerStore(state => state.playTrack);
+  const currentTrack = usePlayerStore(state => state.currentTrack);
+  const isPlaying = usePlayerStore(state => state.isPlaying);
+  const setIsPlaying = usePlayerStore(state => state.setIsPlaying);
+  const shuffle = usePlayerStore(state => state.shuffle);
+  const toggleShuffle = usePlayerStore(state => state.toggleShuffle);
 
   const album = useAsync(() => api.album(id), [id]);
   const tracksQuery = useAsync(() => api.albumTracks(id), [id]);
   const tracks = tracksQuery.data?.items ?? [];
   const info = album.data;
 
-  const totalDurationMs = tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0);
+  const totalDurationMs = tracks.reduce(
+    (sum, t) => sum + (t.durationMs || 0),
+    0,
+  );
   const durationMinutes = Math.round(totalDurationMs / 60000);
 
   const metaParts = [
     'Album',
     info?.year,
-    info?.trackCount || tracks.length ? songCount(info?.trackCount || tracks.length) : null,
+    info?.trackCount || tracks.length
+      ? songCount(info?.trackCount || tracks.length)
+      : null,
     durationMinutes ? `${durationMinutes} min` : null,
   ].filter(Boolean);
   const meta = metaParts.join(' · ');
@@ -46,10 +51,14 @@ export function AlbumScreen() {
   const playAll = (shuffled: boolean) => {
     if (!tracks.length) return;
     if (shuffled !== shuffle) toggleShuffle();
-    playTrack(shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0], tracks);
+    playTrack(
+      shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0],
+      tracks,
+    );
   };
 
-  const isCurrentAlbumPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
+  const isCurrentAlbumPlaying =
+    isPlaying && currentTrack && tracks.some(t => t.id === currentTrack.id);
 
   return (
     <Screen scrollable={false}>
@@ -62,9 +71,7 @@ export function AlbumScreen() {
             accessibilityLabel="Go back"
           />
         }
-        right={
-          <Text className="text-ll font-medium text-t2 mr-2">Album</Text>
-        }
+        right={<Text className="text-ll font-medium text-t2 mr-2">Album</Text>}
       />
 
       <FlatList
@@ -83,19 +90,31 @@ export function AlbumScreen() {
             </View>
 
             <View className="items-center gap-1 mb-3">
-              <Text className="text-h1 font-semibold text-t1 text-center" numberOfLines={2}>
+              <Text
+                className="text-h1 font-semibold text-t1 text-center"
+                numberOfLines={2}
+              >
                 {info?.title ?? ' '}
               </Text>
               {info?.artist ? (
                 <Pressable
-                  onPress={info.artistId ? () => navigation.navigate('Artist', { id: info.artistId }) : undefined}
+                  onPress={
+                    info.artistId
+                      ? () =>
+                          navigation.navigate('Artist', { id: info.artistId })
+                      : undefined
+                  }
                 >
                   <Text className="text-tm font-medium text-t2 text-center">
                     {info.artist}
                   </Text>
                 </Pressable>
               ) : null}
-              {meta ? <Text className="text-t3 text-bs text-center mt-0.5">{meta}</Text> : null}
+              {meta ? (
+                <Text className="text-t3 text-bs text-center mt-0.5">
+                  {meta}
+                </Text>
+              ) : null}
             </View>
 
             {/* Badges row */}
@@ -103,7 +122,13 @@ export function AlbumScreen() {
               <Badge
                 label={info?.source === 'local' ? 'On device' : 'Server'}
                 variant={info?.source === 'local' ? 'local' : 'cloud'}
-                icon={<Icon name={info?.source === 'local' ? 'smartphone' : 'cloud'} size={10} color={info?.source === 'local' ? '#FFC24D' : '#00E28A'} />}
+                icon={
+                  <Icon
+                    name={info?.source === 'local' ? 'smartphone' : 'cloud'}
+                    size={10}
+                    color={info?.source === 'local' ? '#FFC24D' : '#00E28A'}
+                  />
+                }
               />
               {info?.downloaded && (
                 <Badge label="Downloaded" variant="download" />
@@ -125,7 +150,7 @@ export function AlbumScreen() {
                   onPress={() => {
                     if (tracks.length > 0) {
                       const queueState = usePlayerStore.getState();
-                      tracks.forEach((t) => queueState.addToQueue(t));
+                      tracks.forEach(t => queueState.addToQueue(t));
                     }
                   }}
                   accessibilityLabel="Add to queue"
@@ -135,7 +160,13 @@ export function AlbumScreen() {
 
               <View className="flex-row items-center gap-3">
                 <IconButton
-                  icon={<Icon name="shuffle" size={20} color={shuffle ? '#00E28A' : '#FFFFFF'} />}
+                  icon={
+                    <Icon
+                      name="shuffle"
+                      size={20}
+                      color={shuffle ? '#00E28A' : '#FFFFFF'}
+                    />
+                  }
                   size={44}
                   variant="bordered"
                   onPress={() => playAll(true)}
@@ -155,7 +186,11 @@ export function AlbumScreen() {
                   accessibilityLabel="Play album"
                   className="w-14 h-14 rounded-full items-center justify-center bg-acc shadow-glow-acc"
                 >
-                  <Icon name={isCurrentAlbumPlaying ? 'pause' : 'play'} size={24} color="#000000" />
+                  <Icon
+                    name={isCurrentAlbumPlaying ? 'pause' : 'play'}
+                    size={24}
+                    color="#000000"
+                  />
                 </Pressable>
               </View>
             </View>
@@ -172,7 +207,12 @@ export function AlbumScreen() {
           />
         )}
         ListEmptyComponent={
-          <StateView loading={tracksQuery.loading} error={tracksQuery.error || album.error} onRetry={tracksQuery.refetch} empty="No songs found for this album." />
+          <StateView
+            loading={tracksQuery.loading}
+            error={tracksQuery.error || album.error}
+            onRetry={tracksQuery.refetch}
+            empty="No songs found for this album."
+          />
         }
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 128 }}
       />

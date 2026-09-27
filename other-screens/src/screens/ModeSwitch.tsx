@@ -1,29 +1,29 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'motion/react'
-import { useModeStore } from '../store/modeStore'
-import { updateSettings, useSettings } from '../data/settings'
-import { useLocalLibrary } from '../data/local'
-import Button from '../components/ui/Button'
-import Icon from '../components/ui/Icon'
-import { Switch } from '../components/ui/Switch'
-import { Segmented } from '../components/ui/Segmented'
-import { fadeRise, transition } from '../lib/motion'
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
+import { useModeStore } from '../store/modeStore';
+import { updateSettings, useSettings } from '../data/settings';
+import { useLocalLibrary } from '../data/local';
+import Button from '../components/ui/Button';
+import Icon from '../components/ui/Icon';
+import { Switch } from '../components/ui/Switch';
+import { Segmented } from '../components/ui/Segmented';
+import { fadeRise, transition } from '../lib/motion';
 
 export default function ModeSwitch() {
-  const navigate = useNavigate()
-  const { setMode } = useModeStore()
-  const settings = useSettings()
-  const [stay, setStay] = useState(settings.stayOffline)
-  const local = useLocalLibrary()
+  const navigate = useNavigate();
+  const { setMode } = useModeStore();
+  const settings = useSettings();
+  const [stay, setStay] = useState(settings.stayOffline);
+  const local = useLocalLibrary();
 
-  const totalTracks = local.folders.filter(f => f.included).reduce((n, f) => n + f.trackCount, 0)
-  const totalFolders = local.folders.length
+  const totalTracks = local.folders.filter((f) => f.included).reduce((n, f) => n + f.trackCount, 0);
+  const totalFolders = local.folders.length;
 
   function confirm() {
-    updateSettings({ stayOffline: stay })
-    setMode('offline')
-    navigate('/home', { replace: true })
+    updateSettings({ stayOffline: stay });
+    setMode('offline');
+    navigate('/home', { replace: true });
   }
 
   return (
@@ -47,7 +47,8 @@ export default function ModeSwitch() {
           />
           <span className="text-h1 text-t1 font-bold">Switch to Offline Mode?</span>
           <p className="text-body-m text-t2 max-w-[440px]">
-            Sonare will use only the music stored on this device. Nothing will be requested from the server until you switch back.
+            Sonare will use only the music stored on this device. Nothing will be requested from the server until you
+            switch back.
           </p>
         </div>
 
@@ -75,9 +76,7 @@ export default function ModeSwitch() {
               <span className="src src-local flex items-center justify-center w-5 h-5 rounded flex-none">
                 <Icon name="heart" size={13} />
               </span>
-              <span className="text-body-s text-t1 leading-snug">
-                Favourites, history & equalizer
-              </span>
+              <span className="text-body-s text-t1 leading-snug">Favourites, history & equalizer</span>
             </div>
           </div>
 
@@ -88,25 +87,19 @@ export default function ModeSwitch() {
               <span className="src flex items-center justify-center w-5 h-5 rounded bg-s3 text-t4 flex-none">
                 <Icon name="cloud" size={13} />
               </span>
-              <span className="text-body-s text-t3 leading-snug">
-                Server library & recommendations
-              </span>
+              <span className="text-body-s text-t3 leading-snug">Server library & recommendations</span>
             </div>
             <div className="flex items-center gap-2.5">
               <span className="src flex items-center justify-center w-5 h-5 rounded bg-s3 text-t4 flex-none">
                 <Icon name="search" size={13} />
               </span>
-              <span className="text-body-s text-t3 leading-snug">
-                Online search & trending
-              </span>
+              <span className="text-body-s text-t3 leading-snug">Online search & trending</span>
             </div>
             <div className="flex items-center gap-2.5">
               <span className="src flex items-center justify-center w-5 h-5 rounded bg-s3 text-t4 flex-none">
                 <Icon name="music" size={13} />
               </span>
-              <span className="text-body-s text-t3 leading-snug">
-                Online-only playlists & streams
-              </span>
+              <span className="text-body-s text-t3 leading-snug">Online-only playlists & streams</span>
             </div>
           </div>
         </div>
@@ -116,14 +109,23 @@ export default function ModeSwitch() {
             <span className="text-body-m text-t1 font-medium">Stay offline until I switch back</span>
             <span className="text-body-s text-t3">Ignore the network even when Wi-Fi returns</span>
           </div>
-          <Switch variant="gold" checked={stay} onCheckedChange={setStay} aria-label="Stay offline until manual switch" />
+          <Switch
+            variant="gold"
+            checked={stay}
+            onCheckedChange={setStay}
+            aria-label="Stay offline until manual switch"
+          />
         </label>
 
         <div className="flex items-center gap-3 justify-end pt-1">
-          <Button variant="out" onClick={() => navigate(-1)}>Cancel</Button>
-          <Button variant="gold" onClick={confirm}>Go offline</Button>
+          <Button variant="out" onClick={() => navigate(-1)}>
+            Cancel
+          </Button>
+          <Button variant="gold" onClick={confirm}>
+            Go offline
+          </Button>
         </div>
       </motion.div>
     </div>
-  )
+  );
 }
