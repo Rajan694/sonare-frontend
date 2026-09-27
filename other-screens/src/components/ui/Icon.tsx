@@ -60,6 +60,7 @@ import {
   Pencil,
   PanelLeftClose,
   PanelLeftOpen,
+  ArrowLeft,
 } from 'lucide-react';
 
 const ICONS = {
@@ -76,6 +77,7 @@ const ICONS = {
   folder: Folder,
   heart: Heart,
   'chevron-left': ChevronLeft,
+  'arrow-left': ArrowLeft,
   'chevron-right': ChevronRight,
   cloud: Cloud,
   smartphone: Smartphone,

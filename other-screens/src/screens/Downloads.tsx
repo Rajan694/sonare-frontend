@@ -154,7 +154,9 @@ export default function Downloads() {
     <div className="@container flex flex-col p-4 @[480px]:p-8 gap-6 overflow-y-auto h-full bg-bg">
       <div className="flex flex-col @[600px]:flex-row @[600px]:items-center justify-between gap-4">
         <div className="flex flex-col gap-1 min-w-0">
-          <span className="text-display-s @[600px]:text-display-m text-t1 font-bold tracking-tight">Downloads</span>
+          <span className="phone-shell-hide text-display-s @[600px]:text-display-m text-t1 font-bold tracking-tight">
+            Downloads
+          </span>
           <span className="text-body-m text-t2 truncate" title={location.label}>
             {done.length} {done.length === 1 ? 'song' : 'songs'}
             {doneBytes > 0 && ` · ${formatBytes(doneBytes)}`} · saving to {where} ·{' '}

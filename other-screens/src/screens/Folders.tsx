@@ -52,7 +52,9 @@ export default function Folders() {
       {/* Header */}
       <div className="flex flex-col @[600px]:flex-row @[600px]:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <span className="text-display-s @[600px]:text-display-m text-t1 font-bold tracking-tight">Music folders</span>
+          <span className="phone-shell-hide text-display-s @[600px]:text-display-m text-t1 font-bold tracking-tight">
+            Music folders
+          </span>
           <span className="text-body-m text-t2">
             {folders.length > 0
               ? `${totalTracks.toLocaleString()} songs across ${folders.length} folders · ${formatBytes(totalBytes)}`

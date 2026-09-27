@@ -38,7 +38,7 @@ export default function Equalizer() {
       {/* Header with Title and EQ Bypass Switch */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-h2 @sm:text-display-m font-bold text-t1 tracking-tight">Audio</h1>
+          <h1 className="phone-shell-hide text-h2 @sm:text-display-m font-bold text-t1 tracking-tight">Audio</h1>
           <span className="text-body-s @sm:text-body-m text-t2">Equalizer, effects and audio configuration</span>
         </div>
         <label className="flex items-center gap-3 cursor-pointer flex-none">

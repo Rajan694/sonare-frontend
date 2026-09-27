@@ -8,6 +8,7 @@ import IconRail from './IconRail';
 import BottomPlayer from './BottomPlayer';
 import MiniPlayer from './MiniPlayer';
 import MobileTabBar from './MobileTabBar';
+import PhoneTopbar from './PhoneTopbar';
 import QueuePanel from './QueuePanel';
 import TrackMenu from '../music/TrackMenu';
 import { Toast } from '../ui/Toast';
@@ -181,7 +182,11 @@ export default function AppShell() {
 
   // 3. Phone shell (< 768px)
   return (
-    <div className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen overflow-hidden min-w-0 relative">
+    <div
+      data-shell="phone"
+      className="flex flex-col bg-bg text-t1 font-sans antialiased w-screen h-screen overflow-hidden min-w-0 relative"
+    >
+      {!immersive && <PhoneTopbar />}
       <div className="flex flex-col grow overflow-hidden min-w-0 relative">
         <AnimatePresence mode="wait">
           <motion.div

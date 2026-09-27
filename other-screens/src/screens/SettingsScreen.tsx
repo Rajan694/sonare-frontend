@@ -528,7 +528,7 @@ export default function SettingsScreen() {
     <div className="@container flex flex-col h-full overflow-hidden bg-bg">
       {/* Mobile / Small screen: M15 single scrolling list with overline headers */}
       <div className="flex @[480px]:hidden flex-col p-4 gap-6 overflow-y-auto h-full pb-8">
-        <span className="text-title-l text-t1 font-semibold">Settings</span>
+        <span className="phone-shell-hide text-title-l text-t1 font-semibold">Settings</span>
 
         <div className="flex flex-col gap-2">
           <span className="text-overline text-t3 pl-1">Account</span>

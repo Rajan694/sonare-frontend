@@ -1133,3 +1133,8 @@ svg.ic {
   opacity: 0.55;
   border: 1px dashed var(--ln3);
 }
+
+/* Phone shell: PhoneTopbar already shows these screens' titles. */
+[data-shell='phone'] .phone-shell-hide {
+  display: none;
+}
