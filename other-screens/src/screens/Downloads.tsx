@@ -46,9 +46,13 @@ function fileLine(d: DownloadItem): string {
 }
 
 async function confirmDelete(items: DownloadItem[]) {
-  const done = items.filter(d => d.status === 'done').length
+  const done = items.filter(d => d.status === 'done')
   const what = items.length === 1 ? `"${items[0].title}"` : `${items.length} downloads`
-  const note = done > 0 ? ' The file will be deleted from the folder it was saved to.' : ''
+  const note = done.length === 0
+    ? ''
+    : done.every(d => d.target === 'browser')
+      ? " Sonare can't delete files the browser saved; remove them from your Downloads folder."
+      : ' The file will be deleted from the folder it was saved to.'
   if (!window.confirm(`Delete ${what}?${note}`)) return
   let kept = 0
   let reason: string | undefined
@@ -62,6 +66,12 @@ async function confirmDelete(items: DownloadItem[]) {
   if (kept === 0) showToast({ title: items.length === 1 ? 'Download deleted' : 'Downloads deleted', icon: 'trash' })
   else if (items.length === 1) showToast({ title: 'Removed from downloads', description: reason, icon: 'info' })
   else showToast({ title: 'Downloads removed', description: `${kept} files had moved or couldn't be deleted, so they were only removed from the list`, icon: 'info' })
+}
+
+async function saveAgain(d: DownloadItem) {
+  if (!(await downloads.saveAgain(d.id))) {
+    showToast({ title: "Couldn't save it again", description: 'This browser no longer has a copy. Delete it here and download it again.', icon: 'info' })
+  }
 }
 
 function Row({ d, index, children, sub, subClass }: {
@@ -224,6 +234,9 @@ export default function Downloads() {
                       {d.target === 'native' && d.path && !gone && (
                         <IconButton icon="folder" label={`Show ${d.title} in folder`} tip="Show in folder" size={32} onClick={() => void showPathInFolder(d.path!)} />
                       )}
+                      {d.target === 'browser' && d.copyKept && (
+                        <IconButton icon="download" label={`Save ${d.title} again`} tip="Save again" size={32} onClick={() => void saveAgain(d)} />
+                      )}
                       <IconButton icon="trash" label={`Delete ${d.title}`} tip="Delete" size={32} className="hover:text-red" onClick={() => void confirmDelete([d])} />
                     </Row>
                   )
@@ -232,7 +245,8 @@ export default function Downloads() {
               {done.some(d => d.target === 'browser') && (
                 <span className="text-body-s text-t4 pl-1">
                   <Icon name="info" size={12} className="inline -mt-0.5 mr-1" />
-                  Songs saved by the browser can only be removed from this list; delete the files from your Downloads folder.
+                  If a song didn't reach your Downloads folder (the browser can block several downloads in a row), use Save again.
+                  Sonare keeps a copy in this browser until you delete the song here; the saved file itself has to be deleted from your Downloads folder.
                 </span>
               )}
             </div>

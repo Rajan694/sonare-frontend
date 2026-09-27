@@ -6,7 +6,7 @@ import { api } from './api'
 import { API_BASE } from './auth'
 import { localLibrary } from './local'
 import { API_QUALITY, getSettings, type AudioQuality, type DownloadFormat } from './settings'
-import { concat, FileMissingError, getLocation, loadLocation, targetFor, type PartFile, type TargetKind } from './downloadTargets'
+import { askForWebFolderOnce, concat, FileMissingError, getLocation, loadLocation, targetFor, type PartFile, type TargetKind } from './downloadTargets'
 import type { Track } from './types'
 
 /**
@@ -53,6 +53,8 @@ export interface DownloadItem {
   receivedBytes: number
   /** When done: file path (native), file name in the folder (web folder), or name the browser saved. */
   path?: string
+  /** Browser target: a copy is kept in this browser, so the file can be saved again. */
+  copyKept?: boolean
   error?: string
   addedAt: number
   completedAt?: number
@@ -222,6 +224,11 @@ function safeName(s: string): string {
   return s.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').replace(/\s+/g, ' ').trim().slice(0, 120) || 'track'
 }
 
+/** The server says 0 (or -1, from NewPipe) when YouTube didn't give a size: unknown. */
+function knownSize(n: number | undefined): number {
+  return n && n > 0 ? n : 0
+}
+
 function extensionFor(mimeType: string): string {
   return /mp4|m4a|aac/i.test(mimeType) ? 'm4a' : 'webm'
 }
@@ -263,15 +270,18 @@ async function run(id: string, signal: AbortSignal): Promise<void> {
     part = await target.open()
     let received = await part.size()
 
-    // Resuming against a different file than the part holds would corrupt it.
-    const sameFile = (s: typeof stream, it: DownloadItem) =>
-      (!it.itag || !s.itag || it.itag === s.itag) && (!it.totalBytes || !s.contentLength || it.totalBytes === s.contentLength)
+    // Resuming against a different file than the part holds would corrupt it. An unknown
+    // size on either side can't prove a difference, so only the itag decides then.
+    const sameFile = (s: typeof stream, it: DownloadItem) => {
+      const size = knownSize(s.contentLength)
+      return (!it.itag || !s.itag || it.itag === s.itag) && (!it.totalBytes || !size || it.totalBytes === size)
+    }
     if (received > 0 && !sameFile(stream, initial)) {
       await part.discard()
       part = await target.open()
       received = 0
     }
-    let total = (received > 0 && initial.totalBytes) || stream.contentLength || 0
+    let total = (received > 0 && knownSize(initial.totalBytes)) || knownSize(stream.contentLength)
     patch(id, {
       itag: stream.itag,
       mimeType: stream.mimeType,
@@ -310,7 +320,7 @@ async function run(id: string, signal: AbortSignal): Promise<void> {
             await part.discard()
             part = await target.open()
             received = 0
-            total = stream.contentLength || 0
+            total = knownSize(stream.contentLength)
             patch(id, { itag: stream.itag, mimeType: stream.mimeType, codec: stream.codec, bitrateKbps: stream.bitrateKbps, totalBytes: total, receivedBytes: 0 })
           }
           url = absolute(stream.url)
@@ -392,7 +402,15 @@ async function run(id: string, signal: AbortSignal): Promise<void> {
       })
     }
     finishedInBatch++
-    patch(id, { status: 'done', path: saved.path, totalBytes: saved.size, receivedBytes: saved.size, completedAt: Date.now(), error: undefined })
+    patch(id, {
+      status: 'done',
+      path: saved.path,
+      totalBytes: saved.size,
+      receivedBytes: saved.size,
+      completedAt: Date.now(),
+      copyKept: saved.copyKept,
+      error: undefined,
+    })
   } catch (e) {
     await part?.flush().catch(() => {})
     if (signal.aborted) return
@@ -444,11 +462,22 @@ export const downloads = {
     return load()
   },
 
-  /** Queue server tracks for download; ones already downloaded or queued are skipped. Returns how many were added. */
+  /**
+   * Queue server tracks for download; ones already downloaded or queued are skipped.
+   * Returns how many were added. Call it from the click that asked for the download: the
+   * first one on Chromium asks for a folder, which needs that click.
+   */
   async enqueue(tracks: Track[]): Promise<number> {
     await load()
     const known = new Set(items.map(i => i.id))
     const fresh = tracks.filter(t => t.source !== 'local' && !known.has(t.id))
+    if (fresh.length > 0 && (await askForWebFolderOnce()) === 'browser') {
+      showToast({
+        title: "Saving to your browser's Downloads",
+        description: 'You can choose a folder in Settings › Downloads',
+        icon: 'folder',
+      })
+    }
     // Failed and paused ones the user asks for again are simply resumed.
     for (const t of tracks) {
       const existing = get(t.id)
@@ -498,9 +527,11 @@ export const downloads = {
    */
   async remove(id: string): Promise<RemoveResult> {
     await load()
-    const item = get(id)
+    let item = get(id)
     if (!item) return { fileDeleted: false }
     await stop(id)
+    // It may have finished while it was being stopped: then there's a file to delete.
+    item = get(id) ?? item
     const target = targetFor(item)
     let result: RemoveResult = { fileDeleted: true }
     if (item.status === 'done' && item.path) {
@@ -524,6 +555,15 @@ export const downloads = {
     emit()
     persistSoon(true)
     return result
+  },
+
+  /** Browser target: hand the kept copy to the browser's Downloads again. False when there is none. */
+  async saveAgain(id: string): Promise<boolean> {
+    const item = get(id)
+    if (!item || item.status !== 'done' || !item.path) return false
+    const saved = (await targetFor(item).saveAgain?.(item.path)) ?? false
+    if (!saved && item.copyKept) patch(id, { copyKept: false })
+    return saved
   },
 
   /** Remove several downloads; returns how many files could not be deleted from disk. */

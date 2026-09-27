@@ -67,6 +67,8 @@ const listeners = new Set<() => void>()
 
 interface Graph {
   ctx: AudioContext
+  /** Where sources join the chain: the element's source node, and decoded tracks (player.ts). */
+  input: AudioNode
   bands: BiquadFilterNode[]
   bass: BiquadFilterNode
   // Output L = ll·L + rl·R, output R = rr·R + lr·L.
@@ -185,13 +187,19 @@ export async function ensureGraph(): Promise<void> {
     merge.connect(comp)
     comp.connect(ctx.destination)
 
-    graph = { ctx, bands, bass, ll, rl, lr, rr, comp }
+    graph = { ctx, input: bands[0], bands, bass, ll, rl, lr, rr, comp }
     apply()
     if (ctx.state === 'suspended') await ctx.resume()
   } catch {
     // Web Audio unavailable: playback continues unprocessed.
     graph = null
   }
+}
+
+/** The graph's context and input node, building the graph if needed; null without Web Audio. */
+export async function graphInput(): Promise<{ ctx: AudioContext; input: AudioNode } | null> {
+  await ensureGraph()
+  return graph && { ctx: graph.ctx, input: graph.input }
 }
 
 export function getDsp(): DspState {

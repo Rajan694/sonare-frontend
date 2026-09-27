@@ -154,7 +154,11 @@ export function SettingsScreen() {
             <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
               <View className="gap-0.5">
                 <Text className="text-tm font-medium text-t1">Download quality</Text>
-                <Text className="text-bs text-t3">Low ≈ 50-70 kbps · Normal ≈ 128 kbps · High = best available</Text>
+                <Text className="text-bs text-t3">
+                  {downloadFormat === 'm4a'
+                    ? 'Low ≈ 50 kbps · Normal and High = 128 kbps (AAC has two steps)'
+                    : 'Low ≈ 60 kbps · Normal ≈ 75 kbps · High ≈ 150 kbps'}
+                </Text>
               </View>
               <SegmentedControl
                 options={[
@@ -173,7 +177,7 @@ export function SettingsScreen() {
               </View>
               <SegmentedControl
                 options={[
-                  { value: 'opus', label: 'Opus (.webm)' },
+                  { value: 'opus', label: 'Opus (.mka)' },
                   { value: 'm4a', label: 'AAC (.m4a)' },
                 ]}
                 value={downloadFormat}

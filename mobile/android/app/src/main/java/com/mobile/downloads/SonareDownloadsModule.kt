@@ -39,8 +39,9 @@ import java.util.concurrent.Future
  *  - Music/Sonare through MediaStore (Android 10+; no storage permission needed), or
  *  - the app's external Music/Sonare folder on older Android.
  *
- * JS owns the policy: which url to use (it refreshes expired ones), retries, the queue.
- * Emits:
+ * JS owns the policy: which url to use (it refreshes expired ones) and the queue. Dropped
+ * connections are retried here, with backoff, because JS timers stop while the app is in
+ * the background. Emits:
  *  - `SonareDownloads.progress` { id, receivedBytes, totalBytes }
  *  - `SonareDownloads.done`     { id, uri, name, size }
  *  - `SonareDownloads.error`    { id, code, message, status, receivedBytes }
@@ -70,6 +71,12 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
   private fun partFile(id: String): File {
     val dir = File(context.filesDir, "downloads").apply { mkdirs() }
     return File(dir, id.replace(Regex("[^A-Za-z0-9_-]"), "_") + ".part")
+  }
+
+  /** How many downloads are queued or running; keeps SonareDownloadService up while > 0. */
+  @ReactMethod
+  fun setActive(count: Double) {
+    SonareDownloadService.sync(context, count.toInt())
   }
 
   @ReactMethod
@@ -156,11 +163,24 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
     val treeUri: String?,
   )
 
+  /** Sleeps up to [ms]; false if the task was paused or discarded meanwhile. */
+  private fun waitUnlessCancelled(task: Task, ms: Long): Boolean {
+    val until = SystemClock.elapsedRealtime() + ms
+    while (!task.cancelled) {
+      val left = until - SystemClock.elapsedRealtime()
+      if (left <= 0) return true
+      Thread.sleep(minOf(left, 250L))
+    }
+    return false
+  }
+
   private fun run(task: Task, url: String, knownTotal: Long, target: Target) {
     val part = partFile(task.id)
     var received = part.length()
     var total = knownTotal
     var lastEmit = 0L
+    /** Dropped connections in a row; any chunk that arrives whole resets it. */
+    var failures = 0
     // Sent after the task leaves `tasks`, so JS can start() it again straight from the event.
     var outcome: (() -> Unit)? = null
     try {
@@ -217,9 +237,16 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
               }
             }
           }
+          failures = 0
           if (code == 200) break
           // No Content-Range to read the size from: a short chunk means that was the end.
           if (total <= 0 && received - startedAt < CHUNK) total = received
+        } catch (e: IOException) {
+          // Paused or discarded: disconnect() is what broke the read.
+          if (task.cancelled) return
+          received = part.length()
+          if (++failures > MAX_NETWORK_RETRIES) throw e
+          if (!waitUnlessCancelled(task, 1000L shl failures)) return
         } finally {
           conn.disconnect()
         }
@@ -256,8 +283,12 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
   private data class Saved(val uri: String, val name: String, val size: Long)
 
   private fun moveIntoPlace(part: File, target: Target): Saved {
+    // Android's MIME table has no audio/webm - MediaStore rejects it ("Unsupported MIME type")
+    // and scans a .webm file as video - so Opus in WebM is saved as Matroska audio (.mka),
+    // which WebM is a subset of. Players that read .webm read .mka.
+    val mimeType = if (target.mimeType == "audio/webm") "audio/x-matroska" else target.mimeType
     // Use Android's extension for the mime type, or MediaStore / SAF would append their own.
-    val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(target.mimeType) ?: target.extension
+    val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) ?: target.extension
     val displayName = "${target.baseName}.$ext"
     val size = part.length()
     val resolver = context.contentResolver
@@ -267,7 +298,7 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
       val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
       // The provider picks a free name ("Song (1).webm") when this one is taken.
       val doc =
-        DocumentsContract.createDocument(resolver, parent, target.mimeType, displayName)
+        DocumentsContract.createDocument(resolver, parent, mimeType, displayName)
           ?: throw IOException("Could not create the file in the chosen folder")
       try {
         copy(part, doc)
@@ -283,7 +314,7 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
       val values =
         ContentValues().apply {
           put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-          put(MediaStore.Audio.Media.MIME_TYPE, target.mimeType)
+          put(MediaStore.Audio.Media.MIME_TYPE, mimeType)
           put(MediaStore.Audio.Media.RELATIVE_PATH, DEFAULT_RELATIVE_PATH)
           target.title?.let { put(MediaStore.Audio.Media.TITLE, it) }
           target.artist?.let { put(MediaStore.Audio.Media.ARTIST, it) }
@@ -346,7 +377,16 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
           }
           return@execute
         }
-        if (!isInPlace(uri, expectedName)) {
+        // A document that moved can't even be queried: that's "missing" too.
+        val inPlace =
+          try {
+            isInPlace(uri, expectedName)
+          } catch (e: SecurityException) {
+            throw e
+          } catch (e: Exception) {
+            false
+          }
+        if (!inPlace) {
           promise.reject("E_MISSING", "The file is no longer where it was downloaded")
           return@execute
         }
@@ -488,6 +528,7 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
 
   override fun invalidate() {
     tasks.values.forEach(::cancel)
+    SonareDownloadService.sync(context, 0)
     downloads.shutdown()
     io.shutdown()
     context.removeActivityEventListener(this)
@@ -497,6 +538,8 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
   companion object {
     const val NAME = "SonareDownloads"
     private const val MAX_PARALLEL = 2
+    /** 2 + 4 + 8 + 16 + 32 s of waiting before a dropped download is reported. */
+    private const val MAX_NETWORK_RETRIES = 5
     /** Per Range request: small enough that YouTube never throttles it. */
     private const val CHUNK = 2L * 1024 * 1024
     private const val PROGRESS_INTERVAL_MS = 400L

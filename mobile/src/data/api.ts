@@ -72,7 +72,7 @@ export const api = {
   playlistTracks: (id: string) => request<Page<Track>>(`/playlists/${enc(id)}/tracks`),
 
   // Playback
-  stream: (id: string, quality: 'auto' | 'low' | 'high' = 'auto', format?: 'opus' | 'm4a') =>
+  stream: (id: string, quality: 'auto' | 'low' | 'normal' | 'high' = 'auto', format?: 'opus' | 'm4a') =>
     request<StreamInfo>(`/tracks/${enc(id)}/stream`, { params: { quality, format } }),
   peaks: (id: string, bars: number) => request<{ peaks: number[] }>(`/tracks/${enc(id)}/peaks`, { params: { bars } }),
   lyrics: (id: string) => request<Lyrics>(`/tracks/${enc(id)}/lyrics`, { params: { prefer: 'synced' } }),

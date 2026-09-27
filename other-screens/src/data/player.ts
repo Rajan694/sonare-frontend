@@ -1,8 +1,10 @@
 import { API_BASE } from './auth'
 import { api } from './api'
+import { BufferPlayback } from './bufferPlayback'
 import * as dsp from './dsp'
-import { localLibrary } from './local'
+import { localLibrary, type LocalFileData } from './local'
 import { API_QUALITY, getSettings } from './settings'
+import { CAPS } from '../lib/caps'
 
 /**
  * Audio playback engine.
@@ -13,6 +15,9 @@ import { API_QUALITY, getSettings } from './settings'
  * Stream URLs from GET /tracks/:id/stream are time-limited and IP-bound (contract
  * section 8.2), so `expiresAt` is tracked and the url is re-requested on expiry or on a
  * media error rather than failing the track.
+ *
+ * In the Linux window, local files are decoded and played from memory instead (see
+ * bufferPlayback.ts): WebKitGTK's <audio> drops audio at every ~64 KB it reads.
  */
 
 export interface PlaybackStatus {
@@ -40,14 +45,27 @@ let loading = false
 let error: string | null = null
 /** Guards against a retry loop when the refreshed url fails too. */
 let retriedForTrack: string | null = null
+/** The current track when it plays from memory; the element is idle meanwhile. */
+let decoded: BufferPlayback | null = null
+/** The element emits timeupdate on its own; a decoded track needs a clock for it. */
+let ticker: ReturnType<typeof setInterval> | null = null
+const endedListeners = new Set<() => void>()
+
+// Linux only: WebKitGTK is where the element drops audio, and decoding costs memory
+// (about 10 MB per minute), which other platforms' players don't need to spend.
+const DECODE_LOCAL_FILES = CAPS.localLibrary && window.NL_OS === 'Linux'
+// Longer or bigger files (DJ mixes, audiobooks) keep using the element.
+const MAX_DECODE_MS = 15 * 60_000
+const MAX_DECODE_BYTES = 60 * 1024 * 1024
 
 function status(): PlaybackStatus {
+  const media = decoded ?? audio
   return {
     trackId: currentTrackId,
-    playing: !!audio && !audio.paused && !audio.ended,
+    playing: !!media && !media.paused && !media.ended,
     loading,
-    positionMs: audio ? Math.floor(audio.currentTime * 1000) : 0,
-    durationMs: audio && Number.isFinite(audio.duration) ? Math.floor(audio.duration * 1000) : 0,
+    positionMs: media ? Math.floor(media.currentTime * 1000) : 0,
+    durationMs: media && Number.isFinite(media.duration) ? Math.floor(media.duration * 1000) : 0,
     muxed,
     error,
     volume,
@@ -91,7 +109,10 @@ function el(): HTMLAudioElement {
   })
   a.addEventListener('play', emit)
   a.addEventListener('pause', emit)
-  a.addEventListener('ended', emit)
+  a.addEventListener('ended', () => {
+    emit()
+    for (const fn of endedListeners) fn()
+  })
   a.addEventListener('waiting', () => {
     loading = true
     emit()
@@ -102,6 +123,8 @@ function el(): HTMLAudioElement {
     emit()
   })
   a.addEventListener('error', () => {
+    // Emptying the element for a decoded track isn't a failure.
+    if (decoded || !a.getAttribute('src')) return
     // A dead stream url is the usual cause: it expired, or YouTube rejected the IP.
     // Re-resolve once before surfacing anything to the user.
     if (currentTrackId && retriedForTrack !== currentTrackId) {
@@ -126,18 +149,71 @@ async function resolveStream(trackId: string): Promise<string> {
   return absolute(res.url)
 }
 
+function startTicker() {
+  ticker ??= setInterval(emit, 250)
+}
+
+function stopTicker() {
+  if (ticker) clearInterval(ticker)
+  ticker = null
+}
+
+function releaseDecoded() {
+  stopTicker()
+  decoded?.dispose()
+  decoded = null
+}
+
+/** Stops the element and drops its source, so a decoded track plays alone. */
+function emptyElement(a: HTMLAudioElement) {
+  a.pause()
+  if (a.getAttribute('src')) {
+    a.removeAttribute('src')
+    a.load()
+  }
+}
+
+function decodedEnded() {
+  stopTicker()
+  emit()
+  for (const fn of endedListeners) fn()
+}
+
+function worthDecoding(file: LocalFileData): boolean {
+  if (!DECODE_LOCAL_FILES || file.data.byteLength > MAX_DECODE_BYTES) return false
+  return file.durationMs === null || file.durationMs <= MAX_DECODE_MS
+}
+
+/** Decodes a local file for BufferPlayback; null when Web Audio can't (the element then tries). */
+async function decode(file: LocalFileData): Promise<BufferPlayback | null> {
+  const graph = await dsp.graphInput()
+  if (!graph) return null
+  try {
+    // decodeAudioData takes the buffer over; keep the original for the element fallback.
+    const buffer = await graph.ctx.decodeAudioData(file.data.slice(0))
+    if (buffer.duration * 1000 > MAX_DECODE_MS) return null
+    const playback = new BufferPlayback(graph.ctx, graph.input, buffer, decodedEnded)
+    playback.setVolume(volume)
+    playback.setRate(dsp.getDsp().speed)
+    return playback
+  } catch {
+    return null
+  }
+}
+
 /**
- * Point the element at `trackId`, fetching a fresh stream url when the cached one is
+ * Point the player at `trackId`, fetching a fresh stream url when the cached one is
  * missing or past `expiresAt`. Does not start playback on its own.
  */
 export async function load(trackId: string, force = false): Promise<void> {
   const a = el()
   const stale = Date.now() >= expiresAt - 5_000
-  if (!force && currentTrackId === trackId && !stale && a.src) return
+  if (!force && currentTrackId === trackId && !stale && (decoded || a.src)) return
 
   currentTrackId = trackId
   loading = true
   error = null
+  releaseDecoded()
   emit()
 
   try {
@@ -145,9 +221,29 @@ export async function load(trackId: string, force = false): Promise<void> {
     const localId = localLibrary.localIdFor(trackId)
     let src: string
     if (localId) {
-      src = await localLibrary.objectUrl(trackId)
+      // Created here, still close to the click that chose the track: an AudioContext made
+      // later can start suspended and stay silent.
+      if (DECODE_LOCAL_FILES) void dsp.ensureGraph()
+      const file = await localLibrary.readFile(trackId)
       expiresAt = Number.POSITIVE_INFINITY
       muxed = false
+      if (currentTrackId !== trackId) return
+      if (worthDecoding(file)) {
+        const playback = await decode(file)
+        if (currentTrackId !== trackId) {
+          playback?.dispose()
+          return
+        }
+        if (playback) {
+          emptyElement(a)
+          decoded = playback
+          loading = false
+          if (trackId.startsWith('local:')) localLibrary.noteDuration(trackId, Math.round(playback.duration * 1000))
+          emit()
+          return
+        }
+      }
+      src = localLibrary.blobUrlFor(file)
     } else {
       src = await resolveStream(trackId)
     }
@@ -179,6 +275,17 @@ export async function retry(): Promise<void> {
 }
 
 export async function play(): Promise<void> {
+  if (decoded) {
+    try {
+      await decoded.play()
+      error = null
+      startTicker()
+    } catch (e) {
+      error = e instanceof Error && e.name === 'NotAllowedError' ? 'Press play to start audio' : 'Playback failed'
+    }
+    emit()
+    return
+  }
   const a = el()
   if (!a.src) return
   void dsp.ensureGraph()
@@ -193,10 +300,21 @@ export async function play(): Promise<void> {
 }
 
 export function pause(): void {
+  if (decoded) {
+    decoded.pause()
+    stopTicker()
+    emit()
+    return
+  }
   audio?.pause()
 }
 
 export function toggle(): void {
+  if (decoded) {
+    if (decoded.paused) void play()
+    else pause()
+    return
+  }
   const a = el()
   if (!a.src) return
   if (a.paused) void play()
@@ -204,6 +322,11 @@ export function toggle(): void {
 }
 
 export function seek(positionMs: number): void {
+  if (decoded) {
+    decoded.seek(positionMs / 1000)
+    emit()
+    return
+  }
   const a = el()
   if (!a.src || !Number.isFinite(a.duration)) return
   a.currentTime = Math.max(0, Math.min(positionMs / 1000, a.duration))
@@ -229,6 +352,7 @@ let volume = storedVolume()
 export function setVolume(v: number): void {
   volume = Math.max(0, Math.min(1, v))
   if (audio) audio.volume = volume
+  decoded?.setVolume(volume)
   try {
     localStorage.setItem(VOLUME_KEY, String(volume))
   } catch {
@@ -254,10 +378,15 @@ export function getVolume(): number {
 }
 
 export function onEnded(fn: () => void): () => void {
-  const a = el()
-  a.addEventListener('ended', fn)
-  return () => a.removeEventListener('ended', fn)
+  endedListeners.add(fn)
+  return () => {
+    endedListeners.delete(fn)
+  }
 }
+
+// The speed setting (Equalizer screen) reaches the element through dsp.ts; a decoded track
+// takes it from here.
+dsp.subscribeDsp(() => decoded?.setRate(dsp.getDsp().speed))
 
 export function getStatus(): PlaybackStatus {
   return status()

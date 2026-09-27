@@ -11,12 +11,14 @@ import { SonareDownloads } from '../native/SonareDownloads';
  *
  * Audio comes from the same place as playback: GET /tracks/:id/stream picks the stream for
  * the chosen quality and format, and the backend relay passes Range requests through to
- * YouTube. Files are saved as served (Opus in WebM, or AAC in M4A), never re-encoded.
+ * YouTube. Files are saved as served, never re-encoded: AAC as .m4a, and Opus in WebM as
+ * .mka (Android has no audio/webm type; WebM is a subset of Matroska).
  *
  * The native module downloads into a part file in chunks, so pause, errors and the app
- * being killed all keep what arrived; starting again resumes from there. This store runs
- * the queue, fetches fresh stream urls when one dies (they expire after an hour), and
- * starts over if YouTube now serves a different file than the part holds.
+ * being killed all keep what arrived; starting again resumes from there. It also retries
+ * dropped connections itself: JS timers stop while the app is in the background. This
+ * store runs the queue, fetches fresh stream urls when one dies (they expire after an
+ * hour), and starts over if YouTube now serves a different file than the part holds.
  *
  * Finished files go to the folder picked in Settings, or Music/Sonare. The list and the
  * folder are per device (AsyncStorage); quality and format are account settings.
@@ -90,12 +92,10 @@ const ITEMS_KEY = 'sonare.downloads';
 const LOCATION_KEY = 'sonare.downloadLocation';
 const MAX_PARALLEL = 2;
 const MAX_URL_REFRESHES = 3;
-const MAX_NETWORK_RETRIES = 4;
 
 /** Ids the native side is working on. */
 const running = new Set<string>();
 const refreshes: Record<string, number> = {};
-const networkRetries: Record<string, number> = {};
 let persistTimer: ReturnType<typeof setTimeout> | undefined;
 let hydrated: Promise<void> | null = null;
 let listening = false;
@@ -104,8 +104,10 @@ const safeName = (s: string) => s.replace(/[\\/:*?"<>|\x00-\x1f]/g, '_').replace
 const extensionFor = (mimeType: string) => (/mp4|m4a|aac/i.test(mimeType) ? 'm4a' : 'webm');
 /** "audio/webm; codecs=opus" -> "audio/webm", which is what MediaStore and SAF want. */
 const bareMime = (mimeType: string) => mimeType.split(';')[0].trim() || 'audio/webm';
+/** The server says 0 (or -1, from NewPipe) when YouTube didn't give a size: unknown. */
+const knownSize = (n: number | undefined) => (n && n > 0 ? n : 0);
 
-export const useDownloadsStore = create<DownloadsStore>((set, get) => {
+export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
   const patch = (id: string, change: Partial<DownloadItem>, persistNow = true) => {
     const item = get().items[id];
     if (!item) return;
@@ -143,8 +145,11 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
     return stream;
   };
 
-  const sameFile = (s: StreamInfo, it: DownloadItem) =>
-    (!it.itag || !s.itag || it.itag === s.itag) && (!it.totalBytes || !s.contentLength || it.totalBytes === s.contentLength);
+  // An unknown size on either side can't prove a different file, so only the itag decides then.
+  const sameFile = (s: StreamInfo, it: DownloadItem) => {
+    const size = knownSize(s.contentLength);
+    return (!it.itag || !s.itag || it.itag === s.itag) && (!it.totalBytes || !size || it.totalBytes === size);
+  };
 
   const start = async (id: string) => {
     running.add(id);
@@ -155,7 +160,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
       const part = await SonareDownloads.partSize(id);
       if (part > 0 && !sameFile(stream, item)) await SonareDownloads.discard(id);
       const kept = part > 0 && sameFile(stream, item) ? part : 0;
-      const totalBytes = (kept > 0 && item.totalBytes) || stream.contentLength || 0;
+      const totalBytes = (kept > 0 && knownSize(item.totalBytes)) || knownSize(stream.contentLength);
       // Paused (or removed) while the url was being fetched.
       if (get().items[id]?.status !== 'downloading') {
         running.delete(id);
@@ -190,6 +195,15 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
   const listen = () => {
     if (listening) return;
     listening = true;
+    // Android cuts a background app's network within seconds; a foreground service (with a
+    // "Downloading" notification) keeps it while anything is queued.
+    let active = -1;
+    store.subscribe(s => {
+      const n = Object.values(s.items).filter(i => i.status === 'queued' || i.status === 'downloading').length;
+      if (n === active) return;
+      active = n;
+      SonareDownloads.setActive(n);
+    });
     SonareDownloads.onProgress(e => {
       if (get().items[e.id]?.status !== 'downloading') return;
       patch(e.id, { receivedBytes: e.receivedBytes, totalBytes: e.totalBytes || get().items[e.id]!.totalBytes }, false);
@@ -197,7 +211,6 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
     SonareDownloads.onDone(e => {
       running.delete(e.id);
       delete refreshes[e.id];
-      delete networkRetries[e.id];
       patch(e.id, {
         status: 'done',
         uri: e.uri,
@@ -220,15 +233,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
         void start(e.id);
         return;
       }
-      if (e.code === 'E_NETWORK' && (networkRetries[e.id] = (networkRetries[e.id] ?? 0) + 1) <= MAX_NETWORK_RETRIES) {
-        running.add(e.id);
-        setTimeout(() => {
-          running.delete(e.id);
-          if (get().items[e.id]?.status === 'downloading') void start(e.id);
-          else pump();
-        }, 1000 * 2 ** networkRetries[e.id]);
-        return;
-      }
+      // E_NETWORK arrives only after the native side has given up retrying.
       fail(e.id, e.code === 'E_URL' ? 'The server keeps refusing this download. Try again later.' : e.message);
     });
   };
@@ -320,7 +325,6 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
       const item = get().items[id];
       if (!item || (item.status !== 'paused' && item.status !== 'failed')) return;
       delete refreshes[id];
-      delete networkRetries[id];
       patch(id, { status: 'queued', error: undefined });
       pump();
     },
@@ -335,8 +339,15 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
     },
 
     remove: async id => {
-      const item = get().items[id];
+      let item = get().items[id];
       if (!item) return { fileDeleted: false };
+      if (item.status !== 'done') {
+        // Stops it too, if it's running.
+        await SonareDownloads.discard(id).catch(() => {});
+        running.delete(id);
+        // It may have finished while it was being stopped: then there's a file to delete.
+        item = get().items[id] ?? item;
+      }
       let result: RemoveResult = { fileDeleted: true };
       if (item.status === 'done' && item.uri) {
         try {
@@ -347,10 +358,6 @@ export const useDownloadsStore = create<DownloadsStore>((set, get) => {
             reason: e?.code === 'E_MISSING' ? 'The file is no longer where it was downloaded' : e?.message || "Couldn't delete the file",
           };
         }
-      } else {
-        // Stops it too, if it's running.
-        await SonareDownloads.discard(id).catch(() => {});
-        running.delete(id);
       }
       const rest = { ...get().items };
       delete rest[id];

@@ -47,6 +47,7 @@ export interface ErrorEvent {
 }
 
 interface NativeSonareDownloads {
+  setActive(count: number): void;
   start(options: StartOptions): Promise<void>;
   pause(id: string): Promise<number>;
   discard(id: string): Promise<void>;
@@ -71,6 +72,8 @@ const missing = () => Promise.reject(new Error('Downloads need the Android app r
 
 export const SonareDownloads = {
   available: !!native,
+  /** Queued + running downloads: the native side keeps a foreground service up while > 0. */
+  setActive: (count: number) => native?.setActive(count),
   start: (options: StartOptions) => native?.start(options) ?? missing(),
   pause: (id: string) => native?.pause(id) ?? Promise.resolve(0),
   discard: (id: string) => native?.discard(id) ?? Promise.resolve(),

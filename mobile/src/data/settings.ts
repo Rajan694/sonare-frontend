@@ -13,7 +13,7 @@ export type AudioQuality = 'low' | 'normal' | 'high';
 export type DownloadFormat = 'opus' | 'm4a';
 
 /** Settings quality → the backend's `quality` parameter for /tracks/:id/stream. */
-export const API_QUALITY: Record<AudioQuality, 'auto' | 'low' | 'high'> = { low: 'low', normal: 'auto', high: 'high' };
+export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = { low: 'low', normal: 'normal', high: 'high' };
 
 const STORAGE_KEY = 'sonare.settings';
 const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
@@ -21,8 +21,6 @@ const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
 interface SettingsStore {
   downloadQuality: AudioQuality;
   downloadFormat: DownloadFormat;
-  /** Everything else the server sent, sent back untouched on save. */
-  server: Record<string, unknown>;
   hydrate: () => Promise<void>;
   update: (patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat'>>) => void;
 }
@@ -35,11 +33,12 @@ function pick(s: Record<string, unknown>) {
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
+/** Changed since the last save. Only these are sent: the server keeps what it isn't sent. */
+let unsaved: Record<string, unknown> = {};
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   downloadQuality: 'high',
   downloadFormat: 'opus',
-  server: {},
 
   hydrate: async () => {
     try {
@@ -50,8 +49,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
     if (useAuthStore.getState().status !== 'signedIn') return;
     try {
-      const server = await api.settings();
-      set({ server, ...pick(server) });
+      set(pick(await api.settings()));
       void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ downloadQuality: get().downloadQuality, downloadFormat: get().downloadFormat }));
     } catch {
       // Offline: the phone's copy applies.
@@ -60,13 +58,16 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   update: patch => {
     set(patch);
-    const { downloadQuality, downloadFormat, server } = get();
+    const { downloadQuality, downloadFormat } = get();
     void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ downloadQuality, downloadFormat }));
     if (useAuthStore.getState().status !== 'signedIn') return;
+    unsaved = { ...unsaved, ...patch };
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      // The whole object, so the desktop's EQ / gapless / streaming choices are kept.
-      api.saveSettings({ ...server, downloadQuality, downloadFormat }).catch(() => {});
+      // Just what changed here, so the desktop's EQ / gapless / streaming choices are left alone.
+      const body = unsaved;
+      unsaved = {};
+      api.saveSettings(body).catch(() => {});
     }, 400);
   },
 }));

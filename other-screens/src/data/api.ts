@@ -159,12 +159,13 @@ export const api = {
   },
 
   // Playback
-  getTrackStream(id: string, quality: 'auto' | 'low' | 'high' = 'auto', format?: 'opus' | 'm4a') {
+  getTrackStream(id: string, quality: 'auto' | 'low' | 'normal' | 'high' = 'auto', format?: 'opus' | 'm4a') {
     return request<{
       url: string
       mimeType: string
       codec: string
       bitrateKbps: number
+      /** 0 (or -1 from older backends) when the size isn't known. */
       contentLength: number
       expiresAt: number
       muxed?: boolean

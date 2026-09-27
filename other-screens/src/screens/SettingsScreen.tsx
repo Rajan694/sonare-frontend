@@ -21,12 +21,19 @@ const QUALITIES: { id: AudioQuality; label: string }[] = [
   { id: 'high', label: 'High' },
 ]
 
-// YouTube's audio tops out around 160 kbps Opus / 128 kbps AAC; there is no lossless.
-const DOWNLOAD_QUALITIES: { id: AudioQuality; label: string }[] = [
-  { id: 'low', label: 'Low · about 50-70 kbps' },
-  { id: 'normal', label: 'Normal · about 128 kbps' },
-  { id: 'high', label: 'High · best available' },
-]
+// What YouTube offers per format: Opus in three steps, AAC in two. There is no lossless.
+const DOWNLOAD_QUALITIES: Record<DownloadFormat, { id: AudioQuality; label: string }[]> = {
+  opus: [
+    { id: 'low', label: 'Low · about 60 kbps' },
+    { id: 'normal', label: 'Normal · about 75 kbps' },
+    { id: 'high', label: 'High · about 150 kbps' },
+  ],
+  m4a: [
+    { id: 'low', label: 'Low · about 50 kbps' },
+    { id: 'normal', label: 'Normal · 128 kbps (same as High)' },
+    { id: 'high', label: 'High · 128 kbps' },
+  ],
+}
 
 const DOWNLOAD_FORMATS: { id: DownloadFormat; label: string }[] = [
   { id: 'opus', label: 'Opus (.webm)' },
@@ -256,7 +263,7 @@ export default function SettingsScreen() {
             value={settings.downloadQuality}
             onChange={e => updateSettings({ downloadQuality: e.target.value as AudioQuality })}
           >
-            {DOWNLOAD_QUALITIES.map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
+            {DOWNLOAD_QUALITIES[settings.downloadFormat].map(q => <option key={q.id} value={q.id}>{q.label}</option>)}
           </select>
         </div>
         <div className="lrow">

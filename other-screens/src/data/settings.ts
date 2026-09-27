@@ -5,8 +5,8 @@ import { isAuthenticated, onAuthChange, onAuthReady } from './auth'
 /**
  * Account-level preferences from GET/PUT /me/settings (contract §9).
  *
- * The backend PUT overwrites every column, so the whole object is always sent — patching
- * one field must not reset the others to their defaults.
+ * Only the fields that changed are sent: the backend keeps the ones it isn't sent, so a
+ * change made on the phone since this app loaded its copy isn't overwritten.
  */
 export type AudioQuality = 'low' | 'normal' | 'high'
 export type DownloadFormat = 'opus' | 'm4a'
@@ -34,9 +34,9 @@ let settings: UserSettings = {
 const QUALITIES: AudioQuality[] = ['low', 'normal', 'high']
 
 /** Settings quality → the backend's `quality` parameter for /tracks/:id/stream. */
-export const API_QUALITY: Record<AudioQuality, 'auto' | 'low' | 'high'> = {
+export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = {
   low: 'low',
-  normal: 'auto',
+  normal: 'normal',
   high: 'high',
 }
 
@@ -51,6 +51,8 @@ function sanitize(s: Partial<UserSettings>): Partial<UserSettings> {
 
 const listeners = new Set<() => void>()
 let saveTimer: ReturnType<typeof setTimeout> | undefined
+/** Changed since the last save, sent together once the user stops changing things. */
+let unsaved: Partial<UserSettings> = {}
 let loaded = false
 
 function emit() {
@@ -72,8 +74,11 @@ export function updateSettings(patch: Partial<UserSettings>): void {
   clearTimeout(saveTimer)
   // Guests keep settings on this device only; there's no account to save them to.
   if (!isAuthenticated()) return
+  unsaved = { ...unsaved, ...patch }
   saveTimer = setTimeout(() => {
-    void api.saveSettings(settings).catch(() => {
+    const body = unsaved
+    unsaved = {}
+    void api.saveSettings(body).catch(() => {
       // Offline — the local value still applies for this session.
     })
   }, 400)

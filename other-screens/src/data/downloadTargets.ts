@@ -7,7 +7,9 @@ import { CAPS } from '../lib/caps'
  *  - `native`  desktop app: a folder on disk through Neutralino (default <Music>/Sonare).
  *  - `folder`  web, Chromium only: a folder the user picked with the File System Access API.
  *  - `browser` web anywhere else: bytes collect in IndexedDB, and the finished file is handed
- *              to the browser's own Downloads folder.
+ *              to the browser's own Downloads folder. A page can't tell whether the browser
+ *              really saved it (Chrome asks before a site saves several files in a row), so a
+ *              copy stays in IndexedDB for "Save again" until the download is deleted.
  *
  * All three write an in-progress download to a part file that survives restarts, which is
  * what makes pause / resume work: a resumed download asks the server for the bytes after
@@ -43,8 +45,11 @@ export interface PartFile {
   /** Make appended bytes durable; the web folder target only commits them on close. */
   flush(): Promise<void>
   discard(): Promise<void>
-  /** Move the part into place as `fileName` (or a free variant of it). Returns the saved name/path. */
-  finish(fileName: string, mimeType: string): Promise<{ path: string; size: number }>
+  /**
+   * Move the part into place as `fileName` (or a free variant of it). Returns the saved
+   * name/path; `copyKept` when the browser target kept a copy for "Save again".
+   */
+  finish(fileName: string, mimeType: string): Promise<{ path: string; size: number; copyKept?: boolean }>
 }
 
 export interface DownloadTarget {
@@ -54,6 +59,8 @@ export interface DownloadTarget {
   open(): Promise<PartFile>
   /** Delete a finished file. Throws FileMissingError when it isn't there any more. */
   removeFile(path: string): Promise<void>
+  /** Browser target: hand the kept copy to the browser again. False when there is no copy. */
+  saveAgain?(fileName: string): Promise<boolean>
 }
 
 // ─── IndexedDB (web): folder handles and browser-target part data ──────────────────────
@@ -63,10 +70,12 @@ let dbPromise: Promise<IDBDatabase> | null = null
 
 function db(): Promise<IDBDatabase> {
   dbPromise ??= new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1)
+    // v2 added `files`: finished browser-target downloads, kept for "Save again".
+    const req = indexedDB.open(DB_NAME, 2)
     req.onupgradeneeded = () => {
-      req.result.createObjectStore('parts')
-      req.result.createObjectStore('handles')
+      for (const store of ['parts', 'handles', 'files']) {
+        if (!req.result.objectStoreNames.contains(store)) req.result.createObjectStore(store)
+      }
     }
     req.onsuccess = () => resolve(req.result)
     req.onerror = () => reject(req.error)
@@ -74,7 +83,7 @@ function db(): Promise<IDBDatabase> {
   return dbPromise
 }
 
-async function idb<T>(store: 'parts' | 'handles', mode: IDBTransactionMode, op: (s: IDBObjectStore) => IDBRequest): Promise<T> {
+async function idb<T>(store: 'parts' | 'handles' | 'files', mode: IDBTransactionMode, op: (s: IDBObjectStore) => IDBRequest): Promise<T> {
   const conn = await db()
   return new Promise<T>((resolve, reject) => {
     const req = op(conn.transaction(store, mode).objectStore(store))
@@ -107,6 +116,24 @@ export const canPickWebFolder = !CAPS.offlineDownloads && typeof window !== 'und
 
 const NATIVE_DIR_KEY = 'sonare_download_dir'
 const WEB_FOLDER_KEY = 'location'
+/** Web: set once the user has picked a folder or settled for browser downloads, so we ask only once. */
+const WEB_CHOICE_KEY = 'sonare_download_location_chosen'
+
+function webChoiceMade(): boolean {
+  try {
+    return !!localStorage.getItem(WEB_CHOICE_KEY)
+  } catch {
+    return true // No storage: don't ask on every download.
+  }
+}
+
+function rememberWebChoice(kind: 'folder' | 'browser') {
+  try {
+    localStorage.setItem(WEB_CHOICE_KEY, kind)
+  } catch {
+    // Private mode: we'll ask again next time.
+  }
+}
 
 const listeners = new Set<() => void>()
 let location: DownloadLocation = CAPS.offlineDownloads
@@ -180,8 +207,23 @@ export async function chooseLocation(): Promise<boolean> {
   }
   webFolder = handle
   await idb('handles', 'readwrite', s => s.put(handle, WEB_FOLDER_KEY)).catch(() => {})
+  rememberWebChoice('folder')
   setLocation({ kind: 'folder', label: handle.name, custom: true })
   return true
+}
+
+/**
+ * Chromium, first download: ask for a folder, since saving through the browser's Downloads
+ * can be blocked after the first file. Must run within the click that started the download.
+ * Resolves 'folder' if one was picked, 'browser' if the user said no (we don't ask again),
+ * or null when there was nothing to ask.
+ */
+export async function askForWebFolderOnce(): Promise<'folder' | 'browser' | null> {
+  await loadLocation()
+  if (!canPickWebFolder || location.kind !== 'browser' || webChoiceMade()) return null
+  if (await chooseLocation()) return 'folder'
+  rememberWebChoice('browser')
+  return 'browser'
 }
 
 /** Back to the default: <Music>/Sonare on desktop, the browser's Downloads folder on web. */
@@ -195,6 +237,7 @@ export async function resetLocation(): Promise<void> {
   }
   webFolder = null
   await idb('handles', 'readwrite', s => s.delete(WEB_FOLDER_KEY)).catch(() => {})
+  rememberWebChoice('browser')
   setLocation({ kind: 'browser', label: 'Browser downloads' })
 }
 
@@ -358,6 +401,18 @@ function folderTarget(id: string): DownloadTarget {
   }
 }
 
+/** Hand a file to the browser's Downloads. A same-origin blob: link honours `download`, so it saves instead of playing. */
+function saveThroughBrowser(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = fileName
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 60_000)
+}
+
 function browserTarget(id: string): DownloadTarget {
   const load = () => idb<Blob[] | undefined>('parts', 'readonly', s => s.get(id)).then(p => p ?? [])
   return {
@@ -382,23 +437,24 @@ function browserTarget(id: string): DownloadTarget {
         },
         async finish(fileName, mimeType) {
           const blob = new Blob(parts, { type: mimeType })
-          // A same-origin blob: link honours `download`, so the browser saves instead of playing it.
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = fileName
-          document.body.appendChild(a)
-          a.click()
-          a.remove()
-          setTimeout(() => URL.revokeObjectURL(url), 60_000)
+          // Kept until the download is deleted: nothing tells us the browser saved it.
+          const copyKept = await idb('files', 'readwrite', s => s.put(blob, id)).then(() => true, () => false)
+          saveThroughBrowser(blob, fileName)
           await idb('parts', 'readwrite', s => s.delete(id)).catch(() => {})
-          return { path: fileName, size: blob.size }
+          return { path: fileName, size: blob.size, copyKept }
         },
       }
     },
     async removeFile() {
+      await idb('files', 'readwrite', s => s.delete(id)).catch(() => {})
       // A web page can't reach into the Downloads folder.
       throw new FileMissingError('Files saved by the browser have to be deleted from its Downloads folder')
+    },
+    async saveAgain(fileName) {
+      const blob = await idb<Blob | undefined>('files', 'readonly', s => s.get(id)).catch(() => undefined)
+      if (!blob) return false
+      saveThroughBrowser(blob, fileName)
+      return true
     },
   }
 }

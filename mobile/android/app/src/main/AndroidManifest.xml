@@ -4,6 +4,8 @@
     <!-- Background playback: SonarePlaybackService runs as a media foreground service. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <!-- Downloads: SonareDownloadService keeps the network while the app is in the background. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
@@ -36,5 +38,9 @@
           <action android:name="androidx.media3.session.MediaSessionService" />
         </intent-filter>
       </service>
+      <service
+        android:name=".downloads.SonareDownloadService"
+        android:exported="false"
+        android:foregroundServiceType="dataSync" />
     </application>
 </manifest>

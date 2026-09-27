@@ -279,6 +279,12 @@ export interface DownloadedFile {
   thumbnail?: string
 }
 
+export interface LocalFileData {
+  data: ArrayBuffer
+  mime: string
+  durationMs: number | null
+}
+
 let activeObjectUrl: string | null = null
 
 export const localLibrary = {
@@ -378,14 +384,24 @@ export const localLibrary = {
    * the Web Audio EQ needs (a cross-origin file:// or server URL would play silently).
    */
   async objectUrl(trackId: string): Promise<string> {
+    return localLibrary.blobUrlFor(await localLibrary.readFile(trackId))
+  },
+
+  /** The file's bytes, plus what the index knows about it (a scan may not have a duration). */
+  async readFile(trackId: string): Promise<LocalFileData> {
     await load()
     const localId = localLibrary.localIdFor(trackId)
     const entry = index.entries.find(e => e.id === localId)
     if (!entry) throw new Error('File is not in the local library')
     const data = await filesystem.readBinaryFile(entry.path)
     const ext = entry.path.split('.').pop()?.toLowerCase() ?? ''
+    return { data, mime: MIME[ext] ?? 'audio/*', durationMs: entry.durationMs }
+  },
+
+  /** A blob URL for bytes from readFile. Only the latest one is kept alive. */
+  blobUrlFor(file: LocalFileData): string {
     if (activeObjectUrl) URL.revokeObjectURL(activeObjectUrl)
-    activeObjectUrl = URL.createObjectURL(new Blob([data], { type: MIME[ext] ?? 'audio/*' }))
+    activeObjectUrl = URL.createObjectURL(new Blob([file.data], { type: file.mime }))
     return activeObjectUrl
   },
 
