@@ -13,6 +13,7 @@ import Artwork from '../components/music/Artwork';
 import Icon from '../components/ui/Icon';
 import Button, { IconButton } from '../components/ui/Button';
 import DownloadButton from '../components/music/DownloadButton';
+import { DEFAULT_GENRES, GenreCard, genreVariant } from '../components/music/GenreCard';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { fadeRise, transition } from '../lib/motion';
@@ -399,26 +400,14 @@ export default function Search() {
             <div className="flex flex-col gap-6">
               <span className="text-title-l text-t1 font-semibold">Browse categories</span>
               <div className="grid grid-cols-2 @md:grid-cols-4 gap-3">
-                {(
-                  genres || ['Ambient', 'Electronica', 'Post-rock', 'Indie', 'Jazz', 'Classical', 'Hip-hop', 'Folk']
-                ).map((genre, i) => {
-                  const name = typeof genre === 'string' ? genre : (genre as any).name;
-                  return (
-                    <button
-                      key={name}
-                      onClick={() => dispatch(setQuery(name))}
-                      className="gcard text-left cursor-pointer relative overflow-hidden border-0"
-                    >
-                      <Artwork
-                        variant={`a${(i % 12) + 1}` as any}
-                        size={56}
-                        radius="md"
-                        className="absolute top-2 right-2"
-                      />
-                      <span className="text-title-l text-t1 relative">{name}</span>
-                    </button>
-                  );
-                })}
+                {(genres?.map((g) => g.name) ?? DEFAULT_GENRES).map((name, i) => (
+                  <GenreCard
+                    key={name}
+                    name={name}
+                    variant={genreVariant(i)}
+                    onClick={() => dispatch(setQuery(name))}
+                  />
+                ))}
               </div>
             </div>
           )}

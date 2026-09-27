@@ -12,6 +12,7 @@ import { requireAccount } from './accountGate';
 
 const overrides = new Map<string, boolean>();
 const listeners = new Set<() => void>();
+const savedListeners = new Set<() => void>();
 
 function emit() {
   for (const l of listeners) l();
@@ -37,6 +38,7 @@ export async function setFavourite(trackId: string, next: boolean): Promise<void
   emit();
   try {
     await api.setTrackFavourite(trackId, next);
+    for (const l of savedListeners) l();
   } catch (e) {
     // Roll back to whatever we knew before rather than leaving a lie on screen.
     if (previous === undefined) overrides.delete(trackId);
@@ -44,6 +46,24 @@ export async function setFavourite(trackId: string, next: boolean): Promise<void
     emit();
     throw e;
   }
+}
+
+/** Runs `fn` after a heart change reached the server, so lists of favourites can refetch. */
+export function onFavouritesSaved(fn: () => void): () => void {
+  savedListeners.add(fn);
+  return () => {
+    savedListeners.delete(fn);
+  };
+}
+
+/**
+ * For lists that show or hide rows by favourite state: re-renders on every heart toggle
+ * and returns the effective-state lookup.
+ */
+export function useFavouriteLookup(): typeof isFavourite {
+  const [, force] = useState(0);
+  useEffect(() => subscribe(() => force((n) => n + 1)), []);
+  return isFavourite;
 }
 
 /**

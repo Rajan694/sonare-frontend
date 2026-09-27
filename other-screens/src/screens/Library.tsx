@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useLocalLibrary, resolveLocalRefs } from '../data/local';
+import { useFavouriteLookup } from '../data/favourites';
 import { useModeStore } from '../store/modeStore';
 import { usePlayerStore } from '../store/playerStore';
 import {
@@ -14,7 +15,9 @@ import {
   useFolders,
   useTrending,
   useAuth,
+  useGenres,
 } from '../data/hooks';
+import { DEFAULT_GENRES, GenreCard, genreVariant } from '../components/music/GenreCard';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import { Card } from '../components/ui/Card';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
@@ -73,8 +76,10 @@ export default function Library() {
   const { data: artistsData, loading: artistsLoading } = useLibraryArtists();
   const { data: foldersData } = useFolders();
   const { data: trendingData } = useTrending('IN', 20);
+  const { data: genres } = useGenres();
 
   const local = useLocalLibrary();
+  const isFavourite = useFavouriteLookup();
 
   let tracks: Track[] = [];
   let loading = false;
@@ -90,8 +95,9 @@ export default function Library() {
     tracks = [...local.tracks, ...server];
     loading = !isOffline && libLoading && local.tracks.length === 0;
   } else if (activeTab === 'Favourites') {
-    tracks = resolveLocalRefs(favsData?.items || [], local);
-    loading = favsLoading;
+    // An unhearted row leaves at once; the refetch that follows the save confirms it.
+    tracks = resolveLocalRefs(favsData?.items || [], local).filter((t) => isFavourite(t.id, true));
+    loading = favsLoading && !favsData;
   } else if (activeTab === 'Most played') {
     tracks = resolveLocalRefs(mostPlayedData?.items || [], local);
     loading = mostLoading;
@@ -163,6 +169,12 @@ export default function Library() {
   const countSubtitle = isOffline
     ? `${tracks.length.toLocaleString()} songs on this device`
     : `${tracks.length.toLocaleString()} songs in your library`;
+  const TAB_SUBTITLES: Partial<Record<Tab, string>> = {
+    Albums: 'Albums in your library',
+    Artists: 'Artists in your library',
+    Genres: 'Browse music by genre',
+    Folders: 'Music folders on this device',
+  };
 
   return (
     <div className="@container flex flex-col gap-6 overflow-hidden h-full">
@@ -172,7 +184,7 @@ export default function Library() {
         <div className="flex flex-col @[480px]:flex-row @[480px]:items-center @[480px]:justify-between gap-4">
           <div className="flex flex-col gap-1">
             <span className="text-display-m text-t1 font-semibold">{activeTab}</span>
-            <span className="text-body-m text-t2">{isTrackTab ? countSubtitle : activeTab}</span>
+            <span className="text-body-m text-t2">{isTrackTab ? countSubtitle : TAB_SUBTITLES[activeTab]}</span>
           </div>
           {/* Action buttons (Shuffle / Play all) */}
           <div className="flex items-center gap-2.5">
@@ -182,17 +194,21 @@ export default function Library() {
                 <span>Folders</span>
               </Link>
             )}
-            <Button variant="out" icon="shuffle" onClick={handleShuffle} disabled={tracks.length === 0}>
-              Shuffle
-            </Button>
-            <Button
-              variant={isOffline ? 'gold' : 'acc'}
-              icon="play"
-              onClick={handlePlayAll}
-              disabled={tracks.length === 0}
-            >
-              Play all
-            </Button>
+            {isTrackTab && (
+              <>
+                <Button variant="out" icon="shuffle" onClick={handleShuffle} disabled={tracks.length === 0}>
+                  Shuffle
+                </Button>
+                <Button
+                  variant={isOffline ? 'gold' : 'acc'}
+                  icon="play"
+                  onClick={handlePlayAll}
+                  disabled={tracks.length === 0}
+                >
+                  Play all
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -416,23 +432,14 @@ export default function Library() {
             </div>
           ) : activeTab === 'Genres' ? (
             <div className="grid grid-cols-2 @[720px]:grid-cols-4 gap-3">
-              {['Ambient', 'Electronica', 'Post-rock', 'Indie', 'Jazz', 'Classical', 'Hip-hop', 'Folk'].map(
-                (cat, i) => (
-                  <Link
-                    key={cat}
-                    to={`/search?q=${encodeURIComponent(cat)}`}
-                    className="gcard text-left cursor-pointer relative overflow-hidden no-underline"
-                  >
-                    <Artwork
-                      variant={`a${(i % 12) + 1}` as any}
-                      size={56}
-                      radius="md"
-                      className="absolute top-2 right-2"
-                    />
-                    <span className="text-title-l text-t1 relative">{cat}</span>
-                  </Link>
-                ),
-              )}
+              {(genres?.map((g) => g.name) ?? DEFAULT_GENRES).map((name, i) => (
+                <GenreCard
+                  key={name}
+                  name={name}
+                  variant={genreVariant(i)}
+                  to={`/search?q=${encodeURIComponent(name)}`}
+                />
+              ))}
             </div>
           ) : tracks.length === 0 ? (
             <EmptyState icon="music" title="No songs found" description="Add songs or go online to browse catalog" />

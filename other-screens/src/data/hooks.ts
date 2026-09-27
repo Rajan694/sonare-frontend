@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from './api';
 import { useLocalLibrary } from './local';
+import { onFavouritesSaved } from './favourites';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
 import type { Track, Album, Artist, Playlist, Folder, Page, User } from './types';
 
@@ -229,7 +230,11 @@ export function useLibraryGenres() {
 }
 
 export function useFavourites(cursor?: string) {
-  return useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor], { accountOnly: true });
+  const result = useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor], { accountOnly: true });
+  const { refetch } = result;
+  // A heart toggled anywhere (player, another list) changes this list.
+  useEffect(() => onFavouritesSaved(refetch), [refetch]);
+  return result;
 }
 
 export function useRecentlyPlayed(limit: number = 20) {

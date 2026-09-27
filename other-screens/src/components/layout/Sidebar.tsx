@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { CAPS } from '../../lib/caps';
@@ -112,139 +111,143 @@ export default function Sidebar() {
         />
       </div>
 
-      <div className="flex flex-col flex-none py-3 px-2.5 gap-0.5">
-        {NAV_ITEMS.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            className={cn('sitem', collapsed && 'justify-center px-0', isActive(item.to) && 'on')}
-            {...tip(item.label)}
-          >
-            <Icon name={item.icon} size={18} />
-            {!collapsed && item.label}
-          </Link>
-        ))}
-      </div>
-
-      <hr className="hr mx-4 my-1" />
-
-      <div className="flex flex-col flex-none pt-3 px-2.5 pb-1.5 gap-0.5">
-        {!collapsed && <span className="text-overline text-t3 px-3 pb-2">Library</span>}
-        {LIBRARY_ITEMS.filter((item) => {
-          if (item.to === '/folders' && !CAPS.localLibrary) return false;
-          if (item.to === '/downloads' && !CAPS.downloads) return false;
-          if (item.to === LIKED_SONGS) return false; // Liked Songs is pinned under Playlists instead
-          return true;
-        }).map((item) => (
-          <Link
-            key={item.label}
-            to={item.to}
-            className={cn(
-              'sitem',
-              collapsed && 'justify-center px-0',
-              location.pathname + location.search === item.to && 'on',
-            )}
-            {...tip(item.label)}
-          >
-            <Icon name={item.icon} size={18} />
-            {!collapsed && item.label}
-            {!collapsed && item.to === '/downloads' && downloading > 0 && (
-              <span className="ml-auto text-label-s text-acc font-mono" aria-label={`${downloading} downloading`}>
-                {downloading}
-              </span>
-            )}
-          </Link>
-        ))}
-      </div>
-
-      <hr className="hr mx-4 my-1" />
-
-      <div className="flex flex-col grow py-3 px-2.5 gap-0.5 overflow-hidden">
-        <div className={cn('flex items-center pb-2', collapsed ? 'justify-center' : 'justify-between px-3')}>
-          {!collapsed && <span className="text-overline text-t3">Playlists</span>}
-          <IconButton
-            icon="plus"
-            label="New playlist"
-            size={28}
-            onClick={handleCreatePlaylist}
-            data-tip-side={collapsed ? 'right' : undefined}
-          />
+      {/* Nav, library links and playlists scroll as one, so a short window still reaches
+          every playlist instead of squeezing that list to a sliver. */}
+      <div className="flex flex-col grow min-h-0 overflow-y-auto overflow-x-hidden">
+        <div className="flex flex-col flex-none py-3 px-2.5 gap-0.5">
+          {NAV_ITEMS.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={cn('sitem', collapsed && 'justify-center px-0', isActive(item.to) && 'on')}
+              {...tip(item.label)}
+            >
+              <Icon name={item.icon} size={18} />
+              {!collapsed && item.label}
+            </Link>
+          ))}
         </div>
 
-        <div className="flex flex-col gap-0.5 overflow-y-auto grow">
-          <Link
-            to={LIKED_SONGS}
-            className={cn(
-              'sitem h-11',
-              collapsed && 'justify-center px-0',
-              location.pathname + location.search === LIKED_SONGS && 'on',
-            )}
-            {...tip('Liked Songs')}
-          >
-            <span className="art-r-xs flex items-center justify-center flex-none w-[30px] h-[30px] bg-accbg text-acc">
-              <Icon name="heart" size={15} />
-            </span>
-            {!collapsed && (
-              <span className="flex flex-col grow gap-px min-w-0">
-                <span className="text-label-l text-t1 truncate">Liked Songs</span>
-                <span className="text-label-s text-t3 truncate">Your favourites</span>
+        <hr className="hr mx-4 my-1" />
+
+        <div className="flex flex-col flex-none pt-3 px-2.5 pb-1.5 gap-0.5">
+          {!collapsed && <span className="text-overline text-t3 px-3 pb-2">Library</span>}
+          {LIBRARY_ITEMS.filter((item) => {
+            if (item.to === '/folders' && !CAPS.localLibrary) return false;
+            if (item.to === '/downloads' && !CAPS.downloads) return false;
+            if (item.to === LIKED_SONGS) return false; // Liked Songs is pinned under Playlists instead
+            return true;
+          }).map((item) => (
+            <Link
+              key={item.label}
+              to={item.to}
+              className={cn(
+                'sitem',
+                collapsed && 'justify-center px-0',
+                location.pathname + location.search === item.to && 'on',
+              )}
+              {...tip(item.label)}
+            >
+              <Icon name={item.icon} size={18} />
+              {!collapsed && item.label}
+              {!collapsed && item.to === '/downloads' && downloading > 0 && (
+                <span className="ml-auto text-label-s text-acc font-mono" aria-label={`${downloading} downloading`}>
+                  {downloading}
+                </span>
+              )}
+            </Link>
+          ))}
+        </div>
+
+        <hr className="hr mx-4 my-1" />
+
+        <div className="flex flex-col flex-none py-3 px-2.5 gap-0.5">
+          <div className={cn('flex items-center pb-2', collapsed ? 'justify-center' : 'justify-between px-3')}>
+            {!collapsed && <span className="text-overline text-t3">Playlists</span>}
+            <IconButton
+              icon="plus"
+              label="New playlist"
+              size={28}
+              onClick={handleCreatePlaylist}
+              data-tip-side={collapsed ? 'right' : undefined}
+            />
+          </div>
+
+          <div className="flex flex-col gap-0.5">
+            <Link
+              to={LIKED_SONGS}
+              className={cn(
+                'sitem h-11',
+                collapsed && 'justify-center px-0',
+                location.pathname + location.search === LIKED_SONGS && 'on',
+              )}
+              {...tip('Liked Songs')}
+            >
+              <span className="art-r-xs flex items-center justify-center flex-none w-[30px] h-[30px] bg-accbg text-acc">
+                <Icon name="heart" size={15} />
               </span>
-            )}
-          </Link>
-          {playlistsLoading ? (
-            Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="sitem h-11 animate-pulse bg-s2/30 rounded" />
-            ))
-          ) : !user ? (
-            collapsed ? null : (
-              <Link
-                to="/signin"
-                state={{
-                  mode: 'signup',
-                  reason: 'Create a free account to make playlists and sync them across devices.',
-                }}
-                className="text-body-s text-t3 px-3 py-2 no-underline hover:text-t1"
-              >
-                Sign in to make playlists
-              </Link>
-            )
-          ) : playlists.length === 0 ? (
-            !collapsed && <span className="text-body-s text-t3 px-3 py-2">No playlists created</span>
-          ) : (
-            playlists.map((pl, i) => {
-              const { icon, cls } = playlistIcon(pl.kind);
-              return (
+              {!collapsed && (
+                <span className="flex flex-col grow gap-px min-w-0">
+                  <span className="text-label-l text-t1 truncate">Liked Songs</span>
+                  <span className="text-label-s text-t3 truncate">Your favourites</span>
+                </span>
+              )}
+            </Link>
+            {playlistsLoading ? (
+              Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="sitem h-11 animate-pulse bg-s2/30 rounded" />
+              ))
+            ) : !user ? (
+              collapsed ? null : (
                 <Link
-                  key={pl.id}
-                  to={`/playlist/${pl.id}`}
-                  className={cn('sitem h-11', collapsed && 'justify-center px-0')}
-                  onContextMenu={(e) => openPlaylistMenu(pl, e)}
-                  {...tip(pl.name)}
+                  to="/signin"
+                  state={{
+                    mode: 'signup',
+                    reason: 'Create a free account to make playlists and sync them across devices.',
+                  }}
+                  className="text-body-s text-t3 px-3 py-2 no-underline hover:text-t1"
                 >
-                  <Artwork
-                    src={pl.thumbnail || `/api/v1/playlists/${pl.id}/artwork?size=64`}
-                    alt={pl.name}
-                    variant={artVariants[i % artVariants.length]}
-                    size={30}
-                    radius="xs"
-                  />
-                  {!collapsed && (
-                    <>
-                      <span className="flex flex-col grow gap-px min-w-0">
-                        <span className="text-label-l text-t1 truncate">{pl.name}</span>
-                        <span className="text-label-s text-t3 truncate capitalize">
-                          {`${pl.kind}${pl.trackCount !== null ? ` · ${pl.trackCount}` : ''}`}
-                        </span>
-                      </span>
-                      <span className={cn('flex-none', cls)}>
-                        <Icon name={icon} size={14} />
-                      </span>
-                    </>
-                  )}
+                  Sign in to make playlists
                 </Link>
-              );
-            })
-          )}
+              )
+            ) : playlists.length === 0 ? (
+              !collapsed && <span className="text-body-s text-t3 px-3 py-2">No playlists created</span>
+            ) : (
+              playlists.map((pl, i) => {
+                const { icon, cls } = playlistIcon(pl.kind);
+                return (
+                  <Link
+                    key={pl.id}
+                    to={`/playlist/${pl.id}`}
+                    className={cn('sitem h-11', collapsed && 'justify-center px-0')}
+                    onContextMenu={(e) => openPlaylistMenu(pl, e)}
+                    {...tip(pl.name)}
+                  >
+                    <Artwork
+                      src={pl.thumbnail || `/api/v1/playlists/${pl.id}/artwork?size=64`}
+                      alt={pl.name}
+                      variant={artVariants[i % artVariants.length]}
+                      size={30}
+                      radius="xs"
+                    />
+                    {!collapsed && (
+                      <>
+                        <span className="flex flex-col grow gap-px min-w-0">
+                          <span className="text-label-l text-t1 truncate">{pl.name}</span>
+                          <span className="text-label-s text-t3 truncate capitalize">
+                            {`${pl.kind}${pl.trackCount !== null ? ` · ${pl.trackCount}` : ''}`}
+                          </span>
+                        </span>
+                        <span className={cn('flex-none', cls)}>
+                          <Icon name={icon} size={14} />
+                        </span>
+                      </>
+                    )}
+                  </Link>
+                );
+              })
+            )}
+          </div>
         </div>
       </div>
 

@@ -11,10 +11,12 @@ import { Slider } from '../ui/Slider';
 import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
 import Waveform from '../music/Waveform';
+import TrackDownloadButton from '../music/TrackDownloadButton';
 import { formatDuration } from '../../lib/utils';
 import * as player from '../../data/player';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { toggleQueue } from '../../store/uiSlice';
+import { playsFrom, useLocalLibrary } from '../../data/local';
 
 export default function BottomPlayer() {
   const dispatch = useAppDispatch();
@@ -38,68 +40,14 @@ export default function BottomPlayer() {
     cycleRepeat,
   } = usePlayerStore();
   const isOffline = mode === 'offline';
+  const local = useLocalLibrary();
 
   const { data: peaksData } = usePeaks(currentTrack?.id);
   const peaks = currentTrack?.peaks || peaksData?.peaks;
   const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
 
-  if (!currentTrack) {
-    return (
-      <footer className="dplayer min-w-0 overflow-hidden">
-        <div className="flex items-center gap-3 flex-none w-[200px] lg:w-[250px] xl:w-[290px] min-w-0 opacity-40">
-          <Artwork variant="a1" size={48} radius="sm" className="flex-none" />
-          <span className="flex flex-col grow gap-[3px] min-w-0">
-            <span className="text-title-m text-t3 truncate">Nothing playing</span>
-            <span className="text-body-s text-t4 truncate">Select a track to start</span>
-          </span>
-        </div>
-
-        <div className="flex flex-col grow gap-1 max-w-[560px] min-w-0 opacity-40">
-          <div className="flex items-center justify-center gap-2 sm:gap-3.5">
-            <IconButton icon="shuffle" label="Shuffle" size={28} disabled />
-            <IconButton icon="skip-back" label="Previous track" size={32} disabled />
-            <button
-              className={cn('playbtn playbtn-40', isOffline ? 'bg-gold' : 'bg-acc')}
-              aria-label="Play"
-              data-tip="Play"
-              data-tip-kbd="Space"
-              disabled
-            >
-              <Icon name="play" size={18} />
-            </button>
-            <IconButton icon="skip-forward" label="Next track" size={32} disabled />
-            <IconButton icon="repeat" label="Repeat" size={28} disabled />
-          </div>
-          <div className="flex items-center gap-2.5">
-            <span className="text-mono-s text-t3 flex-none">0:00</span>
-            <div className="grow h-5 bg-s2/40 rounded-sm min-w-0" />
-            <span className="text-mono-s text-t3 flex-none">0:00</span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 flex-none w-[200px] lg:w-[250px] xl:w-[290px] justify-end opacity-60">
-          <Link to="/lyrics" className="ib ib-32 hidden sm:inline-flex" aria-label="Lyrics" data-tip="Lyrics">
-            <Icon name="lyrics" size={16} />
-          </Link>
-          <button
-            className={cn('ib ib-32', queueOpen && 'text-acc bg-accbg')}
-            aria-label="Queue"
-            data-tip="Queue"
-            data-tip-kbd="Ctrl Q"
-            onClick={() => dispatch(toggleQueue())}
-          >
-            <Icon name="list" size={16} />
-          </button>
-          <Link to="/equalizer" className="ib ib-32 hidden md:inline-flex" aria-label="Equalizer" data-tip="Equalizer">
-            <Icon name="sliders" size={16} />
-          </Link>
-          <Link to="/now-playing" className="ib ib-32" aria-label="Full screen player" data-tip="Full screen player">
-            <Icon name="minimize" size={16} />
-          </Link>
-        </div>
-      </footer>
-    );
-  }
+  // Nothing to control until a track is picked: the bar only takes space while it's useful.
+  if (!currentTrack) return null;
 
   // Prefer the decoded duration from the audio element; fall back to the catalog value
   // before the stream has loaded its metadata.
@@ -107,48 +55,56 @@ export default function BottomPlayer() {
   const positionRatio = state.positionMs / effectiveDurationMs;
 
   return (
+    // Three columns: the side ones split whatever the transport leaves, so the transport
+    // stays centred and the utilities sit against the right edge at any width.
     <footer className="dplayer min-w-0 overflow-hidden">
-      <Link
-        to="/now-playing"
-        className="flex items-center gap-3 flex-none no-underline text-inherit w-[180px] sm:w-[220px] lg:w-[250px] xl:w-[290px] min-w-0"
-        aria-label="Open now playing"
-      >
-        <motion.div layoutId="now-playing-artwork" className="flex-none">
-          <Artwork
-            src={trackArtwork(currentTrack, 64)}
-            alt={currentTrack.title}
-            variant="a1"
-            size={48}
-            radius="sm"
-            rings
-          />
-        </motion.div>
-        <span className="flex flex-col grow gap-0.5 min-w-0">
-          <span className="flex items-center gap-1.5 min-w-0">
-            <span className="text-label-l sm:text-title-m text-t1 truncate">{currentTrack.title}</span>
-            <SourceGlyph source={currentTrack.source} />
-          </span>
-          {playbackError ? (
-            <span className="text-label-s text-red truncate" role="alert">
-              {playbackError}
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 basis-0 min-w-[240px]">
+        <Link
+          to="/now-playing"
+          className="flex items-center gap-3 min-w-0 no-underline text-inherit"
+          aria-label="Open now playing"
+        >
+          <motion.div layoutId="now-playing-artwork" className="flex-none">
+            <Artwork
+              src={trackArtwork(currentTrack, 64)}
+              alt={currentTrack.title}
+              variant="a1"
+              size={48}
+              radius="sm"
+              rings
+            />
+          </motion.div>
+          <span className="flex flex-col grow gap-0.5 min-w-0">
+            <span className="flex items-center gap-1.5 min-w-0">
+              <span className="text-label-l sm:text-title-m text-t1 truncate">{currentTrack.title}</span>
+              <SourceGlyph source={playsFrom(currentTrack, local)} />
             </span>
-          ) : (
-            <span className="text-label-s sm:text-body-s text-t2 truncate">{currentTrack.artist}</span>
+            {playbackError ? (
+              <span className="text-label-s text-red truncate" role="alert">
+                {playbackError}
+              </span>
+            ) : (
+              <span className="text-label-s sm:text-body-s text-t2 truncate">{currentTrack.artist}</span>
+            )}
+          </span>
+        </Link>
+        <span className="flex items-center gap-0.5 flex-none">
+          {playbackError && (
+            <IconButton icon="sync" label="Retry playback" size={32} onClick={() => void player.retry()} />
           )}
+          <IconButton
+            icon="heart"
+            label={favourite ? 'Remove from favourites' : 'Add to favourites'}
+            size={32}
+            active={favourite}
+            onClick={toggleFavourite}
+            className="hidden sm:inline-flex"
+          />
+          <TrackDownloadButton track={currentTrack} size={32} />
         </span>
-      </Link>
-      {playbackError && <IconButton icon="sync" label="Retry playback" size={32} onClick={() => void player.retry()} />}
+      </div>
 
-      <IconButton
-        icon="heart"
-        label={favourite ? 'Remove from favourites' : 'Add to favourites'}
-        size={32}
-        active={favourite}
-        onClick={toggleFavourite}
-        className="hidden sm:inline-flex flex-none"
-      />
-
-      <div className="flex flex-col grow gap-1 max-w-[520px] min-w-0">
+      <div className="flex flex-col gap-1 flex-[0_1_600px] min-w-[240px]">
         <div className="flex items-center justify-center gap-2 sm:gap-3.5">
           <IconButton
             icon="shuffle"
@@ -195,7 +151,7 @@ export default function BottomPlayer() {
         </div>
       </div>
 
-      <div className="flex items-center gap-0.5 sm:gap-1 flex-none w-[180px] sm:w-[220px] lg:w-[250px] xl:w-[290px] justify-end min-w-0">
+      <div className="flex items-center gap-0.5 sm:gap-1 flex-1 basis-0 min-w-max justify-end">
         <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" data-tip="Lyrics">
           <Icon name="lyrics" size={16} />
         </Link>

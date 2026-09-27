@@ -6,7 +6,7 @@ import { showToast } from '../../store/toastStore';
 import { api } from '../../data/api';
 import { requireAccount } from '../../data/accountGate';
 import { notifyPlaylistsChanged } from '../../data/hooks';
-import { localLibrary, useLocalLibrary } from '../../data/local';
+import { localLibrary, playsFrom, useLocalLibrary } from '../../data/local';
 import { IconButton } from '../ui/Button';
 import Icon from '../ui/Icon';
 import { SourceGlyph } from '../ui/SourceGlyph';
@@ -36,7 +36,7 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
     clearUpcoming,
   } = usePlayerStore();
   const isOffline = mode === 'offline';
-  useLocalLibrary();
+  const local = useLocalLibrary();
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
@@ -151,7 +151,7 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
                   <span className={cn('text-label-l truncate', isOffline ? 'text-gold' : 'text-acc')}>
                     {currentTrack.title}
                   </span>
-                  <SourceGlyph source={currentTrack.source} />
+                  <SourceGlyph source={playsFrom(currentTrack, local)} />
                 </span>
                 <div className="flex items-center gap-2">
                   <div className="track grow h-1">
@@ -232,7 +232,7 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
                 <div className="flex flex-col grow gap-0.5 min-w-0">
                   <span className="flex items-center gap-1.5 min-w-0">
                     <span className="text-label-l text-t1 truncate">{track.title}</span>
-                    <SourceGlyph source={track.source} />
+                    <SourceGlyph source={playsFrom(track, local)} />
                   </span>
                   <span className="text-label-s text-t3 truncate">{track.artist}</span>
                 </div>

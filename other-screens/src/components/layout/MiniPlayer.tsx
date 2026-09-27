@@ -9,6 +9,7 @@ import Icon from '../ui/Icon';
 import { IconButton } from '../ui/Button';
 import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
+import { playsFrom, useLocalLibrary } from '../../data/local';
 
 export default function MiniPlayer() {
   const navigate = useNavigate();
@@ -16,6 +17,7 @@ export default function MiniPlayer() {
   const { state, currentTrack, isPlaying, isLoading, durationMs, togglePlay, next } = usePlayerStore();
 
   const isOffline = mode === 'offline';
+  const local = useLocalLibrary();
   const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
 
   if (!currentTrack) return null;
@@ -51,7 +53,7 @@ export default function MiniPlayer() {
         <span className="flex flex-col grow gap-0.5 min-w-0">
           <span className="flex items-center gap-1.5 min-w-0">
             <span className="text-title-m text-t1 truncate">{currentTrack.title}</span>
-            <SourceGlyph source={currentTrack.source} />
+            <SourceGlyph source={playsFrom(currentTrack, local)} />
           </span>
           <span className="text-body-s text-t2 truncate">{currentTrack.artist}</span>
         </span>

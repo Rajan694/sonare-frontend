@@ -12,6 +12,7 @@ import { CAPS } from '../../lib/caps';
 import { localLibrary } from '../../data/local';
 import { downloads, useDownload } from '../../data/downloads';
 import { useModeStore } from '../../store/modeStore';
+import { deleteTrackDownload, startTrackDownload } from './TrackDownloadButton';
 
 /**
  * One context menu for every track list (FLOWS §3 D05): right-click a row, or press its
@@ -170,20 +171,6 @@ function OpenMenu({ target }: { target: MenuTarget }) {
     }
   }
 
-  async function startDownload(track: Track) {
-    await downloads.enqueue([track]);
-    showToast({ title: 'Added to downloads', description: track.title, icon: 'download', variant: 'gold' });
-  }
-
-  async function deleteDownload(track: Track) {
-    const { fileDeleted, reason } = await downloads.remove(track.id);
-    showToast(
-      fileDeleted
-        ? { title: 'Download deleted', description: track.title, icon: 'trash' }
-        : { title: 'Removed from downloads', description: reason, icon: 'info' },
-    );
-  }
-
   const ownPlaylists = playlists?.items ?? [];
 
   return (
@@ -230,7 +217,7 @@ function OpenMenu({ target }: { target: MenuTarget }) {
                   single &&
                   single.source !== 'local' &&
                   (download?.status === 'done' ? (
-                    <MenuItem icon="trash" onClick={run(() => void deleteDownload(single))}>
+                    <MenuItem icon="trash" onClick={run(() => void deleteTrackDownload(single))}>
                       Delete download
                     </MenuItem>
                   ) : download?.status === 'queued' || download?.status === 'downloading' ? (
@@ -243,7 +230,7 @@ function OpenMenu({ target }: { target: MenuTarget }) {
                     </MenuItem>
                   ) : (
                     mode === 'online' && (
-                      <MenuItem icon="download" onClick={run(() => void startDownload(single))}>
+                      <MenuItem icon="download" onClick={run(() => void startTrackDownload(single))}>
                         Download
                       </MenuItem>
                     )

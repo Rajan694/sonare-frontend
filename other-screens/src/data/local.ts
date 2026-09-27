@@ -311,6 +311,8 @@ export interface DownloadedFile {
 export interface LocalFileData {
   data: ArrayBuffer;
   mime: string;
+  /** Lower-case file extension, e.g. "mp3". */
+  ext: string;
   durationMs: number | null;
 }
 
@@ -436,7 +438,7 @@ export const localLibrary = {
     if (!entry) throw new Error('File is not in the local library');
     const data = await filesystem.readBinaryFile(entry.path);
     const ext = entry.path.split('.').pop()?.toLowerCase() ?? '';
-    return { data, mime: MIME[ext] ?? 'audio/*', durationMs: entry.durationMs };
+    return { data, mime: MIME[ext] ?? 'audio/*', ext, durationMs: entry.durationMs };
   },
 
   /** A blob URL for bytes from readFile. Only the latest one is kept alive. */
@@ -585,6 +587,11 @@ function subscribe(fn: () => void) {
 
 export function getLocalSnapshot(): LocalSnapshot {
   return snapshot;
+}
+
+/** Where a track plays from here: its own file (a local file or a finished download) or the server. */
+export function playsFrom(track: { id: string; source: string }, local: LocalSnapshot): 'local' | 'server' {
+  return track.source === 'local' || local.downloads.has(track.id) ? 'local' : 'server';
 }
 
 /** Live view of the local library; loads the stored index on first use. */

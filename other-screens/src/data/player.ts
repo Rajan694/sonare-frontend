@@ -1,6 +1,8 @@
 import { API_BASE } from './auth';
 import { api } from './api';
+import { demuxAudio, type DemuxedAudio } from './audioDemux';
 import { BufferPlayback } from './bufferPlayback';
+import { canStream, StreamPlayback } from './streamPlayback';
 import * as dsp from './dsp';
 import { localLibrary, type LocalFileData } from './local';
 import { API_QUALITY, getSettings } from './settings';
@@ -17,7 +19,8 @@ import { CAPS } from '../lib/caps';
  * media error rather than failing the track.
  *
  * In the Linux window, local files are decoded and played from memory instead (see
- * bufferPlayback.ts): WebKitGTK's <audio> drops audio at every ~64 KB it reads.
+ * bufferPlayback.ts): WebKitGTK's <audio> drops audio at every ~64 KB it reads. Files too
+ * long to decode whole are decoded a few seconds at a time (streamPlayback.ts).
  */
 
 export interface PlaybackStatus {
@@ -45,8 +48,8 @@ let loading = false;
 let error: string | null = null;
 /** Guards against a retry loop when the refreshed url fails too. */
 let retriedForTrack: string | null = null;
-/** The current track when it plays from memory; the element is idle meanwhile. */
-let decoded: BufferPlayback | null = null;
+/** The current track when it plays through Web Audio; the element is idle meanwhile. */
+let decoded: BufferPlayback | StreamPlayback | null = null;
 /** The element emits timeupdate on its own; a decoded track needs a clock for it. */
 let ticker: ReturnType<typeof setInterval> | null = null;
 const endedListeners = new Set<() => void>();
@@ -54,7 +57,7 @@ const endedListeners = new Set<() => void>();
 // Linux only: WebKitGTK is where the element drops audio, and decoding costs memory
 // (about 10 MB per minute), which other platforms' players don't need to spend.
 const DECODE_LOCAL_FILES = CAPS.localLibrary && window.NL_OS === 'Linux';
-// Longer or bigger files (DJ mixes, audiobooks) keep using the element.
+// Longer or bigger files (DJ mixes, audiobooks, whole-album recordings) are streamed.
 const MAX_DECODE_MS = 15 * 60_000;
 const MAX_DECODE_BYTES = 60 * 1024 * 1024;
 
@@ -179,9 +182,10 @@ function decodedEnded() {
   for (const fn of endedListeners) fn();
 }
 
-function worthDecoding(file: LocalFileData): boolean {
-  if (!DECODE_LOCAL_FILES || file.data.byteLength > MAX_DECODE_BYTES) return false;
-  return file.durationMs === null || file.durationMs <= MAX_DECODE_MS;
+function streamFailed() {
+  stopTicker();
+  error = 'Playback failed';
+  emit();
 }
 
 /** Decodes a local file for BufferPlayback; null when Web Audio can't (the element then tries). */
@@ -199,6 +203,30 @@ async function decode(file: LocalFileData): Promise<BufferPlayback | null> {
   } catch {
     return null;
   }
+}
+
+/** Streams a file too long to decode whole; null when WebCodecs can't decode it. */
+async function stream(media: DemuxedAudio): Promise<StreamPlayback | null> {
+  if (!(await canStream(media))) return null;
+  const graph = await dsp.graphInput();
+  if (!graph) return null;
+  const playback = new StreamPlayback(graph.ctx, graph.input, media, decodedEnded, streamFailed);
+  playback.setVolume(volume);
+  playback.setRate(dsp.getDsp().speed);
+  return playback;
+}
+
+/**
+ * Plays a local file through Web Audio: decoded whole when it's short enough, streamed
+ * when not. Null leaves it to the element (formats neither path reads, e.g. M4A).
+ */
+async function webAudioPlayback(file: LocalFileData): Promise<BufferPlayback | StreamPlayback | null> {
+  // The demuxer knows the exact length; a folder scan may not.
+  const media = demuxAudio(file.data, file.ext);
+  const durationMs = media ? media.duration * 1000 : file.durationMs;
+  const small = file.data.byteLength <= MAX_DECODE_BYTES && (durationMs === null || durationMs <= MAX_DECODE_MS);
+  const whole = small ? await decode(file) : null;
+  return whole ?? (media ? stream(media) : null);
 }
 
 /**
@@ -228,8 +256,8 @@ export async function load(trackId: string, force = false): Promise<void> {
       expiresAt = Number.POSITIVE_INFINITY;
       muxed = false;
       if (currentTrackId !== trackId) return;
-      if (worthDecoding(file)) {
-        const playback = await decode(file);
+      if (DECODE_LOCAL_FILES) {
+        const playback = await webAudioPlayback(file);
         if (currentTrackId !== trackId) {
           playback?.dispose();
           return;

@@ -7,6 +7,7 @@ import { usePeaks } from '../data/hooks';
 import { useFavourite } from '../data/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Waveform from '../components/music/Waveform';
+import TrackDownloadButton from '../components/music/TrackDownloadButton';
 import { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { SourceGlyph } from '../components/ui/SourceGlyph';
@@ -15,6 +16,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { formatDuration } from '../lib/utils';
 import { cn } from '../lib/utils';
 import * as player from '../data/player';
+import { playsFrom, useLocalLibrary } from '../data/local';
 
 export default function NowPlaying() {
   const navigate = useNavigate();
@@ -40,6 +42,7 @@ export default function NowPlaying() {
     playTrack,
   } = usePlayerStore();
   const isOffline = mode === 'offline';
+  const local = useLocalLibrary();
 
   const { data: peaksData } = usePeaks(currentTrack?.id);
   const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
@@ -79,6 +82,9 @@ export default function NowPlaying() {
       </span>
     </span>
   ) : null;
+
+  // A finished download plays from disk too.
+  const onDevice = playsFrom(currentTrack, local) === 'local';
 
   // Codec/bitrate/origin metadata
   const metaParts: string[] = [];
@@ -208,11 +214,11 @@ export default function NowPlaying() {
               <span
                 className={cn(
                   'inline-flex items-center gap-1.5 h-6 px-2.5 rounded-full text-label-s font-semibold flex-none',
-                  currentTrack.source === 'local' ? 'bg-goldbg text-gold' : 'bg-accbg text-acc',
+                  onDevice ? 'bg-goldbg text-gold' : 'bg-accbg text-acc',
                 )}
               >
-                <Icon name={currentTrack.source === 'local' ? 'smartphone' : 'cloud'} size={12} />
-                <span>{currentTrack.source === 'local' ? 'ON DEVICE' : 'STREAMING'}</span>
+                <Icon name={onDevice ? 'smartphone' : 'cloud'} size={12} />
+                <span>{onDevice ? 'ON DEVICE' : 'STREAMING'}</span>
               </span>
               {metaParts.length > 0 && <span className="text-mono-s text-t3 truncate">{metaParts.join(' · ')}</span>}
             </div>
@@ -290,6 +296,7 @@ export default function NowPlaying() {
               onClick={toggleFavourite}
               className={favourite ? (isOffline ? 'text-gold' : 'text-acc') : 'text-t2'}
             />
+            <TrackDownloadButton track={currentTrack} size={40} className="text-t2" />
             <Link
               to="/lyrics"
               className="ib ib-40 flex items-center justify-center text-t2 hover:text-t1 hover:bg-s3 rounded-full transition-colors"
@@ -350,7 +357,7 @@ export default function NowPlaying() {
                         <span className="text-label-m text-t1 truncate group-hover:text-acc transition-colors font-medium">
                           {track.title}
                         </span>
-                        <SourceGlyph source={track.source} />
+                        <SourceGlyph source={playsFrom(track, local)} />
                       </div>
                       <span className="text-label-s text-t3 truncate">{track.artist}</span>
                     </div>
