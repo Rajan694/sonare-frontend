@@ -15,6 +15,7 @@ import {
   PanGestureHandlerGestureEvent,
 } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDownloadsStore } from '../../store/downloads';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -35,6 +36,13 @@ export function MiniPlayer() {
     currentTrack ? !!s.favouriteIds[currentTrack.id] : false,
   );
   const toggleFavourite = useLibraryStore(s => s.toggleFavourite);
+  // A finished download plays from the phone.
+  const onPhone = useDownloadsStore(
+    s =>
+      !!currentTrack &&
+      s.items[currentTrack.id]?.status === 'done' &&
+      !s.items[currentTrack.id]?.missing,
+  );
   const progress = usePlayerStore(state =>
     state.durationMs ? Math.min(1, state.positionMs / state.durationMs) : 0,
   );
@@ -116,7 +124,10 @@ export function MiniPlayer() {
               >
                 {currentTrack.title}
               </Text>
-              <SourceGlyph source={currentTrack.source} size={18} />
+              <SourceGlyph
+                source={onPhone ? 'local' : currentTrack.source}
+                size={18}
+              />
             </View>
             <Text numberOfLines={1} className="text-t2 text-bs">
               {currentTrack.artist}

@@ -158,6 +158,7 @@ export function DownloadsScreen() {
   return (
     <Screen scrollable={false} className="bg-bg">
       <Header
+        titleAlign="start"
         title="Downloads"
         left={
           <IconButton
@@ -179,7 +180,7 @@ export function DownloadsScreen() {
         className="flex-1"
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingBottom: 140,
+          paddingBottom: 160,
           gap: 18,
         }}
       >

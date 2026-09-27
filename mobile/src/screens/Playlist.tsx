@@ -84,7 +84,7 @@ export function PlaylistScreen() {
   return (
     <Screen scrollable={false}>
       <Header
-        title=""
+        title={<Text className="text-ll font-medium text-t2">Playlist</Text>}
         left={
           <IconButton
             icon={<Icon name="back" size={20} color="#FFFFFF" />}
@@ -94,7 +94,6 @@ export function PlaylistScreen() {
         }
         right={
           <View className="flex-row items-center gap-1">
-            <Text className="text-ll font-medium text-t2 mr-2">Playlist</Text>
             {own && (
               <IconButton
                 icon={<Icon name="more" size={20} color="#FFFFFF" />}
@@ -256,7 +255,7 @@ export function PlaylistScreen() {
             }
           />
         }
-        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 128 }}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 160 }}
       />
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)}>

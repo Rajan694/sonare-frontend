@@ -6,6 +6,8 @@ import { Chip } from '../components/ui/Chip';
 import { Button } from '../components/ui/Button';
 import { IconButton } from '../components/ui/IconButton';
 import { SongRow } from '../components/music/SongRow';
+import { Artwork } from '../components/music/Artwork';
+import { artworkUrl } from '../data/config';
 import { StateView } from '../components/ui/StateView';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
@@ -18,7 +20,6 @@ import Icon from '../components/ui/Icon';
 import { cn } from '../lib/cn';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useNavigation } from '@react-navigation/native';
-import type { Track } from '../data/types';
 import { downloadedTracks, useDownloadsStore } from '../store/downloads';
 
 type Tab = 'songs' | 'albums' | 'artists' | 'genres' | 'folders';
@@ -44,6 +45,8 @@ export function LibraryScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('songs');
   const [sort, setSort] = useState<Sort>('addedAt');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  /** Filter (M05 funnel): only songs saved on this phone. */
+  const [onPhoneOnly, setOnPhoneOnly] = useState(false);
   const userId = useAuthStore(state => state.user?.id);
 
   const online = mode === 'online';
@@ -65,7 +68,11 @@ export function LibraryScreen() {
     () => downloadedTracks(downloads),
     [downloads],
   );
-  const displayTracks = online ? serverTracks : offlineTracks;
+  const displayTracks = !online
+    ? offlineTracks
+    : onPhoneOnly
+    ? serverTracks.filter(t => downloads[t.id]?.status === 'done')
+    : serverTracks;
 
   const onPlayAll = () => {
     if (displayTracks.length > 0) {
@@ -159,7 +166,7 @@ export function LibraryScreen() {
                   ? 'Most played'
                   : 'A-Z'
               }
-              icon={<Icon name="shuffle" size={13} color="#9A9AA8" />}
+              icon={<Icon name="sort" size={13} color="#9A9AA8" />}
               onPress={() => {
                 const nextSort: Sort =
                   sort === 'addedAt'
@@ -177,16 +184,29 @@ export function LibraryScreen() {
                 onPress={() => navigation.navigate('Downloads')}
                 accessibilityLabel="Downloads"
               />
-              <IconButton
-                icon={<Icon name="equalizer" size={16} color="#9A9AA8" />}
-                size={32}
-                onPress={() => {}}
-                accessibilityLabel="Filter"
-              />
+              {online && (
+                <IconButton
+                  icon={
+                    <Icon
+                      name="filter"
+                      size={16}
+                      color={onPhoneOnly ? '#FFC24D' : '#9A9AA8'}
+                    />
+                  }
+                  size={32}
+                  variant={onPhoneOnly ? 'active' : 'default'}
+                  onPress={() => setOnPhoneOnly(v => !v)}
+                  accessibilityLabel={
+                    onPhoneOnly
+                      ? 'Show all songs'
+                      : 'Show only songs on this phone'
+                  }
+                />
+              )}
               <IconButton
                 icon={
                   <Icon
-                    name="playlist"
+                    name="list"
                     size={16}
                     color={viewMode === 'list' ? '#00E28A' : '#9A9AA8'}
                   />
@@ -199,7 +219,7 @@ export function LibraryScreen() {
               <IconButton
                 icon={
                   <Icon
-                    name="library"
+                    name="grid"
                     size={16}
                     color={viewMode === 'grid' ? '#00E28A' : '#9A9AA8'}
                   />
@@ -232,7 +252,7 @@ export function LibraryScreen() {
                 Shuffle
               </Button>
               <Text className="text-bs text-t3 flex-1 text-right font-normal">
-                {online && library.data?.meta?.total
+                {online && !onPhoneOnly && library.data?.meta?.total
                   ? `${library.data.meta.total} songs`
                   : `${displayTracks.length} songs`}
               </Text>
@@ -241,17 +261,47 @@ export function LibraryScreen() {
 
           {/* Track List */}
           <FlatList
+            key={viewMode}
             data={displayTracks}
             keyExtractor={item => item.id}
-            renderItem={({ item, index }) => (
-              <SongRow
-                track={item}
-                onPress={() => playTrack(item, displayTracks)}
-                isActive={currentTrack?.id === item.id}
-                index={index}
-                showArtwork
-              />
-            )}
+            numColumns={viewMode === 'grid' ? 2 : 1}
+            columnWrapperStyle={viewMode === 'grid' ? { gap: 12 } : undefined}
+            renderItem={({ item, index }) =>
+              viewMode === 'grid' ? (
+                <Pressable
+                  onPress={() => playTrack(item, displayTracks)}
+                  className="flex-1 p-1 mb-3"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Play ${item.title} by ${item.artist}`}
+                >
+                  <Artwork
+                    uri={artworkUrl(item, 300)}
+                    size={160}
+                    className="rounded-xl"
+                  />
+                  <Text
+                    className={cn(
+                      'text-tm font-medium mt-2',
+                      currentTrack?.id === item.id ? 'text-acc' : 'text-t1',
+                    )}
+                    numberOfLines={1}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text className="text-bs text-t2" numberOfLines={1}>
+                    {item.artist}
+                  </Text>
+                </Pressable>
+              ) : (
+                <SongRow
+                  track={item}
+                  onPress={() => playTrack(item, displayTracks)}
+                  isActive={currentTrack?.id === item.id}
+                  index={index}
+                  showArtwork
+                />
+              )
+            }
             refreshControl={
               online ? (
                 <RefreshControl

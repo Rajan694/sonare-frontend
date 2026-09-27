@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ScrollView, Pressable } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -17,7 +17,6 @@ import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import type { SearchItem, Track } from '../data/types';
-import { songCount } from '../lib/format';
 import Icon from '../components/ui/Icon';
 
 const ONLINE_FILTERS = [
@@ -80,6 +79,7 @@ export function SearchScreen() {
     <Screen scrollable={false}>
       {/* Search Header */}
       <Header
+        titleAlign="start"
         title={online ? 'Search' : 'Search device'}
         left={
           <IconButton
@@ -320,7 +320,7 @@ export function SearchScreen() {
                       className="overflow-visible -mx-5 px-5"
                       contentContainerStyle={{ gap: 16 }}
                     >
-                      {artists.map((item, idx) => (
+                      {artists.map(item => (
                         <Pressable
                           key={item.id}
                           onPress={() =>

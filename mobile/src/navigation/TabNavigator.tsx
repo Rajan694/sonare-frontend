@@ -1,17 +1,60 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../screens/Home';
 import { LibraryScreen } from '../screens/Library';
 import { PlaylistsScreen } from '../screens/Playlists';
 import { SearchScreen } from '../screens/Search';
+import { AlbumScreen } from '../screens/Album';
+import { ArtistScreen } from '../screens/Artist';
+import { PlaylistScreen } from '../screens/Playlist';
+import { SettingsScreen } from '../screens/Settings';
+import { FoldersScreen } from '../screens/Folders';
+import { DownloadsScreen } from '../screens/Downloads';
+import { EqualizerScreen } from '../screens/Equalizer';
 import { MiniPlayer } from '../components/music/MiniPlayer';
 import { Toast } from '../components/ui/Toast';
 import { useModeStore } from '../store/mode';
 import Icon from '../components/ui/Icon';
 
 const Tab = createBottomTabNavigator<Record<string, undefined>, undefined>();
+const Stack = createNativeStackNavigator<
+  Record<string, object | undefined>,
+  undefined
+>();
+
+/**
+ * Each tab is a stack, so album, artist, playlist, settings, folders, downloads and audio
+ * open inside the tab you're in, with the mini player and tab bar still there (M06-M08,
+ * M13, M15, M16). Now Playing, Lyrics, Queue, sign-in and the mode switch cover
+ * everything from the root stack instead (M09-M12, M14).
+ */
+function tabStack(rootName: string, Root: React.ComponentType<any>) {
+  return function TabStack() {
+    return (
+      <Stack.Navigator
+        id={undefined}
+        screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+      >
+        <Stack.Screen name={rootName} component={Root} />
+        <Stack.Screen name="Album" component={AlbumScreen} />
+        <Stack.Screen name="Artist" component={ArtistScreen} />
+        <Stack.Screen name="Playlist" component={PlaylistScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Folders" component={FoldersScreen} />
+        <Stack.Screen name="Downloads" component={DownloadsScreen} />
+        <Stack.Screen name="Equalizer" component={EqualizerScreen} />
+      </Stack.Navigator>
+    );
+  };
+}
+
+const HomeStack = tabStack('HomeRoot', HomeScreen);
+const LibraryStack = tabStack('LibraryRoot', LibraryScreen);
+const PlaylistsStack = tabStack('PlaylistsRoot', PlaylistsScreen);
+const SearchStack = tabStack('SearchRoot', SearchScreen);
 
 export function TabNavigator() {
   const mode = useModeStore(state => state.mode);
@@ -60,7 +103,7 @@ export function TabNavigator() {
       >
         <Tab.Screen
           name="Home"
-          component={HomeScreen}
+          component={HomeStack}
           options={{
             tabBarIcon: ({ color }) => (
               <Icon name="home" size={21} color={color} />
@@ -69,7 +112,7 @@ export function TabNavigator() {
         />
         <Tab.Screen
           name="Library"
-          component={LibraryScreen}
+          component={LibraryStack}
           options={{
             tabBarIcon: ({ color }) => (
               <Icon name="library" size={21} color={color} />
@@ -78,7 +121,7 @@ export function TabNavigator() {
         />
         <Tab.Screen
           name="Playlists"
-          component={PlaylistsScreen}
+          component={PlaylistsStack}
           options={{
             tabBarIcon: ({ color }) => (
               <Icon name="playlist" size={21} color={color} />
@@ -87,7 +130,7 @@ export function TabNavigator() {
         />
         <Tab.Screen
           name="Search"
-          component={SearchScreen}
+          component={SearchStack}
           options={{
             tabBarIcon: ({ color }) => (
               <Icon name="search" size={21} color={color} />

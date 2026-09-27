@@ -66,6 +66,7 @@ export function FoldersScreen() {
   return (
     <Screen scrollable={false} className="bg-s0">
       <Header
+        titleAlign="start"
         title="Music folders"
         left={
           <IconButton
@@ -85,7 +86,7 @@ export function FoldersScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }}
       >
         <View className="bg-s1 rounded-md p-4 mb-4 mt-2">
           <View className="flex-row justify-between items-start mb-3">

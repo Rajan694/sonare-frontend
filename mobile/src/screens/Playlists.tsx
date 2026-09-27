@@ -74,7 +74,11 @@ export function PlaylistsScreen() {
   return (
     <Screen scrollable={false}>
       <Header
-        title={<Text className="text-h1 font-semibold text-t1">Playlists</Text>}
+        left={
+          <Text className="text-h1 font-semibold text-t1" numberOfLines={1}>
+            Playlists
+          </Text>
+        }
         right={
           online ? (
             <IconButton

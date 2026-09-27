@@ -56,7 +56,7 @@ export function ArtistScreen() {
   return (
     <Screen scrollable={false}>
       <Header
-        title=""
+        title={<Text className="text-ll font-medium text-t2">Artist</Text>}
         left={
           <IconButton
             icon={<Icon name="back" size={20} color="#FFFFFF" />}
@@ -64,7 +64,6 @@ export function ArtistScreen() {
             accessibilityLabel="Go back"
           />
         }
-        right={<Text className="text-ll font-medium text-t2 mr-2">Artist</Text>}
       />
 
       <FlatList
@@ -213,7 +212,7 @@ export function ArtistScreen() {
             empty="No songs found for this artist."
           />
         }
-        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 128 }}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 160 }}
       />
     </Screen>
   );

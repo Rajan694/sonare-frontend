@@ -83,6 +83,7 @@ export function SettingsScreen() {
   return (
     <Screen scrollable={false} className="bg-bg">
       <Header
+        titleAlign="start"
         title={<Text className="text-tl font-semibold text-t1">Settings</Text>}
         left={
           <IconButton
@@ -95,7 +96,7 @@ export function SettingsScreen() {
 
       <ScrollView
         className="flex-1 px-5 pt-2"
-        contentContainerStyle={{ paddingBottom: 120, gap: 18 }}
+        contentContainerStyle={{ paddingBottom: 160, gap: 18 }}
       >
         {/* Account Profile Card */}
         <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3.5">

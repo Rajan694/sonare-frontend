@@ -17,6 +17,7 @@ import Icon from '../ui/Icon';
 import { useLibraryStore } from '../../store/library';
 import { useTrackMenuStore, type TrackMenuAction } from '../../store/trackMenu';
 import { usePlayerStore } from '../../store/player';
+import { useDownloadsStore } from '../../store/downloads';
 
 interface SongRowProps {
   track: Track;
@@ -45,6 +46,10 @@ export function SongRow({
   // Only the active row cares, so the others never re-render on play/pause.
   const playing = usePlayerStore(s => isActive && s.isPlaying);
   const accent = track.source === 'local' ? '#FFC24D' : '#00E28A';
+  // A finished download is on this phone too.
+  const onPhone = useDownloadsStore(
+    s => s.items[track.id]?.status === 'done' && !s.items[track.id]?.missing,
+  );
 
   const subtitle = track.album
     ? `${track.artist} · ${track.album}`
@@ -109,7 +114,7 @@ export function SongRow({
             >
               {track.title}
             </Text>
-            <SourceGlyph source={track.source} size={18} />
+            <SourceGlyph source={onPhone ? 'local' : track.source} size={18} />
             {favourite && <Icon name="heart" size={12} color={accent} />}
           </View>
           <Text numberOfLines={1} className="text-t2 text-bs">

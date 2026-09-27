@@ -10,7 +10,6 @@ import { Badge } from '../components/ui/Badge';
 import { IconButton } from '../components/ui/IconButton';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
-import { useLibraryStore } from '../store/library';
 import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
@@ -63,7 +62,7 @@ export function AlbumScreen() {
   return (
     <Screen scrollable={false}>
       <Header
-        title=""
+        title={<Text className="text-ll font-medium text-t2">Album</Text>}
         left={
           <IconButton
             icon={<Icon name="back" size={20} color="#FFFFFF" />}
@@ -71,7 +70,6 @@ export function AlbumScreen() {
             accessibilityLabel="Go back"
           />
         }
-        right={<Text className="text-ll font-medium text-t2 mr-2">Album</Text>}
       />
 
       <FlatList
@@ -214,7 +212,7 @@ export function AlbumScreen() {
             empty="No songs found for this album."
           />
         }
-        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 128 }}
+        contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 160 }}
       />
     </Screen>
   );

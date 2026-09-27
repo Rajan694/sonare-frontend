@@ -33,6 +33,7 @@ export function EqualizerScreen() {
   return (
     <Screen scrollable={false} className="bg-bg">
       <Header
+        titleAlign="start"
         title={<Text className="text-tl font-semibold text-t1">Audio</Text>}
         left={
           <IconButton
@@ -53,7 +54,7 @@ export function EqualizerScreen() {
 
       <ScrollView
         className={cn('flex-1 px-5 pt-2', !eqEnabled && 'opacity-50')}
-        contentContainerStyle={{ paddingBottom: 120, gap: 16 }}
+        contentContainerStyle={{ paddingBottom: 160, gap: 16 }}
       >
         {/* Presets Chips */}
         <ScrollView

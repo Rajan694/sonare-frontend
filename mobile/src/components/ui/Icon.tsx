@@ -42,6 +42,10 @@ import {
   Sun,
   Info,
   LogOut,
+  ArrowUpDown,
+  ListFilter,
+  List,
+  LayoutGrid,
 } from 'lucide-react-native';
 
 const ICONS = {
@@ -88,6 +92,10 @@ const ICONS = {
   sun: Sun,
   info: Info,
   logout: LogOut,
+  sort: ArrowUpDown,
+  filter: ListFilter,
+  list: List,
+  grid: LayoutGrid,
 } as const;
 
 export type IconName = keyof typeof ICONS;

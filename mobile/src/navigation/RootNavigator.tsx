@@ -4,14 +4,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
 import { NowPlayingScreen } from '../screens/NowPlaying';
 import { LyricsScreen } from '../screens/Lyrics';
-import { AlbumScreen } from '../screens/Album';
-import { ArtistScreen } from '../screens/Artist';
-import { PlaylistScreen } from '../screens/Playlist';
 import { QueueScreen } from '../screens/Queue';
 import { EqualizerScreen } from '../screens/Equalizer';
-import { SettingsScreen } from '../screens/Settings';
-import { FoldersScreen } from '../screens/Folders';
-import { DownloadsScreen } from '../screens/Downloads';
 import { useDownloadsStore } from '../store/downloads';
 import { useSettingsStore } from '../data/settings';
 import { ModeSwitchScreen } from '../screens/ModeSwitch';
@@ -150,14 +144,9 @@ export function RootNavigator() {
         <Stack.Screen name="Tabs" component={TabNavigator} />
         <Stack.Screen name="NowPlaying" component={NowPlayingScreen} />
         <Stack.Screen name="Lyrics" component={LyricsScreen} />
-        <Stack.Screen name="Album" component={AlbumScreen} />
-        <Stack.Screen name="Artist" component={ArtistScreen} />
-        <Stack.Screen name="Playlist" component={PlaylistScreen} />
         <Stack.Screen name="Queue" component={QueueScreen} />
+        {/* Opened from Now Playing, over it; from Settings it opens inside the tab. */}
         <Stack.Screen name="Equalizer" component={EqualizerScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="Folders" component={FoldersScreen} />
-        <Stack.Screen name="Downloads" component={DownloadsScreen} />
         <Stack.Screen name="ModeSwitch" component={ModeSwitchScreen} />
         <Stack.Screen name="SignIn" component={SignInScreen} />
       </Stack.Navigator>

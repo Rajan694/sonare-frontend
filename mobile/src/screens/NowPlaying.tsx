@@ -28,6 +28,9 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import Icon from '../components/ui/Icon';
+import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
+import { useDownloadsStore } from '../store/downloads';
+import { openInCurrentTab } from '../navigation/openInCurrentTab';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -49,6 +52,14 @@ export function NowPlayingScreen() {
   const seekTo = usePlayerStore(state => state.seekTo);
   const favourite = useLibraryStore(
     state => !!currentTrack && !!state.favouriteIds[currentTrack.id],
+  );
+  // A finished download plays from the phone too.
+  const onDevice = useDownloadsStore(
+    state =>
+      currentTrack?.source === 'local' ||
+      (!!currentTrack &&
+        state.items[currentTrack.id]?.status === 'done' &&
+        !state.items[currentTrack.id]?.missing),
   );
   const peaks = useAsync(
     () => api.peaks(currentTrack!.id, 76),
@@ -168,30 +179,6 @@ export function NowPlayingScreen() {
             className="self-center mt-2 mb-4"
           >
             <View className="relative">
-              <View
-                className="absolute inset-0 rounded-[40px]"
-                style={{
-                  backgroundColor: isGold ? '#FFC24D' : '#00E28A',
-                  opacity: 0.04,
-                  transform: [{ scale: 1.24 }],
-                }}
-              />
-              <View
-                className="absolute inset-0 rounded-[40px]"
-                style={{
-                  backgroundColor: isGold ? '#FFC24D' : '#00E28A',
-                  opacity: 0.08,
-                  transform: [{ scale: 1.14 }],
-                }}
-              />
-              <View
-                className="absolute inset-0 rounded-[40px]"
-                style={{
-                  backgroundColor: isGold ? '#FFC24D' : '#00E28A',
-                  opacity: 0.14,
-                  transform: [{ scale: 1.06 }],
-                }}
-              />
               <Artwork
                 uri={artworkUrl(currentTrack, 640)}
                 fallbackUri={artworkUrl(currentTrack, 300)}
@@ -219,7 +206,7 @@ export function NowPlayingScreen() {
                 numberOfLines={1}
                 onPress={() => {
                   navigation.goBack();
-                  navigation.navigate('Artist', { id: currentTrack.artistId });
+                  openInCurrentTab('Artist', { id: currentTrack.artistId });
                 }}
                 accessibilityRole="link"
               >
@@ -251,24 +238,19 @@ export function NowPlayingScreen() {
                 favourite ? 'Remove from favourites' : 'Add to favourites'
               }
             />
+            <TrackDownloadButton track={currentTrack} />
           </View>
 
           {/* Badges line: Source pill + Codec */}
           <View className="flex-row items-center gap-2">
             <Badge
-              label={
-                currentTrack.source === 'local' ? 'ON THIS DEVICE' : 'STREAMING'
-              }
-              variant={currentTrack.source === 'local' ? 'local' : 'cloud'}
+              label={onDevice ? 'ON THIS DEVICE' : 'STREAMING'}
+              variant={onDevice ? 'local' : 'cloud'}
               icon={
                 <Icon
-                  name={
-                    currentTrack.source === 'local' ? 'smartphone' : 'cloud'
-                  }
+                  name={onDevice ? 'smartphone' : 'cloud'}
                   size={12}
-                  color={
-                    currentTrack.source === 'local' ? '#FFC24D' : '#00E28A'
-                  }
+                  color={onDevice ? '#FFC24D' : '#00E28A'}
                 />
               }
             />
