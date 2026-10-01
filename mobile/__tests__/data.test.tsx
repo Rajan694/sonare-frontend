@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Keychain from 'react-native-keychain';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
 import {
@@ -195,18 +196,31 @@ describe('Data Layer', () => {
   });
 
   describe('auth.ts', () => {
-    it('MOB-DATA-009 hydrate restores session from AsyncStorage', async () => {
+    beforeEach(async () => {
+      await Keychain.resetGenericPassword({ service: 'sonare.session' });
+      await AsyncStorage.clear();
+      useAuthStore.setState({
+        status: 'guest',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+    });
+
+    it('MOB-DATA-009 hydrate restores session from Keychain, or migrates from AsyncStorage', async () => {
       const user = {
         id: 'u1',
         email: 'test@example.com',
         displayName: 'Tester',
         role: 'user' as const,
       };
+
+      // Test migration from AsyncStorage when Keychain is empty
       await AsyncStorage.setItem(
         'sonare.session',
         JSON.stringify({
-          accessToken: 'acc_tok',
-          refreshToken: 'ref_tok',
+          accessToken: 'migrated_acc_tok',
+          refreshToken: 'migrated_ref_tok',
           user,
         }),
       );
@@ -214,7 +228,30 @@ describe('Data Layer', () => {
       await useAuthStore.getState().hydrate();
       expect(useAuthStore.getState().status).toBe('signedIn');
       expect(useAuthStore.getState().user).toEqual(user);
-      expect(useAuthStore.getState().accessToken).toBe('acc_tok');
+      expect(useAuthStore.getState().accessToken).toBe('migrated_acc_tok');
+
+      // Check migration moved it to keychain and removed from AsyncStorage
+      const migratedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(migratedKeychain).toBeTruthy();
+      if (migratedKeychain) {
+        expect(JSON.parse(migratedKeychain.password).accessToken).toBe(
+          'migrated_acc_tok',
+        );
+      }
+      expect(await AsyncStorage.getItem('sonare.session')).toBeNull();
+
+      // Test restoring directly from Keychain
+      useAuthStore.setState({
+        status: 'loading',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+      await useAuthStore.getState().hydrate();
+      expect(useAuthStore.getState().status).toBe('signedIn');
+      expect(useAuthStore.getState().accessToken).toBe('migrated_acc_tok');
     });
 
     it('MOB-DATA-010 hydrate falls back to guest mode on corrupted session', async () => {
@@ -224,14 +261,16 @@ describe('Data Layer', () => {
         accessToken: null,
         refreshToken: null,
       });
-      await AsyncStorage.setItem('sonare.session', 'invalid json string');
+      await Keychain.setGenericPassword('session', 'invalid json string', {
+        service: 'sonare.session',
+      });
       await useAuthStore.getState().hydrate();
       expect(useAuthStore.getState().status).toBe('guest');
       expect(useAuthStore.getState().user).toBeNull();
     });
 
-    it('MOB-DATA-011 signIn authenticates user and saves session', async () => {
-      const originalXHR = global.XMLHttpRequest;
+    it('MOB-DATA-011 signIn authenticates user and saves session to keychain not AsyncStorage', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
       const user = {
         id: 'u2',
         email: 'login@test.com',
@@ -252,11 +291,21 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = LoginXHR as any;
+      (globalThis as any).XMLHttpRequest = LoginXHR as any;
 
       await useAuthStore.getState().signIn('login@test.com', 'password123');
       expect(useAuthStore.getState().status).toBe('signedIn');
       expect(useAuthStore.getState().accessToken).toBe('new_acc');
+
+      // Verify saved to Keychain and NOT AsyncStorage
+      const savedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(savedKeychain).toBeTruthy();
+      if (savedKeychain) {
+        expect(JSON.parse(savedKeychain.password).accessToken).toBe('new_acc');
+      }
+      expect(await AsyncStorage.getItem('sonare.session')).toBeNull();
 
       // Failure path
       class FailLoginXHR {
@@ -271,16 +320,16 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = FailLoginXHR as any;
+      (globalThis as any).XMLHttpRequest = FailLoginXHR as any;
       await expect(
         useAuthStore.getState().signIn('bad', 'bad'),
       ).rejects.toThrow('Invalid credentials');
 
-      global.XMLHttpRequest = originalXHR;
+      (globalThis as any).XMLHttpRequest = originalXHR;
     });
 
     it('MOB-DATA-012 signUp registers user and saves session', async () => {
-      const originalXHR = global.XMLHttpRequest;
+      const originalXHR = (globalThis as any).XMLHttpRequest;
       const user = {
         id: 'u3',
         email: 'signup@test.com',
@@ -301,18 +350,23 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = RegisterXHR as any;
+      (globalThis as any).XMLHttpRequest = RegisterXHR as any;
 
       await useAuthStore
         .getState()
         .signUp('signup@test.com', 'password123', 'New User');
       expect(useAuthStore.getState().status).toBe('signedIn');
       expect(useAuthStore.getState().user?.displayName).toBe('New User');
-      global.XMLHttpRequest = originalXHR;
+
+      const savedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(savedKeychain).toBeTruthy();
+      (globalThis as any).XMLHttpRequest = originalXHR;
     });
 
-    it('MOB-DATA-013 signOut calls server logout and clears local session', async () => {
-      const originalXHR = global.XMLHttpRequest;
+    it('MOB-DATA-013 signOut calls server logout and clears keychain and session', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
       class LogoutXHR {
         status = 200;
         responseText = JSON.stringify({ ok: true });
@@ -323,13 +377,18 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = LogoutXHR as any;
+      (globalThis as any).XMLHttpRequest = LogoutXHR as any;
 
       await useAuthStore.getState().signOut();
       expect(useAuthStore.getState().status).toBe('guest');
       expect(useAuthStore.getState().accessToken).toBeNull();
       expect(useAuthStore.getState().user).toBeNull();
-      global.XMLHttpRequest = originalXHR;
+
+      const savedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(savedKeychain).toBe(false);
+      (globalThis as any).XMLHttpRequest = originalXHR;
     });
 
     it('MOB-DATA-014 refresh rotates refresh token and updates session', async () => {
@@ -447,6 +506,163 @@ describe('Data Layer', () => {
       expect(callCount).toBe(1);
       expect(useAuthStore.getState().refreshToken).toBe('dedup_ref2');
       global.XMLHttpRequest = originalXHR;
+    });
+  });
+
+  describe('session storage (keychain)', () => {
+    beforeEach(async () => {
+      await Keychain.resetGenericPassword({ service: 'sonare.session' });
+      await AsyncStorage.clear();
+      useAuthStore.setState({
+        status: 'guest',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+    });
+
+    it('MOB-DATA-049 signIn saves session to keychain and leaves AsyncStorage empty', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
+      const user = {
+        id: 'u-kc-1',
+        email: 'kc_signin@test.com',
+        displayName: 'Keychain User',
+        role: 'user' as const,
+      };
+      class LoginXHR {
+        status = 200;
+        responseText = JSON.stringify({
+          accessToken: 'acc_kc_123',
+          refreshToken: 'ref_kc_123',
+          user,
+        });
+        onload: (() => void) | null = null;
+        open() {}
+        setRequestHeader() {}
+        send() {
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      (globalThis as any).XMLHttpRequest = LoginXHR as any;
+
+      await useAuthStore.getState().signIn('kc_signin@test.com', 'password123');
+
+      expect(useAuthStore.getState().status).toBe('signedIn');
+      expect(useAuthStore.getState().accessToken).toBe('acc_kc_123');
+
+      const keychainCreds = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(keychainCreds).toBeTruthy();
+      if (keychainCreds) {
+        expect(keychainCreds.username).toBe('session');
+        const parsed = JSON.parse(keychainCreds.password);
+        expect(parsed.accessToken).toBe('acc_kc_123');
+        expect(parsed.refreshToken).toBe('ref_kc_123');
+        expect(parsed.user.email).toBe('kc_signin@test.com');
+      }
+
+      const asyncStorageValue = await AsyncStorage.getItem('sonare.session');
+      expect(asyncStorageValue).toBeNull();
+
+      (globalThis as any).XMLHttpRequest = originalXHR;
+    });
+
+    it('MOB-DATA-050 hydrate migrates legacy AsyncStorage session to keychain', async () => {
+      const user = {
+        id: 'u-legacy',
+        email: 'legacy@test.com',
+        displayName: 'Legacy User',
+        role: 'user' as const,
+      };
+      const sessionData = {
+        accessToken: 'legacy_acc',
+        refreshToken: 'legacy_ref',
+        user,
+      };
+
+      await AsyncStorage.setItem('sonare.session', JSON.stringify(sessionData));
+      expect(
+        await Keychain.getGenericPassword({ service: 'sonare.session' }),
+      ).toBe(false);
+
+      await useAuthStore.getState().hydrate();
+
+      expect(useAuthStore.getState().status).toBe('signedIn');
+      expect(useAuthStore.getState().accessToken).toBe('legacy_acc');
+      expect(useAuthStore.getState().user).toEqual(user);
+
+      const migratedCreds = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(migratedCreds).toBeTruthy();
+      if (migratedCreds) {
+        expect(JSON.parse(migratedCreds.password)).toEqual(sessionData);
+      }
+
+      expect(await AsyncStorage.getItem('sonare.session')).toBeNull();
+    });
+
+    it('MOB-DATA-051 hydrate with nothing stored defaults to guest status', async () => {
+      useAuthStore.setState({
+        status: 'loading',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+
+      await useAuthStore.getState().hydrate();
+
+      expect(useAuthStore.getState().status).toBe('guest');
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().accessToken).toBeNull();
+      expect(useAuthStore.getState().refreshToken).toBeNull();
+    });
+
+    it('MOB-DATA-052 signOut resets keychain credentials and reverts status to guest', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
+      class LogoutXHR {
+        status = 200;
+        responseText = JSON.stringify({ ok: true });
+        onload: (() => void) | null = null;
+        open() {}
+        setRequestHeader() {}
+        send() {
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      (globalThis as any).XMLHttpRequest = LogoutXHR as any;
+
+      const user = {
+        id: 'u-signout',
+        email: 'signout@test.com',
+        displayName: 'Signout User',
+      };
+      await Keychain.setGenericPassword(
+        'session',
+        JSON.stringify({ accessToken: 'so_acc', refreshToken: 'so_ref', user }),
+        { service: 'sonare.session' },
+      );
+      useAuthStore.setState({
+        status: 'signedIn',
+        user,
+        accessToken: 'so_acc',
+        refreshToken: 'so_ref',
+      });
+
+      await useAuthStore.getState().signOut();
+
+      expect(useAuthStore.getState().status).toBe('guest');
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().accessToken).toBeNull();
+      expect(useAuthStore.getState().refreshToken).toBeNull();
+
+      const clearedCreds = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(clearedCreds).toBe(false);
+
+      (globalThis as any).XMLHttpRequest = originalXHR;
     });
   });
 

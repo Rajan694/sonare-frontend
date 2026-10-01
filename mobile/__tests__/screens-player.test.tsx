@@ -419,7 +419,7 @@ describe('Downloads', () => {
     fireEvent.press(getByLabelText('Delete all downloads'));
     expect(alert.mock.calls[0][0]).toBe('Delete 2 downloads?');
     await pressAlertButton('Delete');
-    expect(remove.mock.calls.map(c => c[0]).sort()).toEqual(
+    expect((remove.mock.calls as any[]).map(c => c[0]).sort()).toEqual(
       [items.a.id, items.b.id].sort(),
     );
   });

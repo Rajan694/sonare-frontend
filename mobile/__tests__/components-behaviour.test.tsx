@@ -97,8 +97,9 @@ describe('small pieces', () => {
 
   it('MOB-COMP-022 EqualizerBars draws three bars in the given colour', () => {
     const { toJSON } = render(<EqualizerBars isPlaying color="#00E28A" />);
-    const bars = (toJSON() as { children: { props: { style: object[] } }[] })
-      .children;
+    const bars = (
+      toJSON() as unknown as { children: { props: { style: object[] } }[] }
+    ).children;
     expect(bars).toHaveLength(3);
     for (const bar of bars)
       expect(bar.props.style).toEqual(
@@ -147,7 +148,9 @@ describe('artwork', () => {
     expect(img().props.source).toEqual({ uri: 'https://img/a-300.jpg' });
     act(() => img().props.onError());
     expect(UNSAFE_queryAllByType('Image' as never)).toHaveLength(0);
-    expect((toJSON() as { props: { style: object } }).props.style).toEqual({
+    expect(
+      (toJSON() as unknown as { props: { style: object } }).props.style,
+    ).toEqual({
       width: 84,
       height: 84,
     });
@@ -155,7 +158,7 @@ describe('artwork', () => {
 
   it('MOB-COMP-036 without an image, a gradient is drawn, with rings when asked', () => {
     const { UNSAFE_queryAllByType } = render(
-      <Artwork gradient={['#111111', '#222222']} size={140} rings />,
+      <Artwork gradient={['#111111', '#222222']} size={124} rings />,
     );
     expect(
       UNSAFE_queryAllByType('Stop' as never).map(s => s.props.stopColor),

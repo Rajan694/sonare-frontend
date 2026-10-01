@@ -157,7 +157,7 @@ describe('Navigation Layer', () => {
       useAuthStore.setState({ status: 'loading' });
       const load = jest.spyOn(useLibraryStore.getState(), 'load');
       const { UNSAFE_getByType, queryAllByRole } = render(<RootNavigator />);
-      expect(UNSAFE_getByType('ActivityIndicator')).toBeTruthy();
+      expect(UNSAFE_getByType('ActivityIndicator' as never)).toBeTruthy();
       expect(queryAllByRole('tab')).toHaveLength(0);
       expect(load).not.toHaveBeenCalled();
     });

@@ -131,7 +131,7 @@ run_linux_window() {
 
     # In the background with `wait`, so a TERM from ../run.sh is handled straight away
     # and closes the window too, instead of waiting for it to exit on its own.
-    "$binary" --load-dir-res --path=. --port="$nl_port" --url="http://localhost:$LINUX_VITE_PORT" &
+    "$binary" --load-dir-res --path=. --port="$nl_port" --url="http://localhost:$LINUX_VITE_PORT" --window-enable-inspector=true &
     LINUX_NL_PID=$!
     wait "$LINUX_NL_PID"
 }

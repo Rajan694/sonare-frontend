@@ -1,10 +1,9 @@
 import { Platform } from 'react-native';
 
-// The Android emulator reaches the host machine's localhost through 10.0.2.2. A physical
-// phone needs the machine's LAN IP here instead (and the backend reachable on it).
-const HOST = Platform.OS === 'android' ? '10.0.2.2' : '127.0.0.1';
-
-export const API_ORIGIN = `http://${HOST}:3010`;
+const DEV_API_ORIGIN =
+  Platform.OS === 'android' ? 'http://10.0.2.2:3010' : 'http://127.0.0.1:3010';
+const PROD_API_ORIGIN = 'https://api.sonare.example'; // TODO(release): set the real HTTPS API origin
+export const API_ORIGIN = __DEV__ ? DEV_API_ORIGIN : PROD_API_ORIGIN;
 export const API_BASE = `${API_ORIGIN}/api/v1`;
 
 /** The API returns artwork and stream urls as paths; the app needs them absolute. */

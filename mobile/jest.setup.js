@@ -263,6 +263,36 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   ...mockAsyncStorage,
 }));
 
+// Mock react-native-keychain
+const mockKeychainMap = new Map();
+const mockKeychain = {
+  setGenericPassword: jest.fn((username, password, options) => {
+    const service = options?.service || 'default';
+    mockKeychainMap.set(service, { username, password, service });
+    return Promise.resolve(true);
+  }),
+  getGenericPassword: jest.fn(options => {
+    const service = options?.service || 'default';
+    return Promise.resolve(
+      mockKeychainMap.has(service) ? mockKeychainMap.get(service) : false,
+    );
+  }),
+  resetGenericPassword: jest.fn(options => {
+    const service = options?.service || 'default';
+    mockKeychainMap.delete(service);
+    return Promise.resolve(true);
+  }),
+  mockClearKeychain: () => {
+    mockKeychainMap.clear();
+  },
+};
+
+jest.mock('react-native-keychain', () => ({
+  __esModule: true,
+  default: mockKeychain,
+  ...mockKeychain,
+}));
+
 // Mock NetInfo
 jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn(() => jest.fn()),

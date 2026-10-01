@@ -451,18 +451,19 @@ describe('Store Layer', () => {
     it('MOB-STORE-020 load fetches favourites and user playlists from server', async () => {
       jest
         .spyOn(api, 'favourites')
-        .mockResolvedValue({ items: [mockTrack1], nextCursor: null });
+        .mockResolvedValue({ items: [mockTrack1] } as any);
       jest.spyOn(api, 'myPlaylists').mockResolvedValue({
         items: [
           {
             id: 'sonare:1',
-            title: 'Favorites',
+            name: 'Favorites',
             kind: 'synced',
             trackCount: 1,
+            downloadedCount: 0,
+            updatedAt: Date.now(),
           },
         ],
-        nextCursor: null,
-      });
+      } as any);
 
       await useLibraryStore.getState().load();
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(true);
@@ -472,7 +473,16 @@ describe('Store Layer', () => {
     it('MOB-STORE-021 reset clears favourites and playlists', () => {
       useLibraryStore.setState({
         favouriteIds: { t1: true },
-        playlists: [{ id: 'p1', title: 'P1', kind: 'synced', trackCount: 0 }],
+        playlists: [
+          {
+            id: 'p1',
+            name: 'P1',
+            kind: 'synced',
+            trackCount: 0,
+            downloadedCount: 0,
+            updatedAt: Date.now(),
+          },
+        ],
       });
       useLibraryStore.getState().reset();
       expect(useLibraryStore.getState().favouriteIds).toEqual({});
@@ -510,15 +520,23 @@ describe('Store Layer', () => {
     it('MOB-STORE-024 reloadPlaylists, createPlaylist, deletePlaylist, addToPlaylist manage playlist state', async () => {
       jest.spyOn(api, 'myPlaylists').mockResolvedValue({
         items: [
-          { id: 'sonare:2', title: 'Party', kind: 'synced', trackCount: 2 },
+          {
+            id: 'sonare:2',
+            name: 'Party',
+            kind: 'synced',
+            trackCount: 2,
+            downloadedCount: 0,
+            updatedAt: Date.now(),
+          },
         ],
-        nextCursor: null,
-      });
+      } as any);
       jest.spyOn(api, 'createPlaylist').mockResolvedValue({
         id: 'sonare:3',
-        title: 'Chill',
+        name: 'Chill',
         kind: 'synced',
         trackCount: 0,
+        downloadedCount: 0,
+        updatedAt: Date.now(),
       });
       jest.spyOn(api, 'deletePlaylist').mockResolvedValue({ ok: true });
       jest.spyOn(api, 'addToPlaylist').mockResolvedValue({ ok: true });

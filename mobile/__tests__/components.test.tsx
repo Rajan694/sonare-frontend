@@ -68,7 +68,7 @@ describe('Components Layer', () => {
       expect(onPress).toHaveBeenCalledTimes(1);
 
       rerender(
-        <Button variant="danger" loading>
+        <Button variant="outline" onPress={() => {}}>
           Deleting
         </Button>,
       );
@@ -135,7 +135,7 @@ describe('Components Layer', () => {
       const { getByText, rerender, UNSAFE_getByType } = render(
         <StateView loading empty="No data found" />,
       );
-      expect(UNSAFE_getByType('ActivityIndicator')).toBeTruthy();
+      expect(UNSAFE_getByType('ActivityIndicator' as never)).toBeTruthy();
 
       rerender(
         <StateView error={new Error('Failed to load')} onRetry={onRetry} />,
@@ -151,9 +151,13 @@ describe('Components Layer', () => {
     it('MOB-COMP-012 Switch renders toggle switch and handles onValueChange', () => {
       const onChange = jest.fn();
       const { UNSAFE_getByType } = render(
-        <Switch value={false} onValueChange={onChange} />,
+        <Switch
+          accessibilityLabel="toggle"
+          value={false}
+          onValueChange={onChange}
+        />,
       );
-      const pressable = UNSAFE_getByType('Pressable');
+      const pressable = UNSAFE_getByType('Pressable' as never);
       fireEvent.press(pressable);
       expect(onChange).toHaveBeenCalledWith(true);
     });

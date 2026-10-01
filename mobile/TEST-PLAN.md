@@ -100,6 +100,10 @@ navigation mock live in `test-utils/`.
 | `MOB-DATA-046` | useAsync respects enabled flag |
 | `MOB-DATA-047` | useAsync re-runs when dependency changes or refetch is invoked |
 | `MOB-DATA-048` | artGradients exports valid 3-color gradient arrays |
+| `MOB-DATA-049` | signIn saves session to keychain and leaves AsyncStorage empty |
+| `MOB-DATA-050` | hydrate migrates legacy AsyncStorage session to keychain |
+| `MOB-DATA-051` | hydrate with nothing stored defaults to guest status |
+| `MOB-DATA-052` | signOut resets keychain credentials and reverts status to guest |
 
 ## `__tests__/lib.test.tsx`
 
