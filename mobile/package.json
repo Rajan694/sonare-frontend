@@ -6,6 +6,8 @@
     "android": "react-native run-android",
     "ios": "react-native run-ios",
     "lint": "eslint .",
+    "pretest": "node scripts/check-test-plan.mjs",
+    "test": "jest",
     "start": "react-native start",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
@@ -41,9 +43,14 @@
     "@react-native/eslint-config": "0.87.1",
     "@react-native/metro-config": "0.87.1",
     "@react-native/typescript-config": "0.87.1",
+    "@testing-library/react-native": "^13.3.3",
+    "@types/jest": "^30.0.0",
     "@types/react": "^19.2.0",
     "eslint": "^8.19.0",
+    "jest": "^30.5.2",
     "prettier": "2.8.8",
+    "react-test-renderer": "^19.2.3",
+    "ts-jest": "^29.4.14",
     "typescript": "^6.0.3"
   },
   "engines": {

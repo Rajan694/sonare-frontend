@@ -70,6 +70,8 @@ DerivedData
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 coverage/
+/other-screens/test-results/
+/other-screens/playwright-report/
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log
