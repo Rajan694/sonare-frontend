@@ -2,7 +2,8 @@ import { Platform } from 'react-native';
 
 const DEV_API_ORIGIN =
   Platform.OS === 'android' ? 'http://10.0.2.2:3010' : 'http://127.0.0.1:3010';
-const PROD_API_ORIGIN = 'https://api.sonare.example'; // TODO(release): set the real HTTPS API origin
+// Production API; the domain is not registered yet.
+const PROD_API_ORIGIN = 'https://api.sonare.dev';
 export const API_ORIGIN = __DEV__ ? DEV_API_ORIGIN : PROD_API_ORIGIN;
 export const API_BASE = `${API_ORIGIN}/api/v1`;
 
