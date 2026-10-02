@@ -104,36 +104,67 @@ export function clearSession() {
   notifyListeners();
 }
 
-export async function signIn(email: string, password: string): Promise<User> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+/** POSTs to /auth/<path>; throws the server's message on an error status. */
+async function postAuth<T>(path: string, body: unknown, accessToken?: string | null): Promise<T> {
+  const res = await fetch(`${API_BASE}/auth/${path}`, {
     method: 'POST',
-    headers: JSON_HEADERS,
-    body: JSON.stringify({ email, password }),
+    headers: accessToken ? { ...JSON_HEADERS, Authorization: `Bearer ${accessToken}` } : JSON_HEADERS,
+    body: JSON.stringify(body),
   });
-
-  const json = await res.json();
+  const json = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(json.error?.message || `Login failed with status ${res.status}`);
+    throw new Error(json?.error?.message || `Request failed with status ${res.status}`);
   }
+  return json as T;
+}
 
+interface SessionResponse {
+  accessToken: string;
+  refreshToken: string;
+  user: User;
+}
+
+export async function signIn(email: string, password: string): Promise<User> {
+  const json = await postAuth<SessionResponse>('login', { email, password });
   setSession(json.accessToken, json.refreshToken, json.user);
   return json.user;
 }
 
 export async function signUp(email: string, password: string, displayName: string): Promise<User> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
-    method: 'POST',
-    headers: JSON_HEADERS,
-    body: JSON.stringify({ email, password, displayName }),
-  });
-
-  const json = await res.json();
-  if (!res.ok) {
-    throw new Error(json.error?.message || `Registration failed with status ${res.status}`);
-  }
-
+  const json = await postAuth<SessionResponse>('register', { email, password, displayName });
   setSession(json.accessToken, json.refreshToken, json.user);
   return json.user;
+}
+
+/** The server answers ok whether or not the address has an account. */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await postAuth('forgot-password', { email });
+}
+
+/** Every device is signed out by the server, this one included. */
+export async function resetPassword(token: string, password: string): Promise<void> {
+  await postAuth('reset-password', { token, password });
+  clearSession();
+}
+
+export async function verifyEmail(token: string): Promise<void> {
+  await postAuth('verify-email', { token });
+  // The link may belong to another account than the one signed in here, so ask the server.
+  if (!currentAccessToken) return;
+  const res = await fetch(`${API_BASE}/me`, {
+    headers: { ...JSON_HEADERS, Authorization: `Bearer ${currentAccessToken}` },
+  }).catch(() => null);
+  if (res?.ok) setCurrentUser(await res.json());
+}
+
+export async function resendVerification(): Promise<void> {
+  await postAuth('resend-verification', {}, currentAccessToken);
+}
+
+function setCurrentUser(user: User) {
+  currentUser = user;
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  notifyListeners();
 }
 
 export async function signOut(): Promise<void> {

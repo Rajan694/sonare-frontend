@@ -143,3 +143,36 @@ describe('arriving from the account gate', () => {
     expect(liked).not.toHaveBeenCalled();
   });
 });
+
+describe('forgot password', () => {
+  it('WEB-SIGNIN-009 sends a reset link for the trimmed email and says it is on its way', async () => {
+    let sent: unknown;
+    server.use(
+      http.post(`${API}/auth/forgot-password`, async ({ request }) => {
+        sent = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { user } = open();
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(screen.getByText('Reset password', { selector: 'span' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
+    await user.type(email(), ' listener@sonare.test ');
+    await user.click(screen.getByRole('button', { name: 'Send reset link' }));
+    expect(await screen.findByRole('status')).toHaveTextContent('If an account exists for listener@sonare.test');
+    expect(sent).toEqual({ email: 'listener@sonare.test' });
+    expect(getCurrentUser()).toBeNull();
+  });
+
+  it('WEB-SIGNIN-010 shows a rate-limit error and goes back to sign in', async () => {
+    server.use(http.post(`${API}/auth/forgot-password`, () => apiError(429, 'RATE_LIMITED', 'Too many attempts')));
+    const { user } = open();
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    await user.type(email(), 'a@b.co');
+    await user.click(screen.getByRole('button', { name: 'Send reset link' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many attempts');
+    await user.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(password()).toBeInTheDocument();
+  });
+});

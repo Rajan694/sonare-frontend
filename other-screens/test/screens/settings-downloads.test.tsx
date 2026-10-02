@@ -318,3 +318,24 @@ describe('downloads page', () => {
     await waitFor(() => expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Downloads deleted' })));
   });
 });
+
+describe('email verification in settings', () => {
+  it('WEB-SETTINGS-010 an unverified user can resend the link; verified users see no prompt', async () => {
+    setSession('acc', 'ref', { ...testUser, emailVerified: false });
+    const rec = recordRequests();
+    server.use(http.post(`${API}/auth/resend-verification`, () => HttpResponse.json({ ok: true })));
+    const { user, w, unmount } = openSettings();
+    expect(w.getByText('Email not verified')).toBeInTheDocument();
+    await user.click(w.getByRole('button', { name: 'Resend link' }));
+    await waitFor(() =>
+      expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Verification email sent' })),
+    );
+    rec.stop();
+    expect(rec.paths()).toEqual(['POST /auth/resend-verification']);
+    unmount();
+
+    setSession('acc', 'ref', { ...testUser, emailVerified: true });
+    const verified = openSettings();
+    expect(verified.w.queryByText('Email not verified')).not.toBeInTheDocument();
+  });
+});

@@ -51,7 +51,7 @@ describe('sign in, sign up, sign out', () => {
   it('WEB-AUTH-003 a sign-in failure without a message reports the status', async () => {
     const auth = await freshAuth();
     server.use(http.post(`${API}/auth/login`, () => HttpResponse.json({}, { status: 500 })));
-    await expect(auth.signIn('a@b.c', 'x')).rejects.toThrow('Login failed with status 500');
+    await expect(auth.signIn('a@b.c', 'x')).rejects.toThrow('Request failed with status 500');
   });
 
   it('WEB-AUTH-004 signing up sends the display name and starts a session', async () => {

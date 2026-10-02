@@ -19,7 +19,7 @@ import {
 } from '../data/downloadTargets';
 import { useDownloads } from '../data/downloads';
 import { useAuth } from '../data/hooks';
-import { signOut } from '../data/auth';
+import { resendVerification, signOut } from '../data/auth';
 import { formatBytes } from '../lib/utils';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
@@ -176,6 +176,15 @@ export default function SettingsScreen() {
     setSearchParams({ section: id });
   }
 
+  async function handleResendVerification() {
+    try {
+      await resendVerification();
+      showToast({ title: 'Verification email sent', description: `Check ${user?.email}`, icon: 'check' });
+    } catch (err) {
+      showToast({ title: 'Could not send the email', description: err instanceof Error ? err.message : undefined });
+    }
+  }
+
   async function handleSignOut() {
     await signOut();
     showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' });
@@ -221,6 +230,17 @@ export default function SettingsScreen() {
           </>
         )}
       </div>
+      {user?.emailVerified === false && (
+        <div className="surf flex items-center gap-4 p-5 rounded-2xl">
+          <span className="flex flex-col grow min-w-0">
+            <span className="text-body-m text-t1 font-medium">Email not verified</span>
+            <span className="text-body-s text-t3">Verify it so you can reset your password if you forget it.</span>
+          </span>
+          <Button variant="out" onClick={handleResendVerification}>
+            Resend link
+          </Button>
+        </div>
+      )}
     </div>
   );
 

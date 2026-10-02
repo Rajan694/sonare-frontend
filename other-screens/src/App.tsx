@@ -31,6 +31,8 @@ import SettingsScreen from './screens/SettingsScreen';
 import Folders from './screens/Folders';
 import Downloads from './screens/Downloads';
 import SignIn from './screens/SignIn';
+import ResetPassword from './screens/ResetPassword';
+import VerifyEmail from './screens/VerifyEmail';
 import './styles.css';
 import './sonare.css';
 
@@ -366,6 +368,8 @@ export default function App() {
               {CAPS.offlineMode && <Route path="/mode-switch" element={<ModeSwitch />} />}
               <Route path="/settings" element={<SettingsScreen />} />
               <Route path="/signin" element={<SignIn />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               {CAPS.localLibrary && <Route path="/folders" element={<Folders />} />}
               {CAPS.downloads && <Route path="/downloads" element={<Downloads />} />}
               <Route path="*" element={<Navigate to="/home" replace />} />
