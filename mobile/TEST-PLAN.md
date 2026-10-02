@@ -104,6 +104,8 @@ navigation mock live in `test-utils/`.
 | `MOB-DATA-050` | hydrate migrates legacy AsyncStorage session to keychain |
 | `MOB-DATA-051` | hydrate with nothing stored defaults to guest status |
 | `MOB-DATA-052` | signOut resets keychain credentials and reverts status to guest |
+| `MOB-DATA-053` | requestPasswordReset posts the email without a token; a server error is thrown with its message |
+| `MOB-DATA-054` | resendVerification sends the access token |
 
 ## `__tests__/lib.test.tsx`
 
@@ -219,11 +221,14 @@ navigation mock live in `test-utils/`.
 | `MOB-SET-S-003` | the download format changes the quality description and is saved |
 | `MOB-SET-S-004` | the download location can be changed or reset |
 | `MOB-SET-S-005` | a folder that cannot be used is reported |
+| `MOB-SET-S-006` | an unverified account can resend the verification link; verified accounts see no prompt |
 | `MOB-SIGNIN-001` | checks the form before sending anything |
 | `MOB-SIGNIN-002` | signs in with a normalised email and goes back |
 | `MOB-SIGNIN-003` | a gate visit opens on sign-up, needs a name and 8+ character password |
 | `MOB-SIGNIN-004` | server and network failures are shown plainly |
 | `MOB-SIGNIN-005` | "keep listening" leaves without an account |
+| `MOB-SIGNIN-006` | "Forgot password?" emails a reset link for the normalised email and says so |
+| `MOB-SIGNIN-007` | a reset request error shows, and "Sign in" goes back to the form |
 | `MOB-MODE-001` | confirming switches to Offline Mode and goes back |
 | `MOB-MODE-002` | cancelling keeps the current mode |
 | `MOB-MODE-003` | turning off "stay offline automatically" is remembered **(known bug — expected to fail until fixed)** |

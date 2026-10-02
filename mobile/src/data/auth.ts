@@ -33,6 +33,9 @@ interface AuthStore {
   signOut: () => Promise<void>;
   /** Swap the refresh token for a new pair; returns the new access token or null. */
   refresh: () => Promise<string | null>;
+  /** Emails a reset link; the server answers ok whether or not the account exists. */
+  requestPasswordReset: (email: string) => Promise<void>;
+  resendVerification: () => Promise<void>;
 }
 
 class AuthError extends Error {
@@ -41,10 +44,17 @@ class AuthError extends Error {
   }
 }
 
-async function authRequest<T>(path: string, body: unknown): Promise<T> {
+async function authRequest<T>(
+  path: string,
+  body: unknown,
+  accessToken?: string | null,
+): Promise<T> {
   const { status, json } = await httpRequest(`${API_BASE}/auth/${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+    },
     body: JSON.stringify(body),
   });
   if (status < 200 || status >= 300)
@@ -160,6 +170,14 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         refreshing = null;
       });
       return refreshing;
+    },
+
+    requestPasswordReset: async email => {
+      await authRequest('forgot-password', { email });
+    },
+
+    resendVerification: async () => {
+      await authRequest('resend-verification', {}, get().accessToken);
     },
   };
 });

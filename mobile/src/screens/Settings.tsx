@@ -25,6 +25,16 @@ export function SettingsScreen() {
   const navigation = useNavigation<any>();
   const user = useAuthStore(s => s.user);
   const signOut = useAuthStore(s => s.signOut);
+  const resendVerification = useAuthStore(s => s.resendVerification);
+
+  const resendLink = async () => {
+    try {
+      await resendVerification();
+      Alert.alert('Verification email sent', `Check ${user?.email}.`);
+    } catch (e: any) {
+      Alert.alert('Could not send the email', e?.message);
+    }
+  };
   const mode = useModeStore(s => s.mode);
   const setMode = useModeStore(s => s.setMode);
 
@@ -172,6 +182,22 @@ export function SettingsScreen() {
           >
             <Text className="text-red text-bm font-medium">Sign out</Text>
           </Button>
+        )}
+
+        {user?.emailVerified === false && (
+          <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3">
+            <View className="flex-1 gap-0.5">
+              <Text className="text-tm font-semibold text-t1">
+                Email not verified
+              </Text>
+              <Text className="text-bs text-t3">
+                Verify it so you can reset your password if you forget it.
+              </Text>
+            </View>
+            <Button variant="outline" size="sm" onPress={resendLink}>
+              Resend link
+            </Button>
+          </View>
         )}
 
         {/* Connection Mode Section */}

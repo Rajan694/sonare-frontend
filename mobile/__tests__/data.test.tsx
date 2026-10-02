@@ -664,6 +664,64 @@ describe('Data Layer', () => {
 
       (globalThis as any).XMLHttpRequest = originalXHR;
     });
+
+    /** Fakes XHR with a fixed response and records every request sent. */
+    function recordXHR(status: number, body: unknown) {
+      const sent: {
+        url: string;
+        headers: Record<string, string>;
+        body: any;
+      }[] = [];
+      class RecordingXHR {
+        status = status;
+        responseText = JSON.stringify(body);
+        onload: (() => void) | null = null;
+        private req = { url: '', headers: {} as Record<string, string> };
+        open(_m: string, url: string) {
+          this.req.url = url;
+        }
+        setRequestHeader(k: string, v: string) {
+          this.req.headers[k] = v;
+        }
+        send(data: string) {
+          sent.push({ ...this.req, body: JSON.parse(data) });
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      const original = (globalThis as any).XMLHttpRequest;
+      (globalThis as any).XMLHttpRequest = RecordingXHR;
+      return {
+        sent,
+        restore: () => ((globalThis as any).XMLHttpRequest = original),
+      };
+    }
+
+    it('MOB-DATA-053 requestPasswordReset posts the email; a server error is thrown with its message', async () => {
+      const ok = recordXHR(200, { ok: true });
+      await useAuthStore.getState().requestPasswordReset('alice@sonare.test');
+      expect(ok.sent).toHaveLength(1);
+      expect(ok.sent[0].url).toMatch(/\/auth\/forgot-password$/);
+      expect(ok.sent[0].body).toEqual({ email: 'alice@sonare.test' });
+      expect(ok.sent[0].headers.Authorization).toBeUndefined();
+      ok.restore();
+
+      const limited = recordXHR(429, {
+        error: { code: 'RATE_LIMITED', message: 'Too many attempts' },
+      });
+      await expect(
+        useAuthStore.getState().requestPasswordReset('alice@sonare.test'),
+      ).rejects.toThrow('Too many attempts');
+      limited.restore();
+    });
+
+    it('MOB-DATA-054 resendVerification sends the access token', async () => {
+      useAuthStore.setState({ accessToken: 'acc-123' } as never);
+      const rec = recordXHR(200, { ok: true });
+      await useAuthStore.getState().resendVerification();
+      expect(rec.sent[0].url).toMatch(/\/auth\/resend-verification$/);
+      expect(rec.sent[0].headers.Authorization).toBe('Bearer acc-123');
+      rec.restore();
+    });
   });
 
   describe('api.ts', () => {

@@ -510,6 +510,28 @@ describe('Settings', () => {
       'No write access',
     );
   });
+
+  it('MOB-SET-S-006 an unverified account can resend the link; verified accounts see no prompt', async () => {
+    const resendVerification = jest.fn(async () => {});
+    useAuthStore.setState({
+      status: 'signedIn',
+      user: { ...alice, emailVerified: false },
+      resendVerification,
+    } as never);
+    const alert = jest.spyOn(Alert, 'alert');
+    const { getByText, queryByText, rerender } = render(<SettingsScreen />);
+    expect(getByText('Email not verified')).toBeTruthy();
+    await act(async () => fireEvent.press(getByText('Resend link')));
+    expect(resendVerification).toHaveBeenCalledTimes(1);
+    expect(alert).toHaveBeenLastCalledWith(
+      'Verification email sent',
+      'Check alice@sonare.test.',
+    );
+
+    useAuthStore.setState({ user: { ...alice, emailVerified: true } } as never);
+    rerender(<SettingsScreen />);
+    expect(queryByText('Email not verified')).toBeNull();
+  });
 });
 
 describe('Sign in', () => {
@@ -586,6 +608,49 @@ describe('Sign in', () => {
     expect(getByText('Create your account')).toBeTruthy();
     fireEvent.press(getByLabelText('Keep listening without an account'));
     expect(nav.goBack).toHaveBeenCalled();
+  });
+
+  it('MOB-SIGNIN-006 "Forgot password?" emails a reset link and says so', async () => {
+    const requestPasswordReset = jest.fn(async () => {});
+    const signInFn = jest.fn();
+    useAuthStore.setState({ requestPasswordReset, signIn: signInFn } as never);
+    const { getByText, getByLabelText, queryByLabelText, findByText } = render(
+      <SignInScreen />,
+    );
+    fireEvent.press(getByText('Forgot password?'));
+    expect(getByText('Reset your password')).toBeTruthy();
+    expect(queryByLabelText('Password')).toBeNull();
+    fireEvent.changeText(getByLabelText('Email'), 'nope');
+    fireEvent.press(getByLabelText('Send reset link'));
+    expect(getByText('Enter a valid email address')).toBeTruthy();
+    fireEvent.changeText(getByLabelText('Email'), ' Alice@Sonare.test ');
+    await act(async () => fireEvent.press(getByLabelText('Send reset link')));
+    expect(requestPasswordReset).toHaveBeenCalledWith('alice@sonare.test');
+    expect(
+      await findByText(/If an account exists for Alice@Sonare.test/),
+    ).toBeTruthy();
+    expect(signInFn).not.toHaveBeenCalled();
+    expect(nav.goBack).not.toHaveBeenCalled();
+  });
+
+  it('MOB-SIGNIN-007 a reset request error shows, and "Sign in" goes back to the form', async () => {
+    useAuthStore.setState({
+      requestPasswordReset: jest.fn(async () => {
+        throw new Error('Too many attempts. Try again in 60 min.');
+      }),
+    } as never);
+    const { getByText, getByLabelText, findByText, queryByText } = render(
+      <SignInScreen />,
+    );
+    fireEvent.press(getByText('Forgot password?'));
+    fireEvent.changeText(getByLabelText('Email'), 'alice@sonare.test');
+    await act(async () => fireEvent.press(getByLabelText('Send reset link')));
+    expect(
+      await findByText('Too many attempts. Try again in 60 min.'),
+    ).toBeTruthy();
+    fireEvent.press(getByText('Sign in'));
+    expect(queryByText('Too many attempts. Try again in 60 min.')).toBeNull();
+    expect(getByLabelText('Password')).toBeTruthy();
   });
 });
 

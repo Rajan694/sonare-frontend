@@ -16,6 +16,8 @@ export interface User {
   id: string;
   email: string;
   displayName: string;
+  /** Missing on sessions saved before email verification existed. */
+  emailVerified?: boolean;
   role?: string;
   createdAt?: string | number;
 }
