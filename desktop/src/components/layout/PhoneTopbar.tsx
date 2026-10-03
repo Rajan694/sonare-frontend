@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CAPS } from '../../lib/caps';
 import { cn } from '../../lib/utils';
-import { useModeStore } from '../../store/modeStore';
+import { useModeStore } from '../../store/modeContext';
 import { useAuth } from '../../data/hooks';
 import { BrandMark } from '../ui/BrandMark';
 import { Segmented } from '../ui/Segmented';

@@ -12,7 +12,7 @@ import { staggerItem, transition } from '../../lib/motion';
 import { openTrackMenu } from './TrackMenu';
 import { useLocalLibrary } from '../../data/local';
 import { downloadProgress, useDownload } from '../../data/downloads';
-import { usePlayerStore } from '../../store/playerStore';
+import { usePlayerStore } from '../../store/playerContext';
 
 interface SongRowProps {
   track: Track;

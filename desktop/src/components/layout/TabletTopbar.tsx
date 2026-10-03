@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Segmented } from '../ui/Segmented';
 import { CAPS } from '../../lib/caps';
-import { useModeStore } from '../../store/modeStore';
+import { useModeStore } from '../../store/modeContext';
 import { BrandMark } from '../ui/BrandMark';
 import Button from '../ui/Button';
 import SearchField from './SearchField';

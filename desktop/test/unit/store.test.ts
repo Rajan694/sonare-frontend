@@ -145,7 +145,7 @@ describe('app store persistence', () => {
 describe('toasts', () => {
   async function fresh() {
     vi.resetModules();
-    return import('../../src/store/toastStore');
+    return import('../../src/store/toasts');
   }
 
   it('WEB-STORE-010 a toast shows, then dismisses itself after its duration', async () => {

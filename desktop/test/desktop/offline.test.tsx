@@ -5,7 +5,7 @@ import { opened, resetFs, writeFile } from '../helpers/fakeNeutralino';
 import { makeTrack } from '../helpers/fixtures';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import type { Mode } from '../../src/data/types';
-import type { PlayerStore } from '../../src/store/playerStore';
+import type { PlayerStore } from '../../src/store/playerContext';
 
 vi.mock('@neutralinojs/lib', async () => (await import('../helpers/fakeNeutralino')).lib);
 
@@ -18,7 +18,7 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock('../../src/lib/connectivity', () => ({ hasInternet: vi.fn(async () => h.online) }));
-vi.mock('../../src/store/toastStore', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/store/toasts', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
 vi.mock('../../src/data/player', () => ({
   getStatus: () => ({
     trackId: null,
@@ -55,8 +55,8 @@ vi.mock('../../src/data/downloads', () => ({
   downloadProgress: () => null,
 }));
 vi.mock('../../src/components/layout/AppShell', async () => {
-  const { usePlayerStore } = await import('../../src/store/playerStore');
-  const { useModeStore } = await import('../../src/store/modeStore');
+  const { usePlayerStore } = await import('../../src/store/playerContext');
+  const { useModeStore } = await import('../../src/store/modeContext');
   return {
     default: function Probe() {
       h.probe.player = usePlayerStore();

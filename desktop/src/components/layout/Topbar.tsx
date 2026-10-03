@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Segmented } from '../ui/Segmented';
 import { CAPS } from '../../lib/caps';
-import { useModeStore } from '../../store/modeStore';
+import { useModeStore } from '../../store/modeContext';
 import Icon from '../ui/Icon';
 import Button, { IconButton } from '../ui/Button';
 import { useAuth } from '../../data/hooks';

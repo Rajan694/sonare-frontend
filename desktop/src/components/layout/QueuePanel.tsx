@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useModeStore } from '../../store/modeStore';
-import { usePlayerStore } from '../../store/playerStore';
-import { showToast } from '../../store/toastStore';
+import { useModeStore } from '../../store/modeContext';
+import { usePlayerStore } from '../../store/playerContext';
+import { showToast } from '../../store/toasts';
 import { api } from '../../data/api';
 import { requireAccount } from '../../data/accountGate';
 import { notifyPlaylistsChanged } from '../../data/hooks';

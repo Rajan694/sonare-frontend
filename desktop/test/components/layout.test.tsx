@@ -12,7 +12,7 @@ import QueuePanel from '../../src/components/layout/QueuePanel';
 import Topbar from '../../src/components/layout/Topbar';
 import AppShell from '../../src/components/layout/AppShell';
 import { usePlayerShortcuts } from '../../src/components/layout/usePlayerShortcuts';
-import { useToasts } from '../../src/store/toastStore';
+import { useToasts } from '../../src/store/toasts';
 import { bindAccountGateNavigator } from '../../src/data/accountGate';
 import { clearSession, setSession } from '../../src/data/auth';
 import { requestSync } from '../../src/data/sync';
@@ -545,7 +545,7 @@ describe('app shell', () => {
   });
 
   it('WEB-LAYOUT-035 shows toasts and lets them be dismissed', async () => {
-    const { showToast } = await import('../../src/store/toastStore');
+    const { showToast } = await import('../../src/store/toasts');
     const { user } = shell('/home');
     act(() => showToast({ title: 'Added to queue', description: 'Nude' }));
     const region = screen.getByRole('status');

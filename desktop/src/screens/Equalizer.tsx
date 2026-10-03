@@ -1,5 +1,5 @@
 import React from 'react';
-import { useModeStore } from '../store/modeStore';
+import { useModeStore } from '../store/modeContext';
 import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';
 import { Slider } from '../components/ui/Slider';

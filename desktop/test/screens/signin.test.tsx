@@ -9,7 +9,7 @@ import { API, apiError, http, HttpResponse, useMockServer, server } from '../hel
 import { testUser } from '../helpers/fixtures';
 
 const toast = vi.hoisted(() => vi.fn());
-vi.mock('../../src/store/toastStore', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
 
 useMockServer();
 afterEach(() => {

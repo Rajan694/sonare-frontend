@@ -58,7 +58,7 @@ vi.mock('../../src/data/downloads', async () => {
     downloadProgress: (i: DownloadItem) => (i.totalBytes > 0 ? Math.min(1, i.receivedBytes / i.totalBytes) : null),
   };
 });
-vi.mock('../../src/store/toastStore', () => ({ showToast: dl.toast, dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/store/toasts', () => ({ showToast: dl.toast, dismissToast: () => {}, useToasts: () => [] }));
 
 useMockServer();
 

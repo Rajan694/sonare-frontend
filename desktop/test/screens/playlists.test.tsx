@@ -11,7 +11,7 @@ import { API, apiError, http, HttpResponse, server, useMockServer } from '../hel
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 
 const toast = vi.hoisted(() => vi.fn());
-vi.mock('../../src/store/toastStore', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
 vi.mock('../../src/data/downloads', () => ({
   downloads: { enqueue: vi.fn() },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: 0 }),

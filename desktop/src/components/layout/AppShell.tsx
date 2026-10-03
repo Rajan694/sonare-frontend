@@ -13,7 +13,7 @@ import QueuePanel from './QueuePanel';
 import TrackMenu from '../music/TrackMenu';
 import { Toast } from '../ui/Toast';
 import TooltipLayer from '../ui/Tooltip';
-import { useToasts, dismissToast } from '../../store/toastStore';
+import { useToasts, dismissToast } from '../../store/toasts';
 import { fadeRise, transition } from '../../lib/motion';
 import { bindAccountGateNavigator } from '../../data/accountGate';
 import { usePlayerShortcuts } from './usePlayerShortcuts';

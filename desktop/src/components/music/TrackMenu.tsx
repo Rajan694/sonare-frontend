@@ -1,8 +1,8 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Menu, MenuItem } from '../ui/Menu';
-import { usePlayerStore } from '../../store/playerStore';
-import { showToast } from '../../store/toastStore';
+import { usePlayerStore } from '../../store/playerContext';
+import { showToast } from '../../store/toasts';
 import { useMyPlaylists, notifyPlaylistsChanged } from '../../data/hooks';
 import { api } from '../../data/api';
 import { requireAccount } from '../../data/accountGate';
@@ -11,7 +11,7 @@ import type { Track } from '../../data/types';
 import { CAPS } from '../../lib/caps';
 import { localLibrary } from '../../data/local';
 import { downloads, useDownload } from '../../data/downloads';
-import { useModeStore } from '../../store/modeStore';
+import { useModeStore } from '../../store/modeContext';
 import { deleteTrackDownload, startTrackDownload } from './TrackDownloadButton';
 
 /**

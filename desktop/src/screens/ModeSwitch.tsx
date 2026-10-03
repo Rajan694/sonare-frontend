@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { useModeStore } from '../store/modeStore';
+import { useModeStore } from '../store/modeContext';
 import { updateSettings, useSettings } from '../data/settings';
 import { useLocalLibrary } from '../data/local';
 import Button from '../components/ui/Button';

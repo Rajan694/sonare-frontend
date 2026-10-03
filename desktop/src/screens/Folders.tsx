@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { os } from '@neutralinojs/lib';
 import { useLocalLibrary, localLibrary } from '../data/local';
-import { showToast } from '../store/toastStore';
+import { showToast } from '../store/toasts';
 import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';

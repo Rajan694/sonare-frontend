@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import { CAPS } from '../../lib/caps';
 import { downloads, useDownloads } from '../../data/downloads';
-import { showToast } from '../../store/toastStore';
+import { showToast } from '../../store/toasts';
 import type { Track } from '../../data/types';
 
 /**

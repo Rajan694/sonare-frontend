@@ -5,9 +5,9 @@ import Button from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
 import { Segmented } from '../components/ui/Segmented';
 import { CAPS } from '../lib/caps';
-import { useModeStore } from '../store/modeStore';
+import { useModeStore } from '../store/modeContext';
 import { useLocalLibrary } from '../data/local';
-import { showToast } from '../store/toastStore';
+import { showToast } from '../store/toasts';
 import { useSettings, updateSettings, type AudioQuality, type DownloadFormat } from '../data/settings';
 import {
   canPickWebFolder,

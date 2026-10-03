@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { storage } from '@neutralinojs/lib';
 import { CAPS } from '../lib/caps';
-import { showToast } from '../store/toastStore';
+import { showToast } from '../store/toasts';
 import { api } from './api';
 import { API_BASE } from './auth';
 import { localLibrary } from './local';

@@ -1,11 +1,11 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { useModeStore } from '../store/modeStore';
+import { useModeStore } from '../store/modeContext';
 import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../data/hooks';
 import { requireAccount } from '../data/accountGate';
 import { api } from '../data/api';
-import { showToast } from '../store/toastStore';
+import { showToast } from '../store/toasts';
 import Artwork from '../components/music/Artwork';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';

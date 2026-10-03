@@ -1,8 +1,8 @@
 import { CAPS } from '../../lib/caps';
 import { cn } from '../../lib/utils';
 import { downloadProgress, downloads, useDownload } from '../../data/downloads';
-import { useModeStore } from '../../store/modeStore';
-import { showToast } from '../../store/toastStore';
+import { useModeStore } from '../../store/modeContext';
+import { showToast } from '../../store/toasts';
 import { IconButton } from '../ui/Button';
 import Icon from '../ui/Icon';
 import type { Track } from '../../data/types';

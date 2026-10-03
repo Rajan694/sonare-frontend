@@ -7,8 +7,8 @@ import { Provider } from 'react-redux';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import search from '../../src/store/searchSlice';
 import ui from '../../src/store/uiSlice';
-import { ModeContext } from '../../src/store/modeStore';
-import { PlayerContext, defaultPlayerState, type PlayerStore } from '../../src/store/playerStore';
+import { ModeContext } from '../../src/store/modeContext';
+import { PlayerContext, defaultPlayerState, type PlayerStore } from '../../src/store/playerContext';
 import type { Mode, PlayerState, Track } from '../../src/data/types';
 
 export function makeStore() {

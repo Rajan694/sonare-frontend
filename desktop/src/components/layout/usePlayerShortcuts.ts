@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { usePlayerStore } from '../../store/playerStore';
+import { usePlayerStore } from '../../store/playerContext';
 import * as player from '../../data/player';
 
 const SEEK_STEP_MS = 5000;

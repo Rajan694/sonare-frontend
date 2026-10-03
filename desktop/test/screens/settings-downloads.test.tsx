@@ -35,7 +35,7 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../src/store/toastStore', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/store/toasts', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
 vi.mock('../../src/data/downloads', () => ({
   downloads: h.dl,
   useDownloads: () => ({

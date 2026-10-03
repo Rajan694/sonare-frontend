@@ -11,7 +11,7 @@ import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeAlbum, makeArtist, makeTrack, page, testUser } from '../helpers/fixtures';
 
-vi.mock('../../src/store/toastStore', () => ({ showToast: vi.fn(), dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/store/toasts', () => ({ showToast: vi.fn(), dismissToast: () => {}, useToasts: () => [] }));
 vi.mock('../../src/data/downloads', () => ({
   downloads: { enqueue: vi.fn() },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: 0 }),

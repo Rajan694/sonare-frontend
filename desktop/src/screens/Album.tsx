@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { useModeStore } from '../store/modeStore';
-import { usePlayerStore } from '../store/playerStore';
+import { useModeStore } from '../store/modeContext';
+import { usePlayerStore } from '../store/playerContext';
 import { useAlbum, useAlbumTracks, useLibraryAlbums } from '../data/hooks';
 import { api } from '../data/api';
 import { requireAccount } from '../data/accountGate';

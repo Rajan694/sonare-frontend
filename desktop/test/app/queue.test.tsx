@@ -1,7 +1,7 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
-import type { PlayerStore } from '../../src/store/playerStore';
+import type { PlayerStore } from '../../src/store/playerContext';
 import type { PlaybackStatus } from '../../src/data/player';
 import { makeTrack } from '../helpers/fixtures';
 
@@ -50,7 +50,7 @@ vi.mock('../../src/data/plays', () => ({ resetPlay: vi.fn(), maybeRecordPlay: vi
 vi.mock('../../src/data/sync', () => ({ setSyncOnline: vi.fn(), startBackgroundSync: vi.fn() }));
 vi.mock('../../src/data/downloads', () => ({ downloads: { init: vi.fn(async () => {}) } }));
 vi.mock('../../src/components/layout/AppShell', async () => {
-  const { usePlayerStore } = await import('../../src/store/playerStore');
+  const { usePlayerStore } = await import('../../src/store/playerContext');
   return {
     default: function Probe() {
       h.store.current = usePlayerStore();

@@ -67,7 +67,7 @@ vi.mock('../../src/data/downloadTargets', async (importOriginal) => {
     targetFor: (ref: { id: string }) => h.target(ref.id),
   };
 });
-vi.mock('../../src/store/toastStore', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/store/toasts', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
 
 useMockServer();
 

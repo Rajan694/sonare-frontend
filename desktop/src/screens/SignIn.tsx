@@ -4,7 +4,7 @@ import Button from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
 import { requestPasswordReset, signIn, signUp } from '../data/auth';
 import { clearPendingAction, takePendingAction } from '../data/accountGate';
-import { showToast } from '../store/toastStore';
+import { showToast } from '../store/toasts';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 

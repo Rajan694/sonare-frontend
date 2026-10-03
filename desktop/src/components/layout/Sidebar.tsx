@@ -1,13 +1,13 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { CAPS } from '../../lib/caps';
-import { useModeStore } from '../../store/modeStore';
+import { useModeStore } from '../../store/modeContext';
 import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../../data/hooks';
 import { requireAccount } from '../../data/accountGate';
 import { api } from '../../data/api';
 import Icon from '../ui/Icon';
 import { BrandMark } from '../ui/BrandMark';
-import { showToast } from '../../store/toastStore';
+import { showToast } from '../../store/toasts';
 import { IconButton } from '../ui/Button';
 import Artwork from '../music/Artwork';
 import { openPlaylistMenu } from '../music/TrackMenu';

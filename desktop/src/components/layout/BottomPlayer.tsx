@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn } from '../../lib/utils';
-import { useModeStore } from '../../store/modeStore';
-import { usePlayerStore } from '../../store/playerStore';
+import { useModeStore } from '../../store/modeContext';
+import { usePlayerStore } from '../../store/playerContext';
 import { usePeaks } from '../../data/hooks';
 import { useFavourite } from '../../data/favourites';
 import Icon from '../ui/Icon';

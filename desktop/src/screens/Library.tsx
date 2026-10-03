@@ -4,8 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useLocalLibrary, resolveLocalRefs } from '../data/local';
 import { useFavouriteLookup } from '../data/favourites';
-import { useModeStore } from '../store/modeStore';
-import { usePlayerStore } from '../store/playerStore';
+import { useModeStore } from '../store/modeContext';
+import { usePlayerStore } from '../store/playerContext';
 import {
   useLibraryTracks,
   useFavourites,

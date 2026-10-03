@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { usePlayerStore } from '../store/playerStore';
-import { useModeStore } from '../store/modeStore';
-import { showToast } from '../store/toastStore';
+import { usePlayerStore } from '../store/playerContext';
+import { useModeStore } from '../store/modeContext';
+import { showToast } from '../store/toasts';
 import { useAsync, useLyrics } from '../data/hooks';
 import { localLibrary } from '../data/local';
 import { api } from '../data/api';
