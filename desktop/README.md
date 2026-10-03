@@ -19,6 +19,38 @@ dist/                 `neu build` output - generated, gitignored
 `resources/` is Neutralino's `documentRoot` and `cli.resourcesPath`, so Vite builds
 straight into it. Don't hand-edit anything in there.
 
+## Setup
+
+```bash
+npm install
+cp .env.example .env    # VITE_API_BASE, optional dev auto-login
+npx neu update          # Neutralino binaries into bin/
+```
+
+Or run `../installFE.sh`, which does all of this. The backend must be running
+(`../../sonare-backend/runBE.sh`).
+
+### Environment
+
+| Variable            | What it does                                                                                              |
+| ------------------- | --------------------------------------------------------------------------------------------------------- |
+| `VITE_API_BASE`     | API base URL. `http://127.0.0.1:3010/api/v1` in development, `https://api.sonare.dev/api/v1` for releases |
+| `VITE_DEV_EMAIL`    | Development only: sign in automatically with this account                                                 |
+| `VITE_DEV_PASSWORD` | Its password                                                                                              |
+
+## Scripts
+
+| Script                 | What it does                                                |
+| ---------------------- | ----------------------------------------------------------- |
+| `npm run dev`          | Plain Vite dev server, no Neutralino runtime                |
+| `npm run build`        | Typecheck and Vite build into `resources/`                  |
+| `npm run typecheck`    | Types only                                                  |
+| `npm test`             | Test-plan check, then vitest (`web` and `desktop` projects) |
+| `npm run test:e2e`     | Playwright against a test backend                           |
+| `npm run lint`         | ESLint                                                      |
+| `npm run format:check` | Prettier, checking only                                     |
+| `npm run neu:build`    | Release build of the app into `dist/sonare-desktop/`        |
+
 ## Commands
 
 Run these from the repo root instead, if you prefer: `../runFE.sh <web|linux|windows>`.
@@ -48,6 +80,16 @@ that origin: its `CORS_ORIGINS` lists `http://localhost:47823` next to `https://
 - Development is unaffected: `runFE.sh linux` picks a free port and passes its own `--port`,
   and the development backend allows any localhost origin.
 
+## Release builds
+
+- `npx neu build --release` builds the web assets and packages the app as
+  `dist/sonare-desktop/sonare-desktop-<platform>`.
+- Release builds talk to `VITE_API_BASE` from `.env` at build time — set it to
+  `https://api.sonare.dev/api/v1`.
+- `enableInspector` is off in `neutralino.config.json`, so release windows have no dev
+  tools (`runFE.sh linux` turns it on for development with `--window-enable-inspector`).
+- The window is served on the fixed port 47823 (above).
+
 ## Native APIs
 
 Use the typed npm package rather than the injected global client library:
@@ -75,7 +117,8 @@ harmless "can't be bundled without type=module" warning about it on every build.
 
 ## License
 
-[MIT](LICENSE)
+Sonare is MIT-licensed (see `../LICENSE`). [LICENSE](LICENSE) here is the licence of the
+NeutralinoJS template this app started from.
 
 ## Icon credits
 
