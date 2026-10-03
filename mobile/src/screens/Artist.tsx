@@ -166,7 +166,7 @@ export function ArtistScreen() {
                 ))}
               </ScrollView>
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <StateView

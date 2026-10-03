@@ -368,7 +368,6 @@ describe('Data Layer', () => {
           id: 'u4',
           email: 'u4@test.com',
           displayName: 'U4',
-          role: 'user',
         },
       });
 
@@ -403,7 +402,6 @@ describe('Data Layer', () => {
           id: 'u5',
           email: 'u5@test.com',
           displayName: 'U5',
-          role: 'user',
         },
       });
 
@@ -441,7 +439,6 @@ describe('Data Layer', () => {
           id: 'u6',
           email: 'u6@test.com',
           displayName: 'U6',
-          role: 'user',
         },
       });
 
@@ -898,7 +895,7 @@ describe('Data Layer', () => {
     it('MOB-DATA-033 hydrate loads settings from storage and server', async () => {
       useAuthStore.setState({
         status: 'signedIn',
-        user: { id: 'u1', email: 'a@b.com', displayName: 'A', role: 'user' },
+        user: { id: 'u1', email: 'a@b.com', displayName: 'A' },
       });
       jest.spyOn(api, 'settings').mockResolvedValue({ downloadQuality: 'high', downloadFormat: 'm4a' });
       await AsyncStorage.setItem(
@@ -948,7 +945,7 @@ describe('Data Layer', () => {
     it('MOB-DATA-036 queuePlay adds pending play and triggers background upload', async () => {
       useAuthStore.setState({
         status: 'signedIn',
-        user: { id: 'u1', email: 'a@b.com', displayName: 'A', role: 'user' },
+        user: { id: 'u1', email: 'a@b.com', displayName: 'A' },
       });
       useModeStore.setState({ mode: 'online' });
       jest.spyOn(api, 'reportPlays').mockResolvedValue({ ok: true });
@@ -963,7 +960,7 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-037 queuePlay stores a local file by fingerprint and a server song by bare id, for the signed-in user', async () => {
       useAuthStore.setState({
-        user: { id: 'u-37', email: 'x@y.z', displayName: 'X', role: 'user' },
+        user: { id: 'u-37', email: 'x@y.z', displayName: 'X' },
       } as never);
       queuePlay('local:fingerprint123', 1000, 60000.4);
       queuePlay('yt:abc', 2000, 45000);
@@ -1103,7 +1100,7 @@ describe('Data Layer', () => {
     it('MOB-DATA-047 useAsync re-runs when dependency changes or refetch is invoked', async () => {
       let count = 0;
       const fetcher = jest.fn().mockImplementation(() => Promise.resolve(++count));
-      const { result, rerender } = renderHook(({ dep }) => useAsync(fetcher, [dep]), {
+      const { result, rerender } = renderHook(({ dep }: { dep: string }) => useAsync(fetcher, [dep]), {
         initialProps: { dep: 'a' },
       });
 

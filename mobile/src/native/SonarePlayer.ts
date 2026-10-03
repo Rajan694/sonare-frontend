@@ -49,7 +49,7 @@ const emitter = native ? new NativeEventEmitter(NativeModules.SonarePlayer) : nu
 
 function on<T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } {
   return (
-    emitter?.addListener(`SonarePlayer.${event}`, handler) ?? {
+    emitter?.addListener(`SonarePlayer.${event}`, (...args) => handler(args[0] as T)) ?? {
       remove: () => {},
     }
   );

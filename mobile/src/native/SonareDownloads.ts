@@ -66,7 +66,7 @@ const emitter = native ? new NativeEventEmitter(NativeModules.SonareDownloads) :
 
 function on<T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } {
   return (
-    emitter?.addListener(`SonareDownloads.${event}`, handler) ?? {
+    emitter?.addListener(`SonareDownloads.${event}`, (...args) => handler(args[0] as T)) ?? {
       remove: () => {},
     }
   );

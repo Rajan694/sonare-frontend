@@ -51,8 +51,10 @@ export function Artwork({
   }
 
   // Draw gradient matching the specific variant or a valid gradient
-  if (gradKey || gradient) {
-    const stops = gradKey ? artGradients[gradKey] : gradient!;
+  const stops = gradKey ? artGradients[gradKey] : gradient;
+  if (stops) {
+    // Two colours run corner to corner; a third adds a stop in the middle.
+    const offsets = stops.length > 2 ? ['0%', '45%', '100%'] : ['0%', '100%'];
 
     return (
       <AnimatedViewComponent
@@ -63,9 +65,9 @@ export function Artwork({
         <Svg width={size} height={size}>
           <Defs>
             <LinearGradient id="grad" x1="0%" y1="0%" x2="82%" y2="100%">
-              <Stop offset="0%" stopColor={stops[0]} />
-              <Stop offset={stops.length > 2 ? '45%' : '100%'} stopColor={stops[1]} />
-              {stops.length > 2 && <Stop offset="100%" stopColor={stops[2]} />}
+              {offsets.map((offset, i) => (
+                <Stop key={offset} offset={offset} stopColor={stops[i]} />
+              ))}
             </LinearGradient>
           </Defs>
           <Rect width="100%" height="100%" fill="url(#grad)" />

@@ -53,7 +53,7 @@ export function SearchScreen() {
   const albums = items.filter((i): i is SearchItem & { kind: 'album' } => i.kind === 'album');
   const artists = items.filter((i): i is SearchItem & { kind: 'artist' } => i.kind === 'artist');
 
-  const topResult = albums[0] || items[0] || null;
+  const topResult: SearchItem | null = albums[0] || items[0] || null;
 
   return (
     <Screen scrollable={false}>
