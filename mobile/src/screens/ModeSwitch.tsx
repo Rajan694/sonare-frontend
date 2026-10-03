@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useModeStore } from '../store/mode';
+import { useSettingsStore } from '../data/settings';
 import Animated, { FadeIn, FadeOut, Layout, ReduceMotion } from 'react-native-reanimated';
 import Icon from '../components/ui/Icon';
 
@@ -13,7 +14,8 @@ export function ModeSwitchScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { setMode } = useModeStore();
-  const [stayOffline, setStayOffline] = React.useState(true);
+  // Starts from the saved choice; saved again when the switch to Offline is confirmed.
+  const [stayOffline, setStayOffline] = React.useState(() => useSettingsStore.getState().stayOffline);
   // This screen only exists for the Online -> Offline confirmation (AGENTS.md
   // section 2 — Offline -> Online is immediate and never routes here), so the
   // target mode is the mode being switched TO, not whatever is current.
@@ -128,6 +130,7 @@ export function ModeSwitchScreen() {
           </Button>
           <Button
             onPress={() => {
+              if (localMode === 'offline') useSettingsStore.getState().update({ stayOffline });
               setMode(localMode);
               navigation.goBack();
             }}

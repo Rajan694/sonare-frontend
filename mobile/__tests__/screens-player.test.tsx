@@ -47,7 +47,11 @@ async function pressAlertButton(text: string) {
   });
 }
 
+// Settings tests swap in a mock `update`; every test starts from the real store.
+const initialSettings = useSettingsStore.getState();
+
 beforeEach(() => {
+  useSettingsStore.setState(initialSettings, true);
   jest.restoreAllMocks();
   jest.clearAllMocks();
   route.params = {};
@@ -598,9 +602,7 @@ describe('Mode switch', () => {
     expect(useModeStore.getState().mode).toBe('online');
   });
 
-  // BUG: "Stay offline automatically" is local state that nothing reads, so turning it off
-  // changes nothing. Remove `.failing` once the choice is stored and honoured.
-  test.failing('MOB-MODE-003 turning off "stay offline automatically" is remembered', () => {
+  it('MOB-MODE-003 turning off "stay offline automatically" is remembered', () => {
     route.params = { targetMode: 'offline' };
     const first = render(<ModeSwitchScreen />);
     expect(first.getByLabelText('Stay offline automatically').props.accessibilityState.checked).toBe(true);

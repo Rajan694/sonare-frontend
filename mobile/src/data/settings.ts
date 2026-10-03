@@ -4,8 +4,8 @@ import { api } from './api';
 import { useAuthStore } from './auth';
 
 /**
- * Account settings the phone uses (GET/PUT /me/settings): download quality and format, and
- * the equalizer preset.
+ * Account settings the phone uses (GET/PUT /me/settings): download quality and format, the
+ * equalizer preset, and whether Offline Mode should stick until switched back.
  * Signed in they follow the account, so they match the desktop app; guests keep them on
  * the phone. The download folder is per device and lives in store/downloads.ts instead.
  */
@@ -30,8 +30,11 @@ interface SettingsStore {
   downloadQuality: AudioQuality;
   downloadFormat: DownloadFormat;
   eqPreset: string;
+  stayOffline: boolean;
   hydrate: () => Promise<void>;
-  update: (patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat' | 'eqPreset'>>) => void;
+  update: (
+    patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat' | 'eqPreset' | 'stayOffline'>>,
+  ) => void;
 }
 
 function pick(s: Record<string, unknown>) {
@@ -43,12 +46,18 @@ function pick(s: Record<string, unknown>) {
       downloadFormat: s.downloadFormat as DownloadFormat,
     }),
     ...(typeof s.eqPreset === 'string' && EQ_PRESETS.includes(s.eqPreset) && { eqPreset: s.eqPreset }),
+    ...(typeof s.stayOffline === 'boolean' && { stayOffline: s.stayOffline }),
   };
 }
 
 /** What the phone keeps in AsyncStorage. */
 function stored(s: SettingsStore) {
-  return JSON.stringify({ downloadQuality: s.downloadQuality, downloadFormat: s.downloadFormat, eqPreset: s.eqPreset });
+  return JSON.stringify({
+    downloadQuality: s.downloadQuality,
+    downloadFormat: s.downloadFormat,
+    eqPreset: s.eqPreset,
+    stayOffline: s.stayOffline,
+  });
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -59,6 +68,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
   downloadQuality: 'high',
   downloadFormat: 'opus',
   eqPreset: 'Sonare',
+  stayOffline: true,
 
   hydrate: async () => {
     try {
