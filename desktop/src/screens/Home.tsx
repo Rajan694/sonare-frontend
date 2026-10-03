@@ -31,7 +31,7 @@ export default function Home() {
   } = useTrending('IN', 20);
   const [allTrending, setAllTrending] = useState(false);
   const [allRecent, setAllRecent] = useState(false);
-  const { data: recentData, refetch: refetchRecent } = useRecentlyPlayed(allRecent ? 50 : 10);
+  const { data: recentData, error: recentError, refetch: refetchRecent } = useRecentlyPlayed(allRecent ? 50 : 10);
 
   const local = useLocalLibrary();
   const trendingTracks = isOnline ? trendingData?.items || [] : local.tracks;
@@ -44,6 +44,8 @@ export default function Home() {
       : [];
 
   const trendingFailed = isOnline && !!trendingError && trendingTracks.length === 0;
+  // Signed in, online, the request failed and there is nothing from an earlier load to show.
+  const recentFailed = isOnline && !!user && !!recentError && recentTracks.length === 0;
 
   const retry = () => {
     refetchTrending();
@@ -198,7 +200,7 @@ export default function Home() {
       )}
 
       {/* Recently played / Jump back in shelf */}
-      {(recentTracks.length > 0 || (!isOnline && local.tracks.length > 6)) && (
+      {(recentTracks.length > 0 || (!isOnline && local.tracks.length > 6) || recentFailed) && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
             <span className="text-h2 text-t1 font-semibold">{!isOnline ? 'Jump back in' : 'Recently played'}</span>
@@ -212,19 +214,28 @@ export default function Home() {
               </button>
             )}
           </div>
-          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-            {recentTracks.slice(0, allRecent ? undefined : 8).map((track, i) => (
-              <Card
-                key={track.id}
-                title={track.title}
-                subtitle={track.artist}
-                artVariant={`a${((i % 12) + 1) as 1}`}
-                thumbnail={trackArtwork(track, 140)}
-                to={track.albumId ? `/album/${track.albumId}` : undefined}
-                onPlay={() => handlePlay(track, recentTracks)}
-              />
-            ))}
-          </div>
+          {recentFailed ? (
+            <EmptyState
+              icon="wifi-off"
+              title="Could not load recently played"
+              description={loadErrorMessage(recentError)}
+              action={retryButton}
+            />
+          ) : (
+            <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+              {recentTracks.slice(0, allRecent ? undefined : 8).map((track, i) => (
+                <Card
+                  key={track.id}
+                  title={track.title}
+                  subtitle={track.artist}
+                  artVariant={`a${((i % 12) + 1) as 1}`}
+                  thumbnail={trackArtwork(track, 140)}
+                  to={track.albumId ? `/album/${track.albumId}` : undefined}
+                  onPlay={() => handlePlay(track, recentTracks)}
+                />
+              ))}
+            </div>
+          )}
         </motion.div>
       )}
 

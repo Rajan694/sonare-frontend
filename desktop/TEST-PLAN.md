@@ -210,6 +210,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOME-004`   | with a song loaded the header button pauses or resumes it                              |
 | `WEB-HOME-005`   | playing a table row plays it within the trending list                                  |
 | `WEB-HOME-006`   | "See all" shows the full trending shelf                                                |
+| `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry          |
 | `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre starts a search          |
 | `WEB-SEARCH-002` | shows a top result, songs and artists, with a result count                             |
 | `WEB-SEARCH-003` | the top result plays within the results                                                |

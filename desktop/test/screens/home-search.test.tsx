@@ -88,6 +88,25 @@ describe('home', () => {
     expect(screen.queryByText('Could not load trending')).not.toBeInTheDocument();
   });
 
+  it('WEB-HOME-007 a signed-in user whose recently played fails to load is told so and can retry', async () => {
+    setSession('a', 'r', testUser);
+    let failing = true;
+    server.use(
+      http.get(`${API}/me/recently-played`, () =>
+        failing
+          ? apiError(502, 'UPSTREAM_UNAVAILABLE', 'x')
+          : HttpResponse.json(page([makeTrack({ id: 'yt:back', title: 'Back again' })])),
+      ),
+    );
+    const { user } = renderWithProviders(<Home />);
+    expect(await screen.findByText('Could not load recently played')).toBeInTheDocument();
+    expect(screen.getByText('Recently played')).toBeInTheDocument();
+    failing = false;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByRole('button', { name: 'Play Back again' })).toBeInTheDocument();
+    expect(screen.queryByText('Could not load recently played')).not.toBeInTheDocument();
+  });
+
   it('WEB-HOME-004 with a song loaded the header button pauses or resumes it', async () => {
     const player = makePlayer({ queue: [trending[1]], index: 0, isPlaying: true });
     const { user } = renderWithProviders(<Home />, { player });
