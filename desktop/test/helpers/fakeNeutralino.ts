@@ -21,6 +21,7 @@ const state = (g.__sonareFakeFs ??= {
   opened: [] as string[],
   unreadable: new Set<string>(),
   clock: { now: 1_700_000_000_000 },
+  commands: { ran: [] as string[], answer: null as null | ((cmd: string) => ExecResult) },
 });
 export const files = state.files as Map<string, FakeFile>;
 export const dirs = state.dirs as Set<string>;
@@ -28,6 +29,17 @@ export const store = state.store as Map<string, string>;
 export const dialog = state.dialog as { folder: string | null };
 export const opened = state.opened as string[];
 export const unreadable = state.unreadable as Set<string>;
+
+interface ExecResult {
+  stdOut?: string;
+  stdErr?: string;
+  exitCode?: number;
+}
+/**
+ * os.execCommand: every command run is recorded in `commands.ran`; `commands.answer`
+ * decides the output (by default every command fails, as if the tool were missing).
+ */
+export const commands = state.commands as { ran: string[]; answer: null | ((cmd: string) => ExecResult) };
 
 const clock = state.clock as { now: number };
 
@@ -52,6 +64,8 @@ export function resetFs() {
   store.clear();
   opened.length = 0;
   unreadable.clear();
+  commands.ran.length = 0;
+  commands.answer = null;
   dialog.folder = '/home/me/Picked';
   for (const fn of Object.values(lib.filesystem)) vi.mocked(fn).mockClear();
 }
@@ -118,6 +132,11 @@ export const lib = {
       opened.push(url);
     }),
     setTray: vi.fn(async () => {}),
+    execCommand: vi.fn(async (cmd: string) => {
+      commands.ran.push(cmd);
+      const r = commands.answer?.(cmd) ?? { exitCode: 127, stdErr: 'command not found' };
+      return { pid: 1, stdOut: r.stdOut ?? '', stdErr: r.stdErr ?? '', exitCode: r.exitCode ?? 0 };
+    }),
     showMessageBox: vi.fn(async () => 'OK'),
   },
   storage: {

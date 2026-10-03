@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import { create } from 'zustand';
-import { API_BASE } from './config';
+import { apiBase } from './config';
 import { httpRequest } from './http';
 import type { User } from './types';
 
@@ -44,7 +44,7 @@ class AuthError extends Error {
 }
 
 async function authRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<T> {
-  const { status, json } = await httpRequest(`${API_BASE}/auth/${path}`, {
+  const { status, json } = await httpRequest(`${apiBase()}/auth/${path}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

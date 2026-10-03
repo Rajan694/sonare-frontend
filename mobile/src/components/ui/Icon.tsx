@@ -46,6 +46,13 @@ import {
   ListFilter,
   List,
   LayoutGrid,
+  MonitorSpeaker,
+  Speaker,
+  Bluetooth,
+  Clock,
+  Usb,
+  Server,
+  ListPlus,
 } from 'lucide-react-native';
 
 const ICONS = {
@@ -96,6 +103,13 @@ const ICONS = {
   filter: ListFilter,
   list: List,
   grid: LayoutGrid,
+  output: MonitorSpeaker,
+  speaker: Speaker,
+  bluetooth: Bluetooth,
+  clock: Clock,
+  usb: Usb,
+  server: Server,
+  'playlist-add': ListPlus,
 } as const;
 
 export type IconName = keyof typeof ICONS;

@@ -1,6 +1,8 @@
 package com.mobile.player
 
 import android.content.Context
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.OptIn
@@ -58,6 +60,7 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   private var next: MediaItem? = null
   private var transitions = pendingTransitions
   private var speed = pendingSpeed
+  private var pauseAtEnd = false
 
   /** Called with the new active player when a crossfade hands over (the session follows it). */
   var onActiveChanged: ((ExoPlayer) -> Unit)? = null
@@ -69,6 +72,11 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     active.addListener(activeListener(active))
     standby.addListener(activeListener(standby))
     setSpeed(speed)
+    // The service restarted while an output was picked: keep sending audio there.
+    if (preferredDeviceId >= 0) {
+      val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+      audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.id == preferredDeviceId }?.let(::setPreferredDevice)
+    }
   }
 
   private fun buildPlayer(): ExoPlayer {
@@ -130,6 +138,19 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     syncQueuedNext()
   }
 
+  /** Sends both players to this output, or back to Android's choice with null. */
+  fun setPreferredDevice(device: AudioDeviceInfo?) {
+    active.setPreferredAudioDevice(device)
+    standby.setPreferredAudioDevice(device)
+  }
+
+  /** "Sleep at end of track": stop when the current one finishes instead of moving on. */
+  fun setPauseAtEndOfTrack(value: Boolean) {
+    pauseAtEnd = value
+    active.pauseAtEndOfMediaItems = value
+    syncQueuedNext()
+  }
+
   /** Playback speed; Media3 time-stretches, so pitch stays the same. */
   fun setSpeed(value: Float) {
     speed = value
@@ -163,9 +184,10 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   }
 
   private fun crossfadeNext(): Boolean =
-    transitions.crossfadeMs > 0 && next != null && !(transitions.gapless && sameAlbum(active.currentMediaItem, next))
+    !pauseAtEnd &&
+      transitions.crossfadeMs > 0 && next != null && !(transitions.gapless && sameAlbum(active.currentMediaItem, next))
 
-  private fun gaplessNext(): Boolean = transitions.gapless && next != null && !crossfadeNext()
+  private fun gaplessNext(): Boolean = !pauseAtEnd && transitions.gapless && next != null && !crossfadeNext()
 
   /** Keeps the item after the current one in the active player only when it should play gapless. */
   private fun syncQueuedNext() {
@@ -255,6 +277,9 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     // JS sends these at start-up, possibly before the service exists; a new engine starts with them.
     @Volatile var pendingTransitions = Transitions()
     @Volatile var pendingSpeed = 1f
+
+    /** AudioDeviceInfo id picked in the app; -1 leaves it to Android. Read by [OutputDevices]. */
+    @Volatile var preferredDeviceId = -1
   }
 }
 

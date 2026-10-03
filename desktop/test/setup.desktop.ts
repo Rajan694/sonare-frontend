@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { cancelOpenDialog } from '../src/store/dialogs';
 
 // Desktop mode setup: NL_MODE === 'window' with mock Neutralino
 (window as any).NL_MODE = 'window';
@@ -65,6 +66,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // A dialog left open would keep catching Escape in the next test.
+  cancelOpenDialog();
   cleanup();
   vi.clearAllMocks();
 });

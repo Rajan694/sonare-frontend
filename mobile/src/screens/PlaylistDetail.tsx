@@ -36,6 +36,7 @@ export function PlaylistDetailScreen() {
   const { isSaved, toggle: toggleSaved } = useSavedAlbum(id, 'Create a free account to save playlists you love.');
 
   const playlist = useAsync(() => (own ? api.myPlaylist(id) : api.playlist(id)), [id], { refetchOnFocus: own });
+  const from = playlist.data ? { kind: 'Playlist', name: playlist.data.name } : undefined;
   const tracksQuery = useAsync(() => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)), [id], {
     refetchOnFocus: own,
   });
@@ -66,7 +67,7 @@ export function PlaylistDetailScreen() {
     if (!tracks.length) return;
     if (shuffled !== shuffle) toggleShuffle();
     const first = shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0];
-    playTrack(first, tracks);
+    playTrack(first, tracks, from);
   };
 
   const isCurrentPlaylistPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
@@ -189,7 +190,7 @@ export function PlaylistDetailScreen() {
         renderItem={({ item, index }) => (
           <SongRow
             track={item}
-            onPress={() => playTrack(item, tracks)}
+            onPress={() => playTrack(item, tracks, from)}
             isActive={currentTrack?.id === item.id}
             index={index}
             showIndex

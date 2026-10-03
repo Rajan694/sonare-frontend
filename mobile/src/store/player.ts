@@ -1,6 +1,23 @@
 import { create } from 'zustand';
 import { Track } from '../data/types';
 
+/** Where the queue came from, for Now Playing's "Playing from …" eyebrow. */
+export interface PlayingFrom {
+  /** "Album", "Playlist", "Artist", "Search", "Library"… */
+  kind: string;
+  name: string;
+}
+
+/** What's saved to bring the queue back after the app was closed (store/playerPersist.ts). */
+export interface RestoredPlayer {
+  queue: Track[];
+  currentTrack: Track;
+  positionMs: number;
+  shuffle: boolean;
+  repeat: 'off' | 'all' | 'one';
+  playingFrom: PlayingFrom | null;
+}
+
 interface PlayerStore {
   currentTrack: Track | null;
   queue: Track[];
@@ -13,9 +30,14 @@ interface PlayerStore {
   repeat: 'off' | 'all' | 'one';
   /** A seek the audio engine hasn't applied yet; the nonce makes repeat seeks distinct. */
   seekRequest: { ms: number; nonce: number } | null;
+  playingFrom: PlayingFrom | null;
+  /** Where the next load starts (a restored queue resumes mid-track); the engine clears it. */
+  startAtMs: number | null;
 
   /** Start `track`, with `queue` (defaults to just the track) as what plays after it. */
-  playTrack: (track: Track, queue?: Track[]) => void;
+  playTrack: (track: Track, queue?: Track[], from?: PlayingFrom) => void;
+  /** Put back a saved queue, paused where it was left. */
+  restore: (saved: RestoredPlayer) => void;
   setCurrentTrack: (track: Track | null) => void;
   setQueue: (queue: Track[]) => void;
   setIsPlaying: (isPlaying: boolean) => void;
@@ -52,10 +74,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   shuffle: false,
   repeat: 'off',
   seekRequest: null,
+  playingFrom: null,
+  startAtMs: null,
 
-  playTrack: (track, queue) => {
+  playTrack: (track, queue, from) => {
     const list = queue?.length ? queue : [track];
     set({
+      playingFrom: from ?? null,
+      startAtMs: null,
       currentTrack: track,
       queue: get().shuffle ? shuffled(list, track) : list,
       isPlaying: true,
@@ -66,6 +92,20 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       seekRequest: { ms: 0, nonce: Date.now() },
     });
   },
+
+  restore: (saved) =>
+    set({
+      queue: saved.queue,
+      currentTrack: saved.currentTrack,
+      positionMs: saved.positionMs,
+      durationMs: saved.currentTrack.durationMs ?? 0,
+      shuffle: saved.shuffle,
+      repeat: saved.repeat,
+      playingFrom: saved.playingFrom,
+      startAtMs: saved.positionMs,
+      isPlaying: false,
+      error: null,
+    }),
 
   setCurrentTrack: (currentTrack) =>
     set({

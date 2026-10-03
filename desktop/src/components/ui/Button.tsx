@@ -3,7 +3,7 @@ import { cn } from '../../lib/cn';
 import type { IconName } from './Icon';
 import Icon from './Icon';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends React.ComponentPropsWithRef<'button'> {
   variant?: 'acc' | 'solid' | 'out' | 'ghost' | 'gold';
   size?: 'sm' | 'md' | 'lg';
   icon?: IconName;

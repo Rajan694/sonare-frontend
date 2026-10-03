@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -13,6 +13,7 @@ import { EQ_LABELS, EQ_MAX_DB, SPEEDS, currentGains, useAudioStore } from '../st
 import { SonarePlayer, type OutputDevice } from '../native/SonarePlayer';
 import { cn } from '../lib/cn';
 import Icon, { type IconName } from '../components/ui/Icon';
+import { usePlayerSheets } from '../components/music/PlayerSheets';
 
 const formatDb = (db: number) => (db > 0 ? `+${db}` : db < 0 ? `−${-db}` : '0');
 /** 0.75×, 1.0×, 1.25×, 1.5× */
@@ -255,7 +256,12 @@ export function EqualizerScreen() {
 
         {/* Output device */}
         {output && (
-          <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3">
+          <Pressable
+            onPress={() => usePlayerSheets.getState().show('output')}
+            className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3"
+            accessibilityRole="button"
+            accessibilityLabel={`Audio output: ${output.name}`}
+          >
             <View className={cn('w-9 h-9 items-center justify-center rounded-sm', isGold ? 'bg-goldbg' : 'bg-accbg')}>
               <Icon name={OUTPUT_ICON[output.type]} size={18} color={accent} />
             </View>
@@ -263,7 +269,8 @@ export function EqualizerScreen() {
               <Text className="text-tm font-medium text-t1">{output.name}</Text>
               <Text className="text-bs text-t3">Output device · effects apply here</Text>
             </View>
-          </View>
+            <Icon name="chevron-right" size={16} color="#7E7E8C" />
+          </Pressable>
         )}
       </ScrollView>
     </Screen>

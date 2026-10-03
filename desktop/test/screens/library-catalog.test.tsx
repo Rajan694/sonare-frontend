@@ -10,6 +10,7 @@ import { clearSession, setSession } from '../../src/api/auth';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeAlbum, makeArtist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { chooseOption } from '../helpers/dialogs';
 
 vi.mock('../../src/store/toasts', () => ({ showToast: vi.fn(), dismissToast: () => {}, useToasts: () => [] }));
 vi.mock('../../src/storage/downloads', () => ({
@@ -81,18 +82,19 @@ describe('library', () => {
     expect(titles()).toEqual(['alpha', 'Bravo', 'Charlie']);
     await user.click(screen.getByRole('button', { name: 'Sort by Title' }));
     expect(titles()).toEqual(['Charlie', 'Bravo', 'alpha']);
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort order' }), 'durationMs');
+    await chooseOption(user, 'Sort order', 'Duration');
     expect(titles()).toEqual(['alpha', 'Charlie', 'Bravo']);
+    expect(screen.getByRole('button', { name: 'Sort order' })).toHaveTextContent('Duration');
   });
 
   it('WEB-LIBRARY-004 filtering to "On device" on the web leaves nothing, and says so', async () => {
     setSession('a', 'r', testUser);
     const { user } = renderWithProviders(<Library />);
     await screen.findByText('3 songs in your library');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Filter source' }), 'local');
+    await chooseOption(user, 'Filter source', 'On device');
     expect(await screen.findByText('No songs found')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Play all' })).toBeDisabled();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Filter source' }), 'server');
+    await chooseOption(user, 'Filter source', 'Server');
     expect(await screen.findAllByRole('row')).toHaveLength(3);
   });
 
@@ -133,7 +135,7 @@ describe('library', () => {
     expect(await screen.findByText('No saved albums')).toBeInTheDocument();
     other.unmount();
     renderWithProviders(<Library />, { route: '/library?view=artists' });
-    expect(await screen.findByText('No followed artists')).toBeInTheDocument();
+    expect(await screen.findByText('No artists yet')).toBeInTheDocument();
   });
 
   it('WEB-LIBRARY-008 un-hearting a favourite removes it from the list at once', async () => {
@@ -169,6 +171,44 @@ describe('library', () => {
     renderWithProviders(<Library />, { route: '/library?view=genres' });
     expect(await screen.findByRole('link', { name: 'Indie' })).toHaveAttribute('href', '/search?q=Indie');
     expect(screen.getByText('Browse music by genre')).toBeInTheDocument();
+  });
+
+  it('WEB-LIBRARY-011 artists from liked and playlisted songs show their song count; followed ones say so', async () => {
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/library/artists`, () =>
+        HttpResponse.json(
+          page([
+            makeArtist({ id: 'yt:rh', name: 'Radiohead', following: true }),
+            { ...makeArtist({ id: 'yt:dil', name: 'Diljit Dosanjh', following: false }), songCount: 3 },
+            { ...makeArtist({ id: 'yt:one', name: 'One Song', following: false }), songCount: 1 },
+          ]),
+        ),
+      ),
+    );
+    renderWithProviders(<Library />, { route: '/library?view=artists' });
+    const card = (name: string) => screen.findByRole('link', { name: new RegExp(name) });
+    expect(await card('Radiohead')).toHaveTextContent('Following');
+    expect(await card('Diljit Dosanjh')).toHaveTextContent('3 songs in your library');
+    expect(await card('One Song')).toHaveTextContent('1 song in your library');
+    expect((await card('Diljit Dosanjh')).getAttribute('href')).toBe('/artist/yt:dil');
+  });
+
+  it('WEB-LIBRARY-012 genres show the browse categories and search for their query', async () => {
+    server.use(
+      http.get(`${API}/genres`, () =>
+        HttpResponse.json([
+          { id: 'dev', name: 'Devotional', query: 'devotional bhajan songs' },
+          { id: 'q', name: 'Qawwali' },
+        ]),
+      ),
+    );
+    renderWithProviders(<Library />, { route: '/library?view=genres' });
+    expect(await screen.findByRole('link', { name: 'Devotional' })).toHaveAttribute(
+      'href',
+      '/search?q=devotional%20bhajan%20songs',
+    );
+    expect(screen.getByRole('link', { name: 'Qawwali' })).toHaveAttribute('href', '/search?q=Qawwali');
   });
 });
 

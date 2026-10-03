@@ -37,8 +37,10 @@ for everything).
 - Desktop / web: `desktop/.env` (copy `desktop/.env.example`). `VITE_API_BASE` is the API
   base URL — `http://127.0.0.1:3010/api/v1` in development, `https://api.sonare.dev/api/v1`
   for production builds.
-- Mobile: no env file. `mobile/src/data/config.ts` uses `http://10.0.2.2:3010` (the
-  emulator's view of the host) in debug builds and `https://api.sonare.dev` in release builds.
+- Mobile: no env file. `mobile/src/data/config.ts` uses `http://localhost:3010` in debug
+  builds (`./runFE.sh mobile` forwards it to this computer with `adb reverse`, on the
+  emulator or a USB phone) and `https://api.sonare.dev` in release builds. Settings →
+  Server address overrides it on the phone (e.g. the computer's LAN IP over Wi-Fi).
 
 ## Tests and checks
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
+import { springs } from '../../lib/motion';
 import { cn } from '../../lib/cn';
 import Icon from './Icon';
 
@@ -18,10 +19,7 @@ export function SegmentedControl({ options, value, onChange, variant = 'default'
   const slidePosition = useSharedValue(activeIndex);
 
   React.useEffect(() => {
-    slidePosition.value = withSpring(activeIndex, {
-      damping: 24,
-      stiffness: 320,
-    });
+    slidePosition.value = withSpring(activeIndex, springs.slide);
   }, [activeIndex, slidePosition]);
 
   const animatedStyle = useAnimatedStyle(() => {

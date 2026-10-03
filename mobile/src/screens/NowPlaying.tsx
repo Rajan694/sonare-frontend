@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
@@ -19,10 +19,14 @@ import { cn } from '../lib/cn';
 import { Waveform } from '../components/music/Waveform';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated';
+import { springs } from '../lib/motion';
 import Icon from '../components/ui/Icon';
 import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
+import { OUTPUT_ICON, usePlayerSheets } from '../components/music/PlayerSheets';
+import { outputDetail, useOutputStore } from '../store/output';
+import { useSleepTimerStore } from '../store/sleepTimer';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -43,6 +47,10 @@ export function NowPlayingScreen() {
   const error = usePlayerStore((state) => state.error);
   const seekTo = usePlayerStore((state) => state.seekTo);
   const favourite = useLibraryStore((state) => !!currentTrack && !!state.favouriteIds[currentTrack.id]);
+  const playingFrom = usePlayerStore((state) => state.playingFrom);
+  const output = useOutputStore((state) => state.current);
+  const sleepOn = useSleepTimerStore((state) => state.timer.kind !== 'off');
+  const showSheet = usePlayerSheets((state) => state.show);
   // A finished download plays from the phone too.
   const onDevice = useDownloadsStore(
     (state) =>
@@ -56,6 +64,9 @@ export function NowPlayingScreen() {
   const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
 
   const navigation = useNavigation<any>();
+  // The output card and the extra utility buttons need room on shorter phones.
+  const { width, height } = useWindowDimensions();
+  const artSize = width - 40 >= 306 && height >= 760 ? 306 : width - 40 >= 240 && height >= 640 ? 240 : 200;
 
   const translateX = useSharedValue(0);
 
@@ -63,17 +74,17 @@ export function NowPlayingScreen() {
     const { translationX } = event.nativeEvent;
 
     if (translationX > SWIPE_THRESHOLD) {
-      translateX.value = withSpring(400, { damping: 20, stiffness: 200 }, () => {
+      translateX.value = withSpring(400, springs.fling, () => {
         runOnJS(playPrevious)();
         translateX.value = 0;
       });
     } else if (translationX < -SWIPE_THRESHOLD) {
-      translateX.value = withSpring(-400, { damping: 20, stiffness: 200 }, () => {
+      translateX.value = withSpring(-400, springs.fling, () => {
         runOnJS(playNext)();
         translateX.value = 0;
       });
     } else {
-      translateX.value = withSpring(0, { damping: 20, stiffness: 300 });
+      translateX.value = withSpring(0, springs.snapBack);
     }
   };
 
@@ -110,6 +121,9 @@ export function NowPlayingScreen() {
   }
 
   const isGold = mode === 'offline' || currentTrack.source === 'local';
+  const accent = isGold ? '#FFC24D' : '#00E28A';
+  // Where the queue came from; a song's own album when it was started from elsewhere.
+  const eyebrow = playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
 
   return (
     <Screen scrollable={false} className="bg-bg">
@@ -122,11 +136,13 @@ export function NowPlayingScreen() {
           />
         }
         title={
-          currentTrack.album ? (
+          eyebrow ? (
             <View className="items-center">
-              <Text className="text-[11px] font-semibold tracking-[0.9px] text-t3 uppercase">PLAYING FROM ALBUM</Text>
+              <Text className="text-[11px] font-semibold tracking-[0.9px] text-t3 uppercase">
+                PLAYING FROM {eyebrow.kind}
+              </Text>
               <Text className="text-ll font-semibold text-t1 truncate max-w-[200px]" numberOfLines={1}>
-                {currentTrack.album}
+                {eyebrow.name}
               </Text>
             </View>
           ) : undefined
@@ -147,7 +163,7 @@ export function NowPlayingScreen() {
               <Artwork
                 uri={artworkUrl(currentTrack, 640)}
                 fallbackUri={artworkUrl(currentTrack, 300)}
-                size={306}
+                size={artSize}
                 rings
                 className="rounded-2xl shadow-2xl"
                 sharedTransitionTag={`artwork-${currentTrack.id}`}
@@ -187,6 +203,16 @@ export function NowPlayingScreen() {
                 )
               }
               accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
+            />
+            <IconButton
+              icon={<Icon name="plus" size={23} color="#9A9AA8" />}
+              size={44}
+              onPress={() =>
+                requireAccount('Create a free account to make playlists.', () =>
+                  useTrackMenuStore.getState().open(currentTrack, { view: 'playlists' }),
+                )
+              }
+              accessibilityLabel="Add to playlist"
             />
             <TrackDownloadButton track={currentTrack} />
           </View>
@@ -298,6 +324,18 @@ export function NowPlayingScreen() {
               accessibilityLabel="Equalizer"
             />
             <IconButton
+              icon={<Icon name="output" size={21} color="#7E7E8C" />}
+              size={44}
+              onPress={() => showSheet('output')}
+              accessibilityLabel="Audio output"
+            />
+            <IconButton
+              icon={<Icon name="clock" size={21} color={sleepOn ? accent : '#7E7E8C'} />}
+              size={44}
+              onPress={() => showSheet('sleep')}
+              accessibilityLabel={sleepOn ? 'Sleep timer on' : 'Sleep timer'}
+            />
+            <IconButton
               icon={<Icon name="playlist" size={21} color="#7E7E8C" />}
               size={44}
               onPress={() => navigation.navigate('Queue')}
@@ -307,6 +345,29 @@ export function NowPlayingScreen() {
         </View>
 
         <View className="flex-1" />
+
+        {/* Audio output card (design M09) */}
+        <Pressable
+          onPress={() => showSheet('output')}
+          className="flex-row items-center gap-3.5 px-4 py-3 bg-s1 border border-ln rounded-xl"
+          accessibilityRole="button"
+          accessibilityLabel={`Audio output: ${output?.name ?? 'Phone speaker'}`}
+        >
+          <Icon name={output ? OUTPUT_ICON[output.type] : 'speaker'} size={20} color={accent} />
+          <View className="flex-1 gap-0.5 min-w-0">
+            <Text className="text-tm font-medium text-t1" numberOfLines={1}>
+              {output?.name ?? 'Phone speaker'}
+            </Text>
+            <Text className="text-bs text-t3" numberOfLines={1}>
+              {output?.type === 'speaker' || !output
+                ? onDevice
+                  ? 'Playing locally · no network used'
+                  : 'Streaming to this phone'
+                : outputDetail(output)}
+            </Text>
+          </View>
+          <Icon name="chevron-right" size={16} color="#7E7E8C" />
+        </Pressable>
       </View>
     </Screen>
   );

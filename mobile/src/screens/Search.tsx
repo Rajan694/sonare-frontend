@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Field } from '../components/ui/Field';
@@ -18,6 +18,7 @@ import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import type { SearchItem, Track } from '../data/types';
 import Icon from '../components/ui/Icon';
+import { DEFAULT_GENRES, GenreCard, genreQuery, type Genre } from '../components/music/GenreCard';
 
 const ONLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'genres'] as const;
 const OFFLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'folders'] as const;
@@ -30,6 +31,12 @@ type SearchType = (typeof SEARCH_TYPES)[number];
 
 function toSearchType(filter: Filter): SearchType {
   return SEARCH_TYPES.find((t) => t === filter) ?? 'all';
+}
+
+function chunk<T>(list: T[], size: number): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < list.length; i += size) rows.push(list.slice(i, i + size));
+  return rows;
 }
 
 function useDebounced<T>(value: T, ms: number): T {
@@ -50,10 +57,27 @@ export function SearchScreen() {
   const playTrack = usePlayerStore((state) => state.playTrack);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
 
+  // A genre opened elsewhere (Library → Genres) arrives as `q`.
+  const route = useRoute<any>();
+  const linkedQuery: string | undefined = route.params?.q;
+  useEffect(() => {
+    if (!linkedQuery) return;
+    setQuery(linkedQuery);
+    setFilter('all');
+    navigation.setParams({ q: undefined });
+  }, [linkedQuery, navigation]);
+
   const q = useDebounced(query.trim(), 350);
   const online = mode === 'online';
+  const showGenres = online && (!q || filter === 'genres');
+  const genres = useAsync(() => api.genres(), [], { enabled: showGenres });
+  const openGenre = (g: Genre) => {
+    setQuery(genreQuery(g));
+    setFilter('all');
+  };
   const results = useAsync(() => api.search(q, toSearchType(filter)), [q, filter], {
-    enabled: online && q.length > 0,
+    // Waits for the debounce to catch up, so switching chips mid-typing doesn't search a stale query.
+    enabled: online && q.length > 0 && q === query.trim() && filter !== 'genres',
   });
 
   const items = q ? (results.data?.items ?? []) : [];
@@ -139,7 +163,7 @@ export function SearchScreen() {
             }}
             keyboardShouldPersistTaps="handled"
           >
-            {q.length > 0 && (
+            {q.length > 0 && !showGenres && (
               <View className="flex-row items-center gap-2">
                 <Icon name="cloud" size={14} color="#7E7E8C" />
                 <Text className="text-t3 text-bs">
@@ -148,7 +172,19 @@ export function SearchScreen() {
               </View>
             )}
 
-            {!q ? (
+            {showGenres ? (
+              <View className="gap-3">
+                <Text className="text-h2 font-semibold text-t1">Browse categories</Text>
+                {chunk(genres.data ?? DEFAULT_GENRES, 2).map((row, r) => (
+                  <View key={r} className="flex-row gap-2.5">
+                    {row.map((g, i) => (
+                      <GenreCard key={g.id} genre={g} index={r * 2 + i} onPress={() => openGenre(g)} />
+                    ))}
+                    {row.length === 1 && <View className="flex-1" />}
+                  </View>
+                ))}
+              </View>
+            ) : !q ? (
               <StateView empty="Search for songs, albums, artists and playlists." />
             ) : results.loading && items.length === 0 ? (
               <StateView loading empty="Searching..." />
@@ -164,7 +200,8 @@ export function SearchScreen() {
                       onPress={() => {
                         if (topResult.kind === 'album') navigation.navigate('Album', { id: topResult.id });
                         else if (topResult.kind === 'artist') navigation.navigate('Artist', { id: topResult.id });
-                        else if (topResult.kind === 'track') playTrack(topResult, tracks);
+                        else if (topResult.kind === 'track')
+                          playTrack(topResult, tracks, { kind: 'Search', name: `“${q}”` });
                         else if (topResult.kind === 'playlist') navigation.navigate('Playlist', { id: topResult.id });
                       }}
                       className="bg-s1 border border-ln rounded-lg p-3 flex-row items-center gap-3.5"
@@ -230,7 +267,7 @@ export function SearchScreen() {
                           track={item}
                           index={index}
                           isActive={currentTrack?.id === item.id}
-                          onPress={() => playTrack(item, tracks)}
+                          onPress={() => playTrack(item, tracks, { kind: 'Search', name: `“${q}”` })}
                         />
                       ))}
                     </View>

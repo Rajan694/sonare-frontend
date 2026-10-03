@@ -11,6 +11,7 @@ import MobileTabBar from './MobileTabBar';
 import PhoneTopbar from './PhoneTopbar';
 import QueuePanel from './QueuePanel';
 import TrackMenu from '../music/TrackMenu';
+import { DialogHost } from '../ui/Dialog';
 import { Toast } from '../ui/Toast';
 import TooltipLayer from '../ui/Tooltip';
 import { useToasts, dismissToast } from '../../store/toasts';
@@ -140,6 +141,7 @@ export default function AppShell() {
         </div>
         {!immersive && <BottomPlayer />}
         <TrackMenu />
+        <DialogHost />
         <TooltipLayer />
         {toastContainer}
       </div>
@@ -174,6 +176,7 @@ export default function AppShell() {
         </div>
         {!immersive && <BottomPlayer />}
         <TrackMenu />
+        <DialogHost />
         <TooltipLayer />
         {toastContainer}
       </div>
@@ -226,6 +229,7 @@ export default function AppShell() {
       </AnimatePresence>
 
       <TrackMenu />
+      <DialogHost />
       <TooltipLayer />
       {toastContainer}
     </div>

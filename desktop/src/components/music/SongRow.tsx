@@ -35,7 +35,7 @@ export function SongTableHeader({ children, className }: { children?: React.Reac
     <div
       className={cn(
         'hidden @[480px]:grid items-center gap-4 text-label-s text-t3 pb-2.5 px-3 border-b border-ln select-none shrink-0',
-        'grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_58px_74px]',
+        'grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_48px_58px_74px]',
         className,
       )}
     >
@@ -48,6 +48,7 @@ export function SongTableHeader({ children, className }: { children?: React.Reac
           <span>TITLE</span>
           <span className="hidden @[720px]:inline">ALBUM</span>
           <span>SOURCE</span>
+          <span className="hidden @[720px]:inline text-right">PLAYS</span>
           <span className="text-right flex items-center justify-end">
             <Icon name="clock" size={13} />
           </span>
@@ -84,7 +85,7 @@ export default function SongRow({
         'group cursor-default select-none transition-colors duration-150 rounded-[10px] shrink-0',
         'flex items-center gap-3 p-2 min-h-[60px]',
         '@[480px]:grid @[480px]:grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[480px]:gap-4 @[480px]:px-3 @[480px]:py-[7px] @[480px]:min-h-[54px]',
-        '@[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_58px_74px]',
+        '@[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_48px_58px_74px]',
         isActive ? 'srow-on' : 'hover:bg-s1',
       )}
       variants={staggerItem}
@@ -134,9 +135,10 @@ export default function SongRow({
         </span>
       </div>
 
-      {/* Album column: visible only at >= 720px */}
+      {/* Album column: visible only at >= 720px. YouTube songs rarely name their album, so
+          the artist stands in rather than a bare dash. */}
       <div className={cn('hidden @[720px]:block text-body-m text-t2 truncate', hideAlbum && 'invisible')}>
-        {track.album || '—'}
+        {track.album || track.artist}
       </div>
 
       {/* Source badge column: visible on >= 480px */}
@@ -158,6 +160,14 @@ export default function SongRow({
           </span>
         )}
       </div>
+
+      {/* Plays column: your own play count, >= 720px */}
+      <span
+        className="hidden @[720px]:block text-mono-s text-t3 text-right"
+        aria-label={`${track.playCount ?? 0} plays`}
+      >
+        {(track.playCount ?? 0).toLocaleString()}
+      </span>
 
       {/* Duration column */}
       <span className="flex-none text-mono-s text-t3 text-right">{formatDuration(track.durationMs)}</span>

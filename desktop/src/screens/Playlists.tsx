@@ -2,10 +2,9 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
-import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../api/hooks';
+import { useMyPlaylists, useAuth } from '../api/hooks';
 import { requireAccount } from '../api/accountGate';
-import { api } from '../api/api';
-import { showToast } from '../store/toasts';
+import { createPlaylistWithPrompt } from '../api/newPlaylist';
 import Artwork from '../components/music/Artwork';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
@@ -28,16 +27,8 @@ export default function Playlists() {
   const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist);
 
   const createPlaylist = async () => {
-    const name = window.prompt('Enter playlist name:');
-    if (name?.trim()) {
-      try {
-        const created = await api.createPlaylist({ name: name.trim(), kind: 'synced' });
-        notifyPlaylistsChanged();
-        navigate(`/playlist/${created.id}`);
-      } catch (e: any) {
-        showToast({ title: 'Could not create playlist', description: e?.message, icon: 'info' });
-      }
-    }
+    const created = await createPlaylistWithPrompt();
+    if (created) navigate(`/playlist/${created.id}`);
   };
 
   const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4', 'a7', 'a8', 'a9', 'a10', 'a11', 'a12'] as const;

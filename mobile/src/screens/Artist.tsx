@@ -29,6 +29,7 @@ export function ArtistScreen() {
   // Following is per account, so re-read it when someone signs in or out.
   const userId = useAuthStore((state) => state.user?.id);
   const artist = useAsync(() => api.artist(id), [id, userId]);
+  const from = artist.data ? { kind: 'Artist', name: artist.data.name } : undefined;
   const top = useAsync(() => api.artistTopTracks(id, 20), [id]);
   const albums = useAsync(() => api.artistAlbums(id), [id]);
   const tracks = top.data?.items ?? [];
@@ -47,7 +48,7 @@ export function ArtistScreen() {
   const shufflePlay = () => {
     if (!tracks.length) return;
     if (!shuffle) toggleShuffle();
-    playTrack(tracks[Math.floor(Math.random() * tracks.length)], tracks);
+    playTrack(tracks[Math.floor(Math.random() * tracks.length)], tracks, from);
   };
 
   const isCurrentArtistPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
@@ -106,7 +107,7 @@ export function ArtistScreen() {
                     if (isCurrentArtistPlaying) {
                       setIsPlaying(false);
                     } else if (tracks.length) {
-                      playTrack(tracks[0], tracks);
+                      playTrack(tracks[0], tracks, from);
                     }
                   }}
                   disabled={!tracks.length}
@@ -127,7 +128,7 @@ export function ArtistScreen() {
         renderItem={({ item, index }) => (
           <SongRow
             track={item}
-            onPress={() => playTrack(item, tracks)}
+            onPress={() => playTrack(item, tracks, from)}
             isActive={currentTrack?.id === item.id}
             index={index}
             showIndex

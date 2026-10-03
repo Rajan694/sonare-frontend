@@ -2,6 +2,7 @@ import React from 'react';
 import { Text, Pressable } from 'react-native';
 import { cn } from '../../lib/cn';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { springs } from '../../lib/motion';
 
 interface ButtonProps {
   onPress: () => void;
@@ -35,8 +36,8 @@ export function Button({
   return (
     <AnimatedPressable
       onPress={onPress}
-      onPressIn={() => (scale.value = withSpring(0.97, { damping: 20 }))}
-      onPressOut={() => (scale.value = withSpring(1, { damping: 20 }))}
+      onPressIn={() => (scale.value = withSpring(0.98, springs.press))}
+      onPressOut={() => (scale.value = withSpring(1, springs.press))}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}

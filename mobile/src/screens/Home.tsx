@@ -83,7 +83,7 @@ export function HomeScreen() {
   const onResume = () => {
     if (!resume) return;
     if (currentTrack?.id === resume.id) setIsPlaying(!isPlaying);
-    else playTrack(resume, recentTracks);
+    else playTrack(resume, recentTracks, { kind: 'Recently played', name: 'Jump back in' });
   };
 
   const firstName = user?.displayName?.split(' ')[0] || (signedIn ? user?.displayName : null);
@@ -243,7 +243,7 @@ export function HomeScreen() {
                     {recentTracks.slice(0, 4).map((t, i) => (
                       <Animated.View key={t.id} entering={FadeIn.delay(i * 30)} className="w-[48.5%]">
                         <Pressable
-                          onPress={() => playTrack(t, recentTracks)}
+                          onPress={() => playTrack(t, recentTracks, { kind: 'Recently played', name: 'Jump back in' })}
                           className="bg-s2 border border-ln rounded-sm p-2 pr-3.5 flex-row items-center gap-3"
                           accessibilityRole="button"
                           accessibilityLabel={`Play ${t.title}`}
@@ -287,7 +287,7 @@ export function HomeScreen() {
                     {favouriteTracks.slice(0, 10).map((item, idx) => (
                       <Animated.View key={item.id} entering={FadeIn.delay(idx * 40)} className="w-[132px]">
                         <Pressable
-                          onPress={() => playTrack(item, favouriteTracks)}
+                          onPress={() => playTrack(item, favouriteTracks, { kind: 'Library', name: 'Your favourites' })}
                           accessibilityRole="button"
                           accessibilityLabel={`Play ${item.title}`}
                         >
@@ -336,7 +336,7 @@ export function HomeScreen() {
                           index={index}
                           showIndex
                           isActive={currentTrack?.id === item.id}
-                          onPress={() => playTrack(item, trendingTracks)}
+                          onPress={() => playTrack(item, trendingTracks, { kind: 'Home', name: 'Trending now' })}
                         />
                       ))
                   )}
@@ -369,7 +369,7 @@ export function HomeScreen() {
                       track={item}
                       index={index}
                       isActive={currentTrack?.id === item.id}
-                      onPress={() => playTrack(item, offlineTracks)}
+                      onPress={() => playTrack(item, offlineTracks, { kind: 'This phone', name: 'Downloaded songs' })}
                     />
                   ))}
                 </View>

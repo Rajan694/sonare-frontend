@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text } from 'react-native';
 import { MotiView, MotiTransitionProp } from 'moti';
+import { springs } from '../../lib/motion';
 import { cn } from '../../lib/cn';
 
 interface ToastProps {
@@ -22,8 +23,7 @@ export function Toast({ visible, message, subtext, icon, mode = 'online' }: Toas
         transition={
           {
             type: 'spring',
-            damping: 20,
-            stiffness: 300,
+            ...springs.sheet,
           } as MotiTransitionProp
         }
       >
