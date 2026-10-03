@@ -61,6 +61,12 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ArrowLeft,
+  MonitorSpeaker,
+  Speaker,
+  Headphones,
+  Bluetooth,
+  ListPlus,
+  ArrowUpDown,
 } from 'lucide-react';
 
 const ICONS = {
@@ -124,6 +130,12 @@ const ICONS = {
   edit: Pencil,
   'sidebar-close': PanelLeftClose,
   'sidebar-open': PanelLeftOpen,
+  output: MonitorSpeaker,
+  speaker: Speaker,
+  headphones: Headphones,
+  bluetooth: Bluetooth,
+  'playlist-add': ListPlus,
+  sort: ArrowUpDown,
 } as const;
 
 export type IconName = keyof typeof ICONS;

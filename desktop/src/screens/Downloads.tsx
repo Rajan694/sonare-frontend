@@ -13,6 +13,7 @@ import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { EmptyState } from '../components/ui/EmptyState';
+import { confirmDialog } from '../store/dialogs';
 
 /**
  * Downloads (desktop and web): what's in progress, with pause / resume / delete, and what
@@ -61,7 +62,13 @@ async function confirmDelete(items: DownloadItem[]) {
       : done.every((d) => d.target === 'browser')
         ? " Sonare can't delete files the browser saved; remove them from your Downloads folder."
         : ' The file will be deleted from the folder it was saved to.';
-  if (!window.confirm(`Delete ${what}?${note}`)) return;
+  const ok = await confirmDialog({
+    title: `Delete ${what}?`,
+    description: note.trim() || undefined,
+    confirmLabel: 'Delete',
+    danger: true,
+  });
+  if (!ok) return;
   let kept = 0;
   let reason: string | undefined;
   for (const d of items) {

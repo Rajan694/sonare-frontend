@@ -6,6 +6,7 @@ import { usePlaybackPosition } from '../../store/playbackPosition';
 import { showToast } from '../../store/toasts';
 import { api } from '../../api/api';
 import { requireAccount } from '../../api/accountGate';
+import { promptDialog } from '../../store/dialogs';
 import { notifyPlaylistsChanged } from '../../api/hooks';
 import { localLibrary, playsFrom, useLocalLibrary } from '../../storage/local';
 import { IconButton } from '../ui/Button';
@@ -61,7 +62,12 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
   }
 
   async function saveQueue() {
-    const name = window.prompt('Save queue as playlist', 'My queue')?.trim();
+    const name = await promptDialog({
+      title: 'Save queue as playlist',
+      label: 'Name',
+      initialValue: 'My queue',
+      confirmLabel: 'Save',
+    });
     if (!name) return;
     setSaving(true);
     try {

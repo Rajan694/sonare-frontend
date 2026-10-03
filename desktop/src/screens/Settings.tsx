@@ -4,6 +4,10 @@ import Icon, { type IconName } from '../components/ui/Icon';
 import Button from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
 import { Segmented } from '../components/ui/Segmented';
+import { Select } from '../components/ui/Select';
+import { OutputCard } from '../components/music/OutputPicker';
+import { outputSupport } from '../audio/output';
+import { LYRICS_SCRIPTS, updateDevicePrefs, useDevicePrefs } from '../storage/devicePrefs';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { useLocalLibrary } from '../storage/local';
@@ -94,6 +98,7 @@ export default function Settings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const settings = useSettings();
+  const devicePrefs = useDevicePrefs();
   const { mode, setMode } = useModeStore();
   const { user } = useAuth();
   const local = useLocalLibrary();
@@ -254,18 +259,13 @@ export default function Settings() {
           <span className="text-body-m text-t1 font-medium">Streaming quality</span>
           <span className="text-body-s text-t3 truncate">Applies from the next track</span>
         </span>
-        <select
-          className="chip text-t1 bg-s2 border-ln2 appearance-none"
-          aria-label="Streaming quality"
+        <Select
+          align="end"
+          ariaLabel="Streaming quality"
           value={settings.streamQuality}
-          onChange={(e) => updateSettings({ streamQuality: e.target.value as AudioQuality })}
-        >
-          {QUALITIES.map((q) => (
-            <option key={q.id} value={q.id}>
-              {q.label}
-            </option>
-          ))}
-        </select>
+          options={QUALITIES.map((q) => ({ value: q.id, label: q.label }))}
+          onChange={(streamQuality) => updateSettings({ streamQuality })}
+        />
       </div>
       <label className="cursor-pointer">
         <Row icon="music2" label="Gapless playback" desc="Seamless album transitions">
@@ -326,18 +326,13 @@ export default function Settings() {
             <span className="text-body-m text-t1 font-medium">Download quality</span>
             <span className="text-body-s text-t3 truncate">Applies to new downloads</span>
           </span>
-          <select
-            className="chip text-t1 bg-s2 border-ln2 appearance-none"
-            aria-label="Download quality"
+          <Select
+            align="end"
+            ariaLabel="Download quality"
             value={settings.downloadQuality}
-            onChange={(e) => updateSettings({ downloadQuality: e.target.value as AudioQuality })}
-          >
-            {DOWNLOAD_QUALITIES[settings.downloadFormat].map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.label}
-              </option>
-            ))}
-          </select>
+            options={DOWNLOAD_QUALITIES[settings.downloadFormat].map((q) => ({ value: q.id, label: q.label }))}
+            onChange={(downloadQuality) => updateSettings({ downloadQuality })}
+          />
         </div>
         <div className="lrow">
           <span className="icobox">
@@ -349,18 +344,13 @@ export default function Settings() {
               Saved as YouTube serves it, never re-encoded. AAC plays in more apps.
             </span>
           </span>
-          <select
-            className="chip text-t1 bg-s2 border-ln2 appearance-none"
-            aria-label="Download format"
+          <Select
+            align="end"
+            ariaLabel="Download format"
             value={settings.downloadFormat}
-            onChange={(e) => updateSettings({ downloadFormat: e.target.value as DownloadFormat })}
-          >
-            {DOWNLOAD_FORMATS.map((f) => (
-              <option key={f.id} value={f.id}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+            options={DOWNLOAD_FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+            onChange={(downloadFormat) => updateSettings({ downloadFormat })}
+          />
         </div>
         <div className="lrow">
           <span className="icobox">
@@ -410,6 +400,24 @@ export default function Settings() {
           {chevron}
         </Row>
       </Link>
+      {outputSupport() !== 'none' && (
+        <Row icon="output" label="Audio output" desc="The speaker or headphones Sonare plays on">
+          <OutputCard className="min-w-[200px] max-w-[260px] py-2" />
+        </Row>
+      )}
+      <Row
+        icon="lyrics"
+        label="Lyrics language"
+        desc="Shows lyrics in this script when a version exists, else the song's own"
+      >
+        <Select
+          align="end"
+          ariaLabel="Lyrics language"
+          value={devicePrefs.lyricsScript}
+          options={LYRICS_SCRIPTS}
+          onChange={(lyricsScript) => updateDevicePrefs({ lyricsScript })}
+        />
+      </Row>
     </div>
   );
 

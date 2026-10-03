@@ -6,6 +6,7 @@ import { showToast } from '../../store/toasts';
 import { IconButton } from '../ui/Button';
 import Icon from '../ui/Icon';
 import type { Track } from '../../types';
+import { confirmDialog } from '../../store/dialogs';
 
 export async function startTrackDownload(track: Track): Promise<void> {
   await downloads.enqueue([track]);
@@ -48,9 +49,14 @@ export default function TrackDownloadButton({
         tip="Downloaded"
         size={size}
         className={cn(className, 'text-gold')}
-        onClick={() => {
-          if (window.confirm(`Delete the download of "${track.title}"? The file is removed from its folder.`))
-            void deleteTrackDownload(track);
+        onClick={async () => {
+          const ok = await confirmDialog({
+            title: 'Delete download?',
+            description: `"${track.title}" is removed from the folder it was saved to.`,
+            confirmLabel: 'Delete',
+            danger: true,
+          });
+          if (ok) void deleteTrackDownload(track);
         }}
       />
     );

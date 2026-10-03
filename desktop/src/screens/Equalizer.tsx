@@ -4,6 +4,9 @@ import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';
 import { Slider } from '../components/ui/Slider';
 import { Badge } from '../components/ui/ChipBadge';
+import { Select } from '../components/ui/Select';
+import { OutputCard } from '../components/music/OutputPicker';
+import { outputSupport } from '../audio/output';
 import { cn } from '../lib/cn';
 import {
   useDsp,
@@ -199,34 +202,34 @@ export default function Equalizer() {
                 <span className="text-body-m font-medium text-t1 truncate">Playback speed</span>
                 <span className="text-body-s text-t3 truncate">Pitch preserved</span>
               </span>
-              <select
-                className="chip chip-sm text-t1 bg-s2 border-ln2 appearance-none cursor-pointer pr-3"
-                aria-label="Playback speed"
+              <Select
+                size="sm"
+                align="end"
+                ariaLabel="Playback speed"
                 value={dsp.speed}
-                onChange={(e) => setDsp({ speed: Number(e.target.value) })}
-              >
-                {SPEEDS.map((s) => (
-                  <option key={s} value={s} className="bg-s2 text-t1">
-                    {s}×
-                  </option>
-                ))}
-              </select>
+                options={SPEEDS.map((s) => ({ value: s, label: `${s}×` }))}
+                onChange={(speed) => setDsp({ speed })}
+              />
             </div>
           </div>
 
           {/* Output Device */}
           <div className="surf flex flex-col gap-3 p-5">
             <span className="text-overline text-t3 font-semibold uppercase tracking-wider">Audio output</span>
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-s2/50 border border-ln">
-              <span className={cn('icobox', isOffline ? 'icobox-gold' : 'icobox-acc')}>
-                <Icon name="volume" size={16} />
-              </span>
-              <div className="flex flex-col min-w-0 grow">
-                <span className="text-body-m font-medium text-t1 truncate">System default output</span>
-                <span className="text-body-s text-t3 truncate">Active · EQ applies here</span>
+            {outputSupport() !== 'none' ? (
+              <OutputCard className="w-full max-w-none" />
+            ) : (
+              <div className="flex items-center gap-3 p-2 rounded-lg bg-s2/50 border border-ln">
+                <span className={cn('icobox', isOffline ? 'icobox-gold' : 'icobox-acc')}>
+                  <Icon name="volume" size={16} />
+                </span>
+                <div className="flex flex-col min-w-0 grow">
+                  <span className="text-body-m font-medium text-t1 truncate">System default output</span>
+                  <span className="text-body-s text-t3 truncate">Active · EQ applies here</span>
+                </div>
+                <Badge variant={isOffline ? 'local' : 'cloud'}>Active</Badge>
               </div>
-              <Badge variant={isOffline ? 'local' : 'cloud'}>Active</Badge>
-            </div>
+            )}
           </div>
         </div>
       </div>

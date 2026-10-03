@@ -5,6 +5,7 @@ import { CAPS } from '../../lib/caps';
 import { downloads, useDownloads } from '../../storage/downloads';
 import { showToast } from '../../store/toasts';
 import type { Track } from '../../types';
+import { confirmDialog } from '../../store/dialogs';
 
 /**
  * Download for a set of tracks (FLOWS M06 / D06): album, playlist, top result.
@@ -35,12 +36,13 @@ export default function DownloadButton({ tracks, offline }: { tracks: Track[]; o
   }
 
   async function removeAll() {
-    if (
-      !window.confirm(
-        `Delete ${server.length} downloaded songs? Sonare removes the files from the folder they were saved to.`,
-      )
-    )
-      return;
+    const ok = await confirmDialog({
+      title: `Delete ${server.length} downloaded songs?`,
+      description: 'Sonare removes the files from the folder they were saved to.',
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     const kept = await downloads.removeMany(server.map((t) => t.id));
     showToast(
       kept
