@@ -277,4 +277,31 @@ describe('search', () => {
     );
     expect(screen.getByRole('button', { name: 'Add Paranoid Android to playlist' })).toBeEnabled();
   });
+
+  it("WEB-SEARCH-011 the Artists row shows each song's artist once, with their picture and page", async () => {
+    server.use(
+      http.get(`${API}/search`, () =>
+        HttpResponse.json(
+          page([
+            makeTrack({ id: 'yt:1', title: 'Tum Hi Ho', artist: 'Arijit Singh', artistId: 'yt:UCarijit' }),
+            makeTrack({ id: 'yt:2', title: 'Channa Mereya', artist: 'Arijit Singh', artistId: 'yt:UCarijit' }),
+            makeTrack({ id: 'yt:3', title: 'Lover', artist: 'Diljit Dosanjh', artistId: 'yt:UCdiljit' }),
+            // Piped couldn't tell the channel: shown, but with no page to open.
+            makeTrack({ id: 'yt:4', title: 'Mystery', artist: 'Nobody Known', artistId: 'yt:unknown' }),
+          ]),
+        ),
+      ),
+    );
+    search('tum');
+    const row = (await screen.findByText('Artists', { selector: '.text-overline' })).parentElement!;
+    const arijit = within(row).getByRole('link', { name: /Arijit Singh/ });
+    expect(arijit).toHaveAttribute('href', '/artist/yt:UCarijit');
+    expect(within(arijit).getByRole('img', { name: 'Arijit Singh' }).getAttribute('src')).toContain(
+      '/api/v1/artists/yt:UCarijit/artwork',
+    );
+    expect(within(row).getByRole('link', { name: /Diljit Dosanjh/ })).toHaveAttribute('href', '/artist/yt:UCdiljit');
+    expect(within(row).getAllByText('Arijit Singh')).toHaveLength(1);
+    expect(within(row).getByText('Nobody Known')).toBeInTheDocument();
+    expect(within(row).queryByRole('link', { name: /Nobody Known/ })).not.toBeInTheDocument();
+  });
 });

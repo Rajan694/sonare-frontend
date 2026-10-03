@@ -147,6 +147,33 @@ describe('bottom player', () => {
     expect(screen.getByRole('link', { name: 'Full screen player' })).toHaveAttribute('href', '/now-playing');
     expect(screen.getByRole('link', { name: 'Open now playing' })).toHaveAttribute('href', '/now-playing');
   });
+
+  it('WEB-LAYOUT-036 "Add to playlist" opens the playlist picker for the playing song', async () => {
+    setSession('a', 'r', testUser);
+    server.use(http.get(`${API}/me/playlists`, () => HttpResponse.json(page([makePlaylist({ name: 'Focus' })]))));
+    const { user } = renderWithProviders(<BottomPlayer />, { player: makePlayer({ queue: [song], index: 0 }) });
+    await user.click(within(screen.getByRole('contentinfo')).getByRole('button', { name: 'Add to playlist' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to playlist' });
+    expect(dialog).toHaveTextContent('Nude');
+    expect(await within(dialog).findByRole('button', { name: /Focus/ })).toBeInTheDocument();
+  });
+
+  it('WEB-LAYOUT-037 a guest pressing "Add to playlist" is asked to create an account first', async () => {
+    const navigate = vi.fn();
+    bindAccountGateNavigator(navigate);
+    const { user } = renderWithProviders(<BottomPlayer />, { player: makePlayer({ queue: [song], index: 0 }) });
+    await user.click(screen.getByRole('button', { name: 'Add to playlist' }));
+    expect(navigate).toHaveBeenCalledWith('/signin', {
+      state: { reason: 'Create a free account to make playlists.', mode: 'signup' },
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('WEB-LAYOUT-038 no output button where the browser cannot choose the speaker', () => {
+    renderWithProviders(<BottomPlayer />, { player: makePlayer({ queue: [song], index: 0 }) });
+    expect(screen.queryByRole('button', { name: /^Audio output/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
+  });
 });
 
 describe('mini player and navigation bars', () => {

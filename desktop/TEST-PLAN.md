@@ -82,6 +82,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-033` | Ctrl+Q toggles the queue, Escape closes it, Ctrl+B collapses the sidebar           |
 | `WEB-LAYOUT-034` | Escape leaves a full-screen page, going home when there is no history              |
 | `WEB-LAYOUT-035` | shows toasts and lets them be dismissed                                            |
+| `WEB-LAYOUT-036` | "Add to playlist" opens the playlist picker for the playing song                   |
+| `WEB-LAYOUT-037` | a guest pressing "Add to playlist" is asked to create an account first             |
+| `WEB-LAYOUT-038` | no output button where the browser cannot choose the speaker                       |
 
 ## `test/components/music.test.tsx`
 
@@ -117,6 +120,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-MUSIC-028` | arrow keys jump 5 seconds, within the track                                                  |
 | `WEB-MUSIC-029` | scrubbing previews the time and seeks once on release                                        |
 | `WEB-MUSIC-030` | without a seek handler it is a picture, not a control                                        |
+| `WEB-MUSIC-031` | the table shows your play count, and the artist where a song has no album                    |
+| `WEB-MUSIC-032` | a guest who signs in from "Add to playlist" gets the playlist picker for that song           |
 
 ## `test/components/ui.test.tsx`
 
@@ -221,6 +226,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SEARCH-008` | add-songs mode adds a result to the playlist and counts it                             |
 | `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                             |
 | `WEB-SEARCH-010` | a category without a query searches for its name                                       |
+| `WEB-SEARCH-011` | the Artists row shows each song's artist once, with their picture and page             |
 
 ## `test/screens/library-catalog.test.tsx`
 
@@ -248,6 +254,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-ARTIST-003`  | follow and unfollow, with the button following the saved state                        |
 | `WEB-ARTIST-004`  | a failed follow is undone                                                             |
 | `WEB-ARTIST-005`  | an artist with no songs says so and disables play; an unknown artist is "not found"   |
+| `WEB-LIBRARY-011` | artists from liked and playlisted songs show their song count; followed ones say so   |
+| `WEB-LIBRARY-012` | genres show the browse categories and search for their query                          |
 
 ## `test/screens/player-screens.test.tsx`
 
@@ -275,6 +283,12 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-003`     | turning the equalizer off disables presets and faders                               |
 | `WEB-EQ-004`     | bass boost, virtualizer and speed apply and show their values                       |
 | `WEB-EQ-005`     | gapless and normalization switches update the account settings                      |
+| `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                            |
+| `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in               |
+| `WEB-NP-009`     | there is no output picker where the browser cannot switch outputs                   |
+| `WEB-LYRICS-011` | asks for lyrics in the preferred script, and asks again when it changes             |
+| `WEB-LYRICS-012` | a guest who signs in to edit lyrics lands back in the editor                        |
+| `WEB-LYRICS-013` | a guest who signs in to fix the timing gets that change saved                       |
 
 ## `test/screens/playlists.test.tsx`
 
@@ -314,6 +328,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result     |
 | `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                |
 | `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                           |
+| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch   |
 
 ## `test/screens/signin.test.tsx`
 
@@ -637,3 +652,58 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                           |
 | `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing              |
 | `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                            |
+
+## `test/components/dialogs-select.test.tsx`
+
+| ID               | Use case                                                                                      |
+| ---------------- | --------------------------------------------------------------------------------------------- |
+| `WEB-DIALOG-001` | a prompt suggests a name, submits the trimmed text with Enter, and closes                     |
+| `WEB-DIALOG-002` | a blank name cannot be submitted; Cancel, Escape and the backdrop all cancel                  |
+| `WEB-DIALOG-003` | Escape on a dialog does not reach the shortcuts underneath                                    |
+| `WEB-DIALOG-004` | a confirm shows its text, focuses the action, and answers true or false                       |
+| `WEB-DIALOG-005` | opening a dialog cancels the one already open; cancelOpenDialog closes it                     |
+| `WEB-DIALOG-006` | the playlist picker adds the songs to a playlist and says so                                  |
+| `WEB-DIALOG-007` | the picker creates a playlist by name and adds to it; failures keep it open                   |
+| `WEB-SELECT-001` | shows the chosen option; the list marks it and picking another changes it                     |
+| `WEB-SELECT-002` | picking the current option changes nothing                                                    |
+| `WEB-SELECT-003` | works from the keyboard: arrows open and move, Enter picks, Escape closes back to the trigger |
+| `WEB-SELECT-004` | Space in the list picks instead of reaching the player shortcuts; a click outside closes it   |
+| `WEB-SELECT-005` | a custom trigger and options with details and icons                                           |
+
+## `test/desktop/library.test.tsx`
+
+| ID        | Use case                                                      |
+| --------- | ------------------------------------------------------------- |
+| `DSK-051` | folders open from the Songs tab only; there is no Folders tab |
+| `DSK-052` | an old ?view=folders link opens the Songs tab                 |
+
+## `test/desktop/output.test.tsx`
+
+| ID        | Use case                                                                         |
+| --------- | -------------------------------------------------------------------------------- |
+| `DSK-044` | lists the PulseAudio / PipeWire outputs with their kind                          |
+| `DSK-045` | choosing one moves only Sonare's own stream, and is remembered                   |
+| `DSK-046` | back to the system default sends the stream to the default sink                  |
+| `DSK-047` | the chosen output is applied again on start-up and whenever another track starts |
+| `DSK-048` | with the default output nothing is moved when tracks change                      |
+| `DSK-049` | without pactl only the system default is offered                                 |
+| `DSK-050` | the output button switches the speaker from the list                             |
+
+## `test/unit/devicePrefs.test.ts`
+
+| ID              | Use case                                                                       |
+| --------------- | ------------------------------------------------------------------------------ |
+| `WEB-PREFS-001` | start at the original lyrics and the system output, and restore what was saved |
+| `WEB-PREFS-002` | an unknown script or unreadable storage falls back to the defaults             |
+| `WEB-PREFS-003` | every script offered is one the server accepts                                 |
+
+## `test/unit/output.test.tsx`
+
+| ID               | Use case                                                                               |
+| ---------------- | -------------------------------------------------------------------------------------- |
+| `WEB-OUTPUT-001` | without setSinkId there is nothing to choose, and no button                            |
+| `WEB-OUTPUT-002` | lists the output devices after the system default, with their kind                     |
+| `WEB-OUTPUT-003` | choosing a device routes the element, then the graph once it exists, and is remembered |
+| `WEB-OUTPUT-004` | the output button lists the devices, marks the current one, and switches               |
+| `WEB-OUTPUT-005` | a remembered device that is gone reads as the system default                           |
+| `WEB-OUTPUT-006` | the Now Playing card opens the same list and switches the device                       |

@@ -5,12 +5,12 @@ import { MemoryRouter } from 'react-router-dom';
 import Artwork, { resolveArtworkUrl, trackArtwork } from '../../src/components/music/Artwork';
 import EqualizerBars from '../../src/components/music/EqualizerBars';
 import { GenreCard, genreVariant } from '../../src/components/music/GenreCard';
-import SongRow from '../../src/components/music/SongRow';
+import SongRow, { SongTableHeader } from '../../src/components/music/SongRow';
 import TrackMenu, { closeTrackMenu, openPlaylistMenu, openTrackMenu } from '../../src/components/music/TrackMenu';
 import TrackDownloadButton from '../../src/components/music/TrackDownloadButton';
 import DownloadButton from '../../src/components/music/DownloadButton';
 import Waveform from '../../src/components/music/Waveform';
-import { bindAccountGateNavigator } from '../../src/api/accountGate';
+import { bindAccountGateNavigator, takePendingAction } from '../../src/api/accountGate';
 import { clearSession, setSession } from '../../src/api/auth';
 import type { DownloadItem } from '../../src/storage/downloads';
 import { makePlayer, renderWithProviders } from '../helpers/render';
@@ -204,6 +204,27 @@ describe('song row', () => {
     expect(onClick).not.toHaveBeenCalled();
     rerender(<SongRow track={track} index={3} onAdd={onAdd} added />);
     expect(screen.getByRole('button', { name: 'Reckoner added' })).toBeDisabled();
+  });
+
+  it('WEB-MUSIC-031 the table shows your play count, and the artist where a song has no album', () => {
+    renderWithProviders(
+      <>
+        <SongTableHeader />
+        <SongRow track={{ ...track, playCount: 1234 }} index={1} />
+        <SongRow
+          track={makeTrack({ id: 'yt:single', title: 'Single', artist: 'Arijit Singh', album: null })}
+          index={2}
+        />
+      </>,
+    );
+    expect(screen.getByText('PLAYS')).toBeInTheDocument();
+    const [withAlbum, withoutAlbum] = screen.getAllByRole('row');
+    expect(within(withAlbum).getByLabelText('1234 plays')).toHaveTextContent('1,234');
+    expect(within(withAlbum).getAllByText('In Rainbows').length).toBeGreaterThan(0);
+    // No dash: the artist stands in for the missing album.
+    expect(within(withoutAlbum).queryByText('—')).not.toBeInTheDocument();
+    expect(within(withoutAlbum).getAllByText('Arijit Singh')).toHaveLength(2);
+    expect(within(withoutAlbum).getByLabelText('0 plays')).toHaveTextContent('0');
   });
 });
 
@@ -399,6 +420,19 @@ describe('track menu', () => {
     rec.stop();
     expect(rec.paths()).toContain('DELETE /me/playlists/sonare%3Ap9');
     expect(dl.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Playlist deleted', description: 'Gym' }));
+  });
+
+  it('WEB-MUSIC-032 a guest who signs in from "Add to playlist" gets the playlist picker for that song', async () => {
+    bindAccountGateNavigator(vi.fn());
+    server.use(http.get(`${API}/me/playlists`, () => HttpResponse.json(page([makePlaylist({ name: 'Gym' })]))));
+    const { user, menu } = open();
+    await user.click(within(menu()).getByRole('button', { name: 'Add to playlist…' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    setSession('a', 'r', testUser);
+    act(() => void takePendingAction()?.());
+    const dialog = await screen.findByRole('dialog', { name: 'Add to playlist' });
+    expect(dialog).toHaveTextContent('Reckoner');
+    expect(await within(dialog).findByRole('button', { name: /Gym/ })).toBeInTheDocument();
   });
 });
 

@@ -10,6 +10,7 @@ import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, http, HttpResponse, recordRequests, useMockServer, server } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
 import { answerConfirm, chooseOption, listGone, openOptions } from '../helpers/dialogs';
+import { getDevicePrefs, updateDevicePrefs } from '../../src/storage/devicePrefs';
 
 const h = vi.hoisted(() => {
   const state = {
@@ -212,6 +213,24 @@ describe('settings', () => {
     await user.click(w.getByRole('button', { name: 'Default' }));
     expect(h.loc.resetLocation).toHaveBeenCalled();
     expect(w.getByRole('button', { name: 'Change' })).toBeInTheDocument();
+  });
+
+  it("WEB-SETTINGS-011 audio: the lyrics language is chosen per device; no output row where it can't switch", async () => {
+    const { user, w } = openSettings('/settings?section=audio');
+    expect(w.getByRole('button', { name: 'Lyrics language' })).toHaveTextContent('Original (as released)');
+    await user.click(w.getByRole('button', { name: 'Lyrics language' }));
+    expect(openOptions()).toEqual(
+      expect.arrayContaining(['English / Romanised', 'Hindi / Bhojpuri (Devanagari)', 'Punjabi (Gurmukhi)']),
+    );
+    await user.click(screen.getByRole('option', { name: 'Punjabi (Gurmukhi)' }));
+    await listGone();
+    expect(getDevicePrefs().lyricsScript).toBe('gurmukhi');
+    expect(JSON.parse(localStorage.getItem('sonare_device_prefs')!)).toMatchObject({ lyricsScript: 'gurmukhi' });
+    expect(w.getByRole('button', { name: 'Lyrics language' })).toHaveTextContent('Punjabi (Gurmukhi)');
+    // Not an account setting: nothing goes to /me/settings.
+    expect(getSettings()).not.toHaveProperty('lyricsScript');
+    expect(w.queryByText('Audio output')).not.toBeInTheDocument();
+    updateDevicePrefs({ lyricsScript: 'original' });
   });
 });
 

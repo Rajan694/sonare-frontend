@@ -172,6 +172,44 @@ describe('library', () => {
     expect(await screen.findByRole('link', { name: 'Indie' })).toHaveAttribute('href', '/search?q=Indie');
     expect(screen.getByText('Browse music by genre')).toBeInTheDocument();
   });
+
+  it('WEB-LIBRARY-011 artists from liked and playlisted songs show their song count; followed ones say so', async () => {
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/library/artists`, () =>
+        HttpResponse.json(
+          page([
+            makeArtist({ id: 'yt:rh', name: 'Radiohead', following: true }),
+            { ...makeArtist({ id: 'yt:dil', name: 'Diljit Dosanjh', following: false }), songCount: 3 },
+            { ...makeArtist({ id: 'yt:one', name: 'One Song', following: false }), songCount: 1 },
+          ]),
+        ),
+      ),
+    );
+    renderWithProviders(<Library />, { route: '/library?view=artists' });
+    const card = (name: string) => screen.findByRole('link', { name: new RegExp(name) });
+    expect(await card('Radiohead')).toHaveTextContent('Following');
+    expect(await card('Diljit Dosanjh')).toHaveTextContent('3 songs in your library');
+    expect(await card('One Song')).toHaveTextContent('1 song in your library');
+    expect((await card('Diljit Dosanjh')).getAttribute('href')).toBe('/artist/yt:dil');
+  });
+
+  it('WEB-LIBRARY-012 genres show the browse categories and search for their query', async () => {
+    server.use(
+      http.get(`${API}/genres`, () =>
+        HttpResponse.json([
+          { id: 'dev', name: 'Devotional', query: 'devotional bhajan songs' },
+          { id: 'q', name: 'Qawwali' },
+        ]),
+      ),
+    );
+    renderWithProviders(<Library />, { route: '/library?view=genres' });
+    expect(await screen.findByRole('link', { name: 'Devotional' })).toHaveAttribute(
+      'href',
+      '/search?q=devotional%20bhajan%20songs',
+    );
+    expect(screen.getByRole('link', { name: 'Qawwali' })).toHaveAttribute('href', '/search?q=Qawwali');
+  });
 });
 
 describe('album', () => {

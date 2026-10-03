@@ -1,18 +1,19 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import NowPlaying from '../../src/screens/NowPlaying';
 import Lyrics from '../../src/screens/Lyrics';
 import Queue from '../../src/screens/Queue';
 import Equalizer from '../../src/screens/Equalizer';
-import { bindAccountGateNavigator } from '../../src/api/accountGate';
+import { bindAccountGateNavigator, takePendingAction } from '../../src/api/accountGate';
+import { updateDevicePrefs } from '../../src/storage/devicePrefs';
 import { clearSession, setSession } from '../../src/api/auth';
 import { getDsp, setDsp, EQ_PRESETS } from '../../src/audio/dsp';
 import { getSettings, updateSettings } from '../../src/storage/settings';
 import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
-import { makeTrack, testUser } from '../helpers/fixtures';
+import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 import { chooseOption } from '../helpers/dialogs';
 
 const toast = vi.hoisted(() => vi.fn());
@@ -115,6 +116,41 @@ describe('now playing', () => {
     const { user, location } = open();
     await user.click(screen.getByRole('button', { name: 'Exit full screen' }));
     expect(location()).toBe('/home');
+  });
+
+  it('WEB-NP-007 "Add to playlist" opens the playlist picker for the song', async () => {
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/playlists`, () =>
+        HttpResponse.json(page([makePlaylist({ id: 'sonare:p', name: 'Night drive' })])),
+      ),
+    );
+    const { user } = open();
+    await user.click(screen.getByRole('button', { name: 'Add to playlist' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to playlist' });
+    expect(dialog).toHaveTextContent('Nude');
+    expect(await within(dialog).findByRole('button', { name: /Night drive/ })).toBeInTheDocument();
+  });
+
+  it('WEB-NP-008 a guest is asked to sign up first, and gets the picker once signed in', async () => {
+    const navigate = vi.fn();
+    bindAccountGateNavigator(navigate);
+    server.use(http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))));
+    const { user } = open();
+    await user.click(screen.getByRole('button', { name: 'Add to playlist' }));
+    expect(navigate).toHaveBeenCalledWith('/signin', {
+      state: { reason: 'Create a free account to make playlists.', mode: 'signup' },
+    });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    // What SignIn does after a successful sign-in.
+    setSession('a', 'r', testUser);
+    act(() => void takePendingAction()?.());
+    expect(await screen.findByRole('dialog', { name: 'Add to playlist' })).toHaveTextContent('Nude');
+  });
+
+  it('WEB-NP-009 there is no output picker where the browser cannot switch outputs', () => {
+    open();
+    expect(screen.queryByRole('button', { name: /^Audio output/ })).not.toBeInTheDocument();
   });
 });
 
@@ -284,6 +320,61 @@ describe('lyrics', () => {
   it('WEB-LYRICS-010 with nothing playing it says so', () => {
     renderWithProviders(<Lyrics />);
     expect(screen.getByText('No track selected')).toBeInTheDocument();
+  });
+
+  it('WEB-LYRICS-011 asks for lyrics in the preferred script, and asks again when it changes', async () => {
+    const asked: (string | null)[] = [];
+    server.use(
+      http.get(`${API}/tracks/:id/lyrics`, ({ request }) => {
+        asked.push(new URL(request.url).searchParams.get('script'));
+        return HttpResponse.json({ synced: true, provider: 'lrclib', offsetMs: 0, lines });
+      }),
+    );
+    updateDevicePrefs({ lyricsScript: 'latin' });
+    open();
+    await screen.findByText('Second line');
+    expect(asked).toEqual(['latin']);
+    act(() => updateDevicePrefs({ lyricsScript: 'original' }));
+    // "Original" sends no script at all.
+    await waitFor(() => expect(asked).toEqual(['latin', null]));
+  });
+
+  it('WEB-LYRICS-012 a guest who signs in to edit lyrics lands back in the editor', async () => {
+    lyricsEndpoint();
+    const navigate = vi.fn();
+    bindAccountGateNavigator(navigate);
+    const first = open();
+    await screen.findByText('Second line');
+    await first.user.click(screen.getByRole('button', { name: 'Edit lyrics' }));
+    expect(navigate).toHaveBeenCalledWith('/signin', expect.anything());
+    // Off to /signin: the screen goes away, the sign-in finishes the action, the screen comes back.
+    first.unmount();
+    setSession('a', 'r', testUser);
+    await takePendingAction()?.();
+    open();
+    const editor = await screen.findByRole('textbox', { name: 'Lyrics editor' });
+    expect(editor).toHaveValue('[00:00.00]First line\n[00:10.00]Second line\n[00:20.00]Third line');
+  });
+
+  it('WEB-LYRICS-013 a guest who signs in to fix the timing gets that change saved', async () => {
+    lyricsEndpoint();
+    const offsets: unknown[] = [];
+    server.use(
+      http.patch(`${API}/tracks/:id/lyrics/offset`, async ({ request }) => {
+        offsets.push(await request.json());
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    bindAccountGateNavigator(vi.fn());
+    const first = open();
+    await screen.findByText('Second line');
+    await first.user.click(screen.getByRole('button', { name: 'Show lyrics later' }));
+    expect(offsets).toEqual([]);
+    first.unmount();
+    setSession('a', 'r', testUser);
+    await takePendingAction()?.();
+    open();
+    await waitFor(() => expect(offsets).toEqual([{ offsetMs: 250 }]));
   });
 });
 
