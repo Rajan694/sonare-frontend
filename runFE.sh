@@ -234,7 +234,10 @@ case "$TARGET" in
             echo "      Declining it leaves a red \"Unable to load script\" box."
         fi
 
-        npx react-native run-android --no-packager --port "$PORT"
+        # Native code (Reanimated, Worklets, Screens, SVG...) is C++ compiled once per ABI.
+        # gradle.properties lists all four for release builds; a dev run only needs the
+        # attached device's, which cuts the native build to a quarter.
+        npx react-native run-android --no-packager --port "$PORT" --active-arch-only
 
         if [ "$METRO_HOST_SET" = 0 ] && point_app_at_local_metro "$PORT"; then
             adb shell am force-stop "$MOBILE_APP_ID"
