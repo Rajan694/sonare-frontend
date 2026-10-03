@@ -7,6 +7,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { Switch } from '../components/ui/Switch';
 import { Chip } from '../components/ui/Chip';
 import { useModeStore } from '../store/mode';
+import { EQ_PRESETS, useSettingsStore } from '../data/settings';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
 
@@ -14,13 +15,15 @@ export function EqualizerScreen() {
   const navigation = useNavigation<any>();
   const mode = useModeStore((state) => state.mode);
   const [eqEnabled, setEqEnabled] = React.useState(true);
-  const [preset, setPreset] = React.useState('Sonare');
+  // Saved in the settings store (and the account), so it survives closing the screen.
+  const preset = useSettingsStore((state) => state.eqPreset);
+  const setPreset = (eqPreset: string) => useSettingsStore.getState().update({ eqPreset });
   const [crossfade, setCrossfade] = React.useState(true);
   const [gapless, setGapless] = React.useState(true);
   const [normalization, setNormalization] = React.useState(false);
   const [speed, setSpeed] = React.useState('1.0×');
 
-  const presets = ['Flat', 'Sonare', 'Bass', 'Vocal', 'Acoustic', 'Late night'];
+  const presets = EQ_PRESETS;
   const speeds = ['0.75×', '1.0×', '1.25×', '1.5×'];
 
   // 7-band EQ labels

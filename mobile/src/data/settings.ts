@@ -4,7 +4,8 @@ import { api } from './api';
 import { useAuthStore } from './auth';
 
 /**
- * Account settings the phone uses (GET/PUT /me/settings): download quality and format.
+ * Account settings the phone uses (GET/PUT /me/settings): download quality and format, and
+ * the equalizer preset.
  * Signed in they follow the account, so they match the desktop app; guests keep them on
  * the phone. The download folder is per device and lives in store/downloads.ts instead.
  */
@@ -19,14 +20,18 @@ export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = {
   high: 'high',
 };
 
+/** The presets the Audio screen offers. The desktop app ignores names it doesn't know. */
+export const EQ_PRESETS = ['Flat', 'Sonare', 'Bass', 'Vocal', 'Acoustic', 'Late night'];
+
 const STORAGE_KEY = 'sonare.settings';
 const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
 
 interface SettingsStore {
   downloadQuality: AudioQuality;
   downloadFormat: DownloadFormat;
+  eqPreset: string;
   hydrate: () => Promise<void>;
-  update: (patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat'>>) => void;
+  update: (patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat' | 'eqPreset'>>) => void;
 }
 
 function pick(s: Record<string, unknown>) {
@@ -37,7 +42,13 @@ function pick(s: Record<string, unknown>) {
     ...((s.downloadFormat === 'opus' || s.downloadFormat === 'm4a') && {
       downloadFormat: s.downloadFormat as DownloadFormat,
     }),
+    ...(typeof s.eqPreset === 'string' && EQ_PRESETS.includes(s.eqPreset) && { eqPreset: s.eqPreset }),
   };
+}
+
+/** What the phone keeps in AsyncStorage. */
+function stored(s: SettingsStore) {
+  return JSON.stringify({ downloadQuality: s.downloadQuality, downloadFormat: s.downloadFormat, eqPreset: s.eqPreset });
 }
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -47,6 +58,7 @@ let unsaved: Record<string, unknown> = {};
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
   downloadQuality: 'high',
   downloadFormat: 'opus',
+  eqPreset: 'Sonare',
 
   hydrate: async () => {
     try {
@@ -58,13 +70,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     if (useAuthStore.getState().status !== 'signedIn') return;
     try {
       set(pick(await api.settings()));
-      void AsyncStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({
-          downloadQuality: get().downloadQuality,
-          downloadFormat: get().downloadFormat,
-        }),
-      );
+      void AsyncStorage.setItem(STORAGE_KEY, stored(get()));
     } catch {
       // Offline: the phone's copy applies.
     }
@@ -72,8 +78,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   update: (patch) => {
     set(patch);
-    const { downloadQuality, downloadFormat } = get();
-    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ downloadQuality, downloadFormat }));
+    void AsyncStorage.setItem(STORAGE_KEY, stored(get()));
     if (useAuthStore.getState().status !== 'signedIn') return;
     unsaved = { ...unsaved, ...patch };
     clearTimeout(saveTimer);

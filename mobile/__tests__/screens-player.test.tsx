@@ -284,9 +284,7 @@ describe('Equalizer', () => {
     expect(getByLabelText('Gapless playback').props.accessibilityState.checked).toBe(false);
   });
 
-  // BUG: every control on the mobile Audio screen is local component state - nothing reaches
-  // the player, the account settings or storage, so choices vanish when the screen closes.
-  test.failing('MOB-EQ-002 a chosen preset is still selected when the screen is opened again', () => {
+  it('MOB-EQ-002 a chosen preset is still selected when the screen is opened again', () => {
     const first = render(<EqualizerScreen />);
     fireEvent.press(first.getByText('Bass'));
     first.unmount();
