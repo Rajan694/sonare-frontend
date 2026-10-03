@@ -615,9 +615,7 @@ describe('Mode switch', () => {
 });
 
 describe('Music folders', () => {
-  // BUG: the mobile Folders screen is the design mockup: hard-coded folders ("WhatsApp Audio",
-  // "842 songs", "Last scan 12 min ago") and buttons that do nothing. Every user sees them.
-  test.failing('MOB-FOLD-001 a phone with no scanned folders shows no made-up folders', () => {
+  it('MOB-FOLD-001 a phone with no scanned folders shows no made-up folders', () => {
     const { queryByText } = render(<FoldersScreen />);
     expect(queryByText('WhatsApp Audio')).toBeNull();
     expect(queryByText('Last scan 12 min ago')).toBeNull();
