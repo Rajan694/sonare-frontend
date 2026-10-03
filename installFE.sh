@@ -8,9 +8,14 @@ load_nvm() {
     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 }
 
-echo "=== Installing mobile (React Native) packages ==="
 load_nvm
 nvm use 22 2>/dev/null
+
+echo "=== Installing the git hooks (husky + lint-staged) ==="
+cd "$SCRIPT_DIR" && npm install
+
+echo ""
+echo "=== Installing mobile (React Native) packages ==="
 cd "$SCRIPT_DIR/mobile" && npm install
 
 echo ""
