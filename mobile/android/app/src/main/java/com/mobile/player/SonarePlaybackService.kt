@@ -3,31 +3,28 @@ package com.mobile.player
 import android.app.PendingIntent
 import android.content.Intent
 import androidx.annotation.OptIn
-import androidx.media3.common.AudioAttributes
-import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.mobile.MainActivity
 
 /**
- * Hosts the app's one ExoPlayer inside a media session. Media3 turns that into background
+ * Hosts the [PlaybackEngine] inside a media session. Media3 turns that into background
  * playback: a foreground service with the media notification, lock-screen and headset
  * controls, audio focus, and pausing when headphones are unplugged.
  *
- * The queue lives in JS, so the player only ever holds the current track; next/previous
- * pressed outside the app are handed to JS through [RemoteCommands].
+ * The queue lives in JS; the engine only knows the current track and the next one.
+ * Next/previous pressed outside the app are handed to JS through [RemoteCommands].
  */
 @OptIn(UnstableApi::class)
 class SonarePlaybackService : MediaSessionService() {
   private var session: MediaSession? = null
+  private var engine: PlaybackEngine? = null
 
   override fun onCreate() {
     super.onCreate()
@@ -35,19 +32,9 @@ class SonarePlaybackService : MediaSessionService() {
     val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
     val dataSource = DefaultDataSource.Factory(this, http)
 
-    val player =
-      ExoPlayer.Builder(this)
-        .setMediaSourceFactory(DefaultMediaSourceFactory(dataSource))
-        .setAudioAttributes(
-          AudioAttributes.Builder()
-            .setUsage(C.USAGE_MEDIA)
-            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-            .build(),
-          /* handleAudioFocus= */ true,
-        )
-        .setHandleAudioBecomingNoisy(true)
-        .setWakeMode(C.WAKE_MODE_NETWORK)
-        .build()
+    val engine = PlaybackEngine(this, dataSource)
+    this.engine = engine
+    PlaybackEngine.instance = engine
 
     val openApp =
       PendingIntent.getActivity(
@@ -58,10 +45,13 @@ class SonarePlaybackService : MediaSessionService() {
       )
 
     session =
-      MediaSession.Builder(this, QueueForwardingPlayer(player))
+      MediaSession.Builder(this, QueueForwardingPlayer(engine.active, engine))
         .setSessionActivity(openApp)
         .setBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), dataSource))
         .build()
+    // A crossfade hands playback to the other player; the session (notification, lock
+    // screen, the app's controller) follows it.
+    engine.onActiveChanged = { player -> session?.player = QueueForwardingPlayer(player, engine) }
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
@@ -73,11 +63,11 @@ class SonarePlaybackService : MediaSessionService() {
   }
 
   override fun onDestroy() {
-    session?.run {
-      player.release()
-      release()
-    }
+    session?.release()
     session = null
+    engine?.release()
+    engine = null
+    PlaybackEngine.instance = null
     super.onDestroy()
   }
 }
@@ -87,7 +77,7 @@ class SonarePlaybackService : MediaSessionService() {
  * player itself holds a single item, and routes the presses to JS.
  */
 @OptIn(UnstableApi::class)
-private class QueueForwardingPlayer(player: Player) : ForwardingPlayer(player) {
+private class QueueForwardingPlayer(player: Player, private val engine: PlaybackEngine) : ForwardingPlayer(player) {
   private val queueCommands =
     intArrayOf(
       Player.COMMAND_SEEK_TO_NEXT,
@@ -101,6 +91,37 @@ private class QueueForwardingPlayer(player: Player) : ForwardingPlayer(player) {
 
   override fun isCommandAvailable(command: Int): Boolean =
     command in queueCommands || super.isCommandAvailable(command)
+
+  // Any command from the user ends a crossfade at once rather than fighting it.
+  override fun play() {
+    engine.finishFade()
+    super.play()
+  }
+
+  override fun pause() {
+    engine.finishFade()
+    super.pause()
+  }
+
+  override fun setPlayWhenReady(playWhenReady: Boolean) {
+    engine.finishFade()
+    super.setPlayWhenReady(playWhenReady)
+  }
+
+  override fun seekTo(positionMs: Long) {
+    engine.finishFade()
+    super.seekTo(positionMs)
+  }
+
+  override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
+    engine.finishFade()
+    super.seekTo(mediaItemIndex, positionMs)
+  }
+
+  override fun stop() {
+    engine.finishFade()
+    super.stop()
+  }
 
   override fun seekToNext() = RemoteCommands.send("next")
 

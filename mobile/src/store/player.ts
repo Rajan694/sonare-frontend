@@ -32,6 +32,8 @@ interface PlayerStore {
   playPrevious: () => void;
   /** Called by the audio engine when a track finishes. */
   onTrackEnded: () => void;
+  /** What plays after the current track by itself: null at the end of the queue or on repeat one. */
+  upcomingTrack: () => Track | null;
 }
 
 const shuffled = (tracks: Track[], first: Track) => [
@@ -140,6 +142,15 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
 
     get().setCurrentTrack(queue[prevIndex]);
+  },
+
+  upcomingTrack: () => {
+    const { queue, currentTrack, repeat } = get();
+    if (!currentTrack || repeat === 'one') return null;
+    const index = queue.findIndex((t) => t.id === currentTrack.id);
+    if (index < 0) return null;
+    if (index + 1 < queue.length) return queue[index + 1];
+    return repeat === 'all' && queue.length > 1 ? queue[0] : null;
   },
 
   onTrackEnded: () => {

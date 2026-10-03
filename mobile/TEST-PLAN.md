@@ -106,6 +106,8 @@ navigation mock live in `test-utils/`.
 | `MOB-DATA-052` | signOut resets keychain credentials and reverts status to guest                                   |
 | `MOB-DATA-053` | requestPasswordReset posts the email without a token; a server error is thrown with its message   |
 | `MOB-DATA-054` | resendVerification sends the access token                                                         |
+| `MOB-DATA-055` | a hand-made (Custom) EQ stays on the phone; gapless and normalization sync                        |
+| `MOB-DATA-056` | signing in keeps the phone's Custom EQ but takes the account's other settings                     |
 
 ## `__tests__/lib.test.tsx`
 
@@ -213,6 +215,12 @@ navigation mock live in `test-utils/`.
 | `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files |
 | `MOB-EQ-001`     | presets and switches respond to taps                                                       |
 | `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                          |
+| `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                    |
+| `MOB-EQ-004`     | bands stop at ±12 dB                                                                       |
+| `MOB-EQ-005`     | bass boost and virtualizer adjust and show their amount                                    |
+| `MOB-EQ-006`     | speed, crossfade and normalization change what the player gets                             |
+| `MOB-EQ-007`     | switching the equalizer off freezes the effects but not speed or transitions               |
+| `MOB-EQ-008`     | the output card shows the device in use and follows changes                                |
 | `MOB-DL-S-001`   | with nothing downloaded it says so                                                         |
 | `MOB-DL-S-002`   | shows progress for running downloads and lets them be paused, resumed or retried           |
 | `MOB-DL-S-003`   | finished songs play as a queue of downloads; a moved file is marked                        |
@@ -268,3 +276,16 @@ navigation mock live in `test-utils/`.
 | `MOB-STORE-026` | toggleMode toggles between online and offline                                                    |
 | `MOB-STORE-027` | hideToast dismisses mode toast                                                                   |
 | `MOB-STORE-028` | open, setView, close manage track action sheet state                                             |
+| `MOB-STORE-029` | the next track is the following one; repeat all wraps; repeat one and the end have none          |
+| `MOB-STORE-030` | saved audio settings come back on launch; broken values are ignored                              |
+
+## `__tests__/audio.test.tsx`
+
+| ID            | Use case                                                                              |
+| :------------ | :------------------------------------------------------------------------------------ |
+| `MOB-AUD-001` | sends the Audio screen settings to the native player whenever they change             |
+| `MOB-AUD-002` | with gapless on, the next track is handed to the player once the current one loads    |
+| `MOB-AUD-003` | when the player moves on by itself, the queue follows without loading the track again |
+| `MOB-AUD-004` | with gapless and crossfade off, no next track is handed over                          |
+| `MOB-AUD-005` | at the end of the queue the player is told there is nothing next                      |
+| `MOB-AUD-006` | a move to a track the queue no longer has reloads the current one                     |

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePlayerStore } from '../src/store/player';
+import { useAudioStore } from '../src/store/audio';
 import {
   useDownloadsStore,
   localUriFor,
@@ -570,6 +571,46 @@ describe('Store Layer', () => {
       useTrackMenuStore.getState().close();
       expect(useTrackMenuStore.getState().track).toBeNull();
       expect(useTrackMenuStore.getState().extraAction).toBeUndefined();
+    });
+  });
+
+  describe('upcomingTrack', () => {
+    const t = (id: string) => ({ id: `yt:${id}`, title: id, source: 'server' }) as Track;
+    const [x, y, z] = [t('x'), t('y'), t('z')];
+
+    it('MOB-STORE-029 the next track is the following one; repeat all wraps; repeat one and the end have none', () => {
+      usePlayerStore.setState({ currentTrack: x, queue: [x, y, z], repeat: 'off' });
+      expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:y');
+      usePlayerStore.setState({ currentTrack: z });
+      expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
+      usePlayerStore.setState({ repeat: 'all' });
+      expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:x');
+      usePlayerStore.setState({ repeat: 'one', currentTrack: x });
+      expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
+      // A single song on repeat all has nothing "next" to preload.
+      usePlayerStore.setState({ repeat: 'all', queue: [x] });
+      expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
+    });
+  });
+
+  describe('useAudioStore', () => {
+    it('MOB-STORE-030 saved audio settings come back on launch; broken values are ignored', async () => {
+      await AsyncStorage.setItem(
+        'sonare.audio',
+        JSON.stringify({
+          enabled: false,
+          bassBoost: 250,
+          virtualizer: 30,
+          speed: 3,
+          crossfade: true,
+          customGains: [1, 2],
+        }),
+      );
+      await useAudioStore.getState().hydrate();
+      const state = useAudioStore.getState();
+      expect(state).toMatchObject({ enabled: false, bassBoost: 100, virtualizer: 30, crossfade: true });
+      expect(state.speed).toBe(1); // 3× is not offered
+      expect(state.customGains).toHaveLength(8);
     });
   });
 });

@@ -927,6 +927,25 @@ describe('Data Layer', () => {
       expect(useSettingsStore.getState().downloadQuality).toBe('high');
     });
 
+    it('MOB-DATA-055 a hand-made (Custom) EQ stays on the phone; gapless and normalization sync', async () => {
+      useAuthStore.setState({ status: 'signedIn' });
+      const save = jest.spyOn(api, 'saveSettings').mockResolvedValue({ ok: true });
+      useSettingsStore.getState().update({ eqPreset: 'Custom' });
+      await new Promise((r) => setTimeout(r, 500));
+      expect(save).not.toHaveBeenCalled();
+      useSettingsStore.getState().update({ eqPreset: 'Bass', gapless: false, normalization: true });
+      await new Promise((r) => setTimeout(r, 500));
+      expect(save).toHaveBeenCalledWith({ eqPreset: 'Bass', gapless: false, normalization: true });
+    });
+
+    it("MOB-DATA-056 signing in keeps the phone's Custom EQ but takes the account's other settings", async () => {
+      useAuthStore.setState({ status: 'signedIn' });
+      await AsyncStorage.setItem('sonare.settings', JSON.stringify({ eqPreset: 'Custom', gapless: true }));
+      jest.spyOn(api, 'settings').mockResolvedValue({ eqPreset: 'Vocal', gapless: false, normalization: true });
+      await useSettingsStore.getState().hydrate();
+      expect(useSettingsStore.getState()).toMatchObject({ eqPreset: 'Custom', gapless: false, normalization: true });
+    });
+
     it('MOB-DATA-035 sanitizes invalid settings values with pick helper', async () => {
       useAuthStore.setState({ status: 'guest' });
       await AsyncStorage.setItem(

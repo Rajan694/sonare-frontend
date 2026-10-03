@@ -12,7 +12,9 @@ import { ModeSwitchScreen } from '../src/screens/ModeSwitch';
 import { FoldersScreen } from '../src/screens/Folders';
 import { api } from '../src/data/api';
 import { useAuthStore } from '../src/data/auth';
-import { useSettingsStore } from '../src/data/settings';
+import { EQ_PRESET_GAINS, useSettingsStore } from '../src/data/settings';
+import { useAudioStore } from '../src/store/audio';
+import { NativeModules } from 'react-native';
 import { useModeStore } from '../src/store/mode';
 import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
@@ -49,9 +51,11 @@ async function pressAlertButton(text: string) {
 
 // Settings tests swap in a mock `update`; every test starts from the real store.
 const initialSettings = useSettingsStore.getState();
+const initialAudio = useAudioStore.getState();
 
 beforeEach(() => {
   useSettingsStore.setState(initialSettings, true);
+  useAudioStore.setState(initialAudio, true);
   jest.restoreAllMocks();
   jest.clearAllMocks();
   route.params = {};
@@ -294,6 +298,81 @@ describe('Equalizer', () => {
     first.unmount();
     const again = render(<EqualizerScreen />);
     expect(selected(again.getByText('Bass'))).toBe(true);
+  });
+
+  const adjust = (el: Parameters<typeof fireEvent>[0], actionName: 'increment' | 'decrement', times = 1) => {
+    for (let i = 0; i < times; i++) fireEvent(el, 'accessibilityAction', { nativeEvent: { actionName } });
+  };
+
+  it('MOB-EQ-003 moving a band starts a Custom curve from the preset and shows its level', () => {
+    const { getByText, getByLabelText } = render(<EqualizerScreen />);
+    // Sonare has +2 dB at 1 kHz; one step is 0.5 dB.
+    expect(getByLabelText('1k Hz band').props.accessibilityValue).toEqual({ text: '+2 dB' });
+    adjust(getByLabelText('1k Hz band'), 'increment');
+    expect(selected(getByText('Custom'))).toBe(true);
+    expect(selected(getByText('Sonare'))).toBe(false);
+    expect(getByText('+2.5')).toBeTruthy();
+    const expected = [...EQ_PRESET_GAINS.Sonare];
+    expected[4] = 2.5;
+    expect(useAudioStore.getState().customGains).toEqual(expected);
+    // Picking a preset again replaces the hand-made curve on screen.
+    fireEvent.press(getByText('Flat'));
+    expect(getByLabelText('1k Hz band').props.accessibilityValue).toEqual({ text: '0 dB' });
+  });
+
+  it('MOB-EQ-004 bands stop at ±12 dB', () => {
+    const { getByLabelText } = render(<EqualizerScreen />);
+    adjust(getByLabelText('32 Hz band'), 'increment', 40);
+    expect(getByLabelText('32 Hz band').props.accessibilityValue).toEqual({ text: '+12 dB' });
+    adjust(getByLabelText('32 Hz band'), 'decrement', 80);
+    expect(getByLabelText('32 Hz band').props.accessibilityValue).toEqual({ text: '−12 dB' });
+  });
+
+  it('MOB-EQ-005 bass boost and virtualizer adjust and show their amount', () => {
+    const { getByLabelText, getByText } = render(<EqualizerScreen />);
+    adjust(getByLabelText('Bass boost'), 'increment', 3);
+    adjust(getByLabelText('Virtualizer'), 'increment', 2);
+    expect(useAudioStore.getState()).toMatchObject({ bassBoost: 3, virtualizer: 2 });
+    expect(getByText('3%')).toBeTruthy();
+    expect(getByLabelText('Virtualizer').props.accessibilityValue).toEqual({ text: '2%' });
+  });
+
+  it('MOB-EQ-006 speed, crossfade and normalization change what the player gets', () => {
+    const { getByText, getByLabelText } = render(<EqualizerScreen />);
+    expect(selected(getByText('1.0×'))).toBe(true);
+    fireEvent.press(getByText('1.5×'));
+    fireEvent.press(getByLabelText('Crossfade'));
+    fireEvent.press(getByLabelText('Volume normalization'));
+    expect(useAudioStore.getState()).toMatchObject({ speed: 1.5, crossfade: true });
+    expect(useSettingsStore.getState().normalization).toBe(true);
+    expect(selected(getByText('1.5×'))).toBe(true);
+    // With crossfade on, gapless keeps albums seamless.
+    expect(getByText('No crossfade between tracks of one album')).toBeTruthy();
+  });
+
+  it('MOB-EQ-007 switching the equalizer off freezes the effects but not speed or transitions', () => {
+    const { getByText, getByLabelText } = render(<EqualizerScreen />);
+    fireEvent.press(getByLabelText('Equalizer enabled'));
+    expect(useAudioStore.getState().enabled).toBe(false);
+    for (const label of ['1k Hz band', 'Bass boost', 'Virtualizer']) {
+      expect(getByLabelText(label).props.accessibilityState.disabled).toBe(true);
+    }
+    adjust(getByLabelText('Bass boost'), 'increment');
+    expect(useAudioStore.getState().bassBoost).toBe(0);
+    fireEvent.press(getByLabelText('Volume normalization'));
+    expect(useSettingsStore.getState().normalization).toBe(false);
+    fireEvent.press(getByText('1.25×'));
+    fireEvent.press(getByLabelText('Crossfade'));
+    expect(useAudioStore.getState()).toMatchObject({ speed: 1.25, crossfade: true });
+  });
+
+  it('MOB-EQ-008 the output card shows the device in use and follows changes', async () => {
+    NativeModules.SonarePlayer.getOutputDevice.mockResolvedValueOnce({ type: 'wired', name: 'Wired headphones' });
+    const { findByText } = render(<EqualizerScreen />);
+    expect(await findByText('Wired headphones')).toBeTruthy();
+    const { mockEventEmitter } = require('../jest.setup');
+    act(() => mockEventEmitter.emit('SonarePlayer.output', { type: 'bluetooth', name: 'Pixel Buds' }));
+    expect(await findByText('Pixel Buds')).toBeTruthy();
   });
 });
 

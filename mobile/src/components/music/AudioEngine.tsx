@@ -3,7 +3,10 @@ import { api } from '../../data/api';
 import { absoluteUrl, artworkUrl } from '../../data/config';
 import { useAuthStore } from '../../data/auth';
 import { queuePlay } from '../../data/sync';
-import { SonarePlayer } from '../../native/SonarePlayer';
+import { useSettingsStore } from '../../data/settings';
+import type { Track } from '../../data/types';
+import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
+import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
 
@@ -18,8 +21,84 @@ let endedHandled = false;
 /** Bumped per load so a slow stream fetch for a skipped track is ignored. */
 let loadToken = 0;
 let started = false;
+/** Set when the native player moved on by itself, so the store change that follows doesn't reload. */
+let advancedTo: string | null = null;
+/** The next track the native player holds; undefined when it holds nothing we know of. */
+let nextSent: string | null | undefined;
+let nextToken = 0;
 
 const current = () => usePlayerStore.getState().currentTrack;
+
+/** Downloaded songs play from the phone, online or not; everything else streams. */
+async function streamUrl(track: Track): Promise<string> {
+  return localUriFor(track.id) ?? absoluteUrl((await api.stream(track.id)).url)!;
+}
+
+function loadOptions(track: Track, url: string): LoadOptions {
+  return {
+    id: track.id,
+    url,
+    title: track.title,
+    artist: track.artist,
+    album: track.album ?? undefined,
+    artworkUrl: artworkUrl(track, 640),
+  };
+}
+
+/**
+ * Hands the native player the track after the current one, so it can start it gapless or
+ * crossfade into it. Only needed while one of those is on; otherwise the next track loads
+ * when this one ends, as before.
+ */
+async function prepareNext() {
+  const token = ++nextToken;
+  const next = usePlayerStore.getState().upcomingTrack();
+  const wanted =
+    (useSettingsStore.getState().gapless || useAudioStore.getState().crossfade) &&
+    next?.source === 'server' &&
+    loadedId !== null &&
+    loadedId === current()?.id;
+  if (!wanted || !next) {
+    if (nextSent !== null) SonarePlayer.setNext(null);
+    nextSent = null;
+    return;
+  }
+  if (nextSent === next.id) return;
+  try {
+    const url = await streamUrl(next);
+    if (token !== nextToken) return;
+    SonarePlayer.setNext(loadOptions(next, url));
+    nextSent = next.id;
+  } catch {
+    // No stream for it yet: it loads normally once the current track ends.
+  }
+}
+
+/** Sends the Audio screen's settings to the native player. */
+function pushAudioSettings() {
+  const audio = useAudioStore.getState();
+  const settings = useSettingsStore.getState();
+  SonarePlayer.setAudioEffects({
+    enabled: audio.enabled,
+    gains: currentGains(settings.eqPreset),
+    bassBoost: audio.bassBoost,
+    virtualizer: audio.virtualizer,
+    normalization: settings.normalization,
+  });
+  SonarePlayer.setSpeed(audio.speed);
+  SonarePlayer.setTransitions({ crossfadeMs: audio.crossfade ? CROSSFADE_MS : 0, gapless: settings.gapless });
+}
+
+/** The native player already plays `id` (it moved on by itself): take it over without reloading. */
+function adopt(id: string) {
+  advancedTo = null;
+  ++loadToken; // a load still in flight for an older track must not replace this one
+  loadedId = id;
+  listen = { trackId: id, startedAt: Date.now(), counted: false };
+  endedHandled = false;
+  nextSent = undefined;
+  prepareNext();
+}
 
 async function loadCurrent() {
   const token = ++loadToken;
@@ -38,22 +117,15 @@ async function loadCurrent() {
   }
   player.setBuffering(true);
   try {
-    // Downloaded songs play from the phone, online or not.
-    const local = localUriFor(track.id);
-    const url = local ?? absoluteUrl((await api.stream(track.id)).url)!;
+    const url = await streamUrl(track);
     if (token !== loadToken) return;
-    await SonarePlayer.load({
-      id: track.id,
-      url,
-      title: track.title,
-      artist: track.artist,
-      album: track.album ?? undefined,
-      artworkUrl: artworkUrl(track, 640),
-      autoplay: usePlayerStore.getState().isPlaying,
-    });
+    await SonarePlayer.load({ ...loadOptions(track, url), autoplay: usePlayerStore.getState().isPlaying });
     if (token !== loadToken) return;
     loadedId = track.id;
     listen = { trackId: track.id, startedAt: Date.now(), counted: false };
+    // load() clears whatever next track the player held.
+    nextSent = undefined;
+    prepareNext();
     // Paused while the stream was loading: nothing applied it yet, so apply it now.
     if (!usePlayerStore.getState().isPlaying) SonarePlayer.pause();
   } catch (e: any) {
@@ -112,12 +184,46 @@ function startAudio() {
     else player.playPrevious();
   });
 
+  // Gapless or crossfade: the player already started the next track. Move the queue along.
+  SonarePlayer.onAdvance(({ mediaId }) => {
+    const player = usePlayerStore.getState();
+    const track = player.queue.find((t) => t.id === mediaId);
+    if (!track) {
+      // The queue changed under the player: put back the track the queue says is current.
+      loadCurrent();
+      return;
+    }
+    advancedTo = mediaId;
+    player.setCurrentTrack(track);
+  });
+
+  // Audio settings -> native, now and whenever they change (including when the phone's saved
+  // ones finish loading).
+  pushAudioSettings();
+  useAudioStore.getState().hydrate();
+  useAudioStore.subscribe((state, prev) => {
+    pushAudioSettings();
+    if (state.crossfade !== prev.crossfade) prepareNext();
+  });
+  useSettingsStore.subscribe((state, prev) => {
+    if (
+      state.eqPreset !== prev.eqPreset ||
+      state.normalization !== prev.normalization ||
+      state.gapless !== prev.gapless
+    ) {
+      pushAudioSettings();
+    }
+    if (state.gapless !== prev.gapless) prepareNext();
+  });
+
   // Store -> native.
   usePlayerStore.subscribe((state, prev) => {
     if (state.currentTrack?.id !== prev.currentTrack?.id) {
-      loadCurrent();
-      return; // the new load carries play state and starts from 0
+      if (state.currentTrack && state.currentTrack.id === advancedTo) adopt(state.currentTrack.id);
+      else loadCurrent(); // the new load carries play state and starts from 0
+      return;
     }
+    if (state.queue !== prev.queue || state.repeat !== prev.repeat) prepareNext();
     const ready = loadedId !== null && loadedId === state.currentTrack?.id;
     if (ready && state.isPlaying !== prev.isPlaying) {
       if (state.isPlaying) SonarePlayer.play();

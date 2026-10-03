@@ -296,7 +296,7 @@ export function SettingsScreen() {
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Equalizer & effects</Text>
-                <Text className="text-bs text-t3 truncate">DSP, 7-band EQ & speed</Text>
+                <Text className="text-bs text-t3 truncate">8-band EQ, effects, speed & crossfade</Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>
@@ -310,7 +310,7 @@ export function SettingsScreen() {
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Music folders</Text>
-                <Text className="text-bs text-t3 truncate">Manage device scanned storage</Text>
+                <Text className="text-bs text-t3 truncate">Not available on this phone yet</Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>

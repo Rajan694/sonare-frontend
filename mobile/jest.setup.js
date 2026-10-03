@@ -5,6 +5,11 @@ const mockSonarePlayerNative = {
   pause: jest.fn(),
   seekTo: jest.fn(),
   stop: jest.fn(),
+  setNext: jest.fn(),
+  setTransitions: jest.fn(),
+  setSpeed: jest.fn(),
+  setAudioEffects: jest.fn(),
+  getOutputDevice: jest.fn().mockResolvedValue({ type: 'speaker', name: 'Phone speaker' }),
 };
 
 const mockSonareDownloadsNative = {
@@ -396,6 +401,9 @@ jest.mock('react-native-gesture-handler', () => {
   return {
     GestureHandlerRootView: 'View',
     PanGestureHandler: 'View',
+    // Sliders: tests drive them through their accessibility actions.
+    GestureDetector: ({ children }) => children,
+    usePanGesture: () => ({}),
     State: {},
     Directions: {},
   };
