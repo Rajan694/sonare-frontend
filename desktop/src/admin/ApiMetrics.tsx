@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowDown, ArrowUp, RefreshCw } from 'lucide-react';
 import { Segmented } from '../components/ui/Segmented';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/cn';
 import { adminApi, type RouteStats } from './api';
 import {
   bucketLabels,

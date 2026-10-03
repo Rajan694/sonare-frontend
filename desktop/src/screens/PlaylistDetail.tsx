@@ -15,7 +15,8 @@ import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer } from '../lib/motion';
-import { cn, formatDuration } from '../lib/utils';
+import { cn } from '../lib/cn';
+import { formatDuration } from '../lib/format';
 import type { Track } from '../data/types';
 
 export default function PlaylistDetail() {

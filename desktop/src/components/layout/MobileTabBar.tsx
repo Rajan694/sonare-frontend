@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 import Icon from '../ui/Icon';
 
 const MOBILE_TABS = [

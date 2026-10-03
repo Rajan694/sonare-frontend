@@ -20,7 +20,7 @@ import { usePlayerShortcuts } from './usePlayerShortcuts';
 import { useLayout } from '../../lib/layout';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { closeQueue, toggleQueue, toggleSidebar } from '../../store/uiSlice';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 
 function isTyping(el: EventTarget | null) {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));

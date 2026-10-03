@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 import { CAPS } from '../../lib/caps';
 import { useModeStore } from '../../store/modeContext';
 import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../../data/hooks';

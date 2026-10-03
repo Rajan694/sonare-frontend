@@ -1,6 +1,6 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 import Icon, { type IconName } from './Icon';
 
 interface ToastProps {

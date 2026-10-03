@@ -4,7 +4,7 @@ import { Field } from '../ui/Field';
 import Icon from '../ui/Icon';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { setQuery } from '../../store/searchSlice';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 
 function isTyping(el: EventTarget | null) {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));

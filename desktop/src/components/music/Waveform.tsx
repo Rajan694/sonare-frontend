@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { cn, formatDuration, generatePeaks } from '../../lib/utils';
+import { cn } from '../../lib/cn';
+import { formatDuration, generatePeaks } from '../../lib/format';
 
 /** `.wave` bars have a 2px gap (sonare.css); the playhead bar is 1px wider than the rest. */
 const BAR_GAP_PX = 2;

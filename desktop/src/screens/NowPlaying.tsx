@@ -13,8 +13,8 @@ import Icon from '../components/ui/Icon';
 import { SourceGlyph } from '../components/ui/SourceGlyph';
 import { Slider } from '../components/ui/Slider';
 import { EmptyState } from '../components/ui/EmptyState';
-import { formatDuration } from '../lib/utils';
-import { cn } from '../lib/utils';
+import { formatDuration } from '../lib/format';
+import { cn } from '../lib/cn';
 import * as player from '../data/player';
 import { playsFrom, useLocalLibrary } from '../data/local';
 

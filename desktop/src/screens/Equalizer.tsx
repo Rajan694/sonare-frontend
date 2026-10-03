@@ -4,7 +4,7 @@ import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';
 import { Slider } from '../components/ui/Slider';
 import { Badge } from '../components/ui/ChipBadge';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/cn';
 import {
   useDsp,
   setDsp,

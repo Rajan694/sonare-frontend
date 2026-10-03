@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Button from '../components/ui/Button';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/cn';
 import { adminApi, AdminApiError, type LatestCommit, type Setting } from './api';
 import { fmtDateTime, Notice, PageHeader, Panel, useLoad } from './ui';
 import ExtractorCommitHelp from './ExtractorCommitHelp';

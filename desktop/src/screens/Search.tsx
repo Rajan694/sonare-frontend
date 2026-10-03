@@ -17,7 +17,7 @@ import { DEFAULT_GENRES, GenreCard, genreVariant } from '../components/music/Gen
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { fadeRise, transition } from '../lib/motion';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/cn';
 import { useAppDispatch, useAppSelector } from '../store';
 import { runSearch, searchKey, setQuery, setType, type SearchType } from '../store/searchSlice';
 import type { Track, Album, Artist, Playlist } from '../data/types';

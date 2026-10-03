@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import { CAPS, CLIENT } from '../../src/lib/caps';
-import { cn, formatBytes, formatDuration, generatePeaks } from '../../src/lib/utils';
+import { cn } from '../../src/lib/cn';
+import { formatBytes, formatDuration, generatePeaks } from '../../src/lib/format';
 import { hasInternet } from '../../src/lib/connectivity';
 import { useLayout } from '../../src/lib/layout';
 import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';

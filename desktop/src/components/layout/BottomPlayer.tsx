@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
 import { usePeaks } from '../../data/hooks';
@@ -12,7 +12,7 @@ import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
 import Waveform from '../music/Waveform';
 import TrackDownloadButton from '../music/TrackDownloadButton';
-import { formatDuration } from '../../lib/utils';
+import { formatDuration } from '../../lib/format';
 import * as player from '../../data/player';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { toggleQueue } from '../../store/uiSlice';

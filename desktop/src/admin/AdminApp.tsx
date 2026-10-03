@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from 'react-r
 import { Activity, AlertTriangle, KeyRound, LayoutDashboard, LogOut, SlidersHorizontal } from 'lucide-react';
 import { BrandMark } from '../components/ui/BrandMark';
 import Button from '../components/ui/Button';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/cn';
 import { adminApi, isSignedIn, onSessionChange, signOut, type AdminAccount } from './api';
 import { Notice, TextInput } from './ui';
 import Overview from './Overview';

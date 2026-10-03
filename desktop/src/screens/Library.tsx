@@ -25,7 +25,8 @@ import Button, { IconButton } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import Icon from '../components/ui/Icon';
 import { staggerContainer } from '../lib/motion';
-import { cn, formatBytes } from '../lib/utils';
+import { cn } from '../lib/cn';
+import { formatBytes } from '../lib/format';
 import type { Track } from '../data/types';
 
 const ALL_TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Folders', 'Favourites', 'Most played'] as const;

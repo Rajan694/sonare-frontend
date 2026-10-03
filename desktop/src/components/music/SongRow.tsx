@@ -1,5 +1,6 @@
 import React from 'react';
-import { cn, formatDuration } from '../../lib/utils';
+import { cn } from '../../lib/cn';
+import { formatDuration } from '../../lib/format';
 import Icon from '../ui/Icon';
 import { IconButton } from '../ui/Button';
 import { SourceGlyph } from '../ui/SourceGlyph';

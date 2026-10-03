@@ -6,7 +6,8 @@ import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';
 import { EmptyState } from '../components/ui/EmptyState';
-import { cn, formatBytes } from '../lib/utils';
+import { cn } from '../lib/cn';
+import { formatBytes } from '../lib/format';
 
 function scannedAgo(ts: number) {
   if (!ts) return 'Not scanned yet';

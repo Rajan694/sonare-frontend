@@ -1,7 +1,8 @@
 import React, { useEffect, useSyncExternalStore } from 'react';
 import { Link } from 'react-router-dom';
 import { CAPS } from '../lib/caps';
-import { cn, formatBytes } from '../lib/utils';
+import { cn } from '../lib/cn';
+import { formatBytes } from '../lib/format';
 import { downloads, downloadProgress, useDownloads, type DownloadItem } from '../data/downloads';
 import { getLocation, loadLocation, subscribeLocation } from '../data/downloadTargets';
 import { showPathInFolder, useLocalLibrary } from '../data/local';

@@ -1,5 +1,5 @@
 import { CAPS } from '../../lib/caps';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 import { downloadProgress, downloads, useDownload } from '../../data/downloads';
 import { useModeStore } from '../../store/modeContext';
 import { showToast } from '../../store/toasts';

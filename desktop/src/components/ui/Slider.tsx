@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
 
 interface SliderProps {
   value: number;

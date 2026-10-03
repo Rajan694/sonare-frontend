@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Table2, BarChart3, XCircle } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/cn';
 
 // ---- Data loading ----
 

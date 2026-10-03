@@ -11,7 +11,8 @@ import { IconButton } from '../ui/Button';
 import Icon from '../ui/Icon';
 import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
-import { formatDuration, cn } from '../../lib/utils';
+import { cn } from '../../lib/cn';
+import { formatDuration } from '../../lib/format';
 
 interface QueuePanelProps {
   onClose: () => void;

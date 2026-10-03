@@ -13,7 +13,8 @@ import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';
 import { EmptyState } from '../components/ui/EmptyState';
-import { cn, formatDuration } from '../lib/utils';
+import { cn } from '../lib/cn';
+import { formatDuration } from '../lib/format';
 
 const OFFSET_STEP_MS = 250;
 const AUTOSCROLL_KEY = 'sonare_lyrics_autoscroll';

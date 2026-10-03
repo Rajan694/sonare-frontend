@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { Segmented } from '../components/ui/Segmented';
-import { cn } from '../lib/utils';
+import { cn } from '../lib/cn';
 import { adminApi, type ErrorFilter, type ErrorLog, type ErrorSource } from './api';
 import { fmtDateTime, fmtInt, Notice, PageHeader, Panel, timeAgo, useLoad } from './ui';
 

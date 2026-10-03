@@ -14,7 +14,7 @@ import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer } from '../lib/motion';
-import { formatDuration } from '../lib/utils';
+import { formatDuration } from '../lib/format';
 
 export default function Album() {
   const { id } = useParams();

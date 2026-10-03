@@ -20,7 +20,7 @@ import {
 import { useDownloads } from '../data/downloads';
 import { useAuth } from '../data/hooks';
 import { resendVerification, signOut } from '../data/auth';
-import { formatBytes } from '../lib/utils';
+import { formatBytes } from '../lib/format';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
   { id: 'low', label: 'Low (data saver)' },
