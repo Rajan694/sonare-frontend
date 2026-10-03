@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { usePlayerStore } from '../store/playerContext';
+import { usePlaybackPosition } from '../store/playbackPosition';
 import { useModeStore } from '../store/modeContext';
 import { showToast } from '../store/toasts';
 import { useAsync, useLyrics } from '../api/hooks';
@@ -42,7 +43,8 @@ function toLrc(lines: { atMs: number; text: string }[]): string {
 export default function Lyrics() {
   const navigate = useNavigate();
   const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/now-playing'));
-  const { state, currentTrack, seek } = usePlayerStore();
+  const { currentTrack, seek } = usePlayerStore();
+  const positionMs = usePlaybackPosition();
   const { mode } = useModeStore();
   const isOffline = mode === 'offline';
 
@@ -70,7 +72,7 @@ export default function Lyrics() {
   }, [lyricsData, currentTrack?.id]);
 
   const showSynced = synced && lines.length > 0 && view === 'synced';
-  const position = state.positionMs - offsetMs;
+  const position = positionMs - offsetMs;
   const activeLineIndex = showSynced
     ? lines.findIndex((line, i) => {
         const next = lines[i + 1];

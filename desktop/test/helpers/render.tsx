@@ -9,15 +9,22 @@ import search from '../../src/store/searchSlice';
 import ui from '../../src/store/uiSlice';
 import { ModeContext } from '../../src/store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from '../../src/store/playerContext';
+import { setPlaybackPosition } from '../../src/store/playbackPosition';
 import type { Mode, PlayerState, Track } from '../../src/types';
 
 export function makeStore() {
   return configureStore({ reducer: { search, ui } });
 }
 
-/** A PlayerStore whose actions are all spies, so tests can assert what a control asked for. */
-export function makePlayer(over: Partial<PlayerStore> & { queue?: Track[]; index?: number } = {}): PlayerStore {
-  const { queue, index, state, ...rest } = over;
+/**
+ * A PlayerStore whose actions are all spies, so tests can assert what a control asked for.
+ * `positionMs` goes to the playback-position store, which is not part of the PlayerStore.
+ */
+export function makePlayer(
+  over: Partial<PlayerStore> & { queue?: Track[]; index?: number; positionMs?: number } = {},
+): PlayerStore {
+  const { queue, index, state, positionMs = 0, ...rest } = over;
+  setPlaybackPosition(positionMs);
   const s: PlayerState = {
     ...defaultPlayerState,
     ...state,

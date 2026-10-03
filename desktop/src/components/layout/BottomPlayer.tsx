@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
+import { usePlaybackPosition } from '../../store/playbackPosition';
 import { usePeaks } from '../../api/hooks';
 import { useFavourite } from '../../api/favourites';
 import Icon from '../ui/Icon';
@@ -39,6 +40,7 @@ export default function BottomPlayer() {
     toggleShuffle,
     cycleRepeat,
   } = usePlayerStore();
+  const positionMs = usePlaybackPosition();
   const isOffline = mode === 'offline';
   const local = useLocalLibrary();
 
@@ -52,7 +54,7 @@ export default function BottomPlayer() {
   // Prefer the decoded duration from the audio element; fall back to the catalog value
   // before the stream has loaded its metadata.
   const effectiveDurationMs = durationMs || currentTrack.durationMs || 1;
-  const positionRatio = state.positionMs / effectiveDurationMs;
+  const positionRatio = positionMs / effectiveDurationMs;
 
   return (
     // Three columns: the side ones split whatever the transport leaves, so the transport
@@ -135,7 +137,7 @@ export default function BottomPlayer() {
         </div>
 
         <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-          <span className="text-mono-s text-t2 flex-none">{formatDuration(state.positionMs)}</span>
+          <span className="text-mono-s text-t2 flex-none">{formatDuration(positionMs)}</span>
           <div className="grow min-w-0 overflow-hidden flex items-center">
             <Waveform
               peaks={peaks}

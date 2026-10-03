@@ -107,7 +107,7 @@ describe('bottom player', () => {
   });
 
   it('WEB-LAYOUT-004 shows position and duration, and seeks from the waveform', () => {
-    const p = makePlayer({ queue: [song], index: 0, state: { positionMs: 90_000 } as never, durationMs: 200_000 });
+    const p = makePlayer({ queue: [song], index: 0, positionMs: 90_000, durationMs: 200_000 });
     renderWithProviders(<BottomPlayer />, { player: p });
     expect(screen.getByText('1:30')).toBeInTheDocument();
     expect(screen.getByText('3:20')).toBeInTheDocument();
@@ -150,7 +150,7 @@ describe('bottom player', () => {
 
 describe('mini player and navigation bars', () => {
   it('WEB-LAYOUT-008 the mini player opens now-playing from its body, but not from its buttons', async () => {
-    const p = makePlayer({ queue: [song], index: 0, state: { positionMs: 50_000 } as never, durationMs: 200_000 });
+    const p = makePlayer({ queue: [song], index: 0, positionMs: 50_000, durationMs: 200_000 });
     const { user, location, container } = renderWithProviders(<MiniPlayer />, { player: p, route: '/home' });
     expect((container.querySelector('.mini .h-full') as HTMLElement).style.width).toBe('25%');
     await user.click(screen.getByRole('button', { name: 'Next track' }));
@@ -313,7 +313,7 @@ describe('sidebar', () => {
 
 describe('queue panel', () => {
   const panel = (over: Parameters<typeof makePlayer>[0] = {}, opts: { onClose?: () => void; sheet?: boolean } = {}) => {
-    const p = makePlayer({ queue, index: 1, state: { positionMs: 10_000 } as never, durationMs: 200_000, ...over });
+    const p = makePlayer({ queue, index: 1, positionMs: 10_000, durationMs: 200_000, ...over });
     const onClose = opts.onClose ?? vi.fn();
     const utils = renderWithProviders(
       <>
@@ -338,7 +338,7 @@ describe('queue panel', () => {
   it('WEB-LAYOUT-020 clicking an upcoming song plays it; its X removes it without playing', async () => {
     const { user, p } = panel();
     await user.click(screen.getByText('Last One'));
-    expect(p.setState).toHaveBeenCalledWith({ index: 3, positionMs: 0 });
+    expect(p.setState).toHaveBeenCalledWith({ index: 3 });
     await user.click(screen.getAllByRole('button', { name: 'Remove from queue' })[0]);
     expect(p.removeFromQueue).toHaveBeenCalledWith(2);
     expect(p.setState).toHaveBeenCalledTimes(1);

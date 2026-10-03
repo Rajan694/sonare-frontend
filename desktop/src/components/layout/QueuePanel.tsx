@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
+import { usePlaybackPosition } from '../../store/playbackPosition';
 import { showToast } from '../../store/toasts';
 import { api } from '../../api/api';
 import { requireAccount } from '../../api/accountGate';
@@ -36,6 +37,7 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
     moveInQueue,
     clearUpcoming,
   } = usePlayerStore();
+  const positionMs = usePlaybackPosition();
   const isOffline = mode === 'offline';
   const local = useLocalLibrary();
 
@@ -50,8 +52,8 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
   const serverCount = rows.filter((r) => r.track.source === 'server').length;
 
   const effectiveDurationMs = durationMs || currentTrack?.durationMs || 1;
-  const remainingMs = Math.max(0, effectiveDurationMs - state.positionMs);
-  const positionRatio = state.positionMs / effectiveDurationMs;
+  const remainingMs = Math.max(0, effectiveDurationMs - positionMs);
+  const positionRatio = positionMs / effectiveDurationMs;
   const progressPercent = Math.min(100, Math.max(0, positionRatio * 100));
 
   function saveAsPlaylist() {
@@ -224,7 +226,7 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
                   dragFrom === index && 'opacity-40',
                   dropAt === index && dragFrom !== index && 'border-t-2 border-acc',
                 )}
-                onClick={() => setState({ index, positionMs: 0 })}
+                onClick={() => setState({ index })}
               >
                 <span className="flex-none text-t4 cursor-grab hover:text-t2 p-1" aria-hidden>
                   <Icon name="menu" size={14} />

@@ -30,7 +30,6 @@ export interface PlayerState {
   mode: Mode;
   queue: Track[];
   index: number;
-  positionMs: number;
   shuffle: boolean;
   repeat: 'off' | 'all' | 'one';
   output: {

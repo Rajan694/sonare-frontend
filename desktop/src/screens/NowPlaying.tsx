@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
+import { usePlaybackPosition } from '../store/playbackPosition';
 import { usePeaks } from '../api/hooks';
 import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
@@ -41,6 +42,7 @@ export default function NowPlaying() {
     cycleRepeat,
     playTrack,
   } = usePlayerStore();
+  const positionMs = usePlaybackPosition();
   const isOffline = mode === 'offline';
   const local = useLocalLibrary();
 
@@ -66,8 +68,8 @@ export default function NowPlaying() {
   }
 
   const durationMs = liveDurationMs || currentTrack.durationMs || 1;
-  const positionRatio = state.positionMs / durationMs;
-  const remainingMs = Math.max(0, durationMs - state.positionMs);
+  const positionRatio = positionMs / durationMs;
+  const remainingMs = Math.max(0, durationMs - positionMs);
 
   // Next 4 upcoming tracks from queue
   const currentIndex = state.index >= 0 ? state.index : 0;
@@ -236,7 +238,7 @@ export default function NowPlaying() {
               className="h-9 @3xl:h-10"
             />
             <div className="flex items-center justify-between text-mono-s @3xl:text-mono-m">
-              <span className="text-t2">{formatDuration(state.positionMs)}</span>
+              <span className="text-t2">{formatDuration(positionMs)}</span>
               <span className="text-t3">-{formatDuration(remainingMs)}</span>
             </div>
           </div>

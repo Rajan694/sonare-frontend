@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
+import { usePlaybackPosition } from '../../store/playbackPosition';
 import { useFavourite } from '../../api/favourites';
 import Icon from '../ui/Icon';
 import { IconButton } from '../ui/Button';
@@ -14,7 +15,8 @@ import { playsFrom, useLocalLibrary } from '../../storage/local';
 export default function MiniPlayer() {
   const navigate = useNavigate();
   const { mode } = useModeStore();
-  const { state, currentTrack, isPlaying, isLoading, durationMs, togglePlay, next } = usePlayerStore();
+  const { currentTrack, isPlaying, isLoading, durationMs, togglePlay, next } = usePlayerStore();
+  const positionMs = usePlaybackPosition();
 
   const isOffline = mode === 'offline';
   const local = useLocalLibrary();
@@ -23,7 +25,7 @@ export default function MiniPlayer() {
   if (!currentTrack) return null;
 
   const effectiveDurationMs = durationMs || currentTrack.durationMs || 1;
-  const progressPercent = Math.min(100, Math.max(0, (state.positionMs / effectiveDurationMs) * 100));
+  const progressPercent = Math.min(100, Math.max(0, (positionMs / effectiveDurationMs) * 100));
 
   return (
     <div

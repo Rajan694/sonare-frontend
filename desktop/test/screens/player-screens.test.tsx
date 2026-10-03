@@ -52,7 +52,7 @@ describe('now playing', () => {
     const p = makePlayer({
       queue: [song, ...upNext],
       index: 0,
-      state: { positionMs: 50_000 } as never,
+      positionMs: 50_000,
       durationMs: 200_000,
       ...over,
     });
@@ -88,7 +88,7 @@ describe('now playing', () => {
   });
 
   it('WEB-NP-004 transport, shuffle, repeat and seek go to the player', async () => {
-    const { user, p } = open({ state: { positionMs: 50_000, repeat: 'all' } as never });
+    const { user, p } = open({ positionMs: 50_000, state: { repeat: 'all' } as never });
     await user.click(screen.getByRole('button', { name: 'Play' }));
     await user.click(screen.getByRole('button', { name: 'Next track' }));
     await user.click(screen.getByRole('button', { name: 'Previous track' }));
@@ -129,7 +129,7 @@ describe('lyrics', () => {
         HttpResponse.json({ synced: true, provider: 'lrclib', offsetMs: 0, lines, ...over }),
       ),
     );
-  const open = (positionMs = 12_000, p = makePlayer({ queue: [song], index: 0, state: { positionMs } as never })) => ({
+  const open = (positionMs = 12_000, p = makePlayer({ queue: [song], index: 0, positionMs })) => ({
     ...renderWithProviders(<Lyrics />, { player: p, route: '/lyrics' }),
     p,
   });

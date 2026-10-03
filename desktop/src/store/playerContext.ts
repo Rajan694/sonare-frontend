@@ -5,12 +5,13 @@ export const defaultPlayerState: PlayerState = {
   mode: 'online',
   queue: [],
   index: 0,
-  positionMs: 0,
   shuffle: false,
   repeat: 'off',
   output: { id: 'default', name: 'Built-in Speakers', kind: 'speaker', available: true },
 };
 
+/** Changes only with the track, queue, play state or settings - never on a position tick
+ * (read that with usePlaybackPosition from ./playbackPosition). */
 export interface PlayerStore {
   state: PlayerState;
   setState: (s: Partial<PlayerState>) => void;

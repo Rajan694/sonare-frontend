@@ -8,6 +8,13 @@ file system from `test/helpers/fakeNeutralino.ts`).
 No test talks to a real server: `VITE_API_BASE` points at `http://api.sonare.test` and msw fails any
 request a test did not mock (`test/helpers/server.ts`).
 
+## `test/app/position.test.tsx`
+
+| ID             | Use case                                                            |
+| :------------- | :------------------------------------------------------------------ |
+| `WEB-PERF-001` | position ticks re-render the progress display but not the song rows |
+| `WEB-PERF-002` | a real change (pausing) still reaches the rows                      |
+
 ## `test/app/queue.test.tsx`
 
 | ID              | Use case                                                                                           |
