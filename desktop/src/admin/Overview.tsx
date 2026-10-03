@@ -2,20 +2,15 @@ import React, { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Segmented } from '../components/ui/Segmented';
 import { adminApi } from './api';
-import {
-  bucketLabels,
-  ColumnChart,
-  fmtCompact,
-  fmtDuration,
-  fmtInt,
-  Notice,
-  PageHeader,
-  Panel,
-  ShareBars,
-  StatTile,
-  StatusLine,
-  useLoad,
-} from './ui';
+import { bucketLabels, fmtCompact, fmtDuration, fmtInt } from './format';
+import { useLoad } from './useLoad';
+import { ColumnChart } from './components/ColumnChart';
+import { Notice } from './components/Notice';
+import { PageHeader } from './components/PageHeader';
+import { Panel } from './components/Panel';
+import { ShareBars } from './components/ShareBars';
+import { StatTile } from './components/StatTile';
+import { StatusLine } from './components/StatusLine';
 
 const RANGES = [
   { id: '7', label: '7 days' },

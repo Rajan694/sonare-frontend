@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import Button from '../components/ui/Button';
 import { adminApi, type AdminAccount } from './api';
-import { fmtDateTime, Notice, PageHeader, Panel, TextInput } from './ui';
+import { fmtDateTime } from './format';
+import { Notice } from './components/Notice';
+import { PageHeader } from './components/PageHeader';
+import { Panel } from './components/Panel';
+import { TextInput } from './components/TextInput';
 
 export default function Account({
   account,

@@ -3,7 +3,11 @@ import { ChevronDown, ChevronRight, RefreshCw, Search, Trash2 } from 'lucide-rea
 import { Segmented } from '../components/ui/Segmented';
 import { cn } from '../lib/cn';
 import { adminApi, type ErrorFilter, type ErrorLog, type ErrorSource } from './api';
-import { fmtDateTime, fmtInt, Notice, PageHeader, Panel, timeAgo, useLoad } from './ui';
+import { fmtDateTime, fmtInt, timeAgo } from './format';
+import { useLoad } from './useLoad';
+import { Notice } from './components/Notice';
+import { PageHeader } from './components/PageHeader';
+import { Panel } from './components/Panel';
 
 const SOURCE_NAMES: Record<ErrorSource, string> = {
   backend: 'Backend',

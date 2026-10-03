@@ -2,7 +2,11 @@ import React, { useEffect, useState } from 'react';
 import Button from '../components/ui/Button';
 import { cn } from '../lib/cn';
 import { adminApi, AdminApiError, type LatestCommit, type Setting } from './api';
-import { fmtDateTime, Notice, PageHeader, Panel, useLoad } from './ui';
+import { fmtDateTime } from './format';
+import { useLoad } from './useLoad';
+import { Notice } from './components/Notice';
+import { PageHeader } from './components/PageHeader';
+import { Panel } from './components/Panel';
 import ExtractorCommitHelp from './ExtractorCommitHelp';
 
 export default function Configuration() {

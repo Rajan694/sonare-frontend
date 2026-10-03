@@ -3,19 +3,13 @@ import { ArrowDown, ArrowUp, RefreshCw } from 'lucide-react';
 import { Segmented } from '../components/ui/Segmented';
 import { cn } from '../lib/cn';
 import { adminApi, type RouteStats } from './api';
-import {
-  bucketLabels,
-  ColumnChart,
-  fmtCompact,
-  fmtInt,
-  fmtMs,
-  fmtPct,
-  Notice,
-  PageHeader,
-  Panel,
-  StatTile,
-  useLoad,
-} from './ui';
+import { bucketLabels, fmtCompact, fmtInt, fmtMs, fmtPct } from './format';
+import { useLoad } from './useLoad';
+import { ColumnChart } from './components/ColumnChart';
+import { Notice } from './components/Notice';
+import { PageHeader } from './components/PageHeader';
+import { Panel } from './components/Panel';
+import { StatTile } from './components/StatTile';
 
 const RANGES = [
   { id: '1', label: '1 hour' },
