@@ -1,5 +1,5 @@
 # Single .gitignore for the whole frontend repo: mobile/ (React Native) and
-# other-screens/ (React + Vite on NeutralinoJS). Rules that only make sense for
+# desktop/ (React + Vite on NeutralinoJS). Rules that only make sense for
 # one of them are path-anchored.
 
 # ── Dependencies ──────────────────────────────────────────────────────────────
@@ -20,10 +20,10 @@ out/
 *.tsbuildinfo
 
 # Vite output — this is Neutralino's documentRoot / cli.resourcesPath
-/other-screens/resources/
+/desktop/resources/
 
 # Neutralino binaries
-/other-screens/bin/
+/desktop/bin/
 
 # ── Android ───────────────────────────────────────────────────────────────────
 .gradle/
@@ -65,13 +65,13 @@ DerivedData
 **/fastlane/test_output
 
 # ── Neutralino runtime state ──────────────────────────────────────────────────
-/other-screens/.storage/
-/other-screens/.tmp/
+/desktop/.storage/
+/desktop/.tmp/
 
 # ── Tests ─────────────────────────────────────────────────────────────────────
 coverage/
-/other-screens/test-results/
-/other-screens/playwright-report/
+/desktop/test-results/
+/desktop/playwright-report/
 
 # ── Logs ──────────────────────────────────────────────────────────────────────
 *.log

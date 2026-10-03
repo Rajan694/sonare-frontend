@@ -1,4 +1,4 @@
-# other-screens
+# Sonare desktop
 
 Sonare's desktop/web screens: **React + TypeScript (Vite)** running inside **NeutralinoJS**.
 

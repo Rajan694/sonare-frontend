@@ -29,7 +29,7 @@ function testEnv(beDir: string): Record<string, string> {
 export default async function globalSetup() {
   const root = path.resolve(__dirname, '../../..');
   const beDir = path.join(root, 'sonare-backend');
-  const feDir = path.join(root, 'sonare-frontend/other-screens');
+  const feDir = path.join(root, 'sonare-frontend/desktop');
 
   console.log('[E2E Setup] Starting test backend on 3099...');
   backendProc = spawn('npx', ['tsx', 'src/server.ts'], {

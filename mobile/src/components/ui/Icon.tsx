@@ -100,7 +100,7 @@ const ICONS = {
 
 export type IconName = keyof typeof ICONS;
 
-// Deliberately no `className` prop, unlike the desktop twin in other-screens.
+// Deliberately no `className` prop, unlike the desktop twin in desktop/.
 // NativeWind only maps className onto components registered with cssInterop, and
 // lucide-react-native forwards unknown props straight to react-native-svg's Svg,
 // which drops it - so a className here would silently do nothing. Tint and sizing

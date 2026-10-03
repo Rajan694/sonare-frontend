@@ -7,7 +7,7 @@ import { useAuthStore } from './auth';
 import { useModeStore } from '../store/mode';
 
 /**
- * Background sync for plays, same contract as the desktop app (other-screens/src/data/sync.ts).
+ * Background sync for plays, same contract as the desktop app (desktop/src/data/sync.ts).
  *
  * Every counted play is queued on the device first, online or not. The queue uploads on its
  * own whenever the app is in Online Mode, signed in and the phone has a network: at launch,

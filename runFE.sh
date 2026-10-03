@@ -166,19 +166,19 @@ parse_mobile_args() {
 case "$TARGET" in
     web)
         [ $# -gt 0 ] && { echo "Error: 'web' takes no options"; usage; }
-        cd "$SCRIPT_DIR/other-screens"
+        cd "$SCRIPT_DIR/desktop"
         npx neu run -- --mode=browser
         ;;
     linux)
         [ $# -gt 0 ] && { echo "Error: 'linux' takes no options"; usage; }
-        cd "$SCRIPT_DIR/other-screens"
+        cd "$SCRIPT_DIR/desktop"
         run_linux_window
         ;;
     windows)
         [ $# -gt 0 ] && { echo "Error: 'windows' takes no options"; usage; }
-        cd "$SCRIPT_DIR/other-screens"
+        cd "$SCRIPT_DIR/desktop"
         npx neu build --release
-        echo "Build output in: other-screens/dist/"
+        echo "Build output in: desktop/dist/sonare-desktop/"
         ;;
     mobile)
         parse_mobile_args "$@"

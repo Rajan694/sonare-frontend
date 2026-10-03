@@ -7,18 +7,18 @@ on:
 
 jobs:
   web:
-    name: Desktop / web (other-screens)
+    name: Desktop / web (desktop)
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: other-screens
+        working-directory: desktop
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: other-screens/package-lock.json
+          cache-dependency-path: desktop/package-lock.json
       - run: npm ci
       - run: npm run format:check
       - run: npm run lint

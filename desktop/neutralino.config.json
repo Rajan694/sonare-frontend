@@ -55,7 +55,7 @@
     }
   },
   "cli": {
-    "binaryName": "other-screens",
+    "binaryName": "sonare-desktop",
     "resourcesPath": "/resources/",
     "extensionsPath": "/extensions/",
     "binaryVersion": "6.9.0",
