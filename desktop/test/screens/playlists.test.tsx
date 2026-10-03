@@ -9,6 +9,7 @@ import { clearSession, setSession } from '../../src/api/auth';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { answerPrompt } from '../helpers/dialogs';
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
@@ -66,7 +67,6 @@ describe('playlists page', () => {
 
   it('WEB-PLAYLISTS-003 creating a playlist opens it; a failure is reported', async () => {
     setSession('a', 'r', testUser);
-    vi.spyOn(window, 'prompt').mockReturnValue('Run club');
     let fail = false;
     server.use(
       http.post(`${API}/me/playlists`, async ({ request }) => {
@@ -76,9 +76,11 @@ describe('playlists page', () => {
     );
     const { user, location } = renderWithProviders(<Playlists />);
     await user.click(screen.getByRole('button', { name: 'New playlist' }));
+    await answerPrompt(user, 'Run club');
     await waitFor(() => expect(location()).toBe('/playlist/sonare:run'));
     fail = true;
     await user.click(screen.getByRole('button', { name: 'New playlist' }));
+    await answerPrompt(user, 'Run club');
     await waitFor(() =>
       expect(toast).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Could not create playlist', description: 'Database down' }),

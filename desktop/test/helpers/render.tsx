@@ -10,6 +10,7 @@ import ui from '../../src/store/uiSlice';
 import { ModeContext } from '../../src/store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from '../../src/store/playerContext';
 import { setPlaybackPosition } from '../../src/store/playbackPosition';
+import { DialogHost } from '../../src/components/ui/Dialog';
 import type { Mode, PlayerState, Track } from '../../src/types';
 
 export function makeStore() {
@@ -108,6 +109,7 @@ export function renderWithProviders(
               ui
             )}
             <LocationProbe />
+            <DialogHost />
           </MemoryRouter>
         </PlayerContext.Provider>
       </ModeContext.Provider>

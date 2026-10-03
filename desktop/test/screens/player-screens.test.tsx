@@ -13,6 +13,7 @@ import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeTrack, testUser } from '../helpers/fixtures';
+import { chooseOption } from '../helpers/dialogs';
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
@@ -336,7 +337,7 @@ describe('equalizer', () => {
     await user.keyboard('{End}');
     expect(getDsp().bassBoost).toBe(100);
     expect(screen.getByText('100%')).toBeInTheDocument();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Playback speed' }), '1.25');
+    await chooseOption(user, 'Playback speed', '1.25×');
     expect(getDsp().speed).toBe(1.25);
   });
 

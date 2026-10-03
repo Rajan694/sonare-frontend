@@ -20,6 +20,7 @@ import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { answerPrompt } from '../helpers/dialogs';
 
 const dl = vi.hoisted(() => ({ active: 0 }));
 vi.mock('../../src/storage/downloads', () => ({
@@ -256,10 +257,11 @@ describe('sidebar', () => {
 
   it('WEB-LAYOUT-016 creating a playlist names it, opens it, and reports a failure', async () => {
     setSession('a', 'r', testUser);
-    const prompt = vi.spyOn(window, 'prompt').mockReturnValue('  Focus  ');
     let body: unknown;
+    let posts = 0;
     server.use(
       http.post(`${API}/me/playlists`, async ({ request }) => {
+        posts++;
         body = await request.json();
         return HttpResponse.json(makePlaylist({ id: 'sonare:new' }));
       }),
@@ -270,18 +272,27 @@ describe('sidebar', () => {
         <ToastProbe />
       </>,
     );
+    // The app's own dialog asks for the name; the native prompt froze playback.
     await user.click(screen.getByRole('button', { name: 'New playlist' }));
+    expect(await screen.findByRole('dialog', { name: 'New playlist' })).toBeInTheDocument();
+    await answerPrompt(user, '  Focus  ');
     await waitFor(() => expect(location()).toBe('/playlist/sonare:new'));
     expect(body).toEqual({ name: 'Focus', kind: 'synced' });
 
     server.use(http.post(`${API}/me/playlists`, () => apiError(500, 'X', 'Database down')));
     await user.click(screen.getByRole('button', { name: 'New playlist' }));
+    await answerPrompt(user, 'Again');
     expect(
       await within(screen.getByRole('list', { name: 'toasts' })).findByText('Could not create playlist'),
     ).toBeInTheDocument();
-    prompt.mockReturnValue('   ');
+
+    // A blank name can't be submitted; cancelling creates nothing.
     await user.click(screen.getByRole('button', { name: 'New playlist' }));
-    expect(prompt).toHaveBeenCalledTimes(3);
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox'), '   ');
+    expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled();
+    await answerPrompt(user, '');
+    expect(posts).toBe(1);
   });
 
   it('WEB-LAYOUT-017 collapses to an icon rail with tooltips, and counts running downloads', async () => {
@@ -364,7 +375,6 @@ describe('queue panel', () => {
 
   it('WEB-LAYOUT-023 saves the queue as a playlist and opens it', async () => {
     setSession('a', 'r', testUser);
-    vi.spyOn(window, 'prompt').mockReturnValue('Sunday');
     let added: unknown;
     server.use(
       http.post(`${API}/me/playlists`, () => HttpResponse.json(makePlaylist({ id: 'sonare:sun', name: 'Sunday' }))),
@@ -375,6 +385,9 @@ describe('queue panel', () => {
     );
     const { user, onClose, location } = panel();
     await user.click(screen.getByRole('button', { name: 'Save as playlist' }));
+    // Suggests a name, which the user replaces.
+    expect(await screen.findByDisplayValue('My queue')).toBeInTheDocument();
+    await answerPrompt(user, 'Sunday');
     await waitFor(() => expect(location()).toBe('/playlist/sonare:sun'));
     expect(added).toEqual({ trackIds: queue.map((t) => t.id) });
     expect(onClose).toHaveBeenCalled();

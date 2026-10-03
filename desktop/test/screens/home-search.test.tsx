@@ -26,8 +26,8 @@ useMockServer(
   http.get(`${API}/trending`, () => HttpResponse.json(page(trending))),
   http.get(`${API}/genres`, () =>
     HttpResponse.json([
-      { id: 'g1', name: 'Bollywood' },
-      { id: 'g2', name: 'Lo-fi' },
+      { id: 'g1', name: 'Sufi', query: 'sufi songs' },
+      { id: 'g2', name: 'Qawwali' },
     ]),
   ),
 );
@@ -144,14 +144,23 @@ describe('search', () => {
     makeTrack({ id: 'yt:s2', title: 'Android Dreams', artist: 'Someone' }),
   ];
 
-  it('WEB-SEARCH-001 without a query it offers genres from the server, and a genre starts a search', async () => {
+  it('WEB-SEARCH-001 without a query it offers genres from the server, and a genre searches for its query', async () => {
     const rec = recordRequests();
     server.use(http.get(`${API}/search`, () => HttpResponse.json(page(results))));
     const { user, store } = search();
-    await user.click(await screen.findByRole('button', { name: 'Bollywood' }));
-    expect(store.getState().search.query).toBe('Bollywood');
-    await waitFor(() => expect(rec.paths()).toContain('GET /search?q=Bollywood&type=songs'));
+    // Until the server answers, the built-in categories show.
+    expect(screen.getByRole('button', { name: 'Devotional' })).toBeInTheDocument();
+    // A category searches for its query (or its name when it has none).
+    await user.click(await screen.findByRole('button', { name: 'Sufi' }));
+    expect(store.getState().search.query).toBe('sufi songs');
+    await waitFor(() => expect(rec.paths()).toContain('GET /search?q=sufi+songs&type=songs'));
     rec.stop();
+  });
+
+  it('WEB-SEARCH-010 a category without a query searches for its name', async () => {
+    const { user, store } = search();
+    await user.click(await screen.findByRole('button', { name: 'Qawwali' }));
+    expect(store.getState().search.query).toBe('Qawwali');
   });
 
   it('WEB-SEARCH-002 shows a top result, songs and artists, with a result count', async () => {

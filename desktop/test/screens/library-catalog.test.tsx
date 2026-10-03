@@ -10,6 +10,7 @@ import { clearSession, setSession } from '../../src/api/auth';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeAlbum, makeArtist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { chooseOption } from '../helpers/dialogs';
 
 vi.mock('../../src/store/toasts', () => ({ showToast: vi.fn(), dismissToast: () => {}, useToasts: () => [] }));
 vi.mock('../../src/storage/downloads', () => ({
@@ -81,18 +82,19 @@ describe('library', () => {
     expect(titles()).toEqual(['alpha', 'Bravo', 'Charlie']);
     await user.click(screen.getByRole('button', { name: 'Sort by Title' }));
     expect(titles()).toEqual(['Charlie', 'Bravo', 'alpha']);
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort order' }), 'durationMs');
+    await chooseOption(user, 'Sort order', 'Duration');
     expect(titles()).toEqual(['alpha', 'Charlie', 'Bravo']);
+    expect(screen.getByRole('button', { name: 'Sort order' })).toHaveTextContent('Duration');
   });
 
   it('WEB-LIBRARY-004 filtering to "On device" on the web leaves nothing, and says so', async () => {
     setSession('a', 'r', testUser);
     const { user } = renderWithProviders(<Library />);
     await screen.findByText('3 songs in your library');
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Filter source' }), 'local');
+    await chooseOption(user, 'Filter source', 'On device');
     expect(await screen.findByText('No songs found')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Play all' })).toBeDisabled();
-    await user.selectOptions(screen.getByRole('combobox', { name: 'Filter source' }), 'server');
+    await chooseOption(user, 'Filter source', 'Server');
     expect(await screen.findAllByRole('row')).toHaveLength(3);
   });
 
@@ -133,7 +135,7 @@ describe('library', () => {
     expect(await screen.findByText('No saved albums')).toBeInTheDocument();
     other.unmount();
     renderWithProviders(<Library />, { route: '/library?view=artists' });
-    expect(await screen.findByText('No followed artists')).toBeInTheDocument();
+    expect(await screen.findByText('No artists yet')).toBeInTheDocument();
   });
 
   it('WEB-LIBRARY-008 un-hearting a favourite removes it from the list at once', async () => {

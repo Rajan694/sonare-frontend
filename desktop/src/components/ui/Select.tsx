@@ -154,7 +154,7 @@ export function Select<T extends string | number>({
 
   useEffect(() => {
     if (!open) return;
-    listRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+    listRef.current?.querySelector<HTMLElement>(`[data-index="${active}"]`)?.scrollIntoView?.({ block: 'nearest' });
   }, [active, open]);
 
   return (

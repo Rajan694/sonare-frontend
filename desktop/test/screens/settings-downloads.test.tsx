@@ -9,6 +9,7 @@ import type { DownloadItem } from '../../src/storage/downloads';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, http, HttpResponse, recordRequests, useMockServer, server } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
+import { answerConfirm, chooseOption, listGone, openOptions } from '../helpers/dialogs';
 
 const h = vi.hoisted(() => {
   const state = {
@@ -147,7 +148,7 @@ describe('settings', () => {
 
   it('WEB-SETTINGS-004 playback: streaming quality and the two switches change the settings', async () => {
     const { user, w } = openSettings('/settings?section=playback');
-    await user.selectOptions(w.getByRole('combobox', { name: 'Streaming quality' }), 'low');
+    await chooseOption(user, 'Streaming quality', 'Low (data saver)', w);
     await user.click(w.getByRole('switch', { name: 'Toggle gapless playback' }));
     await user.click(w.getByRole('switch', { name: 'Toggle volume normalization' }));
     expect(getSettings()).toMatchObject({ streamQuality: 'low', gapless: true, normalization: false });
@@ -157,18 +158,21 @@ describe('settings', () => {
     const { user, location, w } = openSettings();
     await user.click(w.getByRole('button', { name: 'Downloads' }));
     expect(location()).toBe('/settings?section=downloads');
-    expect(w.getByRole('combobox', { name: 'Download format' })).toBeInTheDocument();
+    expect(w.getByRole('button', { name: 'Download format' })).toHaveTextContent('Opus (.webm)');
     expect(w.queryByText('Listening as a guest')).not.toBeInTheDocument();
   });
 
   it('WEB-SETTINGS-006 download quality choices follow the file format', async () => {
     const { user, w } = openSettings('/settings?section=downloads');
-    const quality = w.getByRole('combobox', { name: 'Download quality' });
-    expect(within(quality).getByRole('option', { name: 'High · about 150 kbps' })).toBeInTheDocument();
-    await user.selectOptions(w.getByRole('combobox', { name: 'Download format' }), 'm4a');
+    await user.click(w.getByRole('button', { name: 'Download quality' }));
+    expect(openOptions()).toContain('High · about 150 kbps');
+    await user.keyboard('{Escape}');
+    await listGone();
+    await chooseOption(user, 'Download format', 'AAC (.m4a)', w);
     expect(getSettings().downloadFormat).toBe('m4a');
-    expect(within(quality).getByRole('option', { name: 'High · 128 kbps' })).toBeInTheDocument();
-    await user.selectOptions(quality, 'low');
+    await user.click(w.getByRole('button', { name: 'Download quality' }));
+    expect(openOptions()).toEqual(['Low · about 50 kbps', 'Normal · 128 kbps (same as High)', 'High · 128 kbps']);
+    await user.click(screen.getByRole('option', { name: 'Low · about 50 kbps' }));
     expect(getSettings().downloadQuality).toBe('low');
   });
 
@@ -274,18 +278,19 @@ describe('downloads page', () => {
 
   it('WEB-DLPAGE-005 deleting asks first, warns that the browser keeps its file, and reports the result', async () => {
     h.state.items = [item({ id: 'x1', title: 'Gone soon' })];
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     h.dl.remove.mockResolvedValueOnce({
       fileDeleted: false,
       reason: 'Files saved by the browser have to be deleted from its Downloads folder',
     });
     const { user } = open();
     await user.click(screen.getByRole('button', { name: 'Delete Gone soon' }));
-    expect(confirm).toHaveBeenLastCalledWith(
-      'Delete "Gone soon"? Sonare can\'t delete files the browser saved; remove them from your Downloads folder.',
+    expect(await screen.findByRole('alertdialog', { name: 'Delete "Gone soon"?' })).toHaveTextContent(
+      "Sonare can't delete files the browser saved; remove them from your Downloads folder.",
     );
+    await answerConfirm(user, false);
     expect(h.dl.remove).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Delete Gone soon' }));
+    await answerConfirm(user, true);
     await waitFor(() =>
       expect(h.toast).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -298,10 +303,12 @@ describe('downloads page', () => {
 
   it('WEB-DLPAGE-006 cancelling an unfinished download needs no file warning', async () => {
     h.state.items = [item({ id: 'c1', title: 'Half', status: 'paused' })];
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
     const { user } = open();
     await user.click(screen.getByRole('button', { name: 'Cancel Half' }));
-    expect(confirm).toHaveBeenCalledWith('Delete "Half"?');
+    const dialog = await screen.findByRole('alertdialog', { name: 'Delete "Half"?' });
+    // Only the title and the two buttons: there is no file to warn about.
+    expect(within(dialog).queryByText(/folder/)).not.toBeInTheDocument();
+    await answerConfirm(user, true);
     await waitFor(() => expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Download deleted' })));
   });
 
@@ -311,9 +318,9 @@ describe('downloads page', () => {
       item({ id: 'a2', title: 'B' }),
       item({ id: 'p', title: 'Running', status: 'downloading' }),
     ];
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const { user } = open();
     await user.click(screen.getByRole('button', { name: 'Delete all' }));
+    expect(await answerConfirm(user, true)).toBe('Delete 2 downloads?');
     await waitFor(() => expect(h.dl.remove.mock.calls.map((c) => c[0])).toEqual(['a1', 'a2']));
     await waitFor(() => expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Downloads deleted' })));
   });

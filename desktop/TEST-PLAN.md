@@ -211,7 +211,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOME-005`   | playing a table row plays it within the trending list                                  |
 | `WEB-HOME-006`   | "See all" shows the full trending shelf                                                |
 | `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry          |
-| `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre starts a search          |
+| `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre searches for its query   |
 | `WEB-SEARCH-002` | shows a top result, songs and artists, with a result count                             |
 | `WEB-SEARCH-003` | the top result plays within the results                                                |
 | `WEB-SEARCH-004` | the chips search albums, artists and playlists and link to them                        |
@@ -220,6 +220,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SEARCH-007` | a shared ?q= link fills the search box and is removed from the address                 |
 | `WEB-SEARCH-008` | add-songs mode adds a result to the playlist and counts it                             |
 | `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                             |
+| `WEB-SEARCH-010` | a category without a query searches for its name                                       |
 
 ## `test/screens/library-catalog.test.tsx`
 

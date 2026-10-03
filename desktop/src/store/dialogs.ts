@@ -47,6 +47,11 @@ function cancelCurrent() {
   else current.resolve();
 }
 
+/** Closes the open dialog, if any, as cancelled. */
+export function cancelOpenDialog(): void {
+  cancelCurrent();
+}
+
 /** Resolves with the trimmed text, or null when cancelled or left empty. */
 export function promptDialog(options: PromptOptions): Promise<string | null> {
   cancelCurrent();
