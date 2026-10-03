@@ -74,7 +74,9 @@ export function ModeSwitchScreen() {
               <Icon name="folder" size={12} color="#FFC24D" />
             </View>
             <Text className="text-t1 text-bs flex-1">
-              {localMode === 'offline' ? '5 music folders and all local playlists' : 'Online search and discovery'}
+              {localMode === 'offline'
+                ? 'Your downloads (phone folders are not scanned yet)'
+                : 'Online search and discovery'}
             </Text>
           </View>
 

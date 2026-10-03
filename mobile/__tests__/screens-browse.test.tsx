@@ -212,6 +212,16 @@ describe('Search', () => {
     await waitFor(() => expect(search).toHaveBeenLastCalledWith('radiohead', 'albums'));
   });
 
+  it('MOB-SEARCH-006 the Genres chip searches everything instead of sending a type the server rejects', async () => {
+    const search = stub('search', async () => page([]));
+    const { getByLabelText, getByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'lofi');
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('lofi', 'all'));
+    fireEvent.press(getByText('Genres'));
+    await waitFor(() => expect(search).toHaveBeenCalledTimes(2));
+    expect(search).toHaveBeenLastCalledWith('lofi', 'all');
+  });
+
   it('MOB-SEARCH-004 no results says so; a failed search can be retried', async () => {
     let fail = true;
     stub('search', async () => {

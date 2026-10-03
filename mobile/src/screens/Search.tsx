@@ -24,6 +24,14 @@ const OFFLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'fold
 
 type Filter = string;
 
+// What the server can search. Other chips (genres, folders) have no server search of their own.
+const SEARCH_TYPES = ['all', 'songs', 'albums', 'artists', 'playlists'] as const;
+type SearchType = (typeof SEARCH_TYPES)[number];
+
+function toSearchType(filter: Filter): SearchType {
+  return SEARCH_TYPES.find((t) => t === filter) ?? 'all';
+}
+
 function useDebounced<T>(value: T, ms: number): T {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -44,7 +52,7 @@ export function SearchScreen() {
 
   const q = useDebounced(query.trim(), 350);
   const online = mode === 'online';
-  const results = useAsync(() => api.search(q, filter as any), [q, filter], {
+  const results = useAsync(() => api.search(q, toSearchType(filter)), [q, filter], {
     enabled: online && q.length > 0,
   });
 

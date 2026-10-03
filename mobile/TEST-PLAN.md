@@ -167,6 +167,7 @@ navigation mock live in `test-utils/`.
 | `MOB-SEARCH-003` | album and artist results open their pages; filters change the search type                  |
 | `MOB-SEARCH-004` | no results says so; a failed search can be retried                                         |
 | `MOB-SEARCH-005` | offline, the server is never searched and it offers to go online                           |
+| `MOB-SEARCH-006` | the Genres chip searches everything instead of sending a type the server rejects           |
 | `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                        |
 | `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                                 |
 | `MOB-LIB-S-003`  | the sort chip cycles recently added → most played → A-Z and refetches                      |
