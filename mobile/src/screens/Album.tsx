@@ -35,7 +35,7 @@ export function AlbumScreen() {
 
   // Saved albums are per account: read them for whoever is signed in.
   const userId = useAuthStore((state) => state.user?.id);
-  const saved = useAsync(() => api.libraryAlbums(), [userId], { enabled: !!userId });
+  const saved = useAsync(async () => api.libraryAlbums(), [userId], { enabled: !!userId });
   const [favouriteOverride, setFavouriteOverride] = useState<boolean | null>(null);
   useEffect(() => setFavouriteOverride(null), [id, userId]);
   const favourite = favouriteOverride ?? !!saved.data?.items?.some((a) => a.id === id);
