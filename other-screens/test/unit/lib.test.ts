@@ -32,7 +32,8 @@ describe('capabilities and formatting', () => {
     expect(cn('px-2', 'px-4')).toBe('px-4');
     expect(cn('text-body-m', 'text-acc')).toBe('text-body-m text-acc');
     expect(cn('text-body-m', 'text-label-s')).toBe('text-label-s');
-    expect(cn('a', false && 'b', undefined, ['c'])).toBe('a c');
+    const off = false as boolean;
+    expect(cn('a', off && 'b', undefined, ['c'])).toBe('a c');
   });
 
   it('WEB-LIB-003 formatDuration shows m:ss and treats bad input as 0:00', () => {

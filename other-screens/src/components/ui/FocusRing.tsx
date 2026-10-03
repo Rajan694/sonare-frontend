@@ -8,7 +8,8 @@ interface FocusRingProps extends React.HTMLAttributes<HTMLSpanElement> {
   asChild?: boolean;
 }
 
-export function FocusRing({ children, offset = true, className, asChild, ...props }: FocusRingProps) {
+// `offset` is taken out so it doesn't reach the DOM element through `props`.
+export function FocusRing({ children, offset: _offset = true, className, asChild, ...props }: FocusRingProps) {
   if (asChild && React.isValidElement<{ className?: string }>(children)) {
     const childProps = children.props;
     const mergedClassName = cn(childProps.className, 'focus-visible:focusring', className);

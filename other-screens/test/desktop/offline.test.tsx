@@ -92,7 +92,8 @@ describe('offline mode at launch', () => {
     render(<App />);
     await waitFor(() => expect(mode()).toBe('offline'));
     expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'No internet connection' }));
-    expect(h.syncOnline).toHaveBeenLastCalledWith(false);
+    // Sync follows the mode from an effect, which runs after the render that shows it.
+    await waitFor(() => expect(h.syncOnline).toHaveBeenLastCalledWith(false));
   });
 
   it('DSK-027 with internet it stays online and syncs', async () => {

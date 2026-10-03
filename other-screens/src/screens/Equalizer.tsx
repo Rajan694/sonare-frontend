@@ -1,5 +1,4 @@
 import React from 'react';
-import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeStore';
 import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';

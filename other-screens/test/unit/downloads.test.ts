@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { API, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
+import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { makeTrack } from '../helpers/fixtures';
 import type { Track } from '../../src/data/types';
 

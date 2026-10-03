@@ -234,6 +234,8 @@ function absolute(url: string): string {
 function safeName(s: string): string {
   return (
     s
+      // Control characters are not allowed in file names.
+      // eslint-disable-next-line no-control-regex
       .replace(/[\\/:*?"<>|\x00-\x1f]/g, '_')
       .replace(/\s+/g, ' ')
       .trim()

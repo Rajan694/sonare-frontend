@@ -15,7 +15,6 @@ import { Card } from '../components/ui/Card';
 import { Tile } from '../components/ui/Tile';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer, staggerItem, transition } from '../lib/motion';
-import { formatBytes } from '../lib/utils';
 import type { Track } from '../data/types';
 
 export default function Home() {
@@ -32,12 +31,7 @@ export default function Home() {
   } = useTrending('IN', 20);
   const [allTrending, setAllTrending] = useState(false);
   const [allRecent, setAllRecent] = useState(false);
-  const {
-    data: recentData,
-    loading: recentLoading,
-    error: recentError,
-    refetch: refetchRecent,
-  } = useRecentlyPlayed(allRecent ? 50 : 10);
+  const { data: recentData, refetch: refetchRecent } = useRecentlyPlayed(allRecent ? 50 : 10);
 
   const local = useLocalLibrary();
   const trendingTracks = isOnline ? trendingData?.items || [] : local.tracks;
@@ -50,7 +44,6 @@ export default function Home() {
       : [];
 
   const trendingFailed = isOnline && !!trendingError && trendingTracks.length === 0;
-  const recentFailed = isOnline && !!user && !!recentError && !hasRealRecent;
 
   const retry = () => {
     refetchTrending();
@@ -86,8 +79,6 @@ export default function Home() {
   // Greeting based on real user or generic
   const userName = user?.displayName || user?.email?.split('@')[0] || '';
   const greeting = isOnline ? (userName ? `Welcome back, ${userName}` : 'Welcome back') : 'Your device library';
-
-  const totalLocalBytes = local.tracks.reduce((acc, t) => acc + ((t as any).size || 0), 0);
 
   return (
     <motion.div

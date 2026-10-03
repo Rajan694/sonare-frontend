@@ -8,3 +8,5 @@ resources
 .tmp
 .storage
 neutralinojs.log
+test-results
+playwright-report

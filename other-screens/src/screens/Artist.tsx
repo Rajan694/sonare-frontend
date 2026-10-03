@@ -8,7 +8,7 @@ import { useArtist, useArtistTopTracks, useArtistAlbums } from '../data/hooks';
 import { api } from '../data/api';
 import { requireAccount } from '../data/accountGate';
 import { openTrackMenu } from '../components/music/TrackMenu';
-import SongRow, { SongTableHeader } from '../components/music/SongRow';
+import SongRow from '../components/music/SongRow';
 import Artwork from '../components/music/Artwork';
 import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';

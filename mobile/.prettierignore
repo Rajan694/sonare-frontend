@@ -3,3 +3,4 @@ android
 ios
 vendor
 package-lock.json
+coverage

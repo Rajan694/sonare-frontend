@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeStore';
 import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../data/hooks';
 import { requireAccount } from '../data/accountGate';

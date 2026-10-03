@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
-import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeStore';
 import { usePlayerStore } from '../store/playerStore';
 import { useAlbum, useAlbumTracks, useLibraryAlbums } from '../data/hooks';
@@ -16,7 +15,6 @@ import Icon from '../components/ui/Icon';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer } from '../lib/motion';
 import { formatDuration } from '../lib/utils';
-import type { Track } from '../data/types';
 
 export default function Album() {
   const { id } = useParams();
@@ -91,14 +89,6 @@ export default function Album() {
 
   const totalDurationMs = tracks.reduce((acc, t) => acc + (t.durationMs || 0), 0);
   const durationStr = totalDurationMs > 0 ? formatDuration(totalDurationMs) : null;
-  const albumMeta = [
-    album.artist,
-    album.year,
-    album.trackCount ? `${album.trackCount} songs` : tracks.length > 0 ? `${tracks.length} songs` : null,
-    durationStr,
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   const isLocalAlbum = album.source === 'local' || tracks.every((t) => t.source === 'local');
 

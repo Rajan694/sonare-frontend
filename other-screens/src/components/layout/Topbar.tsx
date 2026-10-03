@@ -7,7 +7,6 @@ import Icon from '../ui/Icon';
 import Button, { IconButton } from '../ui/Button';
 import { useAuth } from '../../data/hooks';
 import type { Mode } from '../../data/types';
-import { useAppDispatch, useAppSelector } from '../../store';
 import SearchField from './SearchField';
 
 export default function Topbar() {

@@ -3,7 +3,7 @@ import { api } from './api';
 import { useLocalLibrary } from './local';
 import { onFavouritesSaved } from './favourites';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
-import type { Track, Album, Artist, Playlist, Folder, Page, User } from './types';
+import type { Folder, User } from './types';
 
 export interface AsyncState<T> {
   data: T | null;
