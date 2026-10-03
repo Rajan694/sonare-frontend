@@ -13,8 +13,7 @@ const PLAY_THRESHOLD_MS = 30_000;
 
 /** Which track the native player holds, once its stream has been handed over. */
 let loadedId: string | null = null;
-let listen: { trackId: string; startedAt: number; counted: boolean } | null =
-  null;
+let listen: { trackId: string; startedAt: number; counted: boolean } | null = null;
 let endedHandled = false;
 /** Bumped per load so a slow stream fetch for a skipped track is ignored. */
 let loadToken = 0;
@@ -58,10 +57,7 @@ async function loadCurrent() {
     // Paused while the stream was loading: nothing applied it yet, so apply it now.
     if (!usePlayerStore.getState().isPlaying) SonarePlayer.pause();
   } catch (e: any) {
-    if (token === loadToken)
-      usePlayerStore
-        .getState()
-        .setError(e?.message || 'Could not load this track');
+    if (token === loadToken) usePlayerStore.getState().setError(e?.message || 'Could not load this track');
   }
 }
 
@@ -79,7 +75,7 @@ function startAudio() {
   if (!current()) SonarePlayer.stop();
 
   // Native -> store.
-  SonarePlayer.onState(e => {
+  SonarePlayer.onState((e) => {
     const player = usePlayerStore.getState();
     if (!e.mediaId || e.mediaId !== player.currentTrack?.id) return; // the previous item winding down
     player.setBuffering(e.buffering);
@@ -92,41 +88,25 @@ function startAudio() {
     }
     endedHandled = false;
     // Paused or resumed from the lock screen, a headset, or an audio-focus loss.
-    if (player.isPlaying !== e.playWhenReady)
-      player.setIsPlaying(e.playWhenReady);
+    if (player.isPlaying !== e.playWhenReady) player.setIsPlaying(e.playWhenReady);
   });
 
-  SonarePlayer.onProgress(e => {
+  SonarePlayer.onProgress((e) => {
     const player = usePlayerStore.getState();
-    if (
-      !listen ||
-      listen.trackId !== player.currentTrack?.id ||
-      loadedId !== listen.trackId
-    )
-      return;
+    if (!listen || listen.trackId !== player.currentTrack?.id || loadedId !== listen.trackId) return;
     player.setPositionMs(e.positionMs);
-    if (e.durationMs > 0 && e.durationMs !== player.durationMs)
-      player.setDurationMs(e.durationMs);
-    const threshold = Math.min(
-      PLAY_THRESHOLD_MS,
-      player.durationMs / 2 || PLAY_THRESHOLD_MS,
-    );
+    if (e.durationMs > 0 && e.durationMs !== player.durationMs) player.setDurationMs(e.durationMs);
+    const threshold = Math.min(PLAY_THRESHOLD_MS, player.durationMs / 2 || PLAY_THRESHOLD_MS);
     // History belongs to an account; guests just listen.
-    if (
-      !listen.counted &&
-      e.positionMs >= threshold &&
-      useAuthStore.getState().status === 'signedIn'
-    ) {
+    if (!listen.counted && e.positionMs >= threshold && useAuthStore.getState().status === 'signedIn') {
       listen.counted = true;
       queuePlay(listen.trackId, listen.startedAt, e.positionMs);
     }
   });
 
-  SonarePlayer.onError(e =>
-    usePlayerStore.getState().setError(e.message || 'Playback failed'),
-  );
+  SonarePlayer.onError((e) => usePlayerStore.getState().setError(e.message || 'Playback failed'));
 
-  SonarePlayer.onRemote(e => {
+  SonarePlayer.onRemote((e) => {
     const player = usePlayerStore.getState();
     if (e.command === 'next') player.playNext();
     else player.playPrevious();
@@ -143,11 +123,7 @@ function startAudio() {
       if (state.isPlaying) SonarePlayer.play();
       else SonarePlayer.pause();
     }
-    if (
-      ready &&
-      state.seekRequest &&
-      state.seekRequest.nonce !== prev.seekRequest?.nonce
-    ) {
+    if (ready && state.seekRequest && state.seekRequest.nonce !== prev.seekRequest?.nonce) {
       SonarePlayer.seekTo(state.seekRequest.ms);
     }
   });

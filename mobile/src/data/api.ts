@@ -1,20 +1,14 @@
 import { API_BASE } from './config';
 import { useAuthStore } from './auth';
 import { httpRequest } from './http';
-import type {
-  Album,
-  Artist,
-  Lyrics,
-  Page,
-  Playlist,
-  SearchItem,
-  StreamInfo,
-  Track,
-  User,
-} from './types';
+import type { Album, Artist, Lyrics, Page, Playlist, SearchItem, StreamInfo, Track, User } from './types';
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number, public code?: string) {
+  constructor(
+    message: string,
+    public status: number,
+    public code?: string,
+  ) {
     super(message);
   }
 }
@@ -31,17 +25,12 @@ interface RequestOptions {
 function buildUrl(path: string, params?: Params): string {
   const query = Object.entries(params ?? {})
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
-    .map(
-      ([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`,
-    )
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
     .join('&');
   return `${API_BASE}${path}${query ? `?${query}` : ''}`;
 }
 
-async function request<T>(
-  path: string,
-  { method = 'GET', params, body, timeoutMs }: RequestOptions = {},
-): Promise<T> {
+async function request<T>(path: string, { method = 'GET', params, body, timeoutMs }: RequestOptions = {}): Promise<T> {
   const url = buildUrl(path, params);
   const send = (token: string | null) =>
     httpRequest(url, {
@@ -65,11 +54,7 @@ async function request<T>(
   if (res.status === 204) return {} as T;
   const { json } = res;
   if (res.status < 200 || res.status >= 300) {
-    throw new ApiError(
-      json?.error?.message || `Request failed (${res.status})`,
-      res.status,
-      json?.error?.code,
-    );
+    throw new ApiError(json?.error?.message || `Request failed (${res.status})`, res.status, json?.error?.code);
   }
   return json as T;
 }
@@ -78,33 +63,23 @@ const enc = encodeURIComponent;
 
 export const api = {
   // Catalog
-  search: (
-    q: string,
-    type: 'all' | 'songs' | 'albums' | 'artists' | 'playlists' = 'all',
-  ) => request<Page<SearchItem>>('/search', { params: { q, type } }),
-  trending: (limit = 20) =>
-    request<Page<Track>>('/trending', { params: { region: 'IN', limit } }),
+  search: (q: string, type: 'all' | 'songs' | 'albums' | 'artists' | 'playlists' = 'all') =>
+    request<Page<SearchItem>>('/search', { params: { q, type } }),
+  trending: (limit = 20) => request<Page<Track>>('/trending', { params: { region: 'IN', limit } }),
   album: (id: string) => request<Album>(`/albums/${enc(id)}`),
-  albumTracks: (id: string) =>
-    request<Page<Track>>(`/albums/${enc(id)}/tracks`),
+  albumTracks: (id: string) => request<Page<Track>>(`/albums/${enc(id)}/tracks`),
   artist: (id: string) => request<Artist>(`/artists/${enc(id)}`),
   artistTopTracks: (id: string, limit = 20) =>
     request<Page<Track>>(`/artists/${enc(id)}/top-tracks`, {
       params: { limit },
     }),
-  artistAlbums: (id: string) =>
-    request<Page<Album>>(`/artists/${enc(id)}/albums`),
+  artistAlbums: (id: string) => request<Page<Album>>(`/artists/${enc(id)}/albums`),
   /** YouTube playlists; the user's own ones go through the `my*` calls below. */
   playlist: (id: string) => request<Playlist>(`/playlists/${enc(id)}`),
-  playlistTracks: (id: string) =>
-    request<Page<Track>>(`/playlists/${enc(id)}/tracks`),
+  playlistTracks: (id: string) => request<Page<Track>>(`/playlists/${enc(id)}/tracks`),
 
   // Playback
-  stream: (
-    id: string,
-    quality: 'auto' | 'low' | 'normal' | 'high' = 'auto',
-    format?: 'opus' | 'm4a',
-  ) =>
+  stream: (id: string, quality: 'auto' | 'low' | 'normal' | 'high' = 'auto', format?: 'opus' | 'm4a') =>
     request<StreamInfo>(`/tracks/${enc(id)}/stream`, {
       params: { quality, format },
     }),
@@ -120,8 +95,7 @@ export const api = {
   // The signed-in user
   me: () => request<User>('/me'),
   settings: () => request<Record<string, unknown>>('/me/settings'),
-  saveSettings: (body: Record<string, unknown>) =>
-    request<{ ok: boolean }>('/me/settings', { method: 'PUT', body }),
+  saveSettings: (body: Record<string, unknown>) => request<{ ok: boolean }>('/me/settings', { method: 'PUT', body }),
   libraryTracks: (sort: 'addedAt' | 'playCount' | 'title' = 'addedAt') =>
     request<Page<Track>>('/me/library/tracks', {
       params: { sort, order: sort === 'title' ? 'asc' : 'desc' },
@@ -135,16 +109,12 @@ export const api = {
     request<{ ok: boolean }>(`/me/following/artists/${enc(artistId)}`, {
       method: following ? 'PUT' : 'DELETE',
     }),
-  recentlyPlayed: (limit = 20) =>
-    request<Page<Track>>('/me/recently-played', { params: { limit } }),
-  mostPlayed: (limit = 20) =>
-    request<Page<Track>>('/me/most-played', { params: { limit } }),
+  recentlyPlayed: (limit = 20) => request<Page<Track>>('/me/recently-played', { params: { limit } }),
+  mostPlayed: (limit = 20) => request<Page<Track>>('/me/most-played', { params: { limit } }),
   /** Plays the listener has actually heard; queued and sent by data/sync.ts. */
   reportPlays: (
     plays: {
-      trackRef:
-        | { kind: 'server'; id: string }
-        | { kind: 'local'; fingerprint: string };
+      trackRef: { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string };
       at: number;
       ms: number;
     }[],
@@ -161,15 +131,13 @@ export const api = {
   // The user's playlists
   myPlaylists: () => request<Page<Playlist>>('/me/playlists'),
   myPlaylist: (id: string) => request<Playlist>(`/me/playlists/${enc(id)}`),
-  myPlaylistTracks: (id: string) =>
-    request<Page<Track>>(`/me/playlists/${enc(id)}/tracks`),
+  myPlaylistTracks: (id: string) => request<Page<Track>>(`/me/playlists/${enc(id)}/tracks`),
   createPlaylist: (name: string) =>
     request<Playlist>('/me/playlists', {
       method: 'POST',
       body: { name, kind: 'synced' },
     }),
-  deletePlaylist: (id: string) =>
-    request<{ ok: boolean }>(`/me/playlists/${enc(id)}`, { method: 'DELETE' }),
+  deletePlaylist: (id: string) => request<{ ok: boolean }>(`/me/playlists/${enc(id)}`, { method: 'DELETE' }),
   addToPlaylist: (id: string, trackIds: string[]) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {
       method: 'POST',

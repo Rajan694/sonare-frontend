@@ -113,21 +113,8 @@ interface IconProps {
   style?: any;
 }
 
-export default function Icon({
-  name,
-  size = 16,
-  color,
-  strokeWidth = 1.6,
-  style,
-}: IconProps) {
+export default function Icon({ name, size = 16, color, strokeWidth = 1.6, style }: IconProps) {
   const Component = ICONS[name];
   if (!Component) return null;
-  return (
-    <Component
-      size={size}
-      color={color}
-      strokeWidth={strokeWidth}
-      style={style}
-    />
-  );
+  return <Component size={size} color={color} strokeWidth={strokeWidth} style={style} />;
 }

@@ -15,9 +15,7 @@ const mockSonareDownloadsNative = {
   partSize: jest.fn().mockResolvedValue(50),
   deleteFile: jest.fn().mockResolvedValue(true),
   exists: jest.fn().mockResolvedValue(true),
-  pickFolder: jest
-    .fn()
-    .mockResolvedValue({ uri: 'content://tree/music', name: 'Music' }),
+  pickFolder: jest.fn().mockResolvedValue({ uri: 'content://tree/music', name: 'Music' }),
   defaultLocation: jest.fn().mockResolvedValue('Music/Sonare'),
 };
 
@@ -30,15 +28,13 @@ class MockNativeEventEmitter {
     this.listeners[event].push(handler);
     return {
       remove: () => {
-        this.listeners[event] = (this.listeners[event] || []).filter(
-          h => h !== handler,
-        );
+        this.listeners[event] = (this.listeners[event] || []).filter((h) => h !== handler);
       },
     };
   }
   emit(event, ...args) {
     if (this.listeners[event]) {
-      this.listeners[event].forEach(h => h(...args));
+      this.listeners[event].forEach((h) => h(...args));
     }
   }
   removeAllListeners(event) {
@@ -61,7 +57,7 @@ const mockAnimatedValue = function (init) {
     value: init,
     setValue: jest.fn(),
     interpolate: jest.fn(() => 0),
-    stopAnimation: jest.fn(cb => cb?.(0)),
+    stopAnimation: jest.fn((cb) => cb?.(0)),
     addListener: jest.fn(() => '1'),
     removeListener: jest.fn(),
   };
@@ -70,29 +66,29 @@ const mockAnimatedValue = function (init) {
 const mockAnimated = {
   Value: jest.fn(mockAnimatedValue),
   timing: jest.fn(() => ({
-    start: cb => cb?.({ finished: true }),
+    start: (cb) => cb?.({ finished: true }),
   })),
   spring: jest.fn(() => ({
-    start: cb => cb?.({ finished: true }),
+    start: (cb) => cb?.({ finished: true }),
   })),
   parallel: jest.fn(() => ({
-    start: cb => cb?.({ finished: true }),
+    start: (cb) => cb?.({ finished: true }),
   })),
   sequence: jest.fn(() => ({
-    start: cb => cb?.({ finished: true }),
+    start: (cb) => cb?.({ finished: true }),
   })),
   loop: jest.fn(() => ({
-    start: cb => cb?.({ finished: true }),
+    start: (cb) => cb?.({ finished: true }),
     stop: jest.fn(),
   })),
-  createAnimatedComponent: c => c,
+  createAnimatedComponent: (c) => c,
   View: 'View',
   Text: 'Text',
   Image: 'Image',
   ScrollView: 'ScrollView',
 };
 
-const mockEasingFn = jest.fn(t => t);
+const mockEasingFn = jest.fn((t) => t);
 const mockEasing = {
   linear: mockEasingFn,
   ease: mockEasingFn,
@@ -106,9 +102,9 @@ const mockEasing = {
   back: () => mockEasingFn,
   bounce: mockEasingFn,
   bezier: () => mockEasingFn,
-  in: fn => fn || mockEasingFn,
-  out: fn => fn || mockEasingFn,
-  inOut: fn => fn || mockEasingFn,
+  in: (fn) => fn || mockEasingFn,
+  out: (fn) => fn || mockEasingFn,
+  inOut: (fn) => fn || mockEasingFn,
 };
 
 jest.mock('react-native', () => {
@@ -116,15 +112,14 @@ jest.mock('react-native', () => {
     Platform: {
       OS: 'android',
       Version: 33,
-      select: dict =>
-        dict.android !== undefined ? dict.android : dict.default,
+      select: (dict) => (dict.android !== undefined ? dict.android : dict.default),
       constants: {
         reactNativeVersion: { major: 0, minor: 87, patch: 1 },
       },
     },
     StyleSheet: {
-      create: styles => styles,
-      flatten: styles => styles,
+      create: (styles) => styles,
+      flatten: (styles) => styles,
       absoluteFill: {
         position: 'absolute',
         left: 0,
@@ -146,15 +141,11 @@ jest.mock('react-native', () => {
     TouchableOpacity: 'TouchableOpacity',
     Pressable: 'Pressable',
     ScrollView: 'ScrollView',
-    FlatList: props => {
+    FlatList: (props) => {
       const header =
-        typeof props.ListHeaderComponent === 'function'
-          ? props.ListHeaderComponent()
-          : props.ListHeaderComponent;
+        typeof props.ListHeaderComponent === 'function' ? props.ListHeaderComponent() : props.ListHeaderComponent;
       const items = (props.data || []).map((item, index) =>
-        props.renderItem
-          ? props.renderItem({ item, index, separators: {} })
-          : null,
+        props.renderItem ? props.renderItem({ item, index, separators: {} }) : null,
       );
       const empty =
         !props.data || props.data.length === 0
@@ -163,9 +154,7 @@ jest.mock('react-native', () => {
             : props.ListEmptyComponent
           : null;
       const footer =
-        typeof props.ListFooterComponent === 'function'
-          ? props.ListFooterComponent()
-          : props.ListFooterComponent;
+        typeof props.ListFooterComponent === 'function' ? props.ListFooterComponent() : props.ListFooterComponent;
       return [header, items, empty, footer];
     },
     TextInput: 'TextInput',
@@ -228,14 +217,12 @@ jest.mock('react-native', () => {
 // Mock AsyncStorage
 const mockStorageMap = new Map();
 const mockAsyncStorage = {
-  getItem: jest.fn(key =>
-    Promise.resolve(mockStorageMap.has(key) ? mockStorageMap.get(key) : null),
-  ),
+  getItem: jest.fn((key) => Promise.resolve(mockStorageMap.has(key) ? mockStorageMap.get(key) : null)),
   setItem: jest.fn((key, value) => {
     mockStorageMap.set(key, value);
     return Promise.resolve(null);
   }),
-  removeItem: jest.fn(key => {
+  removeItem: jest.fn((key) => {
     mockStorageMap.delete(key);
     return Promise.resolve(null);
   }),
@@ -244,15 +231,13 @@ const mockAsyncStorage = {
     return Promise.resolve(null);
   }),
   getAllKeys: jest.fn(() => Promise.resolve(Array.from(mockStorageMap.keys()))),
-  multiGet: jest.fn(keys =>
-    Promise.resolve(keys.map(k => [k, mockStorageMap.get(k) ?? null])),
-  ),
-  multiSet: jest.fn(pairs => {
+  multiGet: jest.fn((keys) => Promise.resolve(keys.map((k) => [k, mockStorageMap.get(k) ?? null]))),
+  multiSet: jest.fn((pairs) => {
     pairs.forEach(([k, v]) => mockStorageMap.set(k, v));
     return Promise.resolve(null);
   }),
-  multiRemove: jest.fn(keys => {
-    keys.forEach(k => mockStorageMap.delete(k));
+  multiRemove: jest.fn((keys) => {
+    keys.forEach((k) => mockStorageMap.delete(k));
     return Promise.resolve(null);
   }),
 };
@@ -271,13 +256,11 @@ const mockKeychain = {
     mockKeychainMap.set(service, { username, password, service });
     return Promise.resolve(true);
   }),
-  getGenericPassword: jest.fn(options => {
+  getGenericPassword: jest.fn((options) => {
     const service = options?.service || 'default';
-    return Promise.resolve(
-      mockKeychainMap.has(service) ? mockKeychainMap.get(service) : false,
-    );
+    return Promise.resolve(mockKeychainMap.has(service) ? mockKeychainMap.get(service) : false);
   }),
-  resetGenericPassword: jest.fn(options => {
+  resetGenericPassword: jest.fn((options) => {
     const service = options?.service || 'default';
     mockKeychainMap.delete(service);
     return Promise.resolve(true);
@@ -296,16 +279,12 @@ jest.mock('react-native-keychain', () => ({
 // Mock NetInfo
 jest.mock('@react-native-community/netinfo', () => ({
   addEventListener: jest.fn(() => jest.fn()),
-  fetch: jest
-    .fn()
-    .mockResolvedValue({ isConnected: true, isInternetReachable: true }),
-  useNetInfo: jest
-    .fn()
-    .mockReturnValue({ isConnected: true, isInternetReachable: true }),
+  fetch: jest.fn().mockResolvedValue({ isConnected: true, isInternetReachable: true }),
+  useNetInfo: jest.fn().mockReturnValue({ isConnected: true, isInternetReachable: true }),
 }));
 
 // Mock react-native-reanimated
-const mockCreateAnimatedComponent = c => c;
+const mockCreateAnimatedComponent = (c) => c;
 const mockLayout = {
   springify: () => mockLayout,
   damping: () => mockLayout,
@@ -332,8 +311,8 @@ const mockReanimated = {
   FadeOut: mockFade,
   Layout: mockLayout,
   ReduceMotion: { System: 'system', Never: 'never', Always: 'always' },
-  useSharedValue: init => ({ value: init }),
-  useAnimatedStyle: fn => fn(),
+  useSharedValue: (init) => ({ value: init }),
+  useAnimatedStyle: (fn) => fn(),
   withTiming: (val, _cfg, cb) => {
     cb?.(true);
     return val;
@@ -342,10 +321,10 @@ const mockReanimated = {
     cb?.(true);
     return val;
   },
-  withRepeat: val => val,
+  withRepeat: (val) => val,
   withSequence: (...vals) => vals[0],
   withDelay: (_d, val) => val,
-  runOnJS: fn => fn,
+  runOnJS: (fn) => fn,
   Easing: {
     linear: jest.fn(),
     ease: jest.fn(),
@@ -423,8 +402,8 @@ jest.mock('react-native-gesture-handler', () => {
 });
 
 // Global polyfills
-global.requestAnimationFrame = fn => setTimeout(fn, 0);
-global.cancelAnimationFrame = id => clearTimeout(id);
+global.requestAnimationFrame = (fn) => setTimeout(fn, 0);
+global.cancelAnimationFrame = (id) => clearTimeout(id);
 
 // Mock MockXMLHttpRequest
 class MockXMLHttpRequest {

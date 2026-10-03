@@ -9,11 +9,7 @@ import { Button } from '../components/ui/Button';
 import { useModeStore } from '../store/mode';
 import { useAuthStore } from '../data/auth';
 import { useSyncStatus } from '../data/sync';
-import {
-  useSettingsStore,
-  type AudioQuality,
-  type DownloadFormat,
-} from '../data/settings';
+import { useSettingsStore, type AudioQuality, type DownloadFormat } from '../data/settings';
 import { useDownloadsStore } from '../store/downloads';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
@@ -23,9 +19,9 @@ const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
 export function SettingsScreen() {
   const sync = useSyncStatus();
   const navigation = useNavigation<any>();
-  const user = useAuthStore(s => s.user);
-  const signOut = useAuthStore(s => s.signOut);
-  const resendVerification = useAuthStore(s => s.resendVerification);
+  const user = useAuthStore((s) => s.user);
+  const signOut = useAuthStore((s) => s.signOut);
+  const resendVerification = useAuthStore((s) => s.resendVerification);
 
   const resendLink = async () => {
     try {
@@ -35,8 +31,8 @@ export function SettingsScreen() {
       Alert.alert('Could not send the email', e?.message);
     }
   };
-  const mode = useModeStore(s => s.mode);
-  const setMode = useModeStore(s => s.setMode);
+  const mode = useModeStore((s) => s.mode);
+  const setMode = useModeStore((s) => s.setMode);
 
   const confirmSignOut = () =>
     Alert.alert(
@@ -49,18 +45,13 @@ export function SettingsScreen() {
     );
 
   const isGold = mode === 'offline';
-  const downloadQuality = useSettingsStore(s => s.downloadQuality);
-  const downloadFormat = useSettingsStore(s => s.downloadFormat);
-  const updateSettings = useSettingsStore(s => s.update);
-  const location = useDownloadsStore(s => s.location);
-  const doneCount = useDownloadsStore(
-    s => Object.values(s.items).filter(d => d.status === 'done').length,
-  );
+  const downloadQuality = useSettingsStore((s) => s.downloadQuality);
+  const downloadFormat = useSettingsStore((s) => s.downloadFormat);
+  const updateSettings = useSettingsStore((s) => s.update);
+  const location = useDownloadsStore((s) => s.location);
+  const doneCount = useDownloadsStore((s) => Object.values(s.items).filter((d) => d.status === 'done').length);
   const activeCount = useDownloadsStore(
-    s =>
-      Object.values(s.items).filter(
-        d => d.status === 'queued' || d.status === 'downloading',
-      ).length,
+    (s) => Object.values(s.items).filter((d) => d.status === 'queued' || d.status === 'downloading').length,
   );
 
   const changeLocation = async () => {
@@ -81,8 +72,7 @@ export function SettingsScreen() {
           ? [
               {
                 text: 'Use Music/Sonare',
-                onPress: () =>
-                  void useDownloadsStore.getState().resetLocation(),
+                onPress: () => void useDownloadsStore.getState().resetLocation(),
               },
             ]
           : []),
@@ -104,26 +94,18 @@ export function SettingsScreen() {
         }
       />
 
-      <ScrollView
-        className="flex-1 px-5 pt-2"
-        contentContainerStyle={{ paddingBottom: 160, gap: 18 }}
-      >
+      <ScrollView className="flex-1 px-5 pt-2" contentContainerStyle={{ paddingBottom: 160, gap: 18 }}>
         {/* Account Profile Card */}
         <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3.5">
           <View className="w-[52px] h-[52px] rounded-full bg-s3 items-center justify-center overflow-hidden">
             {user?.displayName ? (
-              <Text className="text-t1 text-h2 font-semibold">
-                {user.displayName.charAt(0).toUpperCase()}
-              </Text>
+              <Text className="text-t1 text-h2 font-semibold">{user.displayName.charAt(0).toUpperCase()}</Text>
             ) : (
               <Icon name="user" size={24} color="#9A9AA8" />
             )}
           </View>
           <View className="flex-1 gap-0.5 min-w-0">
-            <Text
-              className="text-tl font-semibold text-t1 truncate"
-              numberOfLines={1}
-            >
+            <Text className="text-tl font-semibold text-t1 truncate" numberOfLines={1}>
               {user?.displayName || 'Listening as a guest'}
             </Text>
             <Text className="text-bs text-t2 truncate" numberOfLines={1}>
@@ -136,18 +118,8 @@ export function SettingsScreen() {
               isGold ? 'bg-goldbg' : 'bg-accbg',
             )}
           >
-            <View
-              className={cn(
-                'w-1.5 h-1.5 rounded-full',
-                isGold ? 'bg-gold' : 'bg-acc',
-              )}
-            />
-            <Text
-              className={cn(
-                'text-ls font-semibold uppercase',
-                isGold ? 'text-gold' : 'text-acc',
-              )}
-            >
+            <View className={cn('w-1.5 h-1.5 rounded-full', isGold ? 'bg-gold' : 'bg-acc')} />
+            <Text className={cn('text-ls font-semibold uppercase', isGold ? 'text-gold' : 'text-acc')}>
               {isGold ? 'OFFLINE' : 'ONLINE'}
             </Text>
           </View>
@@ -174,12 +146,7 @@ export function SettingsScreen() {
             </Button>
           </View>
         ) : (
-          <Button
-            variant="outline"
-            size="sm"
-            onPress={confirmSignOut}
-            accessibilityLabel="Sign out"
-          >
+          <Button variant="outline" size="sm" onPress={confirmSignOut} accessibilityLabel="Sign out">
             <Text className="text-red text-bm font-medium">Sign out</Text>
           </Button>
         )}
@@ -187,12 +154,8 @@ export function SettingsScreen() {
         {user?.emailVerified === false && (
           <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3">
             <View className="flex-1 gap-0.5">
-              <Text className="text-tm font-semibold text-t1">
-                Email not verified
-              </Text>
-              <Text className="text-bs text-t3">
-                Verify it so you can reset your password if you forget it.
-              </Text>
+              <Text className="text-tm font-semibold text-t1">Email not verified</Text>
+              <Text className="text-bs text-t3">Verify it so you can reset your password if you forget it.</Text>
             </View>
             <Button variant="outline" size="sm" onPress={resendLink}>
               Resend link
@@ -203,12 +166,8 @@ export function SettingsScreen() {
         {/* Connection Mode Section */}
         <View className="bg-s1 border border-ln rounded-xl p-3.5 gap-3">
           <View className="gap-0.5">
-            <Text className="text-tm font-semibold text-t1">
-              Connection mode
-            </Text>
-            <Text className="text-bs text-t3">
-              Controls what the whole app shows
-            </Text>
+            <Text className="text-tm font-semibold text-t1">Connection mode</Text>
+            <Text className="text-bs text-t3">Controls what the whole app shows</Text>
           </View>
           <SegmentedControl
             options={[
@@ -216,7 +175,7 @@ export function SettingsScreen() {
               { value: 'offline', label: 'Offline' },
             ]}
             value={mode}
-            onChange={value => {
+            onChange={(value) => {
               if (value === 'offline' && mode === 'online') {
                 navigation.navigate('ModeSwitch', { targetMode: 'offline' });
               } else {
@@ -230,9 +189,7 @@ export function SettingsScreen() {
               <View className="w-1.5 h-1.5 rounded-full bg-gold" />
               <Text className="text-bs text-t2 flex-1">
                 {sync.pending
-                  ? `Offline mode active · ${plays(
-                      sync.pending,
-                    )} will sync when you're back online`
+                  ? `Offline mode active · ${plays(sync.pending)} will sync when you're back online`
                   : 'Offline mode active · nothing fetched from server'}
               </Text>
             </View>
@@ -243,10 +200,8 @@ export function SettingsScreen() {
                 {sync.syncing
                   ? `Online mode active · syncing ${plays(sync.pending)}`
                   : sync.pending
-                  ? `Online mode active · ${plays(
-                      sync.pending,
-                    )} waiting to sync`
-                  : 'Online mode active · streaming & sync enabled'}
+                    ? `Online mode active · ${plays(sync.pending)} waiting to sync`
+                    : 'Online mode active · streaming & sync enabled'}
               </Text>
             </View>
           )}
@@ -254,15 +209,11 @@ export function SettingsScreen() {
 
         {/* Downloads */}
         <View className="gap-2">
-          <Text className="text-ov font-semibold text-t3 uppercase pl-1">
-            Downloads
-          </Text>
+          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Downloads</Text>
           <View className="bg-s1 border border-ln rounded-xl overflow-hidden">
             <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
               <View className="gap-0.5">
-                <Text className="text-tm font-medium text-t1">
-                  Download quality
-                </Text>
+                <Text className="text-tm font-medium text-t1">Download quality</Text>
                 <Text className="text-bs text-t3">
                   {downloadFormat === 'm4a'
                     ? 'Low ≈ 50 kbps · Normal and High = 128 kbps (AAC has two steps)'
@@ -276,17 +227,14 @@ export function SettingsScreen() {
                   { value: 'high', label: 'High' },
                 ]}
                 value={downloadQuality}
-                onChange={v =>
-                  updateSettings({ downloadQuality: v as AudioQuality })
-                }
+                onChange={(v) => updateSettings({ downloadQuality: v as AudioQuality })}
               />
             </View>
             <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
               <View className="gap-0.5">
                 <Text className="text-tm font-medium text-t1">File format</Text>
                 <Text className="text-bs text-t3">
-                  Saved as YouTube serves it, never re-encoded. AAC plays in
-                  more apps.
+                  Saved as YouTube serves it, never re-encoded. AAC plays in more apps.
                 </Text>
               </View>
               <SegmentedControl
@@ -295,9 +243,7 @@ export function SettingsScreen() {
                   { value: 'm4a', label: 'AAC (.m4a)' },
                 ]}
                 value={downloadFormat}
-                onChange={v =>
-                  updateSettings({ downloadFormat: v as DownloadFormat })
-                }
+                onChange={(v) => updateSettings({ downloadFormat: v as DownloadFormat })}
               />
             </View>
             <Pressable
@@ -310,9 +256,7 @@ export function SettingsScreen() {
                 <Icon name="folder" size={18} color="#7E7E8C" />
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">
-                  Download location
-                </Text>
+                <Text className="text-tm font-medium text-t1">Download location</Text>
                 <Text className="text-bs text-t3" numberOfLines={1}>
                   {location.label}
                 </Text>
@@ -329,13 +273,9 @@ export function SettingsScreen() {
                 <Icon name="download" size={18} color="#7E7E8C" />
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">
-                  Manage downloads
-                </Text>
+                <Text className="text-tm font-medium text-t1">Manage downloads</Text>
                 <Text className="text-bs text-t3">
-                  {activeCount > 0
-                    ? `${activeCount} in progress · ${doneCount} downloaded`
-                    : `${doneCount} downloaded`}
+                  {activeCount > 0 ? `${activeCount} in progress · ${doneCount} downloaded` : `${doneCount} downloaded`}
                 </Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
@@ -345,9 +285,7 @@ export function SettingsScreen() {
 
         {/* Playback Settings Group */}
         <View className="gap-2">
-          <Text className="text-ov font-semibold text-t3 uppercase pl-1">
-            Playback
-          </Text>
+          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Playback</Text>
           <View className="bg-s1 border border-ln rounded-xl py-1 overflow-hidden">
             <Pressable
               onPress={() => navigation.navigate('Equalizer')}
@@ -357,12 +295,8 @@ export function SettingsScreen() {
                 <Icon name="equalizer" size={18} color="#7E7E8C" />
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">
-                  Equalizer & effects
-                </Text>
-                <Text className="text-bs text-t3 truncate">
-                  DSP, 7-band EQ & speed
-                </Text>
+                <Text className="text-tm font-medium text-t1">Equalizer & effects</Text>
+                <Text className="text-bs text-t3 truncate">DSP, 7-band EQ & speed</Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>
@@ -375,12 +309,8 @@ export function SettingsScreen() {
                 <Icon name="folder" size={18} color="#7E7E8C" />
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">
-                  Music folders
-                </Text>
-                <Text className="text-bs text-t3 truncate">
-                  Manage device scanned storage
-                </Text>
+                <Text className="text-tm font-medium text-t1">Music folders</Text>
+                <Text className="text-bs text-t3 truncate">Manage device scanned storage</Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>

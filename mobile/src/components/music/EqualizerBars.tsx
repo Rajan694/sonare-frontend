@@ -1,12 +1,6 @@
 import React, { useEffect } from 'react';
 import { View } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  withDelay,
-} from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming, withRepeat, withDelay } from 'react-native-reanimated';
 import { cn } from '../../lib/cn';
 
 interface EqualizerBarsProps {
@@ -18,15 +12,7 @@ interface EqualizerBarsProps {
 const BASE_HEIGHT = 4;
 const MAX_HEIGHT = 16;
 
-function EqBar({
-  isPlaying,
-  index,
-  color = '#00E28A',
-}: {
-  isPlaying: boolean;
-  index: number;
-  color?: string;
-}) {
+function EqBar({ isPlaying, index, color = '#00E28A' }: { isPlaying: boolean; index: number; color?: string }) {
   const height = useSharedValue(BASE_HEIGHT);
 
   useEffect(() => {
@@ -55,29 +41,13 @@ function EqBar({
 
   const Component = Animated.View as any;
 
-  return (
-    <Component
-      style={[
-        animatedStyle,
-        { backgroundColor: color, width: 3, borderRadius: 999 },
-      ]}
-    />
-  );
+  return <Component style={[animatedStyle, { backgroundColor: color, width: 3, borderRadius: 999 }]} />;
 }
 
-export function EqualizerBars({
-  isPlaying,
-  color,
-  className,
-}: EqualizerBarsProps) {
+export function EqualizerBars({ isPlaying, color, className }: EqualizerBarsProps) {
   return (
-    <View
-      className={cn(
-        'flex-row items-end justify-center gap-1 h-[16px] w-[20px]',
-        className,
-      )}
-    >
-      {[0, 1, 2].map(i => (
+    <View className={cn('flex-row items-end justify-center gap-1 h-[16px] w-[20px]', className)}>
+      {[0, 1, 2].map((i) => (
         <EqBar key={i} index={i} isPlaying={isPlaying} color={color} />
       ))}
     </View>

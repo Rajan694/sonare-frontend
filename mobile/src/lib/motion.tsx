@@ -20,7 +20,7 @@ export const springConfig = {
 } as const;
 
 let reduceMotionEnabled = false;
-AccessibilityInfo.isReduceMotionEnabled().then(enabled => {
+AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
   reduceMotionEnabled = enabled ?? false;
 });
 
@@ -63,9 +63,7 @@ export function FadeView({
   return (
     <MotiView
       animate={{ opacity: visible ? 1 : 0 }}
-      transition={
-        { type: 'timing', duration: durations.fast } as MotiTransitionProp
-      }
+      transition={{ type: 'timing', duration: durations.fast } as MotiTransitionProp}
       {...props}
     >
       {children}

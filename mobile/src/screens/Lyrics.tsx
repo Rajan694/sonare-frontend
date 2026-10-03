@@ -1,11 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  LayoutChangeEvent,
-} from 'react-native';
+import { View, Text, Pressable, ScrollView, LayoutChangeEvent } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -21,31 +15,25 @@ import { useAsync } from '../data/hooks';
 import Icon from '../components/ui/Icon';
 
 function stamp(ms: number) {
-  return `${Math.floor(ms / 60000)}:${(Math.floor(ms / 1000) % 60)
-    .toString()
-    .padStart(2, '0')}`;
+  return `${Math.floor(ms / 60000)}:${(Math.floor(ms / 1000) % 60).toString().padStart(2, '0')}`;
 }
 
 export function LyricsScreen() {
   const navigation = useNavigation<any>();
-  const currentTrack = usePlayerStore(state => state.currentTrack);
-  const positionMs = usePlayerStore(state => state.positionMs);
-  const seekTo = usePlayerStore(state => state.seekTo);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  const seekTo = usePlayerStore((state) => state.seekTo);
   const [userScrolling, setUserScrolling] = useState(false);
   const [view, setView] = useState<'synced' | 'plain'>('synced');
 
-  const lyrics = useAsync(
-    () => api.lyrics(currentTrack!.id),
-    [currentTrack?.id],
-    {
-      enabled: currentTrack?.source === 'server',
-    },
-  );
+  const lyrics = useAsync(() => api.lyrics(currentTrack!.id), [currentTrack?.id], {
+    enabled: currentTrack?.source === 'server',
+  });
   const data = lyrics.data;
   const lines = data?.lines ?? [];
   const hasSynced = !!data?.synced && lines.length > 0;
   const showSynced = hasSynced && view === 'synced';
-  const plain = data?.plain || lines.map(l => l.text).join('\n');
+  const plain = data?.plain || lines.map((l) => l.text).join('\n');
 
   const at = positionMs + (data?.offsetMs ?? 0);
   let activeIndex = -1;
@@ -98,17 +86,9 @@ export function LyricsScreen() {
 
       <View className="px-5 pt-2 pb-3">
         <View className="flex-row items-center gap-3">
-          <Artwork
-            uri={artworkUrl(currentTrack, 140)}
-            size={52}
-            rings
-            className="rounded-sm"
-          />
+          <Artwork uri={artworkUrl(currentTrack, 140)} size={52} rings className="rounded-sm" />
           <View className="flex-1 min-w-0">
-            <Text
-              className="text-t1 text-tm font-medium truncate"
-              numberOfLines={1}
-            >
+            <Text className="text-t1 text-tm font-medium truncate" numberOfLines={1}>
               {currentTrack.title}
             </Text>
             <Text className="text-t2 text-bs truncate" numberOfLines={1}>
@@ -116,11 +96,7 @@ export function LyricsScreen() {
             </Text>
           </View>
           {data?.synced ? (
-            <Badge
-              label=".lrc"
-              variant="local"
-              icon={<Icon name="lyrics" size={10} color="#FFC24D" />}
-            />
+            <Badge label=".lrc" variant="local" icon={<Icon name="lyrics" size={10} color="#FFC24D" />} />
           ) : data?.provider ? (
             <Badge label={data.provider} variant="neutral" />
           ) : null}
@@ -133,28 +109,13 @@ export function LyricsScreen() {
                 size="sm"
                 label="Synced"
                 active={view === 'synced'}
-                icon={
-                  <Icon
-                    name="refresh"
-                    size={13}
-                    color={view === 'synced' ? '#00E28A' : '#7E7E8C'}
-                  />
-                }
+                icon={<Icon name="refresh" size={13} color={view === 'synced' ? '#00E28A' : '#7E7E8C'} />}
                 onPress={() => setView('synced')}
               />
             )}
-            <Chip
-              size="sm"
-              label="Plain text"
-              active={!showSynced}
-              onPress={() => setView('plain')}
-            />
+            <Chip size="sm" label="Plain text" active={!showSynced} onPress={() => setView('plain')} />
             {userScrolling && showSynced && (
-              <Chip
-                size="sm"
-                label="Follow playback"
-                onPress={() => setUserScrolling(false)}
-              />
+              <Chip size="sm" label="Follow playback" onPress={() => setUserScrolling(false)} />
             )}
           </View>
         )}
@@ -163,9 +124,7 @@ export function LyricsScreen() {
       {!data ? (
         <StateView
           loading={lyrics.loading}
-          error={
-            lyrics.error?.message?.includes('not found') ? null : lyrics.error
-          }
+          error={lyrics.error?.message?.includes('not found') ? null : lyrics.error}
           onRetry={lyrics.refetch}
           empty="No lyrics found for this song."
         />
@@ -188,11 +147,7 @@ export function LyricsScreen() {
                     lineY.current[index] = e.nativeEvent.layout.y;
                   }}
                 >
-                  <Text
-                    className={`w-9 pt-1 text-mono-s font-mono ${
-                      isActive ? 'text-acc' : 'text-t4'
-                    }`}
-                  >
+                  <Text className={`w-9 pt-1 text-mono-s font-mono ${isActive ? 'text-acc' : 'text-t4'}`}>
                     {stamp(item.atMs)}
                   </Text>
                   <Pressable
@@ -205,9 +160,7 @@ export function LyricsScreen() {
                     accessibilityHint="Jump to this line"
                   >
                     <Text
-                      className={`text-h2 font-semibold ${
-                        isActive ? 'text-t1' : 'text-t3 opacity-55'
-                      }`}
+                      className={`text-h2 font-semibold ${isActive ? 'text-t1' : 'text-t3 opacity-55'}`}
                       style={
                         isActive
                           ? {

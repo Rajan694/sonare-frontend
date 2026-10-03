@@ -1,10 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 import { cn } from '../../lib/cn';
 import Icon from './Icon';
 
@@ -16,15 +12,9 @@ interface SegmentedControlProps {
   className?: string;
 }
 
-export function SegmentedControl({
-  options,
-  value,
-  onChange,
-  variant = 'default',
-  className,
-}: SegmentedControlProps) {
+export function SegmentedControl({ options, value, onChange, variant = 'default', className }: SegmentedControlProps) {
   const [containerWidth, setContainerWidth] = React.useState(160);
-  const activeIndex = options.findIndex(opt => opt.value === value);
+  const activeIndex = options.findIndex((opt) => opt.value === value);
   const slidePosition = useSharedValue(activeIndex);
 
   React.useEffect(() => {
@@ -50,17 +40,11 @@ export function SegmentedControl({
 
   return (
     <View
-      className={cn(
-        'flex-row bg-s1 rounded-full p-[3px] relative border border-ln2',
-        className,
-      )}
+      className={cn('flex-row bg-s1 rounded-full p-[3px] relative border border-ln2', className)}
       style={{ gap: 2 }}
-      onLayout={e => setContainerWidth(e.nativeEvent.layout.width)}
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
     >
-      <View
-        style={{ position: 'absolute', top: 3, bottom: 3, left: 3, right: 3 }}
-        collapsable={false}
-      >
+      <View style={{ position: 'absolute', top: 3, bottom: 3, left: 3, right: 3 }} collapsable={false}>
         <Component
           style={animatedStyle}
           className={cn(
@@ -75,7 +59,7 @@ export function SegmentedControl({
           )}
         />
       </View>
-      {options.map(option => {
+      {options.map((option) => {
         const isActive = value === option.value;
         return (
           <Pressable
@@ -88,31 +72,17 @@ export function SegmentedControl({
           >
             {variant === 'cloud-device' &&
               (option.value === 'online' ? (
-                <Icon
-                  name="cloud"
-                  size={14}
-                  color={isActive ? '#00E28A' : '#7E7E8C'}
-                />
+                <Icon name="cloud" size={14} color={isActive ? '#00E28A' : '#7E7E8C'} />
               ) : (
-                <Icon
-                  name="smartphone"
-                  size={14}
-                  color={isActive ? '#FFC24D' : '#7E7E8C'}
-                />
+                <Icon name="smartphone" size={14} color={isActive ? '#FFC24D' : '#7E7E8C'} />
               ))}
             <Text
               numberOfLines={1}
               className={cn(
                 'text-[12px] font-semibold tracking-[0.2px] text-center',
                 isActive && variant === 'default' && 'text-t1',
-                isActive &&
-                  variant === 'cloud-device' &&
-                  option.value === 'online' &&
-                  'text-acc',
-                isActive &&
-                  variant === 'cloud-device' &&
-                  option.value === 'offline' &&
-                  'text-gold',
+                isActive && variant === 'cloud-device' && option.value === 'online' && 'text-acc',
+                isActive && variant === 'cloud-device' && option.value === 'offline' && 'text-gold',
                 !isActive && 'text-t3',
               )}
             >

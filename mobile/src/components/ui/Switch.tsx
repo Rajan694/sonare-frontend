@@ -32,12 +32,7 @@ export function Switch({
         disabled && 'opacity-40',
       )}
     >
-      <View
-        className={cn(
-          'w-[22px] h-[22px] rounded-full bg-white',
-          value ? 'ml-auto' : 'mr-auto',
-        )}
-      />
+      <View className={cn('w-[22px] h-[22px] rounded-full bg-white', value ? 'ml-auto' : 'mr-auto')} />
     </Pressable>
   );
 }

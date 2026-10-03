@@ -54,13 +54,11 @@ export function FoldersScreen() {
   ]);
 
   const toggleFolder = (id: string) => {
-    setFolders(
-      folders.map(f => (f.id === id ? { ...f, enabled: !f.enabled } : f)),
-    );
+    setFolders(folders.map((f) => (f.id === id ? { ...f, enabled: !f.enabled } : f)));
   };
 
-  const enabledFolders = folders.filter(f => f.enabled);
-  const disabledFolders = folders.filter(f => !f.enabled);
+  const enabledFolders = folders.filter((f) => f.enabled);
+  const disabledFolders = folders.filter((f) => !f.enabled);
   const totalSongs = enabledFolders.reduce((sum, f) => sum + f.tracks, 0);
 
   return (
@@ -84,19 +82,12 @@ export function FoldersScreen() {
         }
       />
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }}
-      >
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 160 }}>
         <View className="bg-s1 rounded-md p-4 mb-4 mt-2">
           <View className="flex-row justify-between items-start mb-3">
             <View>
-              <Text className="text-t1 text-tm font-medium">
-                Device storage
-              </Text>
-              <Text className="text-t3 text-bs mt-1">
-                {totalSongs ? `${totalSongs} songs` : 'No songs scanned'}
-              </Text>
+              <Text className="text-t1 text-tm font-medium">Device storage</Text>
+              <Text className="text-t3 text-bs mt-1">{totalSongs ? `${totalSongs} songs` : 'No songs scanned'}</Text>
             </View>
             <Text className="text-gold text-mono-s">28%</Text>
           </View>
@@ -124,20 +115,10 @@ export function FoldersScreen() {
         </View>
 
         <View className="flex-row gap-2.5 mb-2">
-          <Button
-            variant="gold"
-            className="flex-1"
-            size="sm"
-            onPress={() => {}}
-          >
+          <Button variant="gold" className="flex-1" size="sm" onPress={() => {}}>
             Scan now
           </Button>
-          <Button
-            variant="outline"
-            className="flex-1"
-            size="sm"
-            onPress={() => {}}
-          >
+          <Button variant="outline" className="flex-1" size="sm" onPress={() => {}}>
             Add folder
           </Button>
         </View>
@@ -160,12 +141,8 @@ export function FoldersScreen() {
                 <Icon name="folder" size={14} color="#FFC24D" />
               </View>
               <View className="flex-1 mr-3">
-                <Text className="text-t1 text-tm truncate mb-0.5">
-                  {item.name}
-                </Text>
-                <Text className="text-t3 text-mono-s truncate mb-0.5">
-                  {item.path}
-                </Text>
+                <Text className="text-t1 text-tm truncate mb-0.5">{item.name}</Text>
+                <Text className="text-t3 text-mono-s truncate mb-0.5">{item.path}</Text>
                 <Text className="text-t3 text-bs">
                   {item.tracks} songs · {item.size}
                 </Text>
@@ -187,21 +164,15 @@ export function FoldersScreen() {
               <View
                 key={item.id}
                 className={`flex-row items-center px-4 py-3 ${
-                  index !== disabledFolders.length - 1
-                    ? 'border-b border-ln2'
-                    : ''
+                  index !== disabledFolders.length - 1 ? 'border-b border-ln2' : ''
                 }`}
               >
                 <View className="w-9 h-9 rounded bg-s3 items-center justify-center mr-3 opacity-50">
                   <Icon name="folder" size={14} color="#7E7E8C" />
                 </View>
                 <View className="flex-1 mr-3 opacity-50">
-                  <Text className="text-t1 text-tm truncate mb-0.5">
-                    {item.name}
-                  </Text>
-                  <Text className="text-t3 text-mono-s truncate mb-0.5">
-                    {item.path}
-                  </Text>
+                  <Text className="text-t1 text-tm truncate mb-0.5">{item.name}</Text>
+                  <Text className="text-t3 text-mono-s truncate mb-0.5">{item.path}</Text>
                   <Text className="text-t3 text-bs">
                     {item.tracks} songs · {item.size}
                   </Text>
@@ -221,8 +192,7 @@ export function FoldersScreen() {
             </View>
             <Text className="text-t1 text-tl mb-1">Nothing excluded</Text>
             <Text className="text-t3 text-bm text-center max-w-[300px]">
-              Turn a folder off above to keep it out of your library and search
-              results.
+              Turn a folder off above to keep it out of your library and search results.
             </Text>
           </View>
         )}

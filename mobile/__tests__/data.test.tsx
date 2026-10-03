@@ -2,28 +2,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
-import {
-  API_BASE,
-  API_ORIGIN,
-  absoluteUrl,
-  artworkUrl,
-} from '../src/data/config';
+import { API_BASE, API_ORIGIN, absoluteUrl, artworkUrl } from '../src/data/config';
 import { httpRequest, NetworkError } from '../src/data/http';
 import { useAuthStore } from '../src/data/auth';
 import { api, ApiError, isOwnPlaylist } from '../src/data/api';
 import { useSettingsStore, API_QUALITY } from '../src/data/settings';
-import {
-  queuePlay,
-  startBackgroundSync,
-  useSyncStatus,
-  requestSync,
-} from '../src/data/sync';
-import {
-  requireAccount,
-  takePendingAction,
-  clearPendingAction,
-  navigationRef,
-} from '../src/data/accountGate';
+import { queuePlay, startBackgroundSync, useSyncStatus, requestSync } from '../src/data/sync';
+import { requireAccount, takePendingAction, clearPendingAction, navigationRef } from '../src/data/accountGate';
 import { useAsync } from '../src/data/hooks';
 import { artGradients } from '../src/data/gradients';
 import { useModeStore } from '../src/store/mode';
@@ -55,12 +40,8 @@ describe('Data Layer', () => {
     });
 
     it('MOB-DATA-002 absoluteUrl resolves relative paths and returns full URLs as-is; returns undefined for null', () => {
-      expect(absoluteUrl('/api/v1/tracks/1')).toBe(
-        'http://10.0.2.2:3010/api/v1/tracks/1',
-      );
-      expect(absoluteUrl('https://example.com/art.jpg')).toBe(
-        'https://example.com/art.jpg',
-      );
+      expect(absoluteUrl('/api/v1/tracks/1')).toBe('http://10.0.2.2:3010/api/v1/tracks/1');
+      expect(absoluteUrl('https://example.com/art.jpg')).toBe('https://example.com/art.jpg');
       expect(absoluteUrl(null)).toBeUndefined();
       expect(absoluteUrl(undefined)).toBeUndefined();
     });
@@ -73,12 +54,9 @@ describe('Data Layer', () => {
         'http://10.0.2.2:3010/api/v1/tracks/1/artwork?size=140',
       );
       expect(artworkUrl(null)).toBeUndefined();
-      expect(
-        artworkUrl(
-          { thumbnail: 'https://cdn.example.com/art.png' },
-          200 as any,
-        ),
-      ).toBe('https://cdn.example.com/art.png');
+      expect(artworkUrl({ thumbnail: 'https://cdn.example.com/art.png' }, 200 as any)).toBe(
+        'https://cdn.example.com/art.png',
+      );
     });
   });
 
@@ -170,9 +148,7 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = ErrorXHR as any;
 
-      await expect(httpRequest('http://fail.test')).rejects.toThrow(
-        NetworkError,
-      );
+      await expect(httpRequest('http://fail.test')).rejects.toThrow(NetworkError);
       global.XMLHttpRequest = originalXHR;
     });
 
@@ -188,9 +164,7 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = TimeoutXHR as any;
 
-      await expect(
-        httpRequest('http://timeout.test', { timeoutMs: 100 }),
-      ).rejects.toThrow('Network request timed out');
+      await expect(httpRequest('http://timeout.test', { timeoutMs: 100 })).rejects.toThrow('Network request timed out');
       global.XMLHttpRequest = originalXHR;
     });
   });
@@ -236,9 +210,7 @@ describe('Data Layer', () => {
       });
       expect(migratedKeychain).toBeTruthy();
       if (migratedKeychain) {
-        expect(JSON.parse(migratedKeychain.password).accessToken).toBe(
-          'migrated_acc_tok',
-        );
+        expect(JSON.parse(migratedKeychain.password).accessToken).toBe('migrated_acc_tok');
       }
       expect(await AsyncStorage.getItem('sonare.session')).toBeNull();
 
@@ -321,9 +293,7 @@ describe('Data Layer', () => {
         }
       }
       (globalThis as any).XMLHttpRequest = FailLoginXHR as any;
-      await expect(
-        useAuthStore.getState().signIn('bad', 'bad'),
-      ).rejects.toThrow('Invalid credentials');
+      await expect(useAuthStore.getState().signIn('bad', 'bad')).rejects.toThrow('Invalid credentials');
 
       (globalThis as any).XMLHttpRequest = originalXHR;
     });
@@ -352,9 +322,7 @@ describe('Data Layer', () => {
       }
       (globalThis as any).XMLHttpRequest = RegisterXHR as any;
 
-      await useAuthStore
-        .getState()
-        .signUp('signup@test.com', 'password123', 'New User');
+      await useAuthStore.getState().signUp('signup@test.com', 'password123', 'New User');
       expect(useAuthStore.getState().status).toBe('signedIn');
       expect(useAuthStore.getState().user?.displayName).toBe('New User');
 
@@ -496,10 +464,7 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = DedupRefreshXHR as any;
 
-      const [r1, r2] = await Promise.all([
-        useAuthStore.getState().refresh(),
-        useAuthStore.getState().refresh(),
-      ]);
+      const [r1, r2] = await Promise.all([useAuthStore.getState().refresh(), useAuthStore.getState().refresh()]);
       expect(r1).toBe('dedup_acc');
       expect(r2).toBe('dedup_acc');
       // Both callers shared one request, so the rotated refresh token was used once.
@@ -582,9 +547,7 @@ describe('Data Layer', () => {
       };
 
       await AsyncStorage.setItem('sonare.session', JSON.stringify(sessionData));
-      expect(
-        await Keychain.getGenericPassword({ service: 'sonare.session' }),
-      ).toBe(false);
+      expect(await Keychain.getGenericPassword({ service: 'sonare.session' })).toBe(false);
 
       await useAuthStore.getState().hydrate();
 
@@ -708,9 +671,9 @@ describe('Data Layer', () => {
       const limited = recordXHR(429, {
         error: { code: 'RATE_LIMITED', message: 'Too many attempts' },
       });
-      await expect(
-        useAuthStore.getState().requestPasswordReset('alice@sonare.test'),
-      ).rejects.toThrow('Too many attempts');
+      await expect(useAuthStore.getState().requestPasswordReset('alice@sonare.test')).rejects.toThrow(
+        'Too many attempts',
+      );
       limited.restore();
     });
 
@@ -839,9 +802,7 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-027 reportPlays posts batch play events to /me/sync', async () => {
       mockApiResponse(200, { ok: true });
-      const res = await api.reportPlays([
-        { trackRef: { kind: 'server', id: 't1' }, at: Date.now(), ms: 120000 },
-      ]);
+      const res = await api.reportPlays([{ trackRef: { kind: 'server', id: 't1' }, at: Date.now(), ms: 120000 }]);
       expect(res.ok).toBe(true);
     });
 
@@ -877,9 +838,7 @@ describe('Data Layer', () => {
           attempts++;
           this.status = attempts === 1 ? 401 : 200;
           this.responseText =
-            attempts === 1
-              ? JSON.stringify({ error: { message: 'Token expired' } })
-              : JSON.stringify({ ok: true });
+            attempts === 1 ? JSON.stringify({ error: { message: 'Token expired' } }) : JSON.stringify({ ok: true });
         }
         setRequestHeader() {}
         send() {
@@ -887,9 +846,7 @@ describe('Data Layer', () => {
         }
       }
       global.XMLHttpRequest = RefreshOn401XHR as any;
-      jest
-        .spyOn(useAuthStore.getState(), 'refresh')
-        .mockResolvedValue('new_token');
+      jest.spyOn(useAuthStore.getState(), 'refresh').mockResolvedValue('new_token');
 
       const res = await api.me();
       expect(res).toEqual({ ok: true });
@@ -943,9 +900,7 @@ describe('Data Layer', () => {
         status: 'signedIn',
         user: { id: 'u1', email: 'a@b.com', displayName: 'A', role: 'user' },
       });
-      jest
-        .spyOn(api, 'settings')
-        .mockResolvedValue({ downloadQuality: 'high', downloadFormat: 'm4a' });
+      jest.spyOn(api, 'settings').mockResolvedValue({ downloadQuality: 'high', downloadFormat: 'm4a' });
       await AsyncStorage.setItem(
         'sonare.settings',
         JSON.stringify({ downloadQuality: 'normal', downloadFormat: 'm4a' }),
@@ -959,15 +914,11 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-034 update saves settings locally and debounces server sync', async () => {
       useAuthStore.setState({ status: 'signedIn' });
-      const saveSpy = jest
-        .spyOn(api, 'saveSettings')
-        .mockResolvedValue({ ok: true });
-      useSettingsStore
-        .getState()
-        .update({ downloadQuality: 'low', downloadFormat: 'opus' });
+      const saveSpy = jest.spyOn(api, 'saveSettings').mockResolvedValue({ ok: true });
+      useSettingsStore.getState().update({ downloadQuality: 'low', downloadFormat: 'opus' });
       expect(useSettingsStore.getState().downloadQuality).toBe('low');
 
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
       expect(saveSpy).toHaveBeenCalledWith({
         downloadQuality: 'low',
         downloadFormat: 'opus',
@@ -989,9 +940,7 @@ describe('Data Layer', () => {
         }),
       );
       await useSettingsStore.getState().hydrate();
-      expect(['low', 'normal', 'high']).toContain(
-        useSettingsStore.getState().downloadQuality,
-      );
+      expect(['low', 'normal', 'high']).toContain(useSettingsStore.getState().downloadQuality);
     });
   });
 
@@ -1020,12 +969,8 @@ describe('Data Layer', () => {
       queuePlay('yt:abc', 2000, 45000);
       // They may be uploaded (and cleared) right away, so check what was written to storage.
       await waitFor(() => {
-        const writes = (AsyncStorage.setItem as jest.Mock).mock.calls.filter(
-          c => c[0] === 'sonare.pendingPlays',
-        );
-        const mine = writes
-          .flatMap(c => JSON.parse(c[1]))
-          .filter((p: any) => p.at === 1000 || p.at === 2000);
+        const writes = (AsyncStorage.setItem as jest.Mock).mock.calls.filter((c) => c[0] === 'sonare.pendingPlays');
+        const mine = writes.flatMap((c) => JSON.parse(c[1])).filter((p: any) => p.at === 1000 || p.at === 2000);
         expect(mine).toEqual(
           expect.arrayContaining([
             {
@@ -1053,17 +998,13 @@ describe('Data Layer', () => {
     });
 
     it('MOB-DATA-039 flush schedules retry on network error and drops invalid 4xx errors', async () => {
-      jest
-        .spyOn(api, 'reportPlays')
-        .mockRejectedValueOnce(new ApiError('Not found', 404));
+      jest.spyOn(api, 'reportPlays').mockRejectedValueOnce(new ApiError('Not found', 404));
       queuePlay('yt:track-bad', Date.now(), 30000);
       await waitFor(() => {
         expect(useSyncStatus.getState().syncing).toBe(false);
       });
 
-      jest
-        .spyOn(api, 'reportPlays')
-        .mockRejectedValueOnce(new Error('Network offline'));
+      jest.spyOn(api, 'reportPlays').mockRejectedValueOnce(new Error('Network offline'));
       queuePlay('yt:track-retry', Date.now(), 30000);
       requestSync();
       await waitFor(() => {
@@ -1072,12 +1013,8 @@ describe('Data Layer', () => {
     });
 
     it('MOB-DATA-040 startBackgroundSync wires its network and app-state triggers once, even if called twice', () => {
-      const netSpy = jest
-        .spyOn(NetInfo, 'addEventListener')
-        .mockImplementation(() => jest.fn());
-      const appSpy = jest
-        .spyOn(AppState, 'addEventListener')
-        .mockImplementation(() => ({ remove: jest.fn() } as any));
+      const netSpy = jest.spyOn(NetInfo, 'addEventListener').mockImplementation(() => jest.fn());
+      const appSpy = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }) as any);
 
       startBackgroundSync();
       startBackgroundSync();
@@ -1101,9 +1038,7 @@ describe('Data Layer', () => {
     it('MOB-DATA-042 requireAccount stores pending action and navigates to SignIn when guest', () => {
       useAuthStore.setState({ status: 'guest' });
       const action = jest.fn();
-      const navSpy = jest
-        .spyOn(navigationRef, 'navigate')
-        .mockImplementation(() => {});
+      const navSpy = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
       jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
 
       requireAccount('favourite track', action);
@@ -1139,9 +1074,7 @@ describe('Data Layer', () => {
   describe('hooks.ts', () => {
     it('MOB-DATA-045 useAsync executes promise and provides data, loading, error, refetch', async () => {
       const fetcher = jest.fn().mockResolvedValue('loaded data');
-      const { result } = renderHook(() =>
-        useAsync(fetcher, [], { refetchOnFocus: true }),
-      );
+      const { result } = renderHook(() => useAsync(fetcher, [], { refetchOnFocus: true }));
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -1151,9 +1084,7 @@ describe('Data Layer', () => {
 
       // Error case
       const errorFetcher = jest.fn().mockRejectedValue('String error message');
-      const { result: errResult } = renderHook(() =>
-        useAsync(errorFetcher, []),
-      );
+      const { result: errResult } = renderHook(() => useAsync(errorFetcher, []));
       await waitFor(() => {
         expect(errResult.current.loading).toBe(false);
       });
@@ -1162,9 +1093,7 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-046 useAsync respects enabled flag', async () => {
       const fetcher = jest.fn().mockResolvedValue('disabled');
-      const { result } = renderHook(() =>
-        useAsync(fetcher, [], { enabled: false }),
-      );
+      const { result } = renderHook(() => useAsync(fetcher, [], { enabled: false }));
 
       expect(result.current.loading).toBe(false);
       expect(result.current.data).toBeNull();
@@ -1173,15 +1102,10 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-047 useAsync re-runs when dependency changes or refetch is invoked', async () => {
       let count = 0;
-      const fetcher = jest
-        .fn()
-        .mockImplementation(() => Promise.resolve(++count));
-      const { result, rerender } = renderHook(
-        ({ dep }) => useAsync(fetcher, [dep]),
-        {
-          initialProps: { dep: 'a' },
-        },
-      );
+      const fetcher = jest.fn().mockImplementation(() => Promise.resolve(++count));
+      const { result, rerender } = renderHook(({ dep }) => useAsync(fetcher, [dep]), {
+        initialProps: { dep: 'a' },
+      });
 
       await waitFor(() => expect(result.current.data).toBe(1));
       act(() => {
@@ -1200,7 +1124,7 @@ describe('Data Layer', () => {
       for (const [key, colors] of Object.entries(artGradients)) {
         expect(key).toMatch(/^a\d+$/);
         expect(colors).toHaveLength(3);
-        colors.forEach(c => expect(c).toMatch(/^#[0-9A-Fa-f]{6}$/));
+        colors.forEach((c) => expect(c).toMatch(/^#[0-9A-Fa-f]{6}$/));
       }
     });
   });

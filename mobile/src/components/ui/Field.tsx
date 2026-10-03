@@ -10,26 +10,13 @@ interface FieldProps extends Omit<TextInputProps, 'style'> {
   className?: string;
 }
 
-export function Field({
-  icon,
-  clearButton,
-  onClear,
-  className,
-  ...props
-}: FieldProps) {
+export function Field({ icon, clearButton, onClear, className, ...props }: FieldProps) {
   return (
     <View
-      className={cn(
-        'flex-row items-center h-[44px] px-3.5 bg-s2 border border-ln2 rounded-full gap-2.5',
-        className,
-      )}
+      className={cn('flex-row items-center h-[44px] px-3.5 bg-s2 border border-ln2 rounded-full gap-2.5', className)}
     >
       {icon}
-      <TextInput
-        {...props}
-        className="flex-1 text-t1 text-bm font-sans p-0"
-        placeholderTextColor="#7E7E8C"
-      />
+      <TextInput {...props} className="flex-1 text-t1 text-bm font-sans p-0" placeholderTextColor="#7E7E8C" />
       {clearButton && onClear ? (
         <Pressable
           onPress={onClear}

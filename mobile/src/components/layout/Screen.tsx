@@ -9,12 +9,7 @@ interface ScreenProps {
   contentContainerClassName?: string;
 }
 
-export function Screen({
-  children,
-  scrollable = true,
-  className,
-  contentContainerClassName,
-}: ScreenProps) {
+export function Screen({ children, scrollable = true, className, contentContainerClassName }: ScreenProps) {
   if (scrollable) {
     return (
       <View className="flex-1 bg-bg">

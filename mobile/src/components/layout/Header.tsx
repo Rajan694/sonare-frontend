@@ -15,13 +15,7 @@ interface HeaderProps {
   className?: string;
 }
 
-export function Header({
-  title,
-  left,
-  right,
-  titleAlign = 'center',
-  className,
-}: HeaderProps) {
+export function Header({ title, left, right, titleAlign = 'center', className }: HeaderProps) {
   const insets = useSafeAreaInsets();
 
   if (title && titleAlign === 'start') {
@@ -33,10 +27,7 @@ export function Header({
         <View className="flex-1 flex-row items-center gap-2 min-w-0">
           {left}
           {typeof title === 'string' ? (
-            <Text
-              className="text-tl font-semibold text-t1 flex-shrink"
-              numberOfLines={1}
-            >
+            <Text className="text-tl font-semibold text-t1 flex-shrink" numberOfLines={1}>
               {title}
             </Text>
           ) : (
@@ -60,10 +51,7 @@ export function Header({
           style={{ top: insets.top, height: 64, justifyContent: 'center' }}
         >
           {typeof title === 'string' ? (
-            <Text
-              className="text-tl font-semibold text-t1 text-center px-4"
-              numberOfLines={1}
-            >
+            <Text className="text-tl font-semibold text-t1 text-center px-4" numberOfLines={1}>
               {title}
             </Text>
           ) : (

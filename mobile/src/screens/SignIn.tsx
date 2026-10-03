@@ -1,11 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { IconButton } from '../components/ui/IconButton';
@@ -28,9 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function SignInScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
-  const params = useRoute<any>().params as
-    | { reason?: string; mode?: 'signin' | 'signup' }
-    | undefined;
+  const params = useRoute<any>().params as { reason?: string; mode?: 'signin' | 'signup' } | undefined;
   const reason = params?.reason;
   const succeeded = useRef(false);
 
@@ -42,13 +34,11 @@ export function SignInScreen() {
     [],
   );
 
-  const signIn = useAuthStore(s => s.signIn);
-  const signUp = useAuthStore(s => s.signUp);
-  const requestPasswordReset = useAuthStore(s => s.requestPasswordReset);
+  const signIn = useAuthStore((s) => s.signIn);
+  const signUp = useAuthStore((s) => s.signUp);
+  const requestPasswordReset = useAuthStore((s) => s.requestPasswordReset);
   // A gate-triggered visit is usually a new listener: open on "Create account".
-  const [mode, setMode] = useState<Mode>(
-    params?.mode ?? (reason ? 'signup' : 'signin'),
-  );
+  const [mode, setMode] = useState<Mode>(params?.mode ?? (reason ? 'signup' : 'signin'));
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -63,8 +53,7 @@ export function SignInScreen() {
     if (isSignUp && !name.trim()) return 'Tell us what to call you';
     if (!EMAIL_RE.test(email.trim())) return 'Enter a valid email address';
     if (isForgot) return null;
-    if (isSignUp && password.length < 8)
-      return 'Use at least 8 characters for your password';
+    if (isSignUp && password.length < 8) return 'Use at least 8 characters for your password';
     if (!password) return 'Enter your password';
     return null;
   };
@@ -86,8 +75,7 @@ export function SignInScreen() {
         return;
       }
       succeeded.current = true;
-      if (isSignUp)
-        await signUp(email.trim().toLowerCase(), password, name.trim());
+      if (isSignUp) await signUp(email.trim().toLowerCase(), password, name.trim());
       else await signIn(email.trim().toLowerCase(), password);
       if (navigation.canGoBack()) navigation.goBack();
     } catch (e: any) {
@@ -108,22 +96,14 @@ export function SignInScreen() {
     setResetSent(false);
   };
 
-  const title = isForgot
-    ? 'Reset your password'
-    : isSignUp
-    ? 'Create your account'
-    : 'Welcome back';
+  const title = isForgot ? 'Reset your password' : isSignUp ? 'Create your account' : 'Welcome back';
   const subtitle = isForgot
     ? "Enter your account's email and we'll send a link to set a new password."
-    : reason ??
+    : (reason ??
       (isSignUp
         ? 'Your favourites, playlists and history are saved to your account and follow you to every device.'
-        : 'Sign in to pick up your favourites, playlists and history.');
-  const submitLabel = isForgot
-    ? 'Send reset link'
-    : isSignUp
-    ? 'Create account'
-    : 'Sign in';
+        : 'Sign in to pick up your favourites, playlists and history.'));
+  const submitLabel = isForgot ? 'Send reset link' : isSignUp ? 'Create account' : 'Sign in';
 
   return (
     <ScrollView
@@ -186,37 +166,27 @@ export function SignInScreen() {
               autoComplete={isSignUp ? 'new-password' : 'current-password'}
               textContentType={isSignUp ? 'newPassword' : 'password'}
               returnKeyType="go"
-              onSubmitEditing={e => submit(e.nativeEvent.text)}
+              onSubmitEditing={(e) => submit(e.nativeEvent.text)}
               accessibilityLabel="Password"
             />
           )}
         </View>
 
         {mode === 'signin' && (
-          <Pressable
-            onPress={() => switchMode('forgot')}
-            className="mt-3 self-end py-1"
-            accessibilityRole="button"
-          >
+          <Pressable onPress={() => switchMode('forgot')} className="mt-3 self-end py-1" accessibilityRole="button">
             <Text className="text-t2 text-bs">Forgot password?</Text>
           </Pressable>
         )}
 
         {error && (
-          <Text
-            className="text-red text-bm mt-3"
-            accessibilityLiveRegion="polite"
-          >
+          <Text className="text-red text-bm mt-3" accessibilityLiveRegion="polite">
             {error}
           </Text>
         )}
         {resetSent && (
-          <Text
-            className="text-t2 text-bm mt-3"
-            accessibilityLiveRegion="polite"
-          >
-            If an account exists for {email.trim()}, a reset link is on its way.
-            Open it within an hour to set a new password.
+          <Text className="text-t2 text-bm mt-3" accessibilityLiveRegion="polite">
+            If an account exists for {email.trim()}, a reset link is on its way. Open it within an hour to set a new
+            password.
           </Text>
         )}
 
@@ -237,12 +207,8 @@ export function SignInScreen() {
           accessibilityRole="button"
         >
           <Text className="text-t2 text-bm">
-            {mode === 'signin'
-              ? 'New to Sonare? '
-              : 'Already have an account? '}
-            <Text className="text-acc font-medium">
-              {mode === 'signin' ? 'Create an account' : 'Sign in'}
-            </Text>
+            {mode === 'signin' ? 'New to Sonare? ' : 'Already have an account? '}
+            <Text className="text-acc font-medium">{mode === 'signin' ? 'Create an account' : 'Sign in'}</Text>
           </Text>
         </Pressable>
       </View>

@@ -20,9 +20,7 @@ import { useModeStore } from '../store/mode';
  * background, so this avoids React effects and `fetch` (api.ts goes through XHR).
  */
 
-type TrackRef =
-  | { kind: 'server'; id: string }
-  | { kind: 'local'; fingerprint: string };
+type TrackRef = { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string };
 export type PendingPlay = {
   trackRef: TrackRef;
   at: number;
@@ -36,14 +34,12 @@ const RETRY_MAX_MS = 5 * 60_000;
 
 /** Split a namespaced id (contract 8.1) into a TrackRef; the backend stores the bare id. */
 function trackRef(trackId: string): TrackRef {
-  if (trackId.startsWith('local:'))
-    return { kind: 'local', fingerprint: trackId.slice('local:'.length) };
+  if (trackId.startsWith('local:')) return { kind: 'local', fingerprint: trackId.slice('local:'.length) };
   return { kind: 'server', id: trackId.replace(/^yt:/, '') };
 }
 
 function playKey(p: PendingPlay): string {
-  const ref =
-    p.trackRef.kind === 'local' ? p.trackRef.fingerprint : p.trackRef.id;
+  const ref = p.trackRef.kind === 'local' ? p.trackRef.fingerprint : p.trackRef.id;
   return `${p.userId ?? ''}|${p.trackRef.kind}|${ref}|${p.at}`;
 }
 
@@ -57,7 +53,7 @@ let saving: Promise<unknown> = Promise.resolve();
 
 function load(): Promise<void> {
   loaded ??= AsyncStorage.getItem(QUEUE_KEY)
-    .then(raw => {
+    .then((raw) => {
       const saved = raw ? (JSON.parse(raw) as PendingPlay[]) : [];
       // Anything recorded before the load finished goes after what was saved.
       queue = [...saved, ...queue];
@@ -68,13 +64,11 @@ function load(): Promise<void> {
 
 function save() {
   const snapshot = JSON.stringify(queue);
-  saving = saving
-    .then(() => AsyncStorage.setItem(QUEUE_KEY, snapshot))
-    .catch(() => {});
+  saving = saving.then(() => AsyncStorage.setItem(QUEUE_KEY, snapshot)).catch(() => {});
 }
 
 function pendingFor(userId: string | undefined): PendingPlay[] {
-  return userId ? queue.filter(p => !p.userId || p.userId === userId) : [];
+  return userId ? queue.filter((p) => !p.userId || p.userId === userId) : [];
 }
 
 // ── Status, for Settings ─────────────────────────────────────────────────────
@@ -93,8 +87,7 @@ export const useSyncStatus = create<SyncStatus>(() => ({
 function publish(syncing = useSyncStatus.getState().syncing) {
   const pending = pendingFor(useAuthStore.getState().user?.id).length;
   const now = useSyncStatus.getState();
-  if (now.pending !== pending || now.syncing !== syncing)
-    useSyncStatus.setState({ pending, syncing });
+  if (now.pending !== pending || now.syncing !== syncing) useSyncStatus.setState({ pending, syncing });
 }
 
 // ── Uploading ────────────────────────────────────────────────────────────────
@@ -115,17 +108,12 @@ function scheduleRetry() {
 
 /** A 4xx other than auth/rate-limit means the server will never take these plays. */
 function rejected(e: unknown): boolean {
-  return (
-    e instanceof ApiError &&
-    e.status >= 400 &&
-    e.status < 500 &&
-    ![401, 403, 408, 429].includes(e.status)
-  );
+  return e instanceof ApiError && e.status >= 400 && e.status < 500 && ![401, 403, 408, 429].includes(e.status);
 }
 
 function drop(done: PendingPlay[]) {
   const gone = new Set(done.map(playKey));
-  queue = queue.filter(p => !gone.has(playKey(p)));
+  queue = queue.filter((p) => !gone.has(playKey(p)));
   save();
 }
 
@@ -133,12 +121,7 @@ async function flush(): Promise<void> {
   await load();
   const auth = useAuthStore.getState();
   const plays = pendingFor(auth.user?.id);
-  if (
-    useModeStore.getState().mode !== 'online' ||
-    auth.status !== 'signedIn' ||
-    !networkUp ||
-    !plays.length
-  ) {
+  if (useModeStore.getState().mode !== 'online' || auth.status !== 'signedIn' || !networkUp || !plays.length) {
     return publish(false);
   }
   publish(true);
@@ -192,7 +175,7 @@ export function startBackgroundSync(): void {
   if (started) return;
   started = true;
 
-  NetInfo.addEventListener(state => {
+  NetInfo.addEventListener((state) => {
     // isInternetReachable is null until Android has checked; only a definite "no" counts.
     const up = !!state.isConnected && state.isInternetReachable !== false;
     const cameBack = up && !networkUp;
@@ -212,7 +195,7 @@ export function startBackgroundSync(): void {
     if (s.user?.id !== prev.user?.id) requestSync();
   });
   // JS timers stop while backgrounded, so a pending retry may have been missed.
-  AppState.addEventListener('change', state => {
+  AppState.addEventListener('change', (state) => {
     if (state === 'active') requestSync();
   });
   requestSync();

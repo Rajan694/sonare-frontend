@@ -132,7 +132,7 @@ describe('Store Layer', () => {
       usePlayerStore.getState().playTrack(mockTrack1, [mockTrack1, mockTrack3]);
       usePlayerStore.getState().playNextInQueue(mockTrack2);
       const state = usePlayerStore.getState();
-      expect(state.queue.map(t => t.id)).toEqual(['t1', 't2', 't3']);
+      expect(state.queue.map((t) => t.id)).toEqual(['t1', 't2', 't3']);
 
       // When currentTrack is null
       usePlayerStore.setState({ currentTrack: null, queue: [] });
@@ -144,7 +144,7 @@ describe('Store Layer', () => {
       usePlayerStore.getState().playTrack(mockTrack1, [mockTrack1, mockTrack2]);
       usePlayerStore.getState().addToQueue(mockTrack3);
       const state = usePlayerStore.getState();
-      expect(state.queue.map(t => t.id)).toEqual(['t1', 't2', 't3']);
+      expect(state.queue.map((t) => t.id)).toEqual(['t1', 't2', 't3']);
 
       // When currentTrack is null
       usePlayerStore.setState({ currentTrack: null, queue: [] });
@@ -153,9 +153,7 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-007 toggleShuffle shuffles remaining queue keeping current track first', () => {
-      usePlayerStore
-        .getState()
-        .playTrack(mockTrack1, [mockTrack1, mockTrack2, mockTrack3]);
+      usePlayerStore.getState().playTrack(mockTrack1, [mockTrack1, mockTrack2, mockTrack3]);
       usePlayerStore.getState().toggleShuffle();
       const state = usePlayerStore.getState();
       expect(state.shuffle).toBe(true);
@@ -279,21 +277,15 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-013 enqueue adds new server tracks and skips existing ones', () => {
-      const added = useDownloadsStore
-        .getState()
-        .enqueue([mockTrack1, mockTrack2]);
+      const added = useDownloadsStore.getState().enqueue([mockTrack1, mockTrack2]);
       expect(added).toBe(2);
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t1.status,
-      );
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t1.status);
 
       const addedSecond = useDownloadsStore.getState().enqueue([mockTrack1]);
       expect(addedSecond).toBe(0);
 
       // Local track ignored
-      const addedLocal = useDownloadsStore
-        .getState()
-        .enqueue([{ ...mockTrack1, id: 'local:1', source: 'local' }]);
+      const addedLocal = useDownloadsStore.getState().enqueue([{ ...mockTrack1, id: 'local:1', source: 'local' }]);
       expect(addedLocal).toBe(0);
     });
 
@@ -303,9 +295,7 @@ describe('Store Layer', () => {
       expect(useDownloadsStore.getState().items.t1.status).toBe('paused');
 
       useDownloadsStore.getState().resume('t1');
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t1.status,
-      );
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t1.status);
     });
 
     it('MOB-STORE-015 pauseAll and resumeAll batch update active downloads', async () => {
@@ -315,12 +305,8 @@ describe('Store Layer', () => {
       expect(useDownloadsStore.getState().items.t2.status).toBe('paused');
 
       useDownloadsStore.getState().resumeAll();
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t1.status,
-      );
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t2.status,
-      );
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t1.status);
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t2.status);
     });
 
     it('MOB-STORE-016 remove discards active download and deletes finished file', async () => {
@@ -354,9 +340,7 @@ describe('Store Layer', () => {
           },
         },
       });
-      jest
-        .spyOn(SonareDownloads, 'deleteFile')
-        .mockRejectedValueOnce({ code: 'E_MISSING' });
+      jest.spyOn(SonareDownloads, 'deleteFile').mockRejectedValueOnce({ code: 'E_MISSING' });
       const delFail = await useDownloadsStore.getState().remove('d_err');
       expect(delFail.fileDeleted).toBe(false);
       expect(delFail.reason).toContain('no longer where it was');
@@ -449,9 +433,7 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-020 load fetches favourites and user playlists from server', async () => {
-      jest
-        .spyOn(api, 'favourites')
-        .mockResolvedValue({ items: [mockTrack1] } as any);
+      jest.spyOn(api, 'favourites').mockResolvedValue({ items: [mockTrack1] } as any);
       jest.spyOn(api, 'myPlaylists').mockResolvedValue({
         items: [
           {
@@ -496,9 +478,7 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-023 toggleFavourite optimistically toggles and calls api.setFavourite', async () => {
-      const setFavSpy = jest
-        .spyOn(api, 'setFavourite')
-        .mockResolvedValue({ ok: true });
+      const setFavSpy = jest.spyOn(api, 'setFavourite').mockResolvedValue({ ok: true });
       await useLibraryStore.getState().toggleFavourite(mockTrack1);
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(true);
       expect(setFavSpy).toHaveBeenCalledWith('t1', true);
@@ -508,12 +488,8 @@ describe('Store Layer', () => {
       expect(setFavSpy).toHaveBeenCalledWith('t1', false);
 
       // Failure rollback
-      jest
-        .spyOn(api, 'setFavourite')
-        .mockRejectedValueOnce(new Error('Network fail'));
-      await expect(
-        useLibraryStore.getState().toggleFavourite(mockTrack1),
-      ).rejects.toThrow('Network fail');
+      jest.spyOn(api, 'setFavourite').mockRejectedValueOnce(new Error('Network fail'));
+      await expect(useLibraryStore.getState().toggleFavourite(mockTrack1)).rejects.toThrow('Network fail');
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(false);
     });
 
@@ -546,9 +522,7 @@ describe('Store Layer', () => {
       expect(useLibraryStore.getState().playlists[0].id).toBe('sonare:3');
 
       await useLibraryStore.getState().deletePlaylist('sonare:3');
-      expect(
-        useLibraryStore.getState().playlists.find(p => p.id === 'sonare:3'),
-      ).toBeUndefined();
+      expect(useLibraryStore.getState().playlists.find((p) => p.id === 'sonare:3')).toBeUndefined();
 
       await useLibraryStore.getState().addToPlaylist('sonare:2', mockTrack1);
       expect(api.addToPlaylist).toHaveBeenCalledWith('sonare:2', ['t1']);
@@ -557,9 +531,7 @@ describe('Store Layer', () => {
 
   describe('useModeStore', () => {
     it('MOB-STORE-025 setMode updates mode, userChangedMode flag, and triggers toast', () => {
-      useModeStore
-        .getState()
-        .setMode('offline', { title: 'Switched', description: 'Offline mode' });
+      useModeStore.getState().setMode('offline', { title: 'Switched', description: 'Offline mode' });
       expect(useModeStore.getState().mode).toBe('offline');
       expect(useModeStore.getState().toastVisible).toBe(true);
       expect(useModeStore.getState().toastInfo?.title).toBe('Switched');
@@ -587,9 +559,7 @@ describe('Store Layer', () => {
   describe('useTrackMenuStore', () => {
     it('MOB-STORE-028 open, setView, close manage track action sheet state', () => {
       const extraAction = { label: 'Remove', onPress: jest.fn() };
-      useTrackMenuStore
-        .getState()
-        .open(mockTrack1, { view: 'menu', extraAction });
+      useTrackMenuStore.getState().open(mockTrack1, { view: 'menu', extraAction });
       expect(useTrackMenuStore.getState().track).toEqual(mockTrack1);
       expect(useTrackMenuStore.getState().view).toBe('menu');
       expect(useTrackMenuStore.getState().extraAction).toEqual(extraAction);

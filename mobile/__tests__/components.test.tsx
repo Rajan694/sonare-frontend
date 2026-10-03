@@ -17,9 +17,7 @@ import { SongRow } from '../src/components/music/SongRow';
 import { AudioEngine } from '../src/components/music/AudioEngine';
 import type { Track } from '../src/data/types';
 
-jest.mock('@react-navigation/native', () =>
-  require('../test-utils').navigationMock(),
-);
+jest.mock('@react-navigation/native', () => require('../test-utils').navigationMock());
 
 const testTrack: Track = {
   id: 't-comp-1',
@@ -42,9 +40,7 @@ describe('Components Layer', () => {
 
   describe('UI Components', () => {
     it('MOB-COMP-001 Badge renders with different variants', () => {
-      const { getByText, rerender } = render(
-        <Badge label="Cloud" variant="cloud" />,
-      );
+      const { getByText, rerender } = render(<Badge label="Cloud" variant="cloud" />);
       expect(getByText('Cloud')).toBeTruthy();
 
       rerender(<Badge label="Local" variant="local" />);
@@ -77,9 +73,7 @@ describe('Components Layer', () => {
 
     it('MOB-COMP-004 Chip renders chip with active/inactive state and handles onPress', () => {
       const onPress = jest.fn();
-      const { getByText } = render(
-        <Chip label="Rock" active onPress={onPress} />,
-      );
+      const { getByText } = render(<Chip label="Rock" active onPress={onPress} />);
       fireEvent.press(getByText('Rock'));
       expect(onPress).toHaveBeenCalledTimes(1);
     });
@@ -88,13 +82,7 @@ describe('Components Layer', () => {
       const onChange = jest.fn();
       const onClear = jest.fn();
       const { getByPlaceholderText, getByLabelText } = render(
-        <Field
-          placeholder="Search tracks"
-          value="user search"
-          onChangeText={onChange}
-          clearButton
-          onClear={onClear}
-        />,
+        <Field placeholder="Search tracks" value="user search" onChangeText={onChange} clearButton onClear={onClear} />,
       );
       expect(getByPlaceholderText('Search tracks')).toBeTruthy();
       fireEvent.press(getByLabelText('Clear search'));
@@ -104,11 +92,7 @@ describe('Components Layer', () => {
     it('MOB-COMP-008 IconButton renders touchable icon button with accessibility label', () => {
       const onPress = jest.fn();
       const { getByLabelText } = render(
-        <IconButton
-          icon={<Icon name="settings" />}
-          onPress={onPress}
-          accessibilityLabel="Settings Button"
-        />,
+        <IconButton icon={<Icon name="settings" />} onPress={onPress} accessibilityLabel="Settings Button" />,
       );
       fireEvent.press(getByLabelText('Settings Button'));
       expect(onPress).toHaveBeenCalledTimes(1);
@@ -132,14 +116,10 @@ describe('Components Layer', () => {
 
     it('MOB-COMP-011 StateView renders loading indicator, error with retry, or empty message', () => {
       const onRetry = jest.fn();
-      const { getByText, rerender, UNSAFE_getByType } = render(
-        <StateView loading empty="No data found" />,
-      );
+      const { getByText, rerender, UNSAFE_getByType } = render(<StateView loading empty="No data found" />);
       expect(UNSAFE_getByType('ActivityIndicator' as never)).toBeTruthy();
 
-      rerender(
-        <StateView error={new Error('Failed to load')} onRetry={onRetry} />,
-      );
+      rerender(<StateView error={new Error('Failed to load')} onRetry={onRetry} />);
       expect(getByText('Failed to load')).toBeTruthy();
       fireEvent.press(getByText('Try again'));
       expect(onRetry).toHaveBeenCalledTimes(1);
@@ -151,11 +131,7 @@ describe('Components Layer', () => {
     it('MOB-COMP-012 Switch renders toggle switch and handles onValueChange', () => {
       const onChange = jest.fn();
       const { UNSAFE_getByType } = render(
-        <Switch
-          accessibilityLabel="toggle"
-          value={false}
-          onValueChange={onChange}
-        />,
+        <Switch accessibilityLabel="toggle" value={false} onValueChange={onChange} />,
       );
       const pressable = UNSAFE_getByType('Pressable' as never);
       fireEvent.press(pressable);
@@ -165,13 +141,7 @@ describe('Components Layer', () => {
 
   describe('Layout Components', () => {
     it('MOB-COMP-014 Header renders navigation header with left, title, and right actions', () => {
-      const { getByText } = render(
-        <Header
-          title="Header Title"
-          left={<Text>Back</Text>}
-          right={<Text>Menu</Text>}
-        />,
-      );
+      const { getByText } = render(<Header title="Header Title" left={<Text>Back</Text>} right={<Text>Menu</Text>} />);
       expect(getByText('Header Title')).toBeTruthy();
       expect(getByText('Back')).toBeTruthy();
       expect(getByText('Menu')).toBeTruthy();
@@ -223,9 +193,7 @@ describe('Components Layer', () => {
   describe('Music Components', () => {
     it('MOB-COMP-018 SongRow renders track info, duration, favourite heart, and long-press menu', () => {
       const onPress = jest.fn();
-      const { getByText } = render(
-        <SongRow track={testTrack} index={0} showIndex onPress={onPress} />,
-      );
+      const { getByText } = render(<SongRow track={testTrack} index={0} showIndex onPress={onPress} />);
       expect(getByText('Component Test Song')).toBeTruthy();
       expect(getByText(/Component Artist/)).toBeTruthy();
       fireEvent.press(getByText('Component Test Song'));

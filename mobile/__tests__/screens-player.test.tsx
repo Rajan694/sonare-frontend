@@ -19,23 +19,12 @@ import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
 import { useTrackMenuStore } from '../src/store/trackMenu';
 import { navigationRef } from '../src/data/accountGate';
-import {
-  alice,
-  makeDownload,
-  makePlaylist,
-  makeTrack,
-  nav,
-  route,
-} from '../test-utils';
+import { alice, makeDownload, makePlaylist, makeTrack, nav, route } from '../test-utils';
 
-jest.mock('@react-navigation/native', () =>
-  require('../test-utils').navigationMock(),
-);
+jest.mock('@react-navigation/native', () => require('../test-utils').navigationMock());
 
-const signIn = () =>
-  useAuthStore.setState({ status: 'signedIn', user: alice } as never);
-const guest = () =>
-  useAuthStore.setState({ status: 'guest', user: null } as never);
+const signIn = () => useAuthStore.setState({ status: 'signedIn', user: alice } as never);
+const guest = () => useAuthStore.setState({ status: 'guest', user: null } as never);
 const song = makeTrack({
   title: 'Nude',
   artist: 'Radiohead',
@@ -54,7 +43,7 @@ async function pressAlertButton(text: string) {
     onPress?: () => unknown;
   }[];
   await act(async () => {
-    await buttons.find(b => b.text === text)!.onPress?.();
+    await buttons.find((b) => b.text === text)!.onPress?.();
   });
 }
 
@@ -120,13 +109,9 @@ describe('Now Playing', () => {
   });
 
   it('MOB-NP-005 a guest hearting the song is asked to sign up; a signed-in user saves it', async () => {
-    const navigate = jest
-      .spyOn(navigationRef, 'navigate')
-      .mockImplementation(() => {});
+    const navigate = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
     jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
-    const toggle = jest
-      .spyOn(useLibraryStore.getState(), 'toggleFavourite')
-      .mockResolvedValue();
+    const toggle = jest.spyOn(useLibraryStore.getState(), 'toggleFavourite').mockResolvedValue();
     const { getByLabelText } = render(<NowPlayingScreen />);
     fireEvent.press(getByLabelText('Add to favourites'));
     expect(navigate).toHaveBeenCalledWith('SignIn', {
@@ -145,11 +130,7 @@ describe('Now Playing', () => {
     fireEvent.press(getByLabelText('Lyrics'));
     fireEvent.press(getByLabelText('Queue'));
     fireEvent.press(getByLabelText('Equalizer'));
-    expect(nav.navigate.mock.calls.map(c => c[0])).toEqual([
-      'Lyrics',
-      'Queue',
-      'Equalizer',
-    ]);
+    expect(nav.navigate.mock.calls.map((c) => c[0])).toEqual(['Lyrics', 'Queue', 'Equalizer']);
     fireEvent.press(getByLabelText('More options'));
     expect(useTrackMenuStore.getState().track?.id).toBe(song.id);
   });
@@ -175,7 +156,7 @@ describe('Queue', () => {
   it('MOB-Q-002 "Clear queue" keeps only the current song; then it says the queue has ended', () => {
     const { getByText, queryByText } = render(<QueueScreen />);
     fireEvent.press(getByText('Clear queue'));
-    expect(usePlayerStore.getState().queue.map(t => t.id)).toEqual([song.id]);
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id]);
     expect(getByText('End of queue')).toBeTruthy();
     expect(queryByText('Next one')).toBeNull();
   });
@@ -187,10 +168,7 @@ describe('Queue', () => {
     const extra = useTrackMenuStore.getState().extraAction!;
     expect(extra.label).toBe('Remove from queue');
     act(() => extra.onPress());
-    expect(usePlayerStore.getState().queue.map(t => t.id)).toEqual([
-      song.id,
-      next2.id,
-    ]);
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id]);
   });
 
   it('MOB-Q-004 saving the queue creates a playlist with every queued song', async () => {
@@ -198,12 +176,8 @@ describe('Queue', () => {
     const create = jest
       .spyOn(useLibraryStore.getState(), 'createPlaylist')
       .mockResolvedValue(makePlaylist({ id: 'sonare:q' }));
-    jest
-      .spyOn(useLibraryStore.getState(), 'reloadPlaylists')
-      .mockResolvedValue();
-    const add = jest
-      .spyOn(api, 'addToPlaylist')
-      .mockResolvedValue({ ok: true } as never);
+    jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockResolvedValue();
+    const add = jest.spyOn(api, 'addToPlaylist').mockResolvedValue({ ok: true } as never);
     const { getByText, findByText } = render(<QueueScreen />);
     fireEvent.press(getByText('Save as playlist'));
     expect(await findByText(/Saved as "Queue · /)).toBeTruthy();
@@ -213,9 +187,7 @@ describe('Queue', () => {
 
   it('MOB-Q-005 a failed save says why; shuffle and repeat work from here', async () => {
     signIn();
-    jest
-      .spyOn(useLibraryStore.getState(), 'createPlaylist')
-      .mockRejectedValue(new Error('Server is busy'));
+    jest.spyOn(useLibraryStore.getState(), 'createPlaylist').mockRejectedValue(new Error('Server is busy'));
     const { getByText, findByText, getByLabelText } = render(<QueueScreen />);
     fireEvent.press(getByText('Save as playlist'));
     expect(await findByText(/Server is busy/)).toBeTruthy();
@@ -284,9 +256,7 @@ describe('Lyrics', () => {
   });
 
   it('MOB-LYR-004 no lyrics, or a local file, says none were found without asking the server for local files', async () => {
-    const lyrics = jest
-      .spyOn(api, 'lyrics')
-      .mockRejectedValue(new Error('Lyrics not found'));
+    const lyrics = jest.spyOn(api, 'lyrics').mockRejectedValue(new Error('Lyrics not found'));
     const { findByText, unmount } = render(<LyricsScreen />);
     expect(await findByText('No lyrics found for this song.')).toBeTruthy();
     unmount();
@@ -295,16 +265,13 @@ describe('Lyrics', () => {
       currentTrack: makeTrack({ id: 'local:f', source: 'local' }),
     });
     const local = render(<LyricsScreen />);
-    expect(
-      await local.findByText('No lyrics found for this song.'),
-    ).toBeTruthy();
+    expect(await local.findByText('No lyrics found for this song.')).toBeTruthy();
     expect(lyrics).not.toHaveBeenCalled();
   });
 });
 
 describe('Equalizer', () => {
-  const selected = (el: { props: { className?: string } }) =>
-    (el.props.className ?? '').includes('text-acc');
+  const selected = (el: { props: { className?: string } }) => (el.props.className ?? '').includes('text-acc');
 
   it('MOB-EQ-001 presets and switches respond to taps', () => {
     const { getByText, getByLabelText } = render(<EqualizerScreen />);
@@ -312,32 +279,24 @@ describe('Equalizer', () => {
     fireEvent.press(getByText('Bass'));
     expect(selected(getByText('Bass'))).toBe(true);
     expect(selected(getByText('Sonare'))).toBe(false);
-    expect(
-      getByLabelText('Gapless playback').props.accessibilityState.checked,
-    ).toBe(true);
+    expect(getByLabelText('Gapless playback').props.accessibilityState.checked).toBe(true);
     fireEvent.press(getByLabelText('Gapless playback'));
-    expect(
-      getByLabelText('Gapless playback').props.accessibilityState.checked,
-    ).toBe(false);
+    expect(getByLabelText('Gapless playback').props.accessibilityState.checked).toBe(false);
   });
 
   // BUG: every control on the mobile Audio screen is local component state - nothing reaches
   // the player, the account settings or storage, so choices vanish when the screen closes.
-  test.failing(
-    'MOB-EQ-002 a chosen preset is still selected when the screen is opened again',
-    () => {
-      const first = render(<EqualizerScreen />);
-      fireEvent.press(first.getByText('Bass'));
-      first.unmount();
-      const again = render(<EqualizerScreen />);
-      expect(selected(again.getByText('Bass'))).toBe(true);
-    },
-  );
+  test.failing('MOB-EQ-002 a chosen preset is still selected when the screen is opened again', () => {
+    const first = render(<EqualizerScreen />);
+    fireEvent.press(first.getByText('Bass'));
+    first.unmount();
+    const again = render(<EqualizerScreen />);
+    expect(selected(again.getByText('Bass'))).toBe(true);
+  });
 });
 
 describe('Downloads', () => {
-  const d = (title: string, over: Parameters<typeof makeDownload>[1]) =>
-    makeDownload(makeTrack({ title }), over);
+  const d = (title: string, over: Parameters<typeof makeDownload>[1]) => makeDownload(makeTrack({ title }), over);
 
   it('MOB-DL-S-001 with nothing downloaded it says so', () => {
     const { getByText } = render(<DownloadsScreen />);
@@ -370,7 +329,7 @@ describe('Downloads', () => {
     expect(pause).toHaveBeenCalledWith(items.a.id);
     fireEvent.press(getByLabelText('Resume Held'));
     fireEvent.press(getByLabelText('Retry Broken'));
-    expect(resume.mock.calls.map(c => c[0])).toEqual([items.b.id, items.c.id]);
+    expect(resume.mock.calls.map((c) => c[0])).toEqual([items.b.id, items.c.id]);
   });
 
   it('MOB-DL-S-003 finished songs play as a queue of downloads; a moved file is marked', () => {
@@ -419,9 +378,7 @@ describe('Downloads', () => {
     fireEvent.press(getByLabelText('Delete all downloads'));
     expect(alert.mock.calls[0][0]).toBe('Delete 2 downloads?');
     await pressAlertButton('Delete');
-    expect((remove.mock.calls as any[]).map(c => c[0]).sort()).toEqual(
-      [items.a.id, items.b.id].sort(),
-    );
+    expect((remove.mock.calls as any[]).map((c) => c[0]).sort()).toEqual([items.a.id, items.b.id].sort());
   });
 });
 
@@ -456,18 +413,12 @@ describe('Settings', () => {
       update,
     } as never);
     const { getByText, rerender } = render(<SettingsScreen />);
-    expect(
-      getByText('Low ≈ 60 kbps · Normal ≈ 75 kbps · High ≈ 150 kbps'),
-    ).toBeTruthy();
+    expect(getByText('Low ≈ 60 kbps · Normal ≈ 75 kbps · High ≈ 150 kbps')).toBeTruthy();
     fireEvent.press(getByText('AAC (.m4a)'));
     expect(update).toHaveBeenCalledWith({ downloadFormat: 'm4a' });
     useSettingsStore.setState({ downloadFormat: 'm4a' });
     rerender(<SettingsScreen />);
-    expect(
-      getByText(
-        'Low ≈ 50 kbps · Normal and High = 128 kbps (AAC has two steps)',
-      ),
-    ).toBeTruthy();
+    expect(getByText('Low ≈ 50 kbps · Normal and High = 128 kbps (AAC has two steps)')).toBeTruthy();
   });
 
   it('MOB-SET-S-004 the download location can be changed or reset', async () => {
@@ -505,10 +456,7 @@ describe('Settings', () => {
     const { getByLabelText } = render(<SettingsScreen />);
     fireEvent.press(getByLabelText('Download location'));
     await pressAlertButton('Choose folder');
-    expect(alert).toHaveBeenLastCalledWith(
-      'Could not change the folder',
-      'No write access',
-    );
+    expect(alert).toHaveBeenLastCalledWith('Could not change the folder', 'No write access');
   });
 
   it('MOB-SET-S-006 an unverified account can resend the link; verified accounts see no prompt', async () => {
@@ -523,10 +471,7 @@ describe('Settings', () => {
     expect(getByText('Email not verified')).toBeTruthy();
     await act(async () => fireEvent.press(getByText('Resend link')));
     expect(resendVerification).toHaveBeenCalledTimes(1);
-    expect(alert).toHaveBeenLastCalledWith(
-      'Verification email sent',
-      'Check alice@sonare.test.',
-    );
+    expect(alert).toHaveBeenLastCalledWith('Verification email sent', 'Check alice@sonare.test.');
 
     useAuthStore.setState({ user: { ...alice, emailVerified: true } } as never);
     rerender(<SettingsScreen />);
@@ -565,25 +510,17 @@ describe('Sign in', () => {
     useAuthStore.setState({ signUp: signUpFn } as never);
     const { getByText, getByLabelText } = render(<SignInScreen />);
     expect(getByText('Create your account')).toBeTruthy();
-    expect(
-      getByText('Create a free account to save songs you love.'),
-    ).toBeTruthy();
+    expect(getByText('Create a free account to save songs you love.')).toBeTruthy();
     fireEvent.changeText(getByLabelText('Email'), 'nova@sonare.test');
     fireEvent.changeText(getByLabelText('Password'), 'short');
     fireEvent.press(getByLabelText('Create account'));
     expect(getByText('Tell us what to call you')).toBeTruthy();
     fireEvent.changeText(getByLabelText('Your name'), 'Nova');
     fireEvent.press(getByLabelText('Create account'));
-    expect(
-      getByText('Use at least 8 characters for your password'),
-    ).toBeTruthy();
+    expect(getByText('Use at least 8 characters for your password')).toBeTruthy();
     fireEvent.changeText(getByLabelText('Password'), 'longenough');
     await act(async () => fireEvent.press(getByLabelText('Create account')));
-    expect(signUpFn).toHaveBeenCalledWith(
-      'nova@sonare.test',
-      'longenough',
-      'Nova',
-    );
+    expect(signUpFn).toHaveBeenCalledWith('nova@sonare.test', 'longenough', 'Nova');
   });
 
   it('MOB-SIGNIN-004 server and network failures are shown plainly', async () => {
@@ -614,9 +551,7 @@ describe('Sign in', () => {
     const requestPasswordReset = jest.fn(async () => {});
     const signInFn = jest.fn();
     useAuthStore.setState({ requestPasswordReset, signIn: signInFn } as never);
-    const { getByText, getByLabelText, queryByLabelText, findByText } = render(
-      <SignInScreen />,
-    );
+    const { getByText, getByLabelText, queryByLabelText, findByText } = render(<SignInScreen />);
     fireEvent.press(getByText('Forgot password?'));
     expect(getByText('Reset your password')).toBeTruthy();
     expect(queryByLabelText('Password')).toBeNull();
@@ -626,9 +561,7 @@ describe('Sign in', () => {
     fireEvent.changeText(getByLabelText('Email'), ' Alice@Sonare.test ');
     await act(async () => fireEvent.press(getByLabelText('Send reset link')));
     expect(requestPasswordReset).toHaveBeenCalledWith('alice@sonare.test');
-    expect(
-      await findByText(/If an account exists for Alice@Sonare.test/),
-    ).toBeTruthy();
+    expect(await findByText(/If an account exists for Alice@Sonare.test/)).toBeTruthy();
     expect(signInFn).not.toHaveBeenCalled();
     expect(nav.goBack).not.toHaveBeenCalled();
   });
@@ -639,15 +572,11 @@ describe('Sign in', () => {
         throw new Error('Too many attempts. Try again in 60 min.');
       }),
     } as never);
-    const { getByText, getByLabelText, findByText, queryByText } = render(
-      <SignInScreen />,
-    );
+    const { getByText, getByLabelText, findByText, queryByText } = render(<SignInScreen />);
     fireEvent.press(getByText('Forgot password?'));
     fireEvent.changeText(getByLabelText('Email'), 'alice@sonare.test');
     await act(async () => fireEvent.press(getByLabelText('Send reset link')));
-    expect(
-      await findByText('Too many attempts. Try again in 60 min.'),
-    ).toBeTruthy();
+    expect(await findByText('Too many attempts. Try again in 60 min.')).toBeTruthy();
     fireEvent.press(getByText('Sign in'));
     expect(queryByText('Too many attempts. Try again in 60 min.')).toBeNull();
     expect(getByLabelText('Password')).toBeTruthy();
@@ -673,36 +602,24 @@ describe('Mode switch', () => {
 
   // BUG: "Stay offline automatically" is local state that nothing reads, so turning it off
   // changes nothing. Remove `.failing` once the choice is stored and honoured.
-  test.failing(
-    'MOB-MODE-003 turning off "stay offline automatically" is remembered',
-    () => {
-      route.params = { targetMode: 'offline' };
-      const first = render(<ModeSwitchScreen />);
-      expect(
-        first.getByLabelText('Stay offline automatically').props
-          .accessibilityState.checked,
-      ).toBe(true);
-      fireEvent.press(first.getByLabelText('Stay offline automatically'));
-      fireEvent.press(first.getByText('Go offline'));
-      first.unmount();
-      const again = render(<ModeSwitchScreen />);
-      expect(
-        again.getByLabelText('Stay offline automatically').props
-          .accessibilityState.checked,
-      ).toBe(false);
-    },
-  );
+  test.failing('MOB-MODE-003 turning off "stay offline automatically" is remembered', () => {
+    route.params = { targetMode: 'offline' };
+    const first = render(<ModeSwitchScreen />);
+    expect(first.getByLabelText('Stay offline automatically').props.accessibilityState.checked).toBe(true);
+    fireEvent.press(first.getByLabelText('Stay offline automatically'));
+    fireEvent.press(first.getByText('Go offline'));
+    first.unmount();
+    const again = render(<ModeSwitchScreen />);
+    expect(again.getByLabelText('Stay offline automatically').props.accessibilityState.checked).toBe(false);
+  });
 });
 
 describe('Music folders', () => {
   // BUG: the mobile Folders screen is the design mockup: hard-coded folders ("WhatsApp Audio",
   // "842 songs", "Last scan 12 min ago") and buttons that do nothing. Every user sees them.
-  test.failing(
-    'MOB-FOLD-001 a phone with no scanned folders shows no made-up folders',
-    () => {
-      const { queryByText } = render(<FoldersScreen />);
-      expect(queryByText('WhatsApp Audio')).toBeNull();
-      expect(queryByText('Last scan 12 min ago')).toBeNull();
-    },
-  );
+  test.failing('MOB-FOLD-001 a phone with no scanned folders shows no made-up folders', () => {
+    const { queryByText } = render(<FoldersScreen />);
+    expect(queryByText('WhatsApp Audio')).toBeNull();
+    expect(queryByText('Last scan 12 min ago')).toBeNull();
+  });
 });

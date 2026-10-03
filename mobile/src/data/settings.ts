@@ -26,9 +26,7 @@ interface SettingsStore {
   downloadQuality: AudioQuality;
   downloadFormat: DownloadFormat;
   hydrate: () => Promise<void>;
-  update: (
-    patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat'>>,
-  ) => void;
+  update: (patch: Partial<Pick<SettingsStore, 'downloadQuality' | 'downloadFormat'>>) => void;
 }
 
 function pick(s: Record<string, unknown>) {
@@ -72,13 +70,10 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     }
   },
 
-  update: patch => {
+  update: (patch) => {
     set(patch);
     const { downloadQuality, downloadFormat } = get();
-    void AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({ downloadQuality, downloadFormat }),
-    );
+    void AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ downloadQuality, downloadFormat }));
     if (useAuthStore.getState().status !== 'signedIn') return;
     unsaved = { ...unsaved, ...patch };
     clearTimeout(saveTimer);

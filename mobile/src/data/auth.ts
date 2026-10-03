@@ -25,11 +25,7 @@ interface AuthStore {
   /** Restore the saved session on launch. */
   hydrate: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (
-    email: string,
-    password: string,
-    displayName: string,
-  ) => Promise<void>;
+  signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   /** Swap the refresh token for a new pair; returns the new access token or null. */
   refresh: () => Promise<string | null>;
@@ -39,16 +35,15 @@ interface AuthStore {
 }
 
 class AuthError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
     super(message);
   }
 }
 
-async function authRequest<T>(
-  path: string,
-  body: unknown,
-  accessToken?: string | null,
-): Promise<T> {
+async function authRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<T> {
   const { status, json } = await httpRequest(`${API_BASE}/auth/${path}`, {
     method: 'POST',
     headers: {
@@ -57,11 +52,7 @@ async function authRequest<T>(
     },
     body: JSON.stringify(body),
   });
-  if (status < 200 || status >= 300)
-    throw new AuthError(
-      json?.error?.message || `Request failed (${status})`,
-      status,
-    );
+  if (status < 200 || status >= 300) throw new AuthError(json?.error?.message || `Request failed (${status})`, status);
   return json as T;
 }
 
@@ -76,9 +67,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
   };
 
   const endSession = async () => {
-    await Keychain.resetGenericPassword({ service: KEYCHAIN_SERVICE }).catch(
-      () => {},
-    );
+    await Keychain.resetGenericPassword({ service: KEYCHAIN_SERVICE }).catch(() => {});
     await AsyncStorage.removeItem(SESSION_KEY).catch(() => {});
     set({ status: 'guest', user: null, accessToken: null, refreshToken: null });
   };
@@ -122,9 +111,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     },
 
     signIn: async (email, password) => {
-      await startSession(
-        await authRequest<Session>('login', { email, password }),
-      );
+      await startSession(await authRequest<Session>('login', { email, password }));
     },
 
     signUp: async (email, password, displayName) => {
@@ -140,8 +127,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     signOut: async () => {
       const { refreshToken } = get();
       // Revoke server-side too, so the refresh token can't be reused from a backup.
-      if (refreshToken)
-        await authRequest('logout', { refreshToken }).catch(() => {});
+      if (refreshToken) await authRequest('logout', { refreshToken }).catch(() => {});
       await endSession();
     },
 
@@ -172,7 +158,7 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       return refreshing;
     },
 
-    requestPasswordReset: async email => {
+    requestPasswordReset: async (email) => {
       await authRequest('forgot-password', { email });
     },
 

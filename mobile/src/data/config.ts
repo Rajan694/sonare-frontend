@@ -1,7 +1,6 @@
 import { Platform } from 'react-native';
 
-const DEV_API_ORIGIN =
-  Platform.OS === 'android' ? 'http://10.0.2.2:3010' : 'http://127.0.0.1:3010';
+const DEV_API_ORIGIN = Platform.OS === 'android' ? 'http://10.0.2.2:3010' : 'http://127.0.0.1:3010';
 // Production API; the domain is not registered yet.
 const PROD_API_ORIGIN = 'https://api.sonare.dev';
 export const API_ORIGIN = __DEV__ ? DEV_API_ORIGIN : PROD_API_ORIGIN;
@@ -17,10 +16,7 @@ export function absoluteUrl(path?: string | null): string | undefined {
 type ArtSize = 64 | 140 | 300 | 640;
 
 /** Absolute artwork url for anything with a `thumbnail`, at the nearest server size. */
-export function artworkUrl(
-  item?: { thumbnail?: string } | null,
-  size: ArtSize = 140,
-): string | undefined {
+export function artworkUrl(item?: { thumbnail?: string } | null, size: ArtSize = 140): string | undefined {
   const url = absoluteUrl(item?.thumbnail);
   if (!url || !url.includes('/artwork') || url.includes('size=')) return url;
   return `${url}${url.includes('?') ? '&' : '?'}size=${size}`;

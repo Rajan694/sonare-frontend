@@ -16,15 +16,12 @@ interface TrackMenuStore {
   view: 'menu' | 'playlists';
   /** Screen-specific extra, e.g. "Remove from playlist". */
   extraAction?: TrackMenuAction;
-  open: (
-    track: Track,
-    options?: { view?: 'menu' | 'playlists'; extraAction?: TrackMenuAction },
-  ) => void;
+  open: (track: Track, options?: { view?: 'menu' | 'playlists'; extraAction?: TrackMenuAction }) => void;
   setView: (view: 'menu' | 'playlists') => void;
   close: () => void;
 }
 
-export const useTrackMenuStore = create<TrackMenuStore>(set => ({
+export const useTrackMenuStore = create<TrackMenuStore>((set) => ({
   track: null,
   view: 'menu',
   extraAction: undefined,
@@ -34,6 +31,6 @@ export const useTrackMenuStore = create<TrackMenuStore>(set => ({
       view: options?.view ?? 'menu',
       extraAction: options?.extraAction,
     }),
-  setView: view => set({ view }),
+  setView: (view) => set({ view }),
   close: () => set({ track: null, extraAction: undefined }),
 }));

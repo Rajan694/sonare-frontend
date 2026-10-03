@@ -1,8 +1,4 @@
-import {
-  EmitterSubscription,
-  NativeEventEmitter,
-  NativeModules,
-} from 'react-native';
+import { EmitterSubscription, NativeEventEmitter, NativeModules } from 'react-native';
 
 /**
  * The app's own native player (android/app/src/main/java/com/mobile/player): Media3 in a
@@ -47,18 +43,11 @@ interface NativeSonarePlayer {
 
 const native = NativeModules.SonarePlayer as NativeSonarePlayer | undefined;
 if (!native) {
-  console.warn(
-    'SonarePlayer native module is missing — rebuild the Android app.',
-  );
+  console.warn('SonarePlayer native module is missing — rebuild the Android app.');
 }
-const emitter = native
-  ? new NativeEventEmitter(NativeModules.SonarePlayer)
-  : null;
+const emitter = native ? new NativeEventEmitter(NativeModules.SonarePlayer) : null;
 
-function on<T>(
-  event: string,
-  handler: (payload: T) => void,
-): EmitterSubscription | { remove: () => void } {
+function on<T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } {
   return (
     emitter?.addListener(`SonarePlayer.${event}`, handler) ?? {
       remove: () => {},
@@ -77,6 +66,5 @@ export const SonarePlayer = {
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),
   onError: (handler: (e: { message: string }) => void) => on('error', handler),
   /** Next / previous pressed on the lock screen, notification or a headset. */
-  onRemote: (handler: (e: { command: 'next' | 'previous' }) => void) =>
-    on('remote', handler),
+  onRemote: (handler: (e: { command: 'next' | 'previous' }) => void) => on('remote', handler),
 };

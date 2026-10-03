@@ -19,22 +19,8 @@ import { useAsync } from '../data/hooks';
 import type { SearchItem, Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 
-const ONLINE_FILTERS = [
-  'all',
-  'songs',
-  'albums',
-  'artists',
-  'playlists',
-  'genres',
-] as const;
-const OFFLINE_FILTERS = [
-  'all',
-  'songs',
-  'albums',
-  'artists',
-  'playlists',
-  'folders',
-] as const;
+const ONLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'genres'] as const;
+const OFFLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'folders'] as const;
 
 type Filter = string;
 
@@ -51,10 +37,10 @@ export function SearchScreen() {
   const navigation = useNavigation<any>();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
-  const mode = useModeStore(state => state.mode);
-  const setMode = useModeStore(state => state.setMode);
-  const playTrack = usePlayerStore(state => state.playTrack);
-  const currentTrack = usePlayerStore(state => state.currentTrack);
+  const mode = useModeStore((state) => state.mode);
+  const setMode = useModeStore((state) => state.setMode);
+  const playTrack = usePlayerStore((state) => state.playTrack);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
 
   const q = useDebounced(query.trim(), 350);
   const online = mode === 'online';
@@ -62,16 +48,10 @@ export function SearchScreen() {
     enabled: online && q.length > 0,
   });
 
-  const items = q ? results.data?.items ?? [] : [];
-  const tracks = items.filter(
-    (i): i is SearchItem & Track & { kind: 'track' } => i.kind === 'track',
-  );
-  const albums = items.filter(
-    (i): i is SearchItem & { kind: 'album' } => i.kind === 'album',
-  );
-  const artists = items.filter(
-    (i): i is SearchItem & { kind: 'artist' } => i.kind === 'artist',
-  );
+  const items = q ? (results.data?.items ?? []) : [];
+  const tracks = items.filter((i): i is SearchItem & Track & { kind: 'track' } => i.kind === 'track');
+  const albums = items.filter((i): i is SearchItem & { kind: 'album' } => i.kind === 'album');
+  const artists = items.filter((i): i is SearchItem & { kind: 'artist' } => i.kind === 'artist');
 
   const topResult = albums[0] || items[0] || null;
 
@@ -109,16 +89,12 @@ export function SearchScreen() {
         <View className="px-5">
           <Field
             icon={<Icon name="search" size={18} color="#7E7E8C" />}
-            placeholder={
-              online ? 'Search all music' : 'Search music on this device'
-            }
+            placeholder={online ? 'Search all music' : 'Search music on this device'}
             value={query}
             onChangeText={setQuery}
             autoCorrect={false}
             returnKeyType="search"
-            accessibilityLabel={
-              online ? 'Search all music' : 'Search music on this device'
-            }
+            accessibilityLabel={online ? 'Search all music' : 'Search music on this device'}
             clearButton={query.length > 0}
             onClear={() => setQuery('')}
           />
@@ -132,7 +108,7 @@ export function SearchScreen() {
             className="overflow-visible -mx-5 px-5"
             contentContainerStyle={{ gap: 8 }}
           >
-            {(online ? ONLINE_FILTERS : OFFLINE_FILTERS).map(f => (
+            {(online ? ONLINE_FILTERS : OFFLINE_FILTERS).map((f) => (
               <Chip
                 key={f}
                 label={f.charAt(0).toUpperCase() + f.slice(1)}
@@ -159,8 +135,7 @@ export function SearchScreen() {
               <View className="flex-row items-center gap-2">
                 <Icon name="cloud" size={14} color="#7E7E8C" />
                 <Text className="text-t3 text-bs">
-                  Searching Sonare library ·{' '}
-                  {items.length ? `${items.length} results` : 'searching...'}
+                  Searching Sonare library · {items.length ? `${items.length} results` : 'searching...'}
                 </Text>
               </View>
             )}
@@ -170,29 +145,19 @@ export function SearchScreen() {
             ) : results.loading && items.length === 0 ? (
               <StateView loading empty="Searching..." />
             ) : items.length === 0 ? (
-              <StateView
-                error={results.error}
-                onRetry={results.refetch}
-                empty={`No results for "${q}"`}
-              />
+              <StateView error={results.error} onRetry={results.refetch} empty={`No results for "${q}"`} />
             ) : (
               <>
                 {/* Top result card */}
                 {topResult && (
                   <View className="gap-2.5">
-                    <Text className="text-ov font-semibold text-t3 uppercase">
-                      Top result
-                    </Text>
+                    <Text className="text-ov font-semibold text-t3 uppercase">Top result</Text>
                     <Pressable
                       onPress={() => {
-                        if (topResult.kind === 'album')
-                          navigation.navigate('Album', { id: topResult.id });
-                        else if (topResult.kind === 'artist')
-                          navigation.navigate('Artist', { id: topResult.id });
-                        else if (topResult.kind === 'track')
-                          playTrack(topResult, tracks);
-                        else if (topResult.kind === 'playlist')
-                          navigation.navigate('Playlist', { id: topResult.id });
+                        if (topResult.kind === 'album') navigation.navigate('Album', { id: topResult.id });
+                        else if (topResult.kind === 'artist') navigation.navigate('Artist', { id: topResult.id });
+                        else if (topResult.kind === 'track') playTrack(topResult, tracks);
+                        else if (topResult.kind === 'playlist') navigation.navigate('Playlist', { id: topResult.id });
                       }}
                       className="bg-s1 border border-ln rounded-lg p-3 flex-row items-center gap-3.5"
                       accessibilityRole="button"
@@ -201,74 +166,35 @@ export function SearchScreen() {
                         uri={artworkUrl(topResult, 140)}
                         size={76}
                         rings
-                        className={
-                          topResult.kind === 'artist'
-                            ? 'rounded-full'
-                            : 'rounded-sm'
-                        }
+                        className={topResult.kind === 'artist' ? 'rounded-full' : 'rounded-sm'}
                       />
                       <View className="flex-1 gap-1 justify-center min-w-0">
-                        <Text
-                          className="text-tl font-semibold text-t1 truncate"
-                          numberOfLines={1}
-                        >
-                          {'title' in topResult
-                            ? topResult.title
-                            : topResult.name}
+                        <Text className="text-tl font-semibold text-t1 truncate" numberOfLines={1}>
+                          {'title' in topResult ? topResult.title : topResult.name}
                         </Text>
-                        <Text
-                          className="text-t2 text-bs truncate"
-                          numberOfLines={1}
-                        >
+                        <Text className="text-t2 text-bs truncate" numberOfLines={1}>
                           {topResult.kind === 'album'
-                            ? `Album · ${topResult.artist}${
-                                topResult.year ? ` · ${topResult.year}` : ''
-                              }`
+                            ? `Album · ${topResult.artist}${topResult.year ? ` · ${topResult.year}` : ''}`
                             : topResult.kind === 'artist'
-                            ? 'Artist'
-                            : topResult.kind === 'track'
-                            ? `${topResult.artist} · ${
-                                topResult.album || 'Single'
-                              }`
-                            : 'Playlist'}
+                              ? 'Artist'
+                              : topResult.kind === 'track'
+                                ? `${topResult.artist} · ${topResult.album || 'Single'}`
+                                : 'Playlist'}
                         </Text>
                         <View className="flex-row items-center gap-1.5 mt-0.5">
                           <Badge
-                            label={
-                              'source' in topResult &&
-                              topResult.source === 'local'
-                                ? 'On device'
-                                : 'Server'
-                            }
-                            variant={
-                              'source' in topResult &&
-                              topResult.source === 'local'
-                                ? 'local'
-                                : 'cloud'
-                            }
+                            label={'source' in topResult && topResult.source === 'local' ? 'On device' : 'Server'}
+                            variant={'source' in topResult && topResult.source === 'local' ? 'local' : 'cloud'}
                             icon={
                               <Icon
-                                name={
-                                  'source' in topResult &&
-                                  topResult.source === 'local'
-                                    ? 'smartphone'
-                                    : 'cloud'
-                                }
+                                name={'source' in topResult && topResult.source === 'local' ? 'smartphone' : 'cloud'}
                                 size={10}
-                                color={
-                                  'source' in topResult &&
-                                  topResult.source === 'local'
-                                    ? '#FFC24D'
-                                    : '#00E28A'
-                                }
+                                color={'source' in topResult && topResult.source === 'local' ? '#FFC24D' : '#00E28A'}
                               />
                             }
                           />
                           {'trackCount' in topResult && topResult.trackCount ? (
-                            <Badge
-                              label={`${topResult.trackCount} tracks`}
-                              variant="neutral"
-                            />
+                            <Badge label={`${topResult.trackCount} tracks`} variant="neutral" />
                           ) : null}
                         </View>
                       </View>
@@ -283,13 +209,8 @@ export function SearchScreen() {
                 {tracks.length > 0 && (
                   <View className="gap-2.5">
                     <View className="flex-row items-baseline justify-between">
-                      <Text className="text-h2 font-semibold text-t1">
-                        Songs
-                      </Text>
-                      <Pressable
-                        onPress={() => setFilter('songs')}
-                        className="flex-row items-center gap-0.5"
-                      >
+                      <Text className="text-h2 font-semibold text-t1">Songs</Text>
+                      <Pressable onPress={() => setFilter('songs')} className="flex-row items-center gap-0.5">
                         <Text className="text-t2 text-ll">All</Text>
                         <Icon name="chevron-right" size={14} color="#9A9AA8" />
                       </Pressable>
@@ -311,40 +232,27 @@ export function SearchScreen() {
                 {/* Artists section */}
                 {artists.length > 0 && (
                   <View className="gap-2.5">
-                    <Text className="text-h2 font-semibold text-t1">
-                      Artists
-                    </Text>
+                    <Text className="text-h2 font-semibold text-t1">Artists</Text>
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
                       className="overflow-visible -mx-5 px-5"
                       contentContainerStyle={{ gap: 16 }}
                     >
-                      {artists.map(item => (
+                      {artists.map((item) => (
                         <Pressable
                           key={item.id}
-                          onPress={() =>
-                            navigation.navigate('Artist', { id: item.id })
-                          }
+                          onPress={() => navigation.navigate('Artist', { id: item.id })}
                           className="w-[84px] items-center gap-1.5"
                           accessibilityRole="button"
                           accessibilityLabel={item.name}
                         >
-                          <Artwork
-                            uri={artworkUrl(item, 140)}
-                            size={84}
-                            rings
-                            className="rounded-full"
-                          />
-                          <Text
-                            className="text-tm font-medium text-t1 text-center truncate w-full"
-                            numberOfLines={1}
-                          >
+                          <Artwork uri={artworkUrl(item, 140)} size={84} rings className="rounded-full" />
+                          <Text className="text-tm font-medium text-t1 text-center truncate w-full" numberOfLines={1}>
                             {item.name}
                           </Text>
                           <Text className="text-bs text-t3 text-center">
-                            {item.albumCount}{' '}
-                            {item.albumCount === 1 ? 'album' : 'albums'}
+                            {item.albumCount} {item.albumCount === 1 ? 'album' : 'albums'}
                           </Text>
                         </Pressable>
                       ))}
@@ -369,8 +277,7 @@ export function SearchScreen() {
             <View className="flex-row items-center gap-2.5 p-2.5 px-3.5 bg-goldbg border border-[rgba(255,194,77,0.22)] rounded-md">
               <Icon name="smartphone" size={16} color="#FFC24D" />
               <Text className="text-t2 text-bs flex-1">
-                Local results only. Online search is off while you're in Offline
-                Mode.
+                Local results only. Online search is off while you're in Offline Mode.
               </Text>
             </View>
 
@@ -378,26 +285,16 @@ export function SearchScreen() {
 
             {/* Separated 'Not on this device' block */}
             <View className="gap-2.5 pt-2">
-              <Text className="text-ov font-semibold text-t3 uppercase">
-                Not on this device
-              </Text>
+              <Text className="text-ov font-semibold text-t3 uppercase">Not on this device</Text>
               <View className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3 opacity-75">
                 <View className="w-9 h-9 rounded-sm bg-s3 items-center justify-center flex-none">
                   <Icon name="cloud" size={18} color="#9A9AA8" />
                 </View>
                 <View className="flex-1 gap-0.5">
-                  <Text className="text-tm font-medium text-t2">
-                    Online search
-                  </Text>
-                  <Text className="text-bs text-t3">
-                    Go online to search the full Sonare catalog.
-                  </Text>
+                  <Text className="text-tm font-medium text-t2">Online search</Text>
+                  <Text className="text-bs text-t3">Go online to search the full Sonare catalog.</Text>
                 </View>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={() => setMode('online')}
-                >
+                <Button variant="outline" size="sm" onPress={() => setMode('online')}>
                   Go online
                 </Button>
               </View>

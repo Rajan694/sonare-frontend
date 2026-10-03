@@ -18,18 +18,11 @@ interface WaveformProps {
   className?: string;
 }
 
-export function Waveform({
-  trackId,
-  progress,
-  mode,
-  peaks,
-  onSeek,
-  className,
-}: WaveformProps) {
+export function Waveform({ trackId, progress, mode, peaks, onSeek, className }: WaveformProps) {
   const heights = React.useMemo(() => {
     if (!peaks?.length) return generatePeaks(trackId, BARS);
     const max = Math.max(...peaks) || 1;
-    return peaks.map(p => MIN_H + (p / max) * (MAX_H - MIN_H));
+    return peaks.map((p) => MIN_H + (p / max) * (MAX_H - MIN_H));
   }, [trackId, peaks]);
   const activeIndex = Math.floor(progress * heights.length);
   const [width, setWidth] = React.useState(0);
@@ -37,22 +30,13 @@ export function Waveform({
   return (
     <Pressable
       disabled={!onSeek}
-      onLayout={e => setWidth(e.nativeEvent.layout.width)}
-      onPress={e =>
-        width &&
-        onSeek?.(Math.min(1, Math.max(0, e.nativeEvent.locationX / width)))
-      }
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      onPress={(e) => width && onSeek?.(Math.min(1, Math.max(0, e.nativeEvent.locationX / width)))}
       accessibilityRole="adjustable"
       accessibilityLabel="Seek"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
     >
-      <View
-        className={cn(
-          'flex-row items-end gap-[2px] h-[32px] w-full',
-          className,
-        )}
-        pointerEvents="none"
-      >
+      <View className={cn('flex-row items-end gap-[2px] h-[32px] w-full', className)} pointerEvents="none">
         {heights.map((height, i) => {
           const isPlayed = i < activeIndex;
           const isPlayhead = i === activeIndex;

@@ -24,32 +24,23 @@ export function PlaylistScreen() {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
   const own = isOwnPlaylist(id);
-  const playTrack = usePlayerStore(state => state.playTrack);
-  const currentTrack = usePlayerStore(state => state.currentTrack);
-  const isPlaying = usePlayerStore(state => state.isPlaying);
-  const setIsPlaying = usePlayerStore(state => state.setIsPlaying);
-  const toggleShuffle = usePlayerStore(state => state.toggleShuffle);
-  const shuffle = usePlayerStore(state => state.shuffle);
+  const playTrack = usePlayerStore((state) => state.playTrack);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
+  const shuffle = usePlayerStore((state) => state.shuffle);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const playlist = useAsync(
-    () => (own ? api.myPlaylist(id) : api.playlist(id)),
-    [id],
-    { refetchOnFocus: own },
-  );
-  const tracksQuery = useAsync(
-    () => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)),
-    [id],
-    { refetchOnFocus: own },
-  );
+  const playlist = useAsync(() => (own ? api.myPlaylist(id) : api.playlist(id)), [id], { refetchOnFocus: own });
+  const tracksQuery = useAsync(() => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)), [id], {
+    refetchOnFocus: own,
+  });
   const allTracks = tracksQuery.data?.items ?? [];
-  const tracks = allTracks.filter(t => t.source === 'server');
+  const tracks = allTracks.filter((t) => t.source === 'server');
   const info = playlist.data;
 
-  const totalDurationMs = tracks.reduce(
-    (sum, t) => sum + (t.durationMs || 0),
-    0,
-  );
+  const totalDurationMs = tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0);
   const durationMinutes = Math.round(totalDurationMs / 60000);
 
   const removeAt = async (index: number) => {
@@ -65,21 +56,17 @@ export function PlaylistScreen() {
   // Only leaves the screen once the playlist is really gone; a failure is reported instead.
   const deletePlaylist = async () => {
     setMenuOpen(false);
-    if (await confirmDeletePlaylist({ id, name: info?.name }))
-      navigation.goBack();
+    if (await confirmDeletePlaylist({ id, name: info?.name })) navigation.goBack();
   };
 
   const playAll = (shuffled: boolean) => {
     if (!tracks.length) return;
     if (shuffled !== shuffle) toggleShuffle();
-    const first = shuffled
-      ? tracks[Math.floor(Math.random() * tracks.length)]
-      : tracks[0];
+    const first = shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0];
     playTrack(first, tracks);
   };
 
-  const isCurrentPlaylistPlaying =
-    isPlaying && currentTrack && tracks.some(t => t.id === currentTrack.id);
+  const isCurrentPlaylistPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
 
   return (
     <Screen scrollable={false}>
@@ -112,55 +99,33 @@ export function PlaylistScreen() {
           <View>
             <View className="flex-row items-start px-5 pt-2 pb-4 gap-4">
               <Artwork
-                uri={
-                  tracks.length
-                    ? artworkUrl(
-                        { thumbnail: `/api/v1/playlists/${id}/artwork` },
-                        300,
-                      )
-                    : undefined
-                }
+                uri={tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 300) : undefined}
                 size={132}
                 rings
                 className="rounded-lg shadow-e4 flex-none"
               />
               <View className="flex-1 justify-center gap-1.5 min-w-0">
-                <Text
-                  className="text-h1 font-semibold text-t1 truncate"
-                  numberOfLines={2}
-                >
+                <Text className="text-h1 font-semibold text-t1 truncate" numberOfLines={2}>
                   {info?.name ?? ' '}
                 </Text>
                 <Text className="text-t2 text-bs">
                   {songCount(info?.trackCount ?? tracks.length)}
                   {durationMinutes ? ` · ${durationMinutes} min` : ''}
                 </Text>
-                <Text className="text-t3 text-bs">
-                  {own ? 'Made by you' : 'Online playlist'}
-                </Text>
+                <Text className="text-t3 text-bs">{own ? 'Made by you' : 'Online playlist'}</Text>
                 <View className="flex-row items-center gap-1.5 flex-wrap mt-0.5">
                   {info?.kind === 'synced' && (
-                    <Badge
-                      label="Synced"
-                      variant="neutral"
-                      icon={<Icon name="refresh" size={10} color="#9A9AA8" />}
-                    />
+                    <Badge label="Synced" variant="neutral" icon={<Icon name="refresh" size={10} color="#9A9AA8" />} />
                   )}
                   {own && info?.downloadedCount ? (
                     <Badge
                       label="On device"
                       variant="local"
-                      icon={
-                        <Icon name="smartphone" size={10} color="#FFC24D" />
-                      }
+                      icon={<Icon name="smartphone" size={10} color="#FFC24D" />}
                     />
                   ) : null}
                   {!own && (
-                    <Badge
-                      label="Online"
-                      variant="cloud"
-                      icon={<Icon name="cloud" size={10} color="#00E28A" />}
-                    />
+                    <Badge label="Online" variant="cloud" icon={<Icon name="cloud" size={10} color="#00E28A" />} />
                   )}
                 </View>
               </View>
@@ -181,7 +146,7 @@ export function PlaylistScreen() {
                   onPress={() => {
                     if (tracks.length > 0) {
                       const queueState = usePlayerStore.getState();
-                      tracks.forEach(t => queueState.addToQueue(t));
+                      tracks.forEach((t) => queueState.addToQueue(t));
                     }
                   }}
                   accessibilityLabel="Add to queue"
@@ -190,13 +155,7 @@ export function PlaylistScreen() {
               </View>
               <View className="flex-row items-center gap-3">
                 <IconButton
-                  icon={
-                    <Icon
-                      name="shuffle"
-                      size={20}
-                      color={shuffle ? '#00E28A' : '#FFFFFF'}
-                    />
-                  }
+                  icon={<Icon name="shuffle" size={20} color={shuffle ? '#00E28A' : '#FFFFFF'} />}
                   size={44}
                   variant="bordered"
                   onPress={() => playAll(true)}
@@ -216,11 +175,7 @@ export function PlaylistScreen() {
                   accessibilityLabel="Play playlist"
                   className="w-14 h-14 rounded-full items-center justify-center bg-acc shadow-glow-acc"
                 >
-                  <Icon
-                    name={isCurrentPlaylistPlaying ? 'pause' : 'play'}
-                    size={24}
-                    color="#000000"
-                  />
+                  <Icon name={isCurrentPlaylistPlaying ? 'pause' : 'play'} size={24} color="#000000" />
                 </Pressable>
               </View>
             </View>

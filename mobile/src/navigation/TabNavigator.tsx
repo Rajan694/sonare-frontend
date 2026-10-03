@@ -20,10 +20,7 @@ import { useModeStore } from '../store/mode';
 import Icon from '../components/ui/Icon';
 
 const Tab = createBottomTabNavigator<Record<string, undefined>, undefined>();
-const Stack = createNativeStackNavigator<
-  Record<string, object | undefined>,
-  undefined
->();
+const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
 
 /**
  * Each tab is a stack, so album, artist, playlist, settings, folders, downloads and audio
@@ -34,10 +31,7 @@ const Stack = createNativeStackNavigator<
 function tabStack(rootName: string, Root: React.ComponentType<any>) {
   return function TabStack() {
     return (
-      <Stack.Navigator
-        id={undefined}
-        screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
-      >
+      <Stack.Navigator id={undefined} screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name={rootName} component={Root} />
         <Stack.Screen name="Album" component={AlbumScreen} />
         <Stack.Screen name="Artist" component={ArtistScreen} />
@@ -57,9 +51,9 @@ const PlaylistsStack = tabStack('PlaylistsRoot', PlaylistsScreen);
 const SearchStack = tabStack('SearchRoot', SearchScreen);
 
 export function TabNavigator() {
-  const mode = useModeStore(state => state.mode);
-  const toastVisible = useModeStore(state => state.toastVisible);
-  const hideToast = useModeStore(state => state.hideToast);
+  const mode = useModeStore((state) => state.mode);
+  const toastVisible = useModeStore((state) => state.toastVisible);
+  const hideToast = useModeStore((state) => state.hideToast);
   // Clear the Android gesture bar / iOS home indicator; a fixed height alone puts labels under it.
   const insets = useSafeAreaInsets();
 
@@ -105,45 +99,35 @@ export function TabNavigator() {
           name="Home"
           component={HomeStack}
           options={{
-            tabBarIcon: ({ color }) => (
-              <Icon name="home" size={21} color={color} />
-            ),
+            tabBarIcon: ({ color }) => <Icon name="home" size={21} color={color} />,
           }}
         />
         <Tab.Screen
           name="Library"
           component={LibraryStack}
           options={{
-            tabBarIcon: ({ color }) => (
-              <Icon name="library" size={21} color={color} />
-            ),
+            tabBarIcon: ({ color }) => <Icon name="library" size={21} color={color} />,
           }}
         />
         <Tab.Screen
           name="Playlists"
           component={PlaylistsStack}
           options={{
-            tabBarIcon: ({ color }) => (
-              <Icon name="playlist" size={21} color={color} />
-            ),
+            tabBarIcon: ({ color }) => <Icon name="playlist" size={21} color={color} />,
           }}
         />
         <Tab.Screen
           name="Search"
           component={SearchStack}
           options={{
-            tabBarIcon: ({ color }) => (
-              <Icon name="search" size={21} color={color} />
-            ),
+            tabBarIcon: ({ color }) => <Icon name="search" size={21} color={color} />,
           }}
         />
       </Tab.Navigator>
       <MiniPlayer />
       <Toast
         visible={toastVisible}
-        message={
-          mode === 'online' ? 'Online Mode enabled' : 'Offline Mode enabled'
-        }
+        message={mode === 'online' ? 'Online Mode enabled' : 'Offline Mode enabled'}
         mode={mode}
       />
     </View>

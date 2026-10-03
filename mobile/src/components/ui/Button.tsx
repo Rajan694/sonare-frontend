@@ -1,11 +1,7 @@
 import React from 'react';
 import { Text, Pressable } from 'react-native';
 import { cn } from '../../lib/cn';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 interface ButtonProps {
   onPress: () => void;
@@ -69,10 +65,7 @@ export function Button({
             size === 'sm' ? 'text-bs' : size === 'md' ? 'text-bm' : 'text-tm',
             variant === 'accent' && 'text-black',
             variant === 'gold' && 'text-black',
-            (variant === 'outline' ||
-              variant === 'solid' ||
-              variant === 'ghost') &&
-              'text-t1',
+            (variant === 'outline' || variant === 'solid' || variant === 'ghost') && 'text-t1',
           )}
         >
           {children}

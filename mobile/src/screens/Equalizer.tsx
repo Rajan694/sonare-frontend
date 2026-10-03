@@ -12,7 +12,7 @@ import Icon from '../components/ui/Icon';
 
 export function EqualizerScreen() {
   const navigation = useNavigation<any>();
-  const mode = useModeStore(state => state.mode);
+  const mode = useModeStore((state) => state.mode);
   const [eqEnabled, setEqEnabled] = React.useState(true);
   const [preset, setPreset] = React.useState('Sonare');
   const [crossfade, setCrossfade] = React.useState(true);
@@ -63,7 +63,7 @@ export function EqualizerScreen() {
           className="overflow-visible -mx-5 px-5"
           contentContainerStyle={{ gap: 8 }}
         >
-          {presets.map(p => (
+          {presets.map((p) => (
             <Chip
               key={p}
               label={p}
@@ -77,23 +77,16 @@ export function EqualizerScreen() {
         {/* 7-band Graphic EQ Card */}
         <View className="bg-s1 border border-ln rounded-xl p-4.5 pt-4 pb-3.5 gap-3.5">
           <View className="flex-row justify-between items-center px-1">
-            <Text className="text-ll font-semibold text-t2">
-              7-band equalizer
-            </Text>
+            <Text className="text-ll font-semibold text-t2">7-band equalizer</Text>
             <Text className="text-mono-s font-mono text-t3">+12 / −12 dB</Text>
           </View>
           <View className="flex-row justify-between h-44 items-end px-1">
             {bands.map((band, idx) => (
               <View key={band} className="items-center w-9 gap-2">
-                <Text className="text-mono-s font-mono text-t3">
-                  {dbs[idx]}
-                </Text>
+                <Text className="text-mono-s font-mono text-t3">{dbs[idx]}</Text>
                 <View className="w-1 bg-ln2 rounded-full h-28 relative justify-end overflow-hidden">
                   <View
-                    className={cn(
-                      'w-full rounded-full absolute bottom-0',
-                      isGold ? 'bg-gold' : 'bg-acc',
-                    )}
+                    className={cn('w-full rounded-full absolute bottom-0', isGold ? 'bg-gold' : 'bg-acc')}
                     style={{ height: `${mockValues[idx] * 100}%` }}
                   />
                 </View>
@@ -106,50 +99,26 @@ export function EqualizerScreen() {
         {/* DSP Effects Card */}
         <View className="bg-s1 border border-ln rounded-xl py-1.5 overflow-hidden">
           <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
-            <View
-              className={cn(
-                'w-9 h-9 items-center justify-center rounded-sm',
-                isGold ? 'bg-goldbg' : 'bg-accbg',
-              )}
-            >
-              <Icon
-                name="volume"
-                size={18}
-                color={isGold ? '#FFC24D' : '#00E28A'}
-              />
+            <View className={cn('w-9 h-9 items-center justify-center rounded-sm', isGold ? 'bg-goldbg' : 'bg-accbg')}>
+              <Icon name="volume" size={18} color={isGold ? '#FFC24D' : '#00E28A'} />
             </View>
             <View className="flex-1 gap-1.5">
               <Text className="text-tm font-medium text-t1">Bass boost</Text>
               <View className="h-1 bg-ln2 rounded-full overflow-hidden w-full">
-                <View
-                  className={cn('h-full', isGold ? 'bg-gold' : 'bg-acc')}
-                  style={{ width: '42%' }}
-                />
+                <View className={cn('h-full', isGold ? 'bg-gold' : 'bg-acc')} style={{ width: '42%' }} />
               </View>
             </View>
             <Text className="text-mono-s font-mono text-t2">42%</Text>
           </View>
 
           <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
-            <View
-              className={cn(
-                'w-9 h-9 items-center justify-center rounded-sm',
-                isGold ? 'bg-goldbg' : 'bg-accbg',
-              )}
-            >
-              <Icon
-                name="visualizer"
-                size={18}
-                color={isGold ? '#FFC24D' : '#00E28A'}
-              />
+            <View className={cn('w-9 h-9 items-center justify-center rounded-sm', isGold ? 'bg-goldbg' : 'bg-accbg')}>
+              <Icon name="visualizer" size={18} color={isGold ? '#FFC24D' : '#00E28A'} />
             </View>
             <View className="flex-1 gap-1.5">
               <Text className="text-tm font-medium text-t1">Virtualizer</Text>
               <View className="h-1 bg-ln2 rounded-full overflow-hidden w-full">
-                <View
-                  className={cn('h-full', isGold ? 'bg-gold' : 'bg-acc')}
-                  style={{ width: '26%' }}
-                />
+                <View className={cn('h-full', isGold ? 'bg-gold' : 'bg-acc')} style={{ width: '26%' }} />
               </View>
             </View>
             <Text className="text-mono-s font-mono text-t2">26%</Text>
@@ -160,13 +129,11 @@ export function EqualizerScreen() {
               <Icon name="timer" size={18} color="#7E7E8C" />
             </View>
             <View className="flex-1 gap-0.5 min-w-0">
-              <Text className="text-tm font-medium text-t1 truncate">
-                Playback speed
-              </Text>
+              <Text className="text-tm font-medium text-t1 truncate">Playback speed</Text>
               <Text className="text-bs text-t3">Pitch preserved</Text>
             </View>
             <View className="flex-row items-center gap-1.5">
-              {speeds.map(s => (
+              {speeds.map((s) => (
                 <Chip
                   key={s}
                   size="sm"
@@ -203,12 +170,8 @@ export function EqualizerScreen() {
               <Icon name="music" size={18} color="#7E7E8C" />
             </View>
             <View className="flex-1 gap-0.5">
-              <Text className="text-tm font-medium text-t1">
-                Gapless playback
-              </Text>
-              <Text className="text-bs text-t3">
-                Seamless album transitions
-              </Text>
+              <Text className="text-tm font-medium text-t1">Gapless playback</Text>
+              <Text className="text-bs text-t3">Seamless album transitions</Text>
             </View>
             <Switch
               value={gapless}
@@ -223,12 +186,8 @@ export function EqualizerScreen() {
               <Icon name="volume" size={18} color="#7E7E8C" />
             </View>
             <View className="flex-1 gap-0.5">
-              <Text className="text-tm font-medium text-t1">
-                Volume normalization
-              </Text>
-              <Text className="text-bs text-t3">
-                Even loudness across the library
-              </Text>
+              <Text className="text-tm font-medium text-t1">Volume normalization</Text>
+              <Text className="text-bs text-t3">Even loudness across the library</Text>
             </View>
             <Switch
               value={normalization}
@@ -241,25 +200,12 @@ export function EqualizerScreen() {
 
         {/* Output Device Card */}
         <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3">
-          <View
-            className={cn(
-              'w-9 h-9 items-center justify-center rounded-sm',
-              isGold ? 'bg-goldbg' : 'bg-accbg',
-            )}
-          >
-            <Icon
-              name="headphones"
-              size={18}
-              color={isGold ? '#FFC24D' : '#00E28A'}
-            />
+          <View className={cn('w-9 h-9 items-center justify-center rounded-sm', isGold ? 'bg-goldbg' : 'bg-accbg')}>
+            <Icon name="headphones" size={18} color={isGold ? '#FFC24D' : '#00E28A'} />
           </View>
           <View className="flex-1 gap-0.5">
-            <Text className="text-tm font-medium text-t1">
-              Wired headphones
-            </Text>
-            <Text className="text-bs text-t3">
-              Output device · EQ applies here
-            </Text>
+            <Text className="text-tm font-medium text-t1">Wired headphones</Text>
+            <Text className="text-bs text-t3">Output device · EQ applies here</Text>
           </View>
         </View>
       </ScrollView>

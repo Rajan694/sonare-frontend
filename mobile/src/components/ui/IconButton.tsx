@@ -1,11 +1,7 @@
 import React from 'react';
 import { Pressable } from 'react-native';
 import { cn } from '../../lib/cn';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 interface IconButtonProps {
   icon: React.ReactNode;

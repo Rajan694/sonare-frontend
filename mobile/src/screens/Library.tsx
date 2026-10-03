@@ -35,44 +35,33 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function LibraryScreen() {
   const navigation = useNavigation<any>();
-  const setMode = useModeStore(state => state.setMode);
-  const mode = useModeStore(state => state.mode);
-  const playTrack = usePlayerStore(state => state.playTrack);
-  const currentTrack = usePlayerStore(state => state.currentTrack);
-  const favouriteCount = useLibraryStore(
-    state => Object.keys(state.favouriteIds).length,
-  );
+  const setMode = useModeStore((state) => state.setMode);
+  const mode = useModeStore((state) => state.mode);
+  const playTrack = usePlayerStore((state) => state.playTrack);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const favouriteCount = useLibraryStore((state) => Object.keys(state.favouriteIds).length);
   const [activeTab, setActiveTab] = useState<Tab>('songs');
   const [sort, setSort] = useState<Sort>('addedAt');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   /** Filter (M05 funnel): only songs saved on this phone. */
   const [onPhoneOnly, setOnPhoneOnly] = useState(false);
-  const userId = useAuthStore(state => state.user?.id);
+  const userId = useAuthStore((state) => state.user?.id);
 
   const online = mode === 'online';
-  const library = useAsync(
-    () => api.libraryTracks(sort),
-    [sort, favouriteCount, userId],
-    {
-      enabled: online && !!userId,
-      refetchOnFocus: true,
-    },
-  );
+  const library = useAsync(() => api.libraryTracks(sort), [sort, favouriteCount, userId], {
+    enabled: online && !!userId,
+    refetchOnFocus: true,
+  });
 
-  const downloads = useDownloadsStore(state => state.items);
-  const serverTracks = (library.data?.items ?? []).filter(
-    t => t.source === 'server',
-  );
+  const downloads = useDownloadsStore((state) => state.items);
+  const serverTracks = (library.data?.items ?? []).filter((t) => t.source === 'server');
   // Offline, the library is what's been downloaded to this phone.
-  const offlineTracks = React.useMemo(
-    () => downloadedTracks(downloads),
-    [downloads],
-  );
+  const offlineTracks = React.useMemo(() => downloadedTracks(downloads), [downloads]);
   const displayTracks = !online
     ? offlineTracks
     : onPhoneOnly
-    ? serverTracks.filter(t => downloads[t.id]?.status === 'done')
-    : serverTracks;
+      ? serverTracks.filter((t) => downloads[t.id]?.status === 'done')
+      : serverTracks;
 
   const onPlayAll = () => {
     if (displayTracks.length > 0) {
@@ -103,7 +92,7 @@ export function LibraryScreen() {
               { value: 'offline', label: 'Offline' },
             ]}
             value={mode}
-            onChange={value => {
+            onChange={(value) => {
               if (value === 'offline' && mode === 'online') {
                 navigation.navigate('ModeSwitch', { targetMode: 'offline' });
               } else {
@@ -125,7 +114,7 @@ export function LibraryScreen() {
         <View className="flex-1">
           {/* Sub-tabs row */}
           <View className="flex-row border-b border-ln px-3.5">
-            {TABS.map(tab => {
+            {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <Pressable
@@ -139,17 +128,8 @@ export function LibraryScreen() {
                   }}
                   className="h-[40px] px-3.5 justify-center relative"
                 >
-                  <Text
-                    className={cn(
-                      'text-bm font-medium',
-                      isActive ? 'text-t1' : 'text-t3',
-                    )}
-                  >
-                    {tab.label}
-                  </Text>
-                  {isActive && (
-                    <View className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-acc rounded-t-xs" />
-                  )}
+                  <Text className={cn('text-bm font-medium', isActive ? 'text-t1' : 'text-t3')}>{tab.label}</Text>
+                  {isActive && <View className="absolute bottom-0 left-2.5 right-2.5 h-[2px] bg-acc rounded-t-xs" />}
                 </Pressable>
               );
             })}
@@ -159,21 +139,10 @@ export function LibraryScreen() {
           <View className="flex-row items-center justify-between px-5 py-3">
             <Chip
               size="sm"
-              label={
-                sort === 'addedAt'
-                  ? 'Recently added'
-                  : sort === 'playCount'
-                  ? 'Most played'
-                  : 'A-Z'
-              }
+              label={sort === 'addedAt' ? 'Recently added' : sort === 'playCount' ? 'Most played' : 'A-Z'}
               icon={<Icon name="sort" size={13} color="#9A9AA8" />}
               onPress={() => {
-                const nextSort: Sort =
-                  sort === 'addedAt'
-                    ? 'playCount'
-                    : sort === 'playCount'
-                    ? 'title'
-                    : 'addedAt';
+                const nextSort: Sort = sort === 'addedAt' ? 'playCount' : sort === 'playCount' ? 'title' : 'addedAt';
                 setSort(nextSort);
               }}
             />
@@ -186,44 +155,22 @@ export function LibraryScreen() {
               />
               {online && (
                 <IconButton
-                  icon={
-                    <Icon
-                      name="filter"
-                      size={16}
-                      color={onPhoneOnly ? '#FFC24D' : '#9A9AA8'}
-                    />
-                  }
+                  icon={<Icon name="filter" size={16} color={onPhoneOnly ? '#FFC24D' : '#9A9AA8'} />}
                   size={32}
                   variant={onPhoneOnly ? 'active' : 'default'}
-                  onPress={() => setOnPhoneOnly(v => !v)}
-                  accessibilityLabel={
-                    onPhoneOnly
-                      ? 'Show all songs'
-                      : 'Show only songs on this phone'
-                  }
+                  onPress={() => setOnPhoneOnly((v) => !v)}
+                  accessibilityLabel={onPhoneOnly ? 'Show all songs' : 'Show only songs on this phone'}
                 />
               )}
               <IconButton
-                icon={
-                  <Icon
-                    name="list"
-                    size={16}
-                    color={viewMode === 'list' ? '#00E28A' : '#9A9AA8'}
-                  />
-                }
+                icon={<Icon name="list" size={16} color={viewMode === 'list' ? '#00E28A' : '#9A9AA8'} />}
                 size={32}
                 variant={viewMode === 'list' ? 'active' : 'default'}
                 onPress={() => setViewMode('list')}
                 accessibilityLabel="List view"
               />
               <IconButton
-                icon={
-                  <Icon
-                    name="grid"
-                    size={16}
-                    color={viewMode === 'grid' ? '#00E28A' : '#9A9AA8'}
-                  />
-                }
+                icon={<Icon name="grid" size={16} color={viewMode === 'grid' ? '#00E28A' : '#9A9AA8'} />}
                 size={32}
                 variant={viewMode === 'grid' ? 'active' : 'default'}
                 onPress={() => setViewMode('grid')}
@@ -263,7 +210,7 @@ export function LibraryScreen() {
           <FlatList
             key={viewMode}
             data={displayTracks}
-            keyExtractor={item => item.id}
+            keyExtractor={(item) => item.id}
             numColumns={viewMode === 'grid' ? 2 : 1}
             columnWrapperStyle={viewMode === 'grid' ? { gap: 12 } : undefined}
             renderItem={({ item, index }) =>
@@ -274,16 +221,9 @@ export function LibraryScreen() {
                   accessibilityRole="button"
                   accessibilityLabel={`Play ${item.title} by ${item.artist}`}
                 >
-                  <Artwork
-                    uri={artworkUrl(item, 300)}
-                    size={160}
-                    className="rounded-xl"
-                  />
+                  <Artwork uri={artworkUrl(item, 300)} size={160} className="rounded-xl" />
                   <Text
-                    className={cn(
-                      'text-tm font-medium mt-2',
-                      currentTrack?.id === item.id ? 'text-acc' : 'text-t1',
-                    )}
+                    className={cn('text-tm font-medium mt-2', currentTrack?.id === item.id ? 'text-acc' : 'text-t1')}
                     numberOfLines={1}
                   >
                     {item.title}

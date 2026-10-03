@@ -12,15 +12,7 @@ interface ChipProps {
   className?: string;
 }
 
-export function Chip({
-  label,
-  icon,
-  onPress,
-  active = false,
-  size = 'md',
-  variant = 'default',
-  className,
-}: ChipProps) {
+export function Chip({ label, icon, onPress, active = false, size = 'md', variant = 'default', className }: ChipProps) {
   const Component = onPress ? Pressable : View;
 
   return (
