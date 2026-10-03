@@ -20,7 +20,7 @@ import { songCount } from '../lib/format';
 import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
 import Icon from '../components/ui/Icon';
 
-export function PlaylistScreen() {
+export function PlaylistDetailScreen() {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
   const own = isOwnPlaylist(id);

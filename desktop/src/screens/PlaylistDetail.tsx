@@ -18,7 +18,7 @@ import { staggerContainer } from '../lib/motion';
 import { cn, formatDuration } from '../lib/utils';
 import type { Track } from '../data/types';
 
-export default function Playlist() {
+export default function PlaylistDetail() {
   const { id: rawId } = useParams();
   const { mode } = useModeStore();
   const isOffline = mode === 'offline';

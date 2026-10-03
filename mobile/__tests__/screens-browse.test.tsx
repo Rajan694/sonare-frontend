@@ -5,7 +5,7 @@ import { HomeScreen } from '../src/screens/Home';
 import { SearchScreen } from '../src/screens/Search';
 import { LibraryScreen } from '../src/screens/Library';
 import { PlaylistsScreen } from '../src/screens/Playlists';
-import { PlaylistScreen } from '../src/screens/Playlist';
+import { PlaylistDetailScreen } from '../src/screens/PlaylistDetail';
 import { AlbumScreen } from '../src/screens/Album';
 import { ArtistScreen } from '../src/screens/Artist';
 import { api, ApiError } from '../src/data/api';
@@ -392,7 +392,7 @@ describe('Playlist, album and artist pages', () => {
     route.params = { id: 'sonare:gym' };
     stub('myPlaylist', async () => makePlaylist({ id: 'sonare:gym', name: 'Gym', trackCount: 2 }));
     stub('myPlaylistTracks', async () => page(songs));
-    const { findByText, getByText, getByLabelText } = render(<PlaylistScreen />);
+    const { findByText, getByText, getByLabelText } = render(<PlaylistDetailScreen />);
     expect(await findByText('Gym')).toBeTruthy();
     expect(getByText('Made by you')).toBeTruthy();
     expect(getByText(/2 songs · 5 min/)).toBeTruthy();
@@ -408,7 +408,7 @@ describe('Playlist, album and artist pages', () => {
     route.params = { id: 'yt:PL1' };
     stub('playlist', async () => makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }));
     stub('playlistTracks', async () => page(songs));
-    const { findByText, queryByLabelText, getByText } = render(<PlaylistScreen />);
+    const { findByText, queryByLabelText, getByText } = render(<PlaylistDetailScreen />);
     expect(await findByText('Hits')).toBeTruthy();
     expect(getByText('Online playlist')).toBeTruthy();
     expect(queryByLabelText('Playlist options')).toBeNull();
@@ -421,7 +421,7 @@ describe('Playlist, album and artist pages', () => {
     stub('myPlaylistTracks', async () => page([]));
     jest.spyOn(useLibraryStore.getState(), 'deletePlaylist').mockResolvedValue();
     const alert = jest.spyOn(Alert, 'alert');
-    const { findByLabelText, getByLabelText, findByText } = render(<PlaylistScreen />);
+    const { findByLabelText, getByLabelText, findByText } = render(<PlaylistDetailScreen />);
     expect(await findByText(/This playlist is empty/)).toBeTruthy();
     fireEvent.press(await findByLabelText('Playlist options'));
     fireEvent.press(getByLabelText('Delete playlist'));
@@ -444,7 +444,7 @@ describe('Playlist, album and artist pages', () => {
     const anyCall = jest.fn();
     for (const k of Object.keys(api) as (keyof typeof api)[])
       if (!['playlist', 'playlistTracks'].includes(k)) jest.spyOn(api, k).mockImplementation(anyCall as never);
-    const { findByLabelText } = render(<PlaylistScreen />);
+    const { findByLabelText } = render(<PlaylistDetailScreen />);
     fireEvent.press(await findByLabelText('Favourite playlist'));
     expect(anyCall).toHaveBeenCalled();
   });

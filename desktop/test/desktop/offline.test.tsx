@@ -69,7 +69,7 @@ vi.mock('../../src/components/layout/AppShell', async () => {
 import App from '../../src/App';
 import ModeSwitch from '../../src/screens/ModeSwitch';
 import Folders from '../../src/screens/Folders';
-import SettingsScreen from '../../src/screens/SettingsScreen';
+import Settings from '../../src/screens/Settings';
 import { localLibrary, getLocalSnapshot } from '../../src/data/local';
 import { getSettings, updateSettings } from '../../src/data/settings';
 
@@ -154,7 +154,7 @@ describe('switching to Offline Mode', () => {
   });
 
   it('DSK-031 settings on the desktop include the connection mode and the library sections', async () => {
-    const { user, container, location } = renderWithProviders(<SettingsScreen />, {
+    const { user, container, location } = renderWithProviders(<Settings />, {
       route: '/settings?section=connection',
     });
     const wide = within(container.firstElementChild!.children[1] as HTMLElement);

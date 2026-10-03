@@ -20,14 +20,14 @@ import Search from './screens/Search';
 import Library from './screens/Library';
 import Album from './screens/Album';
 import Artist from './screens/Artist';
-import Playlist from './screens/Playlist';
+import PlaylistDetail from './screens/PlaylistDetail';
 import Playlists from './screens/Playlists';
 import NowPlaying from './screens/NowPlaying';
 import Lyrics from './screens/Lyrics';
 import Queue from './screens/Queue';
 import Equalizer from './screens/Equalizer';
 import ModeSwitch from './screens/ModeSwitch';
-import SettingsScreen from './screens/SettingsScreen';
+import Settings from './screens/Settings';
 import Folders from './screens/Folders';
 import Downloads from './screens/Downloads';
 import SignIn from './screens/SignIn';
@@ -360,13 +360,13 @@ export default function App() {
               <Route path="/artist/:id?" element={<Artist />} />
               <Route path="/playlists" element={<Playlists />} />
               <Route path="/playlist" element={<Navigate to="/playlists" replace />} />
-              <Route path="/playlist/:id" element={<Playlist />} />
+              <Route path="/playlist/:id" element={<PlaylistDetail />} />
               <Route path="/now-playing" element={<NowPlaying />} />
               <Route path="/lyrics" element={<Lyrics />} />
               <Route path="/queue" element={<Queue />} />
               <Route path="/equalizer" element={<Equalizer />} />
               {CAPS.offlineMode && <Route path="/mode-switch" element={<ModeSwitch />} />}
-              <Route path="/settings" element={<SettingsScreen />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/signin" element={<SignIn />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />

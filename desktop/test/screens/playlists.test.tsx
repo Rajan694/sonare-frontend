@@ -2,7 +2,7 @@ import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import Playlists from '../../src/screens/Playlists';
-import Playlist from '../../src/screens/Playlist';
+import PlaylistDetail from '../../src/screens/PlaylistDetail';
 import TrackMenu, { closeTrackMenu } from '../../src/components/music/TrackMenu';
 import { bindAccountGateNavigator } from '../../src/data/accountGate';
 import { clearSession, setSession } from '../../src/data/auth';
@@ -127,7 +127,7 @@ describe('playlist page', () => {
   const openPlaylist = (id = 'sonare:gym', player = makePlayer()) =>
     renderWithProviders(
       <>
-        <Playlist />
+        <PlaylistDetail />
         <TrackMenu />
       </>,
       { route: `/playlist/${id}`, path: '/playlist/:id', player },

@@ -9,7 +9,7 @@ import { PlaylistsScreen } from '../screens/Playlists';
 import { SearchScreen } from '../screens/Search';
 import { AlbumScreen } from '../screens/Album';
 import { ArtistScreen } from '../screens/Artist';
-import { PlaylistScreen } from '../screens/Playlist';
+import { PlaylistDetailScreen } from '../screens/PlaylistDetail';
 import { SettingsScreen } from '../screens/Settings';
 import { FoldersScreen } from '../screens/Folders';
 import { DownloadsScreen } from '../screens/Downloads';
@@ -35,7 +35,7 @@ function tabStack(rootName: string, Root: React.ComponentType<any>) {
         <Stack.Screen name={rootName} component={Root} />
         <Stack.Screen name="Album" component={AlbumScreen} />
         <Stack.Screen name="Artist" component={ArtistScreen} />
-        <Stack.Screen name="Playlist" component={PlaylistScreen} />
+        <Stack.Screen name="Playlist" component={PlaylistDetailScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Folders" component={FoldersScreen} />
         <Stack.Screen name="Downloads" component={DownloadsScreen} />

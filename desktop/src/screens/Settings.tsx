@@ -90,7 +90,7 @@ function Row({
 
 const chevron = <Icon name="chevron-right" size={16} className="text-t4 flex-none" />;
 
-export default function SettingsScreen() {
+export default function Settings() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const settings = useSettings();

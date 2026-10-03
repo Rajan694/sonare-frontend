@@ -1,7 +1,7 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
-import SettingsScreen from '../../src/screens/SettingsScreen';
+import Settings from '../../src/screens/Settings';
 import Downloads from '../../src/screens/Downloads';
 import { clearSession, setSession } from '../../src/data/auth';
 import { getSettings, updateSettings } from '../../src/data/settings';
@@ -104,7 +104,7 @@ afterEach(() => {
  * and a section sidebar on wider screens. Tests look inside one of them.
  */
 function openSettings(route = '/settings') {
-  const utils = renderWithProviders(<SettingsScreen />, { route });
+  const utils = renderWithProviders(<Settings />, { route });
   const root = utils.container.firstElementChild!;
   const [phone, wide] = [root.children[0] as HTMLElement, root.children[1] as HTMLElement];
   return { ...utils, w: within(wide), phone: within(phone) };
