@@ -163,7 +163,7 @@ export function queuePlay(trackId: string, at: number, ms: number): void {
     userId: useAuthStore.getState().user?.id,
   });
   // Before the saved queue is loaded, saving now would overwrite it; load() merges instead.
-  void load().then(() => {
+  load().then(() => {
     save();
     requestSync();
   });

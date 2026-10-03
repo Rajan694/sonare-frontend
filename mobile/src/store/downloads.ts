@@ -122,7 +122,9 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
 
   const persist = (now: boolean) => {
     clearTimeout(persistTimer);
-    const save = () => void AsyncStorage.setItem(ITEMS_KEY, JSON.stringify(Object.values(get().items))).catch(() => {});
+    const save = () => {
+      AsyncStorage.setItem(ITEMS_KEY, JSON.stringify(Object.values(get().items))).catch(() => {});
+    };
     if (now) save();
     else persistTimer = setTimeout(save, 1500);
   };
@@ -139,7 +141,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       .sort((a, b) => a.addedAt - b.addedAt);
     for (const item of queued) {
       if (running.size >= MAX_PARALLEL) break;
-      void start(item.id);
+      start(item.id);
     }
   };
 
@@ -242,7 +244,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       patch(e.id, { receivedBytes: e.receivedBytes }, false);
       if (e.code === 'E_URL' && (refreshes[e.id] = (refreshes[e.id] ?? 0) + 1) <= MAX_URL_REFRESHES) {
         // Expired token or a dead YouTube url: fetch a fresh one and carry on.
-        void start(e.id);
+        start(e.id);
         return;
       }
       // E_NETWORK arrives only after the native side has given up retrying.
@@ -282,7 +284,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
         }
         set({ ready: true, items, location });
         pump();
-        void get().checkFiles();
+        get().checkFiles();
       })();
       return hydrated;
     },

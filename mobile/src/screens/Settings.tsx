@@ -72,11 +72,11 @@ export function SettingsScreen() {
           ? [
               {
                 text: 'Use Music/Sonare',
-                onPress: () => void useDownloadsStore.getState().resetLocation(),
+                onPress: () => useDownloadsStore.getState().resetLocation(),
               },
             ]
           : []),
-        { text: 'Choose folder', onPress: () => void changeLocation() },
+        { text: 'Choose folder', onPress: () => changeLocation() },
       ],
     );
 

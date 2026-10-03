@@ -80,7 +80,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     if (useAuthStore.getState().status !== 'signedIn') return;
     try {
       set(pick(await api.settings()));
-      void AsyncStorage.setItem(STORAGE_KEY, stored(get()));
+      AsyncStorage.setItem(STORAGE_KEY, stored(get()));
     } catch {
       // Offline: the phone's copy applies.
     }
@@ -88,7 +88,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
 
   update: (patch) => {
     set(patch);
-    void AsyncStorage.setItem(STORAGE_KEY, stored(get()));
+    AsyncStorage.setItem(STORAGE_KEY, stored(get()));
     if (useAuthStore.getState().status !== 'signedIn') return;
     unsaved = { ...unsaved, ...patch };
     clearTimeout(saveTimer);

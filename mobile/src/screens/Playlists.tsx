@@ -37,7 +37,7 @@ export function PlaylistsScreen() {
   };
   const deleteFromOptions = () => {
     setOptionsOpen(false);
-    if (options) void confirmDeletePlaylist(options);
+    if (options) confirmDeletePlaylist(options);
   };
 
   const signedIn = useAuthStore((state) => state.status === 'signedIn');

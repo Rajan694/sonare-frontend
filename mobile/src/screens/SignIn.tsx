@@ -49,19 +49,18 @@ export function SignInScreen() {
   const isSignUp = mode === 'signup';
   const isForgot = mode === 'forgot';
 
-  const validate = (password: string): string | null => {
+  const validate = (candidate: string): string | null => {
     if (isSignUp && !name.trim()) return 'Tell us what to call you';
     if (!EMAIL_RE.test(email.trim())) return 'Enter a valid email address';
     if (isForgot) return null;
-    if (isSignUp && password.length < 8) return 'Use at least 8 characters for your password';
-    if (!password) return 'Enter your password';
+    if (isSignUp && candidate.length < 8) return 'Use at least 8 characters for your password';
+    if (!candidate) return 'Enter your password';
     return null;
   };
 
   // The password field submits its own text: state can lag the last keystrokes.
   const submit = async (typedPassword: string = password) => {
-    const password = typedPassword;
-    const problem = validate(password);
+    const problem = validate(typedPassword);
     if (problem) {
       setError(problem);
       return;
@@ -75,8 +74,8 @@ export function SignInScreen() {
         return;
       }
       succeeded.current = true;
-      if (isSignUp) await signUp(email.trim().toLowerCase(), password, name.trim());
-      else await signIn(email.trim().toLowerCase(), password);
+      if (isSignUp) await signUp(email.trim().toLowerCase(), typedPassword, name.trim());
+      else await signIn(email.trim().toLowerCase(), typedPassword);
       if (navigation.canGoBack()) navigation.goBack();
     } catch (e: any) {
       succeeded.current = false;

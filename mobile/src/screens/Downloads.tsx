@@ -112,7 +112,7 @@ export function DownloadsScreen() {
   const currentId = usePlayerStore((s) => s.currentTrack?.id);
 
   useEffect(() => {
-    void useDownloadsStore.getState().checkFiles();
+    useDownloadsStore.getState().checkFiles();
   }, []);
 
   const list = useMemo(() => Object.values(items).sort((a, b) => b.addedAt - a.addedAt), [items]);
@@ -174,7 +174,7 @@ export function DownloadsScreen() {
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onPress={() => void pauseAll()}
+                onPress={() => pauseAll()}
                 icon={<Icon name="pause" size={15} color="#FFFFFF" />}
               >
                 Pause all
@@ -238,7 +238,7 @@ export function DownloadsScreen() {
                         <IconButton
                           icon={<Icon name="pause" size={18} color="#FFFFFF" />}
                           size={40}
-                          onPress={() => void pause(d.id)}
+                          onPress={() => pause(d.id)}
                           accessibilityLabel={`Pause ${d.title}`}
                         />
                       ) : (

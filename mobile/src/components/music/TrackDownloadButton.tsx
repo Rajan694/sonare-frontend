@@ -64,7 +64,7 @@ export function TrackDownloadButton({ track }: { track: Track }) {
           </View>
         }
         size={44}
-        onPress={() => void useDownloadsStore.getState().pause(track.id)}
+        onPress={() => useDownloadsStore.getState().pause(track.id)}
         accessibilityLabel={`Downloading ${Math.round(ratio * 100)}%, pause`}
       />
     );

@@ -82,7 +82,7 @@ function useSessionEffects(status: string) {
   useEffect(() => {
     if (status === 'loading') return;
     // Account settings (download quality / format) follow whoever is signed in.
-    void useSettingsStore.getState().hydrate();
+    useSettingsStore.getState().hydrate();
     if (status === 'signedIn') {
       useLibraryStore
         .getState()
@@ -101,7 +101,7 @@ export function RootNavigator() {
   useEffect(() => {
     hydrate();
     // Picks up downloads that were running when the app last closed.
-    void useDownloadsStore.getState().hydrate();
+    useDownloadsStore.getState().hydrate();
   }, [hydrate]);
   useSessionEffects(status);
 
