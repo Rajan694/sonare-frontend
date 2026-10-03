@@ -107,4 +107,23 @@ describe('AudioEngine and the native player', () => {
     expect(usePlayerStore.getState().currentTrack?.id).toBe(a.id);
     await waitFor(() => expect(native.load).toHaveBeenCalledWith(expect.objectContaining({ id: a.id })));
   });
+
+  it('MOB-AUDIO-RESUME-001 a restored queue loads paused, at the saved position; the next load starts at 0', async () => {
+    act(() =>
+      usePlayerStore.getState().restore({
+        queue: [a, b],
+        currentTrack: b,
+        positionMs: 61_000,
+        shuffle: false,
+        repeat: 'off',
+        playingFrom: null,
+      }),
+    );
+    await waitFor(() => expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ id: b.id })));
+    expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ startMs: 61_000, autoplay: false }));
+    expect(usePlayerStore.getState().startAtMs).toBeNull();
+
+    await playFrom(c, [c]);
+    expect(native.load.mock.calls.at(-1)![0]).not.toHaveProperty('startMs');
+  });
 });
