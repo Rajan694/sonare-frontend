@@ -7,9 +7,9 @@ useMockServer();
 /** plays.ts, sync.ts and auth.ts all keep module state; every test gets its own copies. */
 async function fresh(signedIn = true) {
   vi.resetModules();
-  const auth = await import('../../src/data/auth');
-  const plays = await import('../../src/data/plays');
-  const sync = await import('../../src/data/sync');
+  const auth = await import('../../src/api/auth');
+  const plays = await import('../../src/api/plays');
+  const sync = await import('../../src/api/sync');
   if (signedIn) auth.setSession('acc', 'ref', testUser);
   return { ...auth, ...plays, ...sync };
 }

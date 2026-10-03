@@ -2,8 +2,8 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { storage } from '@neutralinojs/lib';
 import { CAPS } from '../lib/caps';
 import { showToast } from '../store/toasts';
-import { api } from './api';
-import { API_BASE } from './auth';
+import { api } from '../api/api';
+import { API_BASE } from '../api/auth';
 import { localLibrary } from './local';
 import { API_QUALITY, getSettings, type AudioQuality, type DownloadFormat } from './settings';
 import {
@@ -16,7 +16,7 @@ import {
   type PartFile,
   type TargetKind,
 } from './downloadTargets';
-import type { Track } from './types';
+import type { Track } from '../types';
 
 /**
  * Download manager (desktop and web).

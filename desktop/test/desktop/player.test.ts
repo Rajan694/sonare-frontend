@@ -61,14 +61,14 @@ const h = vi.hoisted(() => {
   return { FakePlayback, ctx, canStream: true };
 });
 
-vi.mock('../../src/data/bufferPlayback', () => ({
+vi.mock('../../src/audio/bufferPlayback', () => ({
   BufferPlayback: class extends h.FakePlayback {
     constructor(_ctx: unknown, _input: unknown, buffer: { duration: number }, onEnded: () => void) {
       super('buffer', buffer, buffer.duration, onEnded);
     }
   },
 }));
-vi.mock('../../src/data/streamPlayback', () => ({
+vi.mock('../../src/audio/streamPlayback', () => ({
   canStream: vi.fn(async () => h.canStream),
   StreamPlayback: class extends h.FakePlayback {
     constructor(_ctx: unknown, _input: unknown, media: { duration: number }, onEnded: () => void, onFail: () => void) {
@@ -76,7 +76,7 @@ vi.mock('../../src/data/streamPlayback', () => ({
     }
   },
 }));
-vi.mock('../../src/data/dsp', () => ({
+vi.mock('../../src/audio/dsp', () => ({
   bindElement: () => {},
   ensureGraph: async () => {},
   graphInput: async () => ({ ctx: h.ctx, input: {} }),
@@ -91,8 +91,8 @@ const MUSIC = '/home/me/Music';
 
 async function launch() {
   vi.resetModules();
-  const player = await import('../../src/data/player');
-  const { localLibrary, getLocalSnapshot } = await import('../../src/data/local');
+  const player = await import('../../src/audio/player');
+  const { localLibrary, getLocalSnapshot } = await import('../../src/storage/local');
   await localLibrary.addFolder(MUSIC);
   const byTitle = (t: string) => getLocalSnapshot().tracks.find((x) => x.title === t)!;
   return { player, localLibrary, getLocalSnapshot, byTitle };

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '../../store/playerContext';
-import * as player from '../../data/player';
+import * as player from '../../audio/player';
 
 const SEEK_STEP_MS = 5000;
 const VOLUME_STEP = 0.05;

@@ -1,6 +1,6 @@
 import { API_BASE, getAccessToken, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
-import type { Track, Album, Artist, Playlist, Page, User } from './types';
+import type { Track, Album, Artist, Playlist, Page, User } from '../types';
 
 export class ApiError extends Error {
   public status: number;

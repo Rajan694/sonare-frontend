@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { Mode } from '../data/types';
+import type { Mode } from '../types';
 
 export interface ModeStore {
   mode: Mode;

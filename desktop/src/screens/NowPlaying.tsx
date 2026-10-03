@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { usePeaks } from '../data/hooks';
-import { useFavourite } from '../data/favourites';
+import { usePeaks } from '../api/hooks';
+import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Waveform from '../components/music/Waveform';
 import TrackDownloadButton from '../components/music/TrackDownloadButton';
@@ -15,8 +15,8 @@ import { Slider } from '../components/ui/Slider';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatDuration } from '../lib/format';
 import { cn } from '../lib/cn';
-import * as player from '../data/player';
-import { playsFrom, useLocalLibrary } from '../data/local';
+import * as player from '../audio/player';
+import { playsFrom, useLocalLibrary } from '../storage/local';
 
 export default function NowPlaying() {
   const navigate = useNavigate();

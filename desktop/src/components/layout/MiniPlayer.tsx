@@ -4,12 +4,12 @@ import { motion } from 'motion/react';
 import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
-import { useFavourite } from '../../data/favourites';
+import { useFavourite } from '../../api/favourites';
 import Icon from '../ui/Icon';
 import { IconButton } from '../ui/Button';
 import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
-import { playsFrom, useLocalLibrary } from '../../data/local';
+import { playsFrom, useLocalLibrary } from '../../storage/local';
 
 export default function MiniPlayer() {
   const navigate = useNavigate();

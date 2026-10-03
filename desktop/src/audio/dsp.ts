@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { getSettings, subscribeSettings, updateSettings } from './settings';
+import { getSettings, subscribeSettings, updateSettings } from '../storage/settings';
 
 /**
  * Web Audio DSP chain for the single <audio> element (contract §1: on web the equalizer

@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { api } from '../data/api';
-import type { Album, Artist, Playlist, Track } from '../data/types';
+import { api } from '../api/api';
+import type { Album, Artist, Playlist, Track } from '../types';
 
 export type SearchType = 'songs' | 'albums' | 'artists' | 'playlists';
 export type SearchItem = Track | Album | Artist | Playlist;

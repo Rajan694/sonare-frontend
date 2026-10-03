@@ -13,22 +13,22 @@ import Topbar from '../../src/components/layout/Topbar';
 import AppShell from '../../src/components/layout/AppShell';
 import { usePlayerShortcuts } from '../../src/components/layout/usePlayerShortcuts';
 import { useToasts } from '../../src/store/toasts';
-import { bindAccountGateNavigator } from '../../src/data/accountGate';
-import { clearSession, setSession } from '../../src/data/auth';
-import { requestSync } from '../../src/data/sync';
-import * as player from '../../src/data/player';
+import { bindAccountGateNavigator } from '../../src/api/accountGate';
+import { clearSession, setSession } from '../../src/api/auth';
+import { requestSync } from '../../src/api/sync';
+import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 
 const dl = vi.hoisted(() => ({ active: 0 }));
-vi.mock('../../src/data/downloads', () => ({
+vi.mock('../../src/storage/downloads', () => ({
   downloads: { enqueue: vi.fn(), pause: vi.fn(), resume: vi.fn(), remove: vi.fn(), removeMany: vi.fn() },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: dl.active }),
   useDownload: () => undefined,
   downloadProgress: () => null,
 }));
-vi.mock('../../src/data/player', () => ({
+vi.mock('../../src/audio/player', () => ({
   retry: vi.fn(async () => {}),
   toggle: vi.fn(),
   seek: vi.fn(),

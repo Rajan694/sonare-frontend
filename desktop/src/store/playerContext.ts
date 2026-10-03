@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { PlayerState, Track } from '../data/types';
+import type { PlayerState, Track } from '../types';
 
 export const defaultPlayerState: PlayerState = {
   mode: 'online',
@@ -16,7 +16,7 @@ export interface PlayerStore {
   setState: (s: Partial<PlayerState>) => void;
   currentTrack: Track | null;
   playTrack: (track: Track, newQueue?: Track[]) => void;
-  /** Live audio state, driven by the HTMLAudioElement in data/player.ts. */
+  /** Live audio state, driven by the HTMLAudioElement in audio/player.ts. */
   isPlaying: boolean;
   isLoading: boolean;
   durationMs: number;

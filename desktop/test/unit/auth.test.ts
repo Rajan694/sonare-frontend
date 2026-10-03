@@ -7,8 +7,8 @@ useMockServer();
 /** auth.ts reads localStorage and the env when it loads, so each test gets a fresh copy. */
 async function freshAuth() {
   vi.resetModules();
-  const auth = await import('../../src/data/auth');
-  const gate = await import('../../src/data/accountGate');
+  const auth = await import('../../src/api/auth');
+  const gate = await import('../../src/api/accountGate');
   return { ...auth, ...gate };
 }
 

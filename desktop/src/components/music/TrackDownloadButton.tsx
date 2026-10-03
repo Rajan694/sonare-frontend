@@ -1,11 +1,11 @@
 import { CAPS } from '../../lib/caps';
 import { cn } from '../../lib/cn';
-import { downloadProgress, downloads, useDownload } from '../../data/downloads';
+import { downloadProgress, downloads, useDownload } from '../../storage/downloads';
 import { useModeStore } from '../../store/modeContext';
 import { showToast } from '../../store/toasts';
 import { IconButton } from '../ui/Button';
 import Icon from '../ui/Icon';
-import type { Track } from '../../data/types';
+import type { Track } from '../../types';
 
 export async function startTrackDownload(track: Track): Promise<void> {
   await downloads.enqueue([track]);

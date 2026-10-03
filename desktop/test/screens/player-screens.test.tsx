@@ -5,24 +5,24 @@ import NowPlaying from '../../src/screens/NowPlaying';
 import Lyrics from '../../src/screens/Lyrics';
 import Queue from '../../src/screens/Queue';
 import Equalizer from '../../src/screens/Equalizer';
-import { bindAccountGateNavigator } from '../../src/data/accountGate';
-import { clearSession, setSession } from '../../src/data/auth';
-import { getDsp, setDsp, EQ_PRESETS } from '../../src/data/dsp';
-import { getSettings, updateSettings } from '../../src/data/settings';
-import * as player from '../../src/data/player';
+import { bindAccountGateNavigator } from '../../src/api/accountGate';
+import { clearSession, setSession } from '../../src/api/auth';
+import { getDsp, setDsp, EQ_PRESETS } from '../../src/audio/dsp';
+import { getSettings, updateSettings } from '../../src/storage/settings';
+import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeTrack, testUser } from '../helpers/fixtures';
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
-vi.mock('../../src/data/downloads', () => ({
+vi.mock('../../src/storage/downloads', () => ({
   downloads: { enqueue: vi.fn() },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: 0 }),
   useDownload: () => undefined,
   downloadProgress: () => null,
 }));
-vi.mock('../../src/data/player', () => ({ retry: vi.fn(async () => {}) }));
+vi.mock('../../src/audio/player', () => ({ retry: vi.fn(async () => {}) }));
 
 useMockServer(http.get(`${API}/tracks/:id/peaks`, () => HttpResponse.json({ peaks: [0.2, 0.8] })));
 

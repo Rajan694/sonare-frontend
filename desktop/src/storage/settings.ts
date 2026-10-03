@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import { api } from './api';
-import { isAuthenticated, onAuthChange, onAuthReady } from './auth';
+import { api } from '../api/api';
+import { isAuthenticated, onAuthChange, onAuthReady } from '../api/auth';
 
 /**
  * Account-level preferences from GET/PUT /me/settings (contract §9).

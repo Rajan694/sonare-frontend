@@ -4,10 +4,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useDebounce, useGenres, usePlaylist, notifyPlaylistsChanged } from '../data/hooks';
-import { api } from '../data/api';
+import { useDebounce, useGenres, usePlaylist, notifyPlaylistsChanged } from '../api/hooks';
+import { api } from '../api/api';
 import { showToast } from '../store/toasts';
-import { useLocalLibrary } from '../data/local';
+import { useLocalLibrary } from '../storage/local';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import Artwork from '../components/music/Artwork';
 import Icon from '../components/ui/Icon';
@@ -20,7 +20,7 @@ import { fadeRise, transition } from '../lib/motion';
 import { cn } from '../lib/cn';
 import { useAppDispatch, useAppSelector } from '../store';
 import { runSearch, searchKey, setQuery, setType, type SearchType } from '../store/searchSlice';
-import type { Track, Album, Artist, Playlist } from '../data/types';
+import type { Track, Album, Artist, Playlist } from '../types';
 
 type ChipFilter = 'all' | SearchType;
 

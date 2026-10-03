@@ -1,11 +1,11 @@
-import { API_BASE } from './auth';
-import { api } from './api';
+import { API_BASE } from '../api/auth';
+import { api } from '../api/api';
 import { demuxAudio, type DemuxedAudio } from './audioDemux';
 import { BufferPlayback } from './bufferPlayback';
 import { canStream, StreamPlayback } from './streamPlayback';
 import * as dsp from './dsp';
-import { localLibrary, type LocalFileData } from './local';
-import { API_QUALITY, getSettings } from './settings';
+import { localLibrary, type LocalFileData } from '../storage/local';
+import { API_QUALITY, getSettings } from '../storage/settings';
 import { CAPS } from '../lib/caps';
 
 /**

@@ -1,4 +1,4 @@
-import type { Album, Artist, Page, Playlist, Track, User } from '../../src/data/types';
+import type { Album, Artist, Page, Playlist, Track, User } from '../../src/types';
 
 let seq = 0;
 const next = () => ++seq;

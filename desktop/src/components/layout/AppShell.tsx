@@ -15,7 +15,7 @@ import { Toast } from '../ui/Toast';
 import TooltipLayer from '../ui/Tooltip';
 import { useToasts, dismissToast } from '../../store/toasts';
 import { fadeRise, transition } from '../../lib/motion';
-import { bindAccountGateNavigator } from '../../data/accountGate';
+import { bindAccountGateNavigator } from '../../api/accountGate';
 import { usePlayerShortcuts } from './usePlayerShortcuts';
 import { useLayout } from '../../lib/layout';
 import { useAppDispatch, useAppSelector } from '../../store';

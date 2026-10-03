@@ -6,13 +6,13 @@ import { IconButton } from '../ui/Button';
 import { SourceGlyph } from '../ui/SourceGlyph';
 import EqualizerBars from './EqualizerBars';
 import Artwork, { trackArtwork } from './Artwork';
-import type { Track } from '../../data/types';
-import { useFavourite } from '../../data/favourites';
+import type { Track } from '../../types';
+import { useFavourite } from '../../api/favourites';
 import { motion } from 'motion/react';
 import { staggerItem, transition } from '../../lib/motion';
 import { openTrackMenu } from './TrackMenu';
-import { useLocalLibrary } from '../../data/local';
-import { downloadProgress, useDownload } from '../../data/downloads';
+import { useLocalLibrary } from '../../storage/local';
+import { downloadProgress, useDownload } from '../../storage/downloads';
 import { usePlayerStore } from '../../store/playerContext';
 
 interface SongRowProps {

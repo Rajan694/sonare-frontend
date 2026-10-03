@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clean, readTags, tagsFromFileName, type RangeReader } from '../../src/data/tags';
+import { clean, readTags, tagsFromFileName, type RangeReader } from '../../src/storage/tags';
 import {
   atom,
   be32,
@@ -38,7 +38,7 @@ describe('file-name fallback', () => {
     expect(clean(undefined)).toBeUndefined();
   });
 
-  // BUG: SITE_STAMP in src/data/tags.ts lists `in` before `info`, so ".info" stamps match
+  // BUG: SITE_STAMP in src/storage/tags.ts lists `in` before `info`, so ".info" stamps match
   // as ".in" and leave "fo" behind ("Song - DJMaza.info" -> "Songfo"). Remove `.fails`
   // once the alternation puts longer TLDs first (or ends with \b).
   it.fails('WEB-TAG-015 strips ".info" download-site stamps completely', () => {

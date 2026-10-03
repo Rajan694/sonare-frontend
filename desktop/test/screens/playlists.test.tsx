@@ -4,15 +4,15 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import Playlists from '../../src/screens/Playlists';
 import PlaylistDetail from '../../src/screens/PlaylistDetail';
 import TrackMenu, { closeTrackMenu } from '../../src/components/music/TrackMenu';
-import { bindAccountGateNavigator } from '../../src/data/accountGate';
-import { clearSession, setSession } from '../../src/data/auth';
+import { bindAccountGateNavigator } from '../../src/api/accountGate';
+import { clearSession, setSession } from '../../src/api/auth';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
-vi.mock('../../src/data/downloads', () => ({
+vi.mock('../../src/storage/downloads', () => ({
   downloads: { enqueue: vi.fn() },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: 0 }),
   useDownload: () => undefined,

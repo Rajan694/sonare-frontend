@@ -8,9 +8,9 @@ import {
   setFavourite,
   useFavourite,
   useFavouriteLookup,
-} from '../../src/data/favourites';
-import { bindAccountGateNavigator, takePendingAction } from '../../src/data/accountGate';
-import { clearSession, setSession } from '../../src/data/auth';
+} from '../../src/api/favourites';
+import { bindAccountGateNavigator, takePendingAction } from '../../src/api/accountGate';
+import { clearSession, setSession } from '../../src/api/auth';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
 

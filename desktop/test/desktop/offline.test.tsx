@@ -4,7 +4,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { opened, resetFs, writeFile } from '../helpers/fakeNeutralino';
 import { makeTrack } from '../helpers/fixtures';
 import { makePlayer, renderWithProviders } from '../helpers/render';
-import type { Mode } from '../../src/data/types';
+import type { Mode } from '../../src/types';
 import type { PlayerStore } from '../../src/store/playerContext';
 
 vi.mock('@neutralinojs/lib', async () => (await import('../helpers/fakeNeutralino')).lib);
@@ -19,7 +19,7 @@ const h = vi.hoisted(() => ({
 
 vi.mock('../../src/lib/connectivity', () => ({ hasInternet: vi.fn(async () => h.online) }));
 vi.mock('../../src/store/toasts', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
-vi.mock('../../src/data/player', () => ({
+vi.mock('../../src/audio/player', () => ({
   getStatus: () => ({
     trackId: null,
     playing: false,
@@ -42,13 +42,13 @@ vi.mock('../../src/data/player', () => ({
   setVolume: vi.fn(),
   toggleMute: vi.fn(),
 }));
-vi.mock('../../src/data/plays', () => ({ resetPlay: vi.fn(), maybeRecordPlay: vi.fn() }));
-vi.mock('../../src/data/sync', () => ({
+vi.mock('../../src/api/plays', () => ({ resetPlay: vi.fn(), maybeRecordPlay: vi.fn() }));
+vi.mock('../../src/api/sync', () => ({
   setSyncOnline: h.syncOnline,
   startBackgroundSync: vi.fn(),
   useSyncStatus: () => ({ pending: 0, syncing: false }),
 }));
-vi.mock('../../src/data/downloads', () => ({
+vi.mock('../../src/storage/downloads', () => ({
   downloads: { init: vi.fn(async () => {}) },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: 0 }),
   useDownload: () => undefined,
@@ -70,8 +70,8 @@ import App from '../../src/App';
 import ModeSwitch from '../../src/screens/ModeSwitch';
 import Folders from '../../src/screens/Folders';
 import Settings from '../../src/screens/Settings';
-import { localLibrary, getLocalSnapshot } from '../../src/data/local';
-import { getSettings, updateSettings } from '../../src/data/settings';
+import { localLibrary, getLocalSnapshot } from '../../src/storage/local';
+import { getSettings, updateSettings } from '../../src/storage/settings';
 
 const MUSIC = '/home/me/Music';
 const mode = () => screen.getByTestId('mode').textContent;

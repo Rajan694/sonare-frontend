@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import Home from '../../src/screens/Home';
 import Search from '../../src/screens/Search';
-import { clearSession, setSession } from '../../src/data/auth';
+import { clearSession, setSession } from '../../src/api/auth';
 import { setQuery } from '../../src/store/searchSlice';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
@@ -11,7 +11,7 @@ import { makeAlbum, makeArtist, makePlaylist, makeTrack, page, testUser } from '
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
-vi.mock('../../src/data/downloads', () => ({
+vi.mock('../../src/storage/downloads', () => ({
   downloads: { enqueue: vi.fn() },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: 0 }),
   useDownload: () => undefined,

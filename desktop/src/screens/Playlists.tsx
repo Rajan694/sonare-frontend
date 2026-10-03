@@ -2,15 +2,15 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
-import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../data/hooks';
-import { requireAccount } from '../data/accountGate';
-import { api } from '../data/api';
+import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../api/hooks';
+import { requireAccount } from '../api/accountGate';
+import { api } from '../api/api';
 import { showToast } from '../store/toasts';
 import Artwork from '../components/music/Artwork';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { staggerContainer, staggerItem, transition } from '../lib/motion';
-import type { Playlist } from '../data/types';
+import type { Playlist } from '../types';
 
 export default function Playlists() {
   const { mode } = useModeStore();

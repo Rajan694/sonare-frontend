@@ -3,8 +3,8 @@ import { motion } from 'motion/react';
 import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
-import { usePeaks } from '../../data/hooks';
-import { useFavourite } from '../../data/favourites';
+import { usePeaks } from '../../api/hooks';
+import { useFavourite } from '../../api/favourites';
 import Icon from '../ui/Icon';
 import { IconButton } from '../ui/Button';
 import { Slider } from '../ui/Slider';
@@ -13,10 +13,10 @@ import Artwork, { trackArtwork } from '../music/Artwork';
 import Waveform from '../music/Waveform';
 import TrackDownloadButton from '../music/TrackDownloadButton';
 import { formatDuration } from '../../lib/format';
-import * as player from '../../data/player';
+import * as player from '../../audio/player';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { toggleQueue } from '../../store/uiSlice';
-import { playsFrom, useLocalLibrary } from '../../data/local';
+import { playsFrom, useLocalLibrary } from '../../storage/local';
 
 export default function BottomPlayer() {
   const dispatch = useAppDispatch();

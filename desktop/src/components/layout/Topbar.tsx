@@ -5,8 +5,8 @@ import { CAPS } from '../../lib/caps';
 import { useModeStore } from '../../store/modeContext';
 import Icon from '../ui/Icon';
 import Button, { IconButton } from '../ui/Button';
-import { useAuth } from '../../data/hooks';
-import type { Mode } from '../../data/types';
+import { useAuth } from '../../api/hooks';
+import type { Mode } from '../../types';
 import SearchField from './SearchField';
 
 export default function Topbar() {

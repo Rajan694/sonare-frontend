@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
-import { resetPassword } from '../data/auth';
+import { resetPassword } from '../api/auth';
 
 /** Opened from the emailed reset link: /reset-password?token=… */
 export default function ResetPassword() {

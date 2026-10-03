@@ -6,9 +6,9 @@ import { Switch } from '../components/ui/Switch';
 import { Segmented } from '../components/ui/Segmented';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
-import { useLocalLibrary } from '../data/local';
+import { useLocalLibrary } from '../storage/local';
 import { showToast } from '../store/toasts';
-import { useSettings, updateSettings, type AudioQuality, type DownloadFormat } from '../data/settings';
+import { useSettings, updateSettings, type AudioQuality, type DownloadFormat } from '../storage/settings';
 import {
   canPickWebFolder,
   chooseLocation,
@@ -16,10 +16,10 @@ import {
   loadLocation,
   resetLocation,
   subscribeLocation,
-} from '../data/downloadTargets';
-import { useDownloads } from '../data/downloads';
-import { useAuth } from '../data/hooks';
-import { resendVerification, signOut } from '../data/auth';
+} from '../storage/downloadTargets';
+import { useDownloads } from '../storage/downloads';
+import { useAuth } from '../api/hooks';
+import { resendVerification, signOut } from '../api/auth';
 import { formatBytes } from '../lib/format';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [

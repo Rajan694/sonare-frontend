@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
-import { useLocalLibrary, resolveLocalRefs } from '../data/local';
-import { useFavouriteLookup } from '../data/favourites';
+import { useLocalLibrary, resolveLocalRefs } from '../storage/local';
+import { useFavouriteLookup } from '../api/favourites';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
 import {
@@ -16,7 +16,7 @@ import {
   useTrending,
   useAuth,
   useGenres,
-} from '../data/hooks';
+} from '../api/hooks';
 import { DEFAULT_GENRES, GenreCard, genreVariant } from '../components/music/GenreCard';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import { Card } from '../components/ui/Card';
@@ -27,7 +27,7 @@ import Icon from '../components/ui/Icon';
 import { staggerContainer } from '../lib/motion';
 import { cn } from '../lib/cn';
 import { formatBytes } from '../lib/format';
-import type { Track } from '../data/types';
+import type { Track } from '../types';
 
 const ALL_TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Folders', 'Favourites', 'Most played'] as const;
 const TABS = CAPS.localLibrary ? ALL_TABS : ALL_TABS.filter((t) => t !== 'Folders');

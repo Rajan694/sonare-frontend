@@ -6,8 +6,8 @@ import { useModeStore } from '../../store/modeContext';
 import { BrandMark } from '../ui/BrandMark';
 import Button from '../ui/Button';
 import SearchField from './SearchField';
-import { useAuth } from '../../data/hooks';
-import type { Mode } from '../../data/types';
+import { useAuth } from '../../api/hooks';
+import type { Mode } from '../../types';
 
 export default function TabletTopbar() {
   const navigate = useNavigate();

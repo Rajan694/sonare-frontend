@@ -10,9 +10,9 @@ import TrackMenu, { closeTrackMenu, openPlaylistMenu, openTrackMenu } from '../.
 import TrackDownloadButton from '../../src/components/music/TrackDownloadButton';
 import DownloadButton from '../../src/components/music/DownloadButton';
 import Waveform from '../../src/components/music/Waveform';
-import { bindAccountGateNavigator } from '../../src/data/accountGate';
-import { clearSession, setSession } from '../../src/data/auth';
-import type { DownloadItem } from '../../src/data/downloads';
+import { bindAccountGateNavigator } from '../../src/api/accountGate';
+import { clearSession, setSession } from '../../src/api/auth';
+import type { DownloadItem } from '../../src/storage/downloads';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
@@ -49,7 +49,7 @@ const dl = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../src/data/downloads', async () => {
+vi.mock('../../src/storage/downloads', async () => {
   const { useSyncExternalStore } = await import('react');
   return {
     downloads: dl.api,

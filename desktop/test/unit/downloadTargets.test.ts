@@ -90,7 +90,7 @@ async function fresh(picker?: () => Promise<FakeDir>) {
   // but not jsdom's. A real browser's IndexedDB stores its own Blobs, so this matches it.
   vi.stubGlobal('Blob', NodeBlob);
   if (picker) vi.stubGlobal('showDirectoryPicker', vi.fn(picker));
-  return import('../../src/data/downloadTargets');
+  return import('../../src/storage/downloadTargets');
 }
 
 beforeEach(() => {

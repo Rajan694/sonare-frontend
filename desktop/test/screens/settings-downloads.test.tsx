@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import Settings from '../../src/screens/Settings';
 import Downloads from '../../src/screens/Downloads';
-import { clearSession, setSession } from '../../src/data/auth';
-import { getSettings, updateSettings } from '../../src/data/settings';
-import type { DownloadItem } from '../../src/data/downloads';
+import { clearSession, setSession } from '../../src/api/auth';
+import { getSettings, updateSettings } from '../../src/storage/settings';
+import type { DownloadItem } from '../../src/storage/downloads';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, http, HttpResponse, recordRequests, useMockServer, server } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
@@ -36,7 +36,7 @@ const h = vi.hoisted(() => {
 });
 
 vi.mock('../../src/store/toasts', () => ({ showToast: h.toast, dismissToast: () => {}, useToasts: () => [] }));
-vi.mock('../../src/data/downloads', () => ({
+vi.mock('../../src/storage/downloads', () => ({
   downloads: h.dl,
   useDownloads: () => ({
     ready: true,
@@ -47,7 +47,7 @@ vi.mock('../../src/data/downloads', () => ({
   useDownload: () => undefined,
   downloadProgress: (i: DownloadItem) => (i.totalBytes > 0 ? Math.min(1, i.receivedBytes / i.totalBytes) : null),
 }));
-vi.mock('../../src/data/downloadTargets', () => ({
+vi.mock('../../src/storage/downloadTargets', () => ({
   canPickWebFolder: true,
   loadLocation: async () => {},
   getLocation: () => h.state.location,

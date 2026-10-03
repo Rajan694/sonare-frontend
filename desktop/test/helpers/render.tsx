@@ -9,7 +9,7 @@ import search from '../../src/store/searchSlice';
 import ui from '../../src/store/uiSlice';
 import { ModeContext } from '../../src/store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from '../../src/store/playerContext';
-import type { Mode, PlayerState, Track } from '../../src/data/types';
+import type { Mode, PlayerState, Track } from '../../src/types';
 
 export function makeStore() {
   return configureStore({ reducer: { search, ui } });

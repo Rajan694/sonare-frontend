@@ -1,4 +1,4 @@
-import type { User } from './types';
+import type { User } from '../types';
 import { CLIENT } from '../lib/caps';
 
 // Signed out is guest mode: catalog and playback work, saving needs an account (accountGate.ts).

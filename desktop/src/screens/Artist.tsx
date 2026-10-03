@@ -4,9 +4,9 @@ import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useArtist, useArtistTopTracks, useArtistAlbums } from '../data/hooks';
-import { api } from '../data/api';
-import { requireAccount } from '../data/accountGate';
+import { useArtist, useArtistTopTracks, useArtistAlbums } from '../api/hooks';
+import { api } from '../api/api';
+import { requireAccount } from '../api/accountGate';
 import { openTrackMenu } from '../components/music/TrackMenu';
 import SongRow from '../components/music/SongRow';
 import Artwork from '../components/music/Artwork';
@@ -15,7 +15,7 @@ import Icon from '../components/ui/Icon';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Card } from '../components/ui/Card';
 import { staggerContainer } from '../lib/motion';
-import type { Track, Album } from '../data/types';
+import type { Track, Album } from '../types';
 
 export default function Artist() {
   const { id } = useParams();

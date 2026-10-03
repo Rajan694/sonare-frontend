@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { filesystem, os, storage } from '@neutralinojs/lib';
 import { CAPS } from '../lib/caps';
 import { clean, readTags, tagsFromFileName } from './tags';
-import type { Folder, Track } from './types';
+import type { Folder, Track } from '../types';
 
 /**
  * Device-local library (contract §1 / §6.6) — desktop only, backed by Neutralino.
@@ -11,7 +11,7 @@ import type { Folder, Track } from './types';
  * index is kept in Neutralino storage: the webview's localStorage is keyed by origin,
  * and the release build serves from a random port, so it would forget between launches.
  *
- * Finished downloads (data/downloads.ts) are indexed like any other local file,
+ * Finished downloads (storage/downloads.ts) are indexed like any other local file,
  * remembering the server track they came from so the UI can show them as downloaded and
  * the player can prefer the file over the network. They live in the "Sonare downloads"
  * folder entry, whose rescan re-checks the files it knows rather than listing a directory:

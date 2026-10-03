@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { makeTrack } from '../helpers/fixtures';
-import type { Track } from '../../src/data/types';
+import type { Track } from '../../src/types';
 
 /**
  * The download manager runs against an in-memory storage target (what downloadTargets.ts
@@ -57,8 +57,8 @@ const h = vi.hoisted(() => {
   return { parts, files, state, target, toast: vi.fn() };
 });
 
-vi.mock('../../src/data/downloadTargets', async (importOriginal) => {
-  const real = await importOriginal<typeof import('../../src/data/downloadTargets')>();
+vi.mock('../../src/storage/downloadTargets', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../src/storage/downloadTargets')>();
   return {
     ...real,
     loadLocation: async () => {},
@@ -149,7 +149,7 @@ function streamInfo(over: Record<string, unknown> = {}) {
 
 async function fresh() {
   vi.resetModules();
-  const mod = await import('../../src/data/downloads');
+  const mod = await import('../../src/storage/downloads');
   return mod;
 }
 
@@ -192,7 +192,7 @@ describe('queueing downloads', () => {
     relay(audioBytes(10));
     const dl = await fresh();
     // Same module instance the fresh downloads.ts reads its settings from.
-    const s = await import('../../src/data/settings');
+    const s = await import('../../src/storage/settings');
     s.updateSettings({ downloadQuality: 'normal', downloadFormat: 'm4a' });
     await dl.downloads.enqueue([song({ id: 'yt:q' })]);
     await waitForStatus(dl, 'yt:q', 'done');
@@ -535,7 +535,7 @@ describe('managing finished downloads', () => {
 
   it('WEB-DL-020 a file that has moved is only removed from the list, with the reason', async () => {
     const dl = await finished('yt:moved');
-    const { FileMissingError } = await import('../../src/data/downloadTargets');
+    const { FileMissingError } = await import('../../src/storage/downloadTargets');
     h.state.removeError = new FileMissingError(
       'Files saved by the browser have to be deleted from its Downloads folder',
     );

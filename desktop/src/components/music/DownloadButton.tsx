@@ -2,13 +2,13 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../ui/Button';
 import { CAPS } from '../../lib/caps';
-import { downloads, useDownloads } from '../../data/downloads';
+import { downloads, useDownloads } from '../../storage/downloads';
 import { showToast } from '../../store/toasts';
-import type { Track } from '../../data/types';
+import type { Track } from '../../types';
 
 /**
  * Download for a set of tracks (FLOWS M06 / D06): album, playlist, top result.
- * Songs join the download queue (data/downloads.ts); progress shows here and on the
+ * Songs join the download queue (storage/downloads.ts); progress shows here and on the
  * Downloads screen. Hidden while offline - there is nothing to download from.
  */
 export default function DownloadButton({ tracks, offline }: { tracks: Track[]; offline: boolean }) {

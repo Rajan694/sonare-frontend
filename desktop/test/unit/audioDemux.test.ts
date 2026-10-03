@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { demuxAudio, packetAt } from '../../src/data/audioDemux';
+import { demuxAudio, packetAt } from '../../src/audio/audioDemux';
 import { cat, id3Frame, id3Tag, latin1, le32, MP3_FRAME_LEN, mp3Frames } from '../helpers/audioFixtures';
 
 const toBuf = (b: Uint8Array) => b.slice().buffer;

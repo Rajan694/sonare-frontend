@@ -1,4 +1,4 @@
-import { API_BASE } from '../data/auth';
+import { API_BASE } from '../api/auth';
 import { CLIENT } from './caps';
 
 // Sends uncaught errors and unhandled rejections to the backend, where they show on the admin

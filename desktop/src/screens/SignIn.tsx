@@ -2,8 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
-import { requestPasswordReset, signIn, signUp } from '../data/auth';
-import { clearPendingAction, takePendingAction } from '../data/accountGate';
+import { requestPasswordReset, signIn, signUp } from '../api/auth';
+import { clearPendingAction, takePendingAction } from '../api/accountGate';
 import { showToast } from '../store/toasts';
 
 type Mode = 'signin' | 'signup' | 'forgot';

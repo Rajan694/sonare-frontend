@@ -1,4 +1,4 @@
-import { API_BASE } from '../data/auth';
+import { API_BASE } from '../api/auth';
 
 // The admin page's own client. Admin sessions are separate from app sign-in: a different
 // token, kept in sessionStorage so closing the tab signs out.

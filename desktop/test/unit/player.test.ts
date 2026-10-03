@@ -44,7 +44,7 @@ function scriptedAudio(): ScriptedAudio {
 /** player.ts owns one element for the app's lifetime; each test loads a fresh module. */
 async function freshPlayer() {
   vi.resetModules();
-  return import('../../src/data/player');
+  return import('../../src/audio/player');
 }
 
 function streamEndpoint(over: Record<string, unknown> = {}) {

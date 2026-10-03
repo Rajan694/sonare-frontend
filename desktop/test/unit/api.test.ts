@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { api, ApiError, loadErrorMessage } from '../../src/data/api';
-import { clearSession, getAccessToken, getCurrentUser, setSession } from '../../src/data/auth';
+import { api, ApiError, loadErrorMessage } from '../../src/api/api';
+import { clearSession, getAccessToken, getCurrentUser, setSession } from '../../src/api/auth';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeTrack, page, testUser } from '../helpers/fixtures';
 

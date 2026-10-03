@@ -16,8 +16,8 @@ import {
   EQ_MIN_DB,
   EQ_MAX_DB,
   CUSTOM_PRESET,
-} from '../data/dsp';
-import { useSettings, updateSettings } from '../data/settings';
+} from '../audio/dsp';
+import { useSettings, updateSettings } from '../storage/settings';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 

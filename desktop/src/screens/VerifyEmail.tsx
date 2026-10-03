@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Button from '../components/ui/Button';
-import { verifyEmail } from '../data/auth';
+import { verifyEmail } from '../api/auth';
 
 type Status = 'checking' | 'verified' | 'failed';
 

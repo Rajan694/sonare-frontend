@@ -2,7 +2,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render } from '@testing-library/react';
 import type { PlayerStore } from '../../src/store/playerContext';
-import type { PlaybackStatus } from '../../src/data/player';
+import type { PlaybackStatus } from '../../src/audio/player';
 import { makeTrack } from '../helpers/fixtures';
 
 /**
@@ -28,7 +28,7 @@ const h = vi.hoisted(() => {
   };
 });
 
-vi.mock('../../src/data/player', () => ({
+vi.mock('../../src/audio/player', () => ({
   getStatus: () => h.status,
   onPlaybackChange: (fn: (s: PlaybackStatus) => void) => {
     h.playbackListeners.add(fn);
@@ -46,9 +46,9 @@ vi.mock('../../src/data/player', () => ({
   setVolume: vi.fn(),
   toggleMute: vi.fn(),
 }));
-vi.mock('../../src/data/plays', () => ({ resetPlay: vi.fn(), maybeRecordPlay: vi.fn() }));
-vi.mock('../../src/data/sync', () => ({ setSyncOnline: vi.fn(), startBackgroundSync: vi.fn() }));
-vi.mock('../../src/data/downloads', () => ({ downloads: { init: vi.fn(async () => {}) } }));
+vi.mock('../../src/api/plays', () => ({ resetPlay: vi.fn(), maybeRecordPlay: vi.fn() }));
+vi.mock('../../src/api/sync', () => ({ setSyncOnline: vi.fn(), startBackgroundSync: vi.fn() }));
+vi.mock('../../src/storage/downloads', () => ({ downloads: { init: vi.fn(async () => {}) } }));
 vi.mock('../../src/components/layout/AppShell', async () => {
   const { usePlayerStore } = await import('../../src/store/playerContext');
   return {
@@ -60,9 +60,9 @@ vi.mock('../../src/components/layout/AppShell', async () => {
 });
 
 import App from '../../src/App';
-import * as player from '../../src/data/player';
-import * as plays from '../../src/data/plays';
-import * as sync from '../../src/data/sync';
+import * as player from '../../src/audio/player';
+import * as plays from '../../src/api/plays';
+import * as sync from '../../src/api/sync';
 
 const store = () => h.store.current!;
 const ids = () => store().state.queue.map((t) => t.id);

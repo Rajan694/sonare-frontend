@@ -75,8 +75,8 @@ class FakeContext {
 
 async function fresh() {
   vi.resetModules();
-  const settings = await import('../../src/data/settings');
-  const dsp = await import('../../src/data/dsp');
+  const settings = await import('../../src/storage/settings');
+  const dsp = await import('../../src/audio/dsp');
   return { ...settings, ...dsp };
 }
 

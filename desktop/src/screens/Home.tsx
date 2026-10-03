@@ -4,9 +4,9 @@ import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useTrending, useRecentlyPlayed, useAuth } from '../data/hooks';
-import { loadErrorMessage } from '../data/api';
-import { useLocalLibrary, resolveLocalRefs } from '../data/local';
+import { useTrending, useRecentlyPlayed, useAuth } from '../api/hooks';
+import { loadErrorMessage } from '../api/api';
+import { useLocalLibrary, resolveLocalRefs } from '../storage/local';
 import Icon from '../components/ui/Icon';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import { trackArtwork } from '../components/music/Artwork';
@@ -15,7 +15,7 @@ import { Card } from '../components/ui/Card';
 import { Tile } from '../components/ui/Tile';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer, staggerItem, transition } from '../lib/motion';
-import type { Track } from '../data/types';
+import type { Track } from '../types';
 
 export default function Home() {
   const { mode, setMode } = useModeStore();

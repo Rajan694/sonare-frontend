@@ -11,9 +11,9 @@ import {
   useMyPlaylists,
   usePlaylist,
   useSearch,
-} from '../../src/data/hooks';
-import { setFavourite } from '../../src/data/favourites';
-import { clearSession, setSession } from '../../src/data/auth';
+} from '../../src/api/hooks';
+import { setFavourite } from '../../src/api/favourites';
+import { clearSession, setSession } from '../../src/api/auth';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 

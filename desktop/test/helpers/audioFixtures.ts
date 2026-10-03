@@ -1,4 +1,4 @@
-import type { RangeReader } from '../../src/data/tags';
+import type { RangeReader } from '../../src/storage/tags';
 
 /** Byte builders for real audio container layouts (ID3v2 + MPEG, FLAC, Ogg Opus, MP4). */
 export const latin1 = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0));

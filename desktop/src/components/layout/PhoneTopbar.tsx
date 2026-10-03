@@ -2,12 +2,12 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { CAPS } from '../../lib/caps';
 import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/modeContext';
-import { useAuth } from '../../data/hooks';
+import { useAuth } from '../../api/hooks';
 import { BrandMark } from '../ui/BrandMark';
 import { Segmented } from '../ui/Segmented';
 import { IconButton } from '../ui/Button';
 import SearchField from './SearchField';
-import type { Mode } from '../../data/types';
+import type { Mode } from '../../types';
 
 /**
  * Phone headers (FLOWS M01-M16). The phone shell has no top bar of its own, so this is

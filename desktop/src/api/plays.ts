@@ -34,7 +34,7 @@ export function resetPlay(trackId: string, startedAt: number): void {
 }
 
 /**
- * Every counted play lands in this on-device queue first, online or not; data/sync.ts
+ * Every counted play lands in this on-device queue first, online or not; api/sync.ts
  * uploads it in the background and removes exactly what the server confirmed. Each play
  * carries the account it was heard on, so one made before a sign-out never lands on the
  * next account.

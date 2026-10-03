@@ -4,8 +4,8 @@ import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { usePlaylist, usePlaylistTracks, useAuth, notifyPlaylistsChanged } from '../data/hooks';
-import { api } from '../data/api';
+import { usePlaylist, usePlaylistTracks, useAuth, notifyPlaylistsChanged } from '../api/hooks';
+import { api } from '../api/api';
 import { showToast } from '../store/toasts';
 import { openTrackMenu } from '../components/music/TrackMenu';
 import DownloadButton from '../components/music/DownloadButton';
@@ -17,7 +17,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer } from '../lib/motion';
 import { cn } from '../lib/cn';
 import { formatDuration } from '../lib/format';
-import type { Track } from '../data/types';
+import type { Track } from '../types';
 
 export default function PlaylistDetail() {
   const { id: rawId } = useParams();

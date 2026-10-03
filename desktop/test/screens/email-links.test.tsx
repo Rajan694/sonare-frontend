@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { screen, waitFor } from '@testing-library/react';
 import ResetPassword from '../../src/screens/ResetPassword';
 import VerifyEmail from '../../src/screens/VerifyEmail';
-import { clearSession, getCurrentUser, setSession } from '../../src/data/auth';
+import { clearSession, getCurrentUser, setSession } from '../../src/api/auth';
 import { renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, useMockServer, server } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';

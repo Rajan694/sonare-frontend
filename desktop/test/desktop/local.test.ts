@@ -8,7 +8,7 @@ vi.mock('@neutralinojs/lib', async () => (await import('../helpers/fakeNeutralin
 /** local.ts keeps the index in module state; a fresh import is a fresh app launch. */
 async function launch() {
   vi.resetModules();
-  const local = await import('../../src/data/local');
+  const local = await import('../../src/storage/local');
   // The mocked package, i.e. the very spies the app calls.
   const neu = (await import('@neutralinojs/lib')) as unknown as typeof import('../helpers/fakeNeutralino').lib;
   return { ...local, neu };
@@ -350,7 +350,7 @@ describe('downloads in the local library', () => {
 describe('native download folder', () => {
   async function targets() {
     vi.resetModules();
-    return import('../../src/data/downloadTargets');
+    return import('../../src/storage/downloadTargets');
   }
 
   it('DSK-023 downloads go to ~/Music/Sonare until the user picks another folder, which is remembered', async () => {
