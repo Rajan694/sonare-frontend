@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -11,8 +11,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { api } from '../data/api';
-import { requireAccount } from '../data/accountGate';
-import { useAuthStore } from '../data/auth';
+import { useSavedAlbum } from '../data/savedAlbums';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import { songCount } from '../lib/format';
@@ -33,23 +32,10 @@ export function AlbumScreen() {
   const tracks = tracksQuery.data?.items ?? [];
   const info = album.data;
 
-  // Saved albums are per account: read them for whoever is signed in.
-  const userId = useAuthStore((state) => state.user?.id);
-  const saved = useAsync(async () => api.libraryAlbums(), [userId], { enabled: !!userId });
-  const [favouriteOverride, setFavouriteOverride] = useState<boolean | null>(null);
-  useEffect(() => setFavouriteOverride(null), [id, userId]);
-  const favourite = favouriteOverride ?? !!saved.data?.items?.some((a) => a.id === id);
-
-  const toggleFavourite = () =>
-    requireAccount('Create a free account to save albums you love.', async () => {
-      const next = !favourite;
-      setFavouriteOverride(next);
-      try {
-        await api.setAlbumFavourite(id, next);
-      } catch {
-        setFavouriteOverride(!next);
-      }
-    });
+  const { isSaved: favourite, toggle: toggleFavourite } = useSavedAlbum(
+    id,
+    'Create a free account to save albums you love.',
+  );
 
   const totalDurationMs = tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0);
   const durationMinutes = Math.round(totalDurationMs / 60000);

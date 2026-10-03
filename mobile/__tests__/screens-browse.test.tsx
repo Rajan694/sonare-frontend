@@ -444,9 +444,7 @@ describe('Playlist, album and artist pages', () => {
     await waitFor(() => expect(nav.goBack).toHaveBeenCalled());
   });
 
-  // BUG: the heart on the playlist and album pages is wired to `onPress={() => {}}`, so it
-  // looks like a favourite button but saves nothing. Remove `.failing` once it is hooked up.
-  test.failing('MOB-PL-004 the favourite button on a playlist saves it', async () => {
+  it('MOB-PL-004 the favourite button on a playlist saves it', async () => {
     signIn();
     route.params = { id: 'yt:PL1' };
     stub('playlist', async () => makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }));
@@ -457,6 +455,18 @@ describe('Playlist, album and artist pages', () => {
     const { findByLabelText } = render(<PlaylistDetailScreen />);
     fireEvent.press(await findByLabelText('Favourite playlist'));
     expect(anyCall).toHaveBeenCalled();
+    // Saved the same way as an album: the library lists it with the saved albums.
+    await waitFor(() => expect(api.setAlbumFavourite).toHaveBeenCalledWith('yt:PL1', true));
+  });
+
+  it('MOB-PL-005 your own playlist has no favourite button', async () => {
+    signIn();
+    route.params = { id: 'sonare:mine' };
+    stub('myPlaylist', async () => makePlaylist({ id: 'sonare:mine', name: 'Mine', kind: 'synced' }));
+    stub('myPlaylistTracks', async () => page(songs));
+    const { findByText, queryByLabelText } = render(<PlaylistDetailScreen />);
+    expect(await findByText('Mine')).toBeTruthy();
+    expect(queryByLabelText('Favourite playlist')).toBeNull();
   });
 
   it('MOB-ALB-001 an album shows its artist link and year, and shuffle plays it all', async () => {

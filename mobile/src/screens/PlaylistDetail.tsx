@@ -16,6 +16,7 @@ import { useLibraryStore } from '../store/library';
 import { api, isOwnPlaylist } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
+import { useSavedAlbum } from '../data/savedAlbums';
 import { songCount } from '../lib/format';
 import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
 import Icon from '../components/ui/Icon';
@@ -31,6 +32,8 @@ export function PlaylistDetailScreen() {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const shuffle = usePlayerStore((state) => state.shuffle);
   const [menuOpen, setMenuOpen] = useState(false);
+  // YouTube playlists are saved to the library the same way albums are.
+  const { isSaved, toggle: toggleSaved } = useSavedAlbum(id, 'Create a free account to save playlists you love.');
 
   const playlist = useAsync(() => (own ? api.myPlaylist(id) : api.playlist(id)), [id], { refetchOnFocus: own });
   const tracksQuery = useAsync(() => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)), [id], {
@@ -134,12 +137,14 @@ export function PlaylistDetailScreen() {
             {/* Actions row */}
             <View className="flex-row items-center justify-between px-5 pt-2 pb-3">
               <View className="flex-row items-center gap-1">
-                <IconButton
-                  icon={<Icon name="heart" size={20} color="#9A9AA8" />}
-                  size={44}
-                  onPress={() => {}}
-                  accessibilityLabel="Favourite playlist"
-                />
+                {!own && (
+                  <IconButton
+                    icon={<Icon name="heart" size={20} color={isSaved ? '#00E28A' : '#9A9AA8'} />}
+                    size={44}
+                    onPress={toggleSaved}
+                    accessibilityLabel="Favourite playlist"
+                  />
+                )}
                 <IconButton
                   icon={<Icon name="playlist" size={20} color="#9A9AA8" />}
                   size={44}

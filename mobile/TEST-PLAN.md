@@ -154,40 +154,41 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/screens-browse.test.tsx`
 
-| ID               | Use case                                                                                   |
-| :--------------- | :----------------------------------------------------------------------------------------- |
-| `MOB-HOME-001`   | a signed-in user is welcomed by first name and can pick up their last song                 |
-| `MOB-HOME-002`   | with a song loaded, the continue card pauses and resumes it                                |
-| `MOB-HOME-003`   | a guest is invited to sign in and no account data is requested                             |
-| `MOB-HOME-004`   | trending plays within the chart; when the music service is down it says so and retries     |
-| `MOB-HOME-005`   | choosing Offline asks first; the header opens search and settings                          |
-| `MOB-HOME-006`   | offline, it lists the downloaded songs and asks the server for nothing                     |
-| `MOB-SEARCH-001` | typing searches once the user pauses, and shows a top result and songs                     |
-| `MOB-SEARCH-002` | tapping a song plays it with the other results queued                                      |
-| `MOB-SEARCH-003` | album and artist results open their pages; filters change the search type                  |
-| `MOB-SEARCH-004` | no results says so; a failed search can be retried                                         |
-| `MOB-SEARCH-005` | offline, the server is never searched and it offers to go online                           |
-| `MOB-SEARCH-006` | the Genres chip searches everything instead of sending a type the server rejects           |
-| `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                        |
-| `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                                 |
-| `MOB-LIB-S-003`  | the sort chip cycles recently added → most played → A-Z and refetches                      |
-| `MOB-LIB-S-004`  | "only on this phone" keeps just the downloaded songs                                       |
-| `MOB-LIB-S-005`  | the Folders tab opens the folders screen; Downloads opens downloads                        |
-| `MOB-PLS-001`    | a guest is asked to sign up before creating a playlist                                     |
-| `MOB-PLS-002`    | lists the user's playlists with their kind; tapping one opens it                           |
-| `MOB-PLS-003`    | creating a playlist names it and opens it                                                  |
-| `MOB-PLS-004`    | deleting from a playlist's options asks first                                              |
-| `MOB-PLS-005`    | offline, playlists wait for Online Mode                                                    |
-| `MOB-PL-001`     | the user's own playlist shows its length and plays from the start                          |
-| `MOB-PL-002`     | a public playlist has no owner options                                                     |
-| `MOB-PL-003`     | deleting the playlist from its options leaves the page once it is gone                     |
-| `MOB-PL-004`     | the favourite button on a playlist saves it **(known bug — expected to fail until fixed)** |
-| `MOB-ALB-001`    | an album shows its artist link and year, and shuffle plays it all                          |
-| `MOB-ALB-002`    | "Add to queue" appends the whole album                                                     |
-| `MOB-ALB-003`    | the favourite button on an album saves it                                                  |
-| `MOB-ART-001`    | an artist shows listeners and albums; album tiles open the album                           |
-| `MOB-ART-002`    | following saves to the account; a failure turns it back                                    |
-| `MOB-ART-003`    | an artist with no songs says so                                                            |
+| ID               | Use case                                                                               |
+| :--------------- | :------------------------------------------------------------------------------------- |
+| `MOB-HOME-001`   | a signed-in user is welcomed by first name and can pick up their last song             |
+| `MOB-HOME-002`   | with a song loaded, the continue card pauses and resumes it                            |
+| `MOB-HOME-003`   | a guest is invited to sign in and no account data is requested                         |
+| `MOB-HOME-004`   | trending plays within the chart; when the music service is down it says so and retries |
+| `MOB-HOME-005`   | choosing Offline asks first; the header opens search and settings                      |
+| `MOB-HOME-006`   | offline, it lists the downloaded songs and asks the server for nothing                 |
+| `MOB-SEARCH-001` | typing searches once the user pauses, and shows a top result and songs                 |
+| `MOB-SEARCH-002` | tapping a song plays it with the other results queued                                  |
+| `MOB-SEARCH-003` | album and artist results open their pages; filters change the search type              |
+| `MOB-SEARCH-004` | no results says so; a failed search can be retried                                     |
+| `MOB-SEARCH-005` | offline, the server is never searched and it offers to go online                       |
+| `MOB-SEARCH-006` | the Genres chip searches everything instead of sending a type the server rejects       |
+| `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                    |
+| `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                             |
+| `MOB-LIB-S-003`  | the sort chip cycles recently added → most played → A-Z and refetches                  |
+| `MOB-LIB-S-004`  | "only on this phone" keeps just the downloaded songs                                   |
+| `MOB-LIB-S-005`  | the Folders tab opens the folders screen; Downloads opens downloads                    |
+| `MOB-PLS-001`    | a guest is asked to sign up before creating a playlist                                 |
+| `MOB-PLS-002`    | lists the user's playlists with their kind; tapping one opens it                       |
+| `MOB-PLS-003`    | creating a playlist names it and opens it                                              |
+| `MOB-PLS-004`    | deleting from a playlist's options asks first                                          |
+| `MOB-PLS-005`    | offline, playlists wait for Online Mode                                                |
+| `MOB-PL-001`     | the user's own playlist shows its length and plays from the start                      |
+| `MOB-PL-002`     | a public playlist has no owner options                                                 |
+| `MOB-PL-003`     | deleting the playlist from its options leaves the page once it is gone                 |
+| `MOB-PL-004`     | the favourite button on a playlist saves it                                            |
+| `MOB-PL-005`     | your own playlist has no favourite button                                              |
+| `MOB-ALB-001`    | an album shows its artist link and year, and shuffle plays it all                      |
+| `MOB-ALB-002`    | "Add to queue" appends the whole album                                                 |
+| `MOB-ALB-003`    | the favourite button on an album saves it                                              |
+| `MOB-ART-001`    | an artist shows listeners and albums; album tiles open the album                       |
+| `MOB-ART-002`    | following saves to the account; a failure turns it back                                |
+| `MOB-ART-003`    | an artist with no songs says so                                                        |
 
 ## `__tests__/screens-player.test.tsx`
 
