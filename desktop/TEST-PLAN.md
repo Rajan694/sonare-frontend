@@ -613,26 +613,26 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/tags.test.ts`
 
-| ID            | Use case                                                                                      |
-| :------------ | :-------------------------------------------------------------------------------------------- |
-| `WEB-TAG-001` | reads "Artist - Title" and uses the parent folder as the album                                |
-| `WEB-TAG-002` | removes download-site stamps, NULs and extra spaces                                           |
-| `WEB-TAG-015` | strips ".info" download-site stamps completely **(known bug — expected to fail until fixed)** |
-| `WEB-TAG-003` | reads title, artist, album, year and genre from ID3v2.3 frames                                |
-| `WEB-TAG-004` | uses TLEN for the duration when present                                                       |
-| `WEB-TAG-005` | works out a CBR duration from the bitrate and file size                                       |
-| `WEB-TAG-006` | prefers the Xing frame count for VBR files                                                    |
-| `WEB-TAG-007` | reads only the tag and the first frame, not the whole file                                    |
-| `WEB-TAG-016` | ID3v2.4: synchsafe frame sizes, UTF-16BE text and TDRC dates                                  |
-| `WEB-TAG-017` | ID3v2.2: three-letter frames with 3-byte sizes                                                |
-| `WEB-TAG-018` | an extended ID3 header is skipped before the frames                                           |
-| `WEB-TAG-019` | MPEG-2 (22.05 kHz) files get a duration from their bitrate                                    |
-| `WEB-TAG-020` | Ogg Vorbis: tags from the comment header, duration at the stream's own sample rate            |
-| `WEB-TAG-021` | MP4 with a 64-bit atom size and a version-1 mvhd                                              |
-| `WEB-TAG-008` | FLAC: duration from STREAMINFO and tags from Vorbis comments                                  |
-| `WEB-TAG-009` | Ogg Opus: tags from OpusTags and duration from the last granule at 48 kHz                     |
-| `WEB-TAG-010` | MP4/M4A: finds moov after mdat, reads mvhd duration and ilst tags                             |
-| `WEB-TAG-011` | recognises the container by its bytes, not the extension                                      |
-| `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                                      |
-| `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing                         |
-| `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                                       |
+| ID            | Use case                                                                           |
+| :------------ | :--------------------------------------------------------------------------------- |
+| `WEB-TAG-001` | reads "Artist - Title" and uses the parent folder as the album                     |
+| `WEB-TAG-002` | removes download-site stamps, NULs and extra spaces                                |
+| `WEB-TAG-015` | strips ".info" download-site stamps completely                                     |
+| `WEB-TAG-003` | reads title, artist, album, year and genre from ID3v2.3 frames                     |
+| `WEB-TAG-004` | uses TLEN for the duration when present                                            |
+| `WEB-TAG-005` | works out a CBR duration from the bitrate and file size                            |
+| `WEB-TAG-006` | prefers the Xing frame count for VBR files                                         |
+| `WEB-TAG-007` | reads only the tag and the first frame, not the whole file                         |
+| `WEB-TAG-016` | ID3v2.4: synchsafe frame sizes, UTF-16BE text and TDRC dates                       |
+| `WEB-TAG-017` | ID3v2.2: three-letter frames with 3-byte sizes                                     |
+| `WEB-TAG-018` | an extended ID3 header is skipped before the frames                                |
+| `WEB-TAG-019` | MPEG-2 (22.05 kHz) files get a duration from their bitrate                         |
+| `WEB-TAG-020` | Ogg Vorbis: tags from the comment header, duration at the stream's own sample rate |
+| `WEB-TAG-021` | MP4 with a 64-bit atom size and a version-1 mvhd                                   |
+| `WEB-TAG-008` | FLAC: duration from STREAMINFO and tags from Vorbis comments                       |
+| `WEB-TAG-009` | Ogg Opus: tags from OpusTags and duration from the last granule at 48 kHz          |
+| `WEB-TAG-010` | MP4/M4A: finds moov after mdat, reads mvhd duration and ilst tags                  |
+| `WEB-TAG-011` | recognises the container by its bytes, not the extension                           |
+| `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                           |
+| `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing              |
+| `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                            |

@@ -26,7 +26,7 @@ const utf8 = new TextDecoder('utf-8');
 
 // Download sites stamp their domain into tags ("Song ::www.RAAG.ME::", "Song(PagalWorld.com.se)").
 const SITE_STAMP =
-  /\s*(::+|[-|]\s*|[([])?\s*(www\.)?[a-z0-9-]+\.(com|me|in|net|org|se|co|info|pk|fm|io|live|site|xyz|app|cc|to|mobi|biz|tv|club|online|world|pro|ws)(\.[a-z]{2,3})*\s*(::+|[)\]])?/gi;
+  /\s*(::+|[-|]\s*|[([])?\s*(www\.)?[a-z0-9-]+\.(com|me|in|net|org|se|co|info|pk|fm|io|live|site|xyz|app|cc|to|mobi|biz|tv|club|online|world|pro|ws)\b(\.[a-z]{2,3})*\s*(::+|[)\]])?/gi;
 
 export function clean(s: string | undefined): string | undefined {
   const v = s

@@ -38,10 +38,7 @@ describe('file-name fallback', () => {
     expect(clean(undefined)).toBeUndefined();
   });
 
-  // BUG: SITE_STAMP in src/storage/tags.ts lists `in` before `info`, so ".info" stamps match
-  // as ".in" and leave "fo" behind ("Song - DJMaza.info" -> "Songfo"). Remove `.fails`
-  // once the alternation puts longer TLDs first (or ends with \b).
-  it.fails('WEB-TAG-015 strips ".info" download-site stamps completely', () => {
+  it('WEB-TAG-015 strips ".info" download-site stamps completely', () => {
     expect(clean('Song - DJMaza.info')).toBe('Song');
     expect(clean('Tune (Mp3Mad.info)')).toBe('Tune');
   });
