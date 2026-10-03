@@ -36,6 +36,18 @@ Run these from the repo root instead, if you prefer: `../runFE.sh <web|linux|win
 `neutralino.config.json` — don't start `npm run dev` alongside them, the dev server
 port is strict (5173) and `neu` waits for it.
 
+## Fixed port 47823
+
+The desktop window is served by Neutralino on **http://localhost:47823** (`port` in
+`neutralino.config.json`). The port is fixed so the production backend can allow exactly
+that origin: its `CORS_ORIGINS` lists `http://localhost:47823` next to `https://sonare.dev`.
+
+- If something else already uses 47823, Neutralino fails to start. Free the port, or start
+  the app with another one (`./sonare-desktop-linux_x64 --port=47900`) **and** add that
+  origin (`http://localhost:47900`) to the backend's `CORS_ORIGINS`.
+- Development is unaffected: `runFE.sh linux` picks a free port and passes its own `--port`,
+  and the development backend allows any localhost origin.
+
 ## Native APIs
 
 Use the typed npm package rather than the injected global client library:

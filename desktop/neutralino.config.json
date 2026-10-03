@@ -3,7 +3,7 @@
   "applicationId": "app.sonare.desktop",
   "version": "1.0.0",
   "defaultMode": "window",
-  "port": 0,
+  "port": 47823,
   "documentRoot": "/resources/",
   "url": "/",
   "enableServer": true,
