@@ -76,7 +76,8 @@ export function SearchScreen() {
     setFilter('all');
   };
   const results = useAsync(() => api.search(q, toSearchType(filter)), [q, filter], {
-    enabled: online && q.length > 0 && filter !== 'genres',
+    // Waits for the debounce to catch up, so switching chips mid-typing doesn't search a stale query.
+    enabled: online && q.length > 0 && q === query.trim() && filter !== 'genres',
   });
 
   const items = q ? (results.data?.items ?? []) : [];

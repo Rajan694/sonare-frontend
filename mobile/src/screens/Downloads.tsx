@@ -126,12 +126,10 @@ export function DownloadsScreen() {
     const queue = downloadedTracks(items);
     const track = queue.find((t) => t.id === d.id) ?? (mode === 'online' ? downloadTrack(d) : null);
     if (track)
-      usePlayerStore
-        .getState()
-        .playTrack(track, queue.some((t) => t.id === track.id) ? queue : [track], {
-          kind: 'Library',
-          name: 'Downloads',
-        });
+      usePlayerStore.getState().playTrack(track, queue.some((t) => t.id === track.id) ? queue : [track], {
+        kind: 'Library',
+        name: 'Downloads',
+      });
   };
 
   return (

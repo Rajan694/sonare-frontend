@@ -128,7 +128,7 @@ navigation mock live in `test-utils/`.
 | `MOB-LIB-013` | offline failures are not reported, repeats wait a minute, and a session sends at most 20         |
 | `MOB-LIB-014` | installErrorReporting reports uncaught errors and unhandled rejections, then hands them on       |
 | `MOB-LIB-044` | without Hermes promise tracking, uncaught errors are still reported                              |
-| `MOB-LIB-015` | durations, easings, springConfig constants exported                                              |
+| `MOB-LIB-015` | durations, easings and the springs exported; springs settle without overshoot                    |
 | `MOB-LIB-016` | AnimatedView rises in after its delay; FadeView fades with visibility; reduced motion skips both |
 
 ## `__tests__/native.test.ts`
@@ -169,12 +169,13 @@ navigation mock live in `test-utils/`.
 | `MOB-SEARCH-003` | album and artist results open their pages; filters change the search type              |
 | `MOB-SEARCH-004` | no results says so; a failed search can be retried                                     |
 | `MOB-SEARCH-005` | offline, the server is never searched and it offers to go online                       |
-| `MOB-SEARCH-006` | the Genres chip searches everything instead of sending a type the server rejects       |
+| `MOB-SEARCH-006` | the Genres chip shows the categories, and a category searches for its query            |
+| `MOB-SEARCH-007` | a genre opened from the Library arrives as the search                                  |
 | `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                    |
 | `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                             |
-| `MOB-LIB-S-003`  | the sort chip cycles recently added → most played → A-Z and refetches                  |
+| `MOB-LIB-S-003`  | the sort chip opens a sheet of orders; picking one refetches                           |
 | `MOB-LIB-S-004`  | "only on this phone" keeps just the downloaded songs                                   |
-| `MOB-LIB-S-005`  | the Folders tab opens the folders screen; Downloads opens downloads                    |
+| `MOB-LIB-S-005`  | there is no Folders tab (Settings has music folders); Downloads opens downloads        |
 | `MOB-PLS-001`    | a guest is asked to sign up before creating a playlist                                 |
 | `MOB-PLS-002`    | lists the user's playlists with their kind; tapping one opens it                       |
 | `MOB-PLS-003`    | creating a playlist names it and opens it                                              |

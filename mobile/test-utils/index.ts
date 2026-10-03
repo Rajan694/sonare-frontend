@@ -12,6 +12,7 @@ export const nav = {
   push: jest.fn(),
   replace: jest.fn(),
   setOptions: jest.fn(),
+  setParams: jest.fn((params: Record<string, unknown>) => Object.assign(route.params, params)),
   canGoBack: () => true,
 };
 export const route: { params: Record<string, unknown> } = { params: {} };

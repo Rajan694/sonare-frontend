@@ -4,7 +4,7 @@ import { formatDuration, generatePeaks, songCount } from '../src/lib/format';
 import { hasInternet } from '../src/lib/connectivity';
 import { confirmDeletePlaylist } from '../src/lib/confirmDeletePlaylist';
 import { confirmRemoveDownloads } from '../src/lib/confirmRemoveDownloads';
-import { durations, easings, springConfig, AnimatedView, FadeView } from '../src/lib/motion';
+import { durations, easings, springConfig, springs, AnimatedView, FadeView } from '../src/lib/motion';
 import { useLibraryStore } from '../src/store/library';
 import { useDownloadsStore } from '../src/store/downloads';
 import { render } from '@testing-library/react-native';
@@ -352,15 +352,20 @@ describe('Lib Layer', () => {
   });
 
   describe('motion.tsx', () => {
-    it('MOB-LIB-015 durations, easings, springConfig constants exported', () => {
+    it('MOB-LIB-015 durations, easings and the springs exported; springs settle without overshoot', () => {
       expect(durations.fast).toBe(150);
       expect(durations.base).toBe(250);
       expect(durations.slow).toBe(350);
       expect(easings.standard).toEqual([0.4, 0.0, 0.2, 1]);
       expect(easings.decelerate).toEqual([0.0, 0.0, 0.2, 1]);
       expect(easings.accelerate).toEqual([0.4, 0.0, 1, 1]);
-      expect(springConfig.stiffness).toBe(300);
-      expect(springConfig.damping).toBe(20);
+      expect(springConfig).toEqual({ damping: 28, stiffness: 280, overshootClamping: true });
+      // No bounce past the end anywhere (sheets, swipes, presses, sliding indicators).
+      for (const spring of [springConfig, ...Object.values(springs)]) {
+        expect(spring.overshootClamping).toBe(true);
+        // Well damped too (ζ = damping / 2√stiffness ≥ 0.6 with mass 1), so it eases in smoothly.
+        expect(spring.damping / (2 * Math.sqrt(spring.stiffness))).toBeGreaterThanOrEqual(0.6);
+      }
     });
 
     it('MOB-LIB-016 AnimatedView rises in after its delay; FadeView fades with visibility; reduced motion skips both', async () => {
