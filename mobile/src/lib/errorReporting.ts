@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import { API_BASE } from '../data/config';
+import { apiBase } from '../data/config';
 import { httpRequest } from '../data/http';
 
 // Sends uncaught JS errors and unhandled promise rejections to the backend, where they show
@@ -33,7 +33,7 @@ export function reportError(value: unknown, fatal = false, kind: ErrorKind = 'un
   lastSent.set(err.message, now);
   budget--;
 
-  httpRequest(`${API_BASE}/client-errors`, {
+  httpRequest(`${apiBase()}/client-errors`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

@@ -14,6 +14,7 @@ import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-g
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDownloadsStore } from '../../store/downloads';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated';
+import { springs } from '../../lib/motion';
 
 const THRESHOLD = -50;
 
@@ -40,12 +41,12 @@ export function MiniPlayer() {
 
     // Swipe up
     if (translationY < THRESHOLD || velocityY < -500) {
-      translateY.value = withSpring(-800, { damping: 20, stiffness: 200 }, () => {
+      translateY.value = withSpring(-800, springs.fling, () => {
         runOnJS(navigation.navigate)('NowPlaying');
         translateY.value = 0; // Reset
       });
     } else {
-      translateY.value = withSpring(0, { damping: 20, stiffness: 300 });
+      translateY.value = withSpring(0, springs.snapBack);
     }
   };
 

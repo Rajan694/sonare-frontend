@@ -32,7 +32,8 @@ import com.mobile.player.dsp.DspSettings
  *  - `SonarePlayer.remote`   { command: "next" | "previous" } from notification / lock screen
  *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
  *                            (gapless or crossfade), sent before the state change it causes
- *  - `SonarePlayer.output`   { type, name } when the audio output changes (headphones, Bluetooth…)
+ *  - `SonarePlayer.output`   { id, type, name } when the audio output changes (headphones, Bluetooth…)
+ *  - `SonarePlayer.sleep`    {} when the sleep timer paused playback
  */
 class SonarePlayerModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private val main = Handler(Looper.getMainLooper())
@@ -234,10 +235,51 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     )
   }
 
-  /** Where audio is going right now: `{ type, name }`. */
+  /** Where audio is going right now: `{ id, type, name }`. */
   @ReactMethod
   fun getOutputDevice(promise: Promise) {
     promise.resolve(outputs.current())
+  }
+
+  /** Every output music can go to right now: `[{ id, type, name }]`. */
+  @ReactMethod
+  fun getOutputDevices(promise: Promise) {
+    promise.resolve(outputs.list())
+  }
+
+  /**
+   * Plays on this output (an id from getOutputDevices) while it stays connected; -1 goes
+   * back to Android's choice. Android may still move a call or an alarm elsewhere.
+   */
+  @ReactMethod
+  fun setOutputDevice(id: Double) {
+    val deviceId = id.toInt()
+    PlaybackEngine.preferredDeviceId = deviceId
+    main.post {
+      PlaybackEngine.instance?.setPreferredDevice(if (deviceId >= 0) outputs.info(deviceId) else null)
+      outputs.refresh()
+    }
+  }
+
+  private val sleepTick = Runnable {
+    withController { it.pause() }
+    emit(EVENT_SLEEP, Arguments.createMap())
+  }
+
+  /**
+   * Pauses after `ms` (0 cancels). Runs here rather than in JS, whose timers can stall while
+   * the app is in the background.
+   */
+  @ReactMethod
+  fun setSleepTimer(ms: Double) {
+    main.removeCallbacks(sleepTick)
+    if (ms > 0) main.postDelayed(sleepTick, ms.toLong())
+  }
+
+  /** Stops when the current track ends instead of moving on (the sleep timer's "End of track"). */
+  @ReactMethod
+  fun setPauseAtEndOfTrack(value: Boolean) {
+    main.post { PlaybackEngine.instance?.setPauseAtEndOfTrack(value) }
   }
 
   @ReactMethod fun play() = withController { it.play() }
@@ -271,6 +313,7 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
 
   override fun invalidate() {
     outputs.stop()
+    main.removeCallbacks(sleepTick)
     main.post {
       stopProgress()
       RemoteCommands.listener = null
@@ -290,5 +333,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     private const val EVENT_REMOTE = "SonarePlayer.remote"
     private const val EVENT_ADVANCE = "SonarePlayer.advance"
     private const val EVENT_OUTPUT = "SonarePlayer.output"
+    private const val EVENT_SLEEP = "SonarePlayer.sleep"
   }
 }

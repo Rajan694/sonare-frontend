@@ -9,7 +9,11 @@ const mockSonarePlayerNative = {
   setTransitions: jest.fn(),
   setSpeed: jest.fn(),
   setAudioEffects: jest.fn(),
-  getOutputDevice: jest.fn().mockResolvedValue({ type: 'speaker', name: 'Phone speaker' }),
+  getOutputDevice: jest.fn().mockResolvedValue({ id: 1, type: 'speaker', name: 'Phone speaker' }),
+  getOutputDevices: jest.fn().mockResolvedValue([{ id: 1, type: 'speaker', name: 'Phone speaker' }]),
+  setOutputDevice: jest.fn(),
+  setSleepTimer: jest.fn(),
+  setPauseAtEndOfTrack: jest.fn(),
 };
 
 const mockSonareDownloadsNative = {

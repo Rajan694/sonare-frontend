@@ -9,6 +9,9 @@ import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
 import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
+import { watchSleepTimer } from '../../store/sleepTimer';
+import { watchOutput } from '../../store/output';
+import { watchPlayerPersistence } from '../../store/playerPersist';
 
 // A play counts once the listener has heard 30s, or half of anything shorter. Asking for
 // a stream url doesn't count, or skipping through a queue would inflate every count.
@@ -119,7 +122,14 @@ async function loadCurrent() {
   try {
     const url = await streamUrl(track);
     if (token !== loadToken) return;
-    await SonarePlayer.load({ ...loadOptions(track, url), autoplay: usePlayerStore.getState().isPlaying });
+    // A restored queue resumes where it was left; anything else starts at 0.
+    const { startAtMs } = usePlayerStore.getState();
+    if (startAtMs !== null) usePlayerStore.setState({ startAtMs: null });
+    await SonarePlayer.load({
+      ...loadOptions(track, url),
+      autoplay: usePlayerStore.getState().isPlaying,
+      ...(startAtMs && { startMs: startAtMs }),
+    });
     if (token !== loadToken) return;
     loadedId = track.id;
     listen = { trackId: track.id, startedAt: Date.now(), counted: false };
@@ -196,6 +206,10 @@ function startAudio() {
     advancedTo = mediaId;
     player.setCurrentTrack(track);
   });
+
+  watchSleepTimer();
+  watchOutput();
+  watchPlayerPersistence();
 
   // Audio settings -> native, now and whenever they change (including when the phone's saved
   // ones finish loading).

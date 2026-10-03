@@ -84,7 +84,7 @@ export function ModeSwitchScreen() {
             <Animated.View
               entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
               exiting={FadeOut.duration(200).reduceMotion(ReduceMotion.System)}
-              layout={Layout.springify().reduceMotion(ReduceMotion.System)}
+              layout={Layout.springify().damping(20).reduceMotion(ReduceMotion.System)}
             >
               <View className="h-px bg-ln mb-2 mt-1" />
               <Text className="text-t3 text-ov font-medium pl-1 mb-3">Hidden while offline</Text>
@@ -110,7 +110,7 @@ export function ModeSwitchScreen() {
           <Animated.View
             entering={FadeIn.duration(200).reduceMotion(ReduceMotion.System)}
             exiting={FadeOut.duration(200).reduceMotion(ReduceMotion.System)}
-            layout={Layout.springify().reduceMotion(ReduceMotion.System)}
+            layout={Layout.springify().damping(20).reduceMotion(ReduceMotion.System)}
             className="flex-row items-center gap-3 mb-6"
           >
             <Switch

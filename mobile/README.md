@@ -28,9 +28,12 @@ or by hand: `npm start` (Metro) and `npm run android`. Start the backend first
 
 There is no env file. `src/data/config.ts` picks the API origin:
 
-- debug builds (`__DEV__`): `http://10.0.2.2:3010` on Android — the emulator's address for
-  the host machine (`127.0.0.1` elsewhere);
-- release builds: `https://api.sonare.dev`.
+- debug builds (`__DEV__`): `http://localhost:3010`, forwarded to this computer over USB by
+  `adb reverse tcp:3010 tcp:3010` (`../runFE.sh mobile` sets it up; run it by hand after
+  reconnecting a phone). Works on the emulator and on a phone; a phone on Wi-Fi only can
+  be pointed at the computer's LAN address in Settings → Server address;
+- release builds: `https://api.sonare.dev` (Settings → Server address can override it, but
+  release builds only allow HTTPS).
 
 ## Scripts
 

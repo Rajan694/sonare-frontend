@@ -54,6 +54,8 @@ export interface Transitions {
 }
 
 export interface OutputDevice {
+  /** AudioDeviceInfo id; -1 when unknown. */
+  id: number;
   type: 'speaker' | 'wired' | 'bluetooth' | 'usb';
   name: string;
 }
@@ -69,6 +71,10 @@ interface NativeSonarePlayer {
   setSpeed(speed: number): void;
   setAudioEffects(options: AudioEffects): void;
   getOutputDevice(): Promise<OutputDevice>;
+  getOutputDevices(): Promise<OutputDevice[]>;
+  setOutputDevice(id: number): void;
+  setSleepTimer(ms: number): void;
+  setPauseAtEndOfTrack(value: boolean): void;
 }
 
 const native = NativeModules.SonarePlayer as NativeSonarePlayer | undefined;
@@ -98,7 +104,15 @@ export const SonarePlayer = {
   setSpeed: (speed: number) => native?.setSpeed(speed),
   setAudioEffects: (options: AudioEffects) => native?.setAudioEffects(options),
   getOutputDevice: (): Promise<OutputDevice> =>
-    native?.getOutputDevice() ?? Promise.resolve({ type: 'speaker', name: 'Phone speaker' }),
+    native?.getOutputDevice() ?? Promise.resolve({ id: -1, type: 'speaker', name: 'Phone speaker' }),
+  /** Every connected output, phone speaker first. */
+  getOutputDevices: (): Promise<OutputDevice[]> => native?.getOutputDevices?.() ?? Promise.resolve([]),
+  /** Play on this output while it stays connected; -1 leaves it to Android. */
+  setOutputDevice: (id: number) => native?.setOutputDevice?.(id),
+  /** Pause after `ms`; 0 cancels. Kept natively, so it fires with the app in the background. */
+  setSleepTimer: (ms: number) => native?.setSleepTimer?.(ms),
+  /** Stop when the current track ends instead of moving on. */
+  setPauseAtEndOfTrack: (value: boolean) => native?.setPauseAtEndOfTrack?.(value),
 
   onState: (handler: (e: PlayerStateEvent) => void) => on('state', handler),
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),
@@ -109,4 +123,6 @@ export const SonarePlayer = {
   onAdvance: (handler: (e: { mediaId: string }) => void) => on('advance', handler),
   /** Audio output changed (headphones plugged in, Bluetooth connected…). */
   onOutput: (handler: (e: OutputDevice) => void) => on('output', handler),
+  /** The sleep timer ran out and paused playback. */
+  onSleep: (handler: () => void) => on('sleep', handler),
 };

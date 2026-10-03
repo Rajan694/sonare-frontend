@@ -13,6 +13,7 @@ import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import Icon from '../components/ui/Icon';
+import { useDevicePrefsStore } from '../store/devicePrefs';
 
 function stamp(ms: number) {
   return `${Math.floor(ms / 60000)}:${(Math.floor(ms / 1000) % 60).toString().padStart(2, '0')}`;
@@ -26,7 +27,8 @@ export function LyricsScreen() {
   const [userScrolling, setUserScrolling] = useState(false);
   const [view, setView] = useState<'synced' | 'plain'>('synced');
 
-  const lyrics = useAsync(() => api.lyrics(currentTrack!.id), [currentTrack?.id], {
+  const lyricsScript = useDevicePrefsStore((state) => state.lyricsScript);
+  const lyrics = useAsync(() => api.lyrics(currentTrack!.id, lyricsScript), [currentTrack?.id, lyricsScript], {
     enabled: currentTrack?.source === 'server',
   });
   const data = lyrics.data;

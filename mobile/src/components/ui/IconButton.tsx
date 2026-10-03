@@ -2,6 +2,7 @@ import React from 'react';
 import { Pressable } from 'react-native';
 import { cn } from '../../lib/cn';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { springs } from '../../lib/motion';
 
 interface IconButtonProps {
   icon: React.ReactNode;
@@ -33,8 +34,8 @@ export function IconButton({
   return (
     <AnimatedPressable
       onPress={onPress}
-      onPressIn={() => (scale.value = withSpring(0.9, { damping: 20 }))}
-      onPressOut={() => (scale.value = withSpring(1, { damping: 20 }))}
+      onPressIn={() => (scale.value = withSpring(0.94, springs.press))}
+      onPressOut={() => (scale.value = withSpring(1, springs.press))}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
