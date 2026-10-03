@@ -490,7 +490,7 @@ describe('Playlist, album and artist pages', () => {
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([now.id, ...songs.map((t) => t.id)]);
   });
 
-  test.failing('MOB-ALB-003 the favourite button on an album saves it', async () => {
+  it('MOB-ALB-003 the favourite button on an album saves it', async () => {
     signIn();
     route.params = { id: 'yt:inr' };
     stub('album', async () => makeAlbum({ id: 'yt:inr' }));

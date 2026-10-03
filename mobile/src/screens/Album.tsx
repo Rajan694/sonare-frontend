@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, Pressable } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -11,6 +11,8 @@ import { IconButton } from '../components/ui/IconButton';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { api } from '../data/api';
+import { requireAccount } from '../data/accountGate';
+import { useAuthStore } from '../data/auth';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import { songCount } from '../lib/format';
@@ -30,6 +32,24 @@ export function AlbumScreen() {
   const tracksQuery = useAsync(() => api.albumTracks(id), [id]);
   const tracks = tracksQuery.data?.items ?? [];
   const info = album.data;
+
+  // Saved albums are per account: read them for whoever is signed in.
+  const userId = useAuthStore((state) => state.user?.id);
+  const saved = useAsync(() => api.libraryAlbums(), [userId], { enabled: !!userId });
+  const [favouriteOverride, setFavouriteOverride] = useState<boolean | null>(null);
+  useEffect(() => setFavouriteOverride(null), [id, userId]);
+  const favourite = favouriteOverride ?? !!saved.data?.items?.some((a) => a.id === id);
+
+  const toggleFavourite = () =>
+    requireAccount('Create a free account to save albums you love.', async () => {
+      const next = !favourite;
+      setFavouriteOverride(next);
+      try {
+        await api.setAlbumFavourite(id, next);
+      } catch {
+        setFavouriteOverride(!next);
+      }
+    });
 
   const totalDurationMs = tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0);
   const durationMinutes = Math.round(totalDurationMs / 60000);
@@ -107,9 +127,9 @@ export function AlbumScreen() {
             <View className="flex-row items-center justify-between w-full pt-1 px-1">
               <View className="flex-row items-center gap-1">
                 <IconButton
-                  icon={<Icon name="heart" size={20} color="#9A9AA8" />}
+                  icon={<Icon name="heart" size={20} color={favourite ? '#00E28A' : '#9A9AA8'} />}
                   size={44}
-                  onPress={() => {}}
+                  onPress={toggleFavourite}
                   accessibilityLabel="Favourite album"
                 />
                 <IconButton

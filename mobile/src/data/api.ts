@@ -105,6 +105,12 @@ export const api = {
     request<{ ok: boolean }>(`/me/favourites/tracks/${enc(trackId)}`, {
       method: favourite ? 'PUT' : 'DELETE',
     }),
+  /** Albums the user has saved (hearted). */
+  libraryAlbums: () => request<Page<Album>>('/me/library/albums'),
+  setAlbumFavourite: (albumId: string, favourite: boolean) =>
+    request<{ ok: boolean }>(`/me/favourites/albums/${enc(albumId)}`, {
+      method: favourite ? 'PUT' : 'DELETE',
+    }),
   setFollowing: (artistId: string, following: boolean) =>
     request<{ ok: boolean }>(`/me/following/artists/${enc(artistId)}`, {
       method: following ? 'PUT' : 'DELETE',
