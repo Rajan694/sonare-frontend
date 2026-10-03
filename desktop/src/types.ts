@@ -1,81 +1,19 @@
-export type Source = 'local' | 'server';
+// API shapes live in sonare-frontend/shared (also used by mobile); this file adds what only
+// the desktop/web app needs.
+import type { Track as ApiTrack } from '../../shared/apiTypes';
+
+export type * from '../../shared/apiTypes';
+
 export type Mode = 'online' | 'offline';
 
-export interface Page<T> {
-  items: T[];
-  meta?: {
-    nextCursor?: string;
-    total?: number;
-  };
-}
-
-export interface User {
-  id: string;
-  email: string;
-  displayName: string;
-  /** Missing on sessions saved before email verification existed. */
-  emailVerified?: boolean;
-  createdAt?: number;
-}
-
-export interface Track {
-  id: string;
-  title: string;
-  artistId: string;
-  artist: string;
-  albumId: string | null;
-  album: string | null;
-  durationMs: number | null;
-  source: Source;
-  localPath?: string;
-  codec?: string | null;
-  bitrateKbps?: number | null;
-  bitDepth?: number;
-  playCount: number;
-  favourite: boolean;
-  addedAt: number;
-  lastPlayedAt?: number;
+/** Local files can carry their own waveform and lyrics (read from tags); the API never sends these. */
+export interface Track extends ApiTrack {
   peaks?: number[];
   lyrics?: {
     synced: boolean;
     lines: { atMs: number; text: string }[];
     offsetMs: number;
   };
-  thumbnail?: string;
-}
-
-export interface Album {
-  id: string;
-  title: string;
-  artist: string;
-  artistId: string;
-  year: number | null;
-  trackCount: number | null;
-  genre: string | null;
-  source: Source;
-  downloaded: boolean;
-  thumbnail?: string;
-}
-
-export interface Artist {
-  id: string;
-  name: string;
-  albumCount: number;
-  localTrackCount: number;
-  following: boolean;
-  monthlyListeners?: number | null;
-  thumbnail?: string;
-}
-
-export interface Playlist {
-  id: string;
-  name: string;
-  description?: string | null;
-  kind: 'local' | 'synced' | 'online';
-  trackCount: number | null;
-  downloadedCount: number;
-  updatedAt: number;
-  thumbnail?: string;
 }
 
 export interface Folder {
