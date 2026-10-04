@@ -175,7 +175,7 @@ describe('Queue', () => {
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id]);
   });
 
-  it('MOB-Q-005 a queued song moves with its handle (screen readers: increment / decrement)', () => {
+  it('MOB-Q-007 a queued song moves with its handle (screen readers: increment / decrement)', () => {
     const { getByLabelText } = render(<QueueScreen />);
     fireEvent(getByLabelText('Reorder Next one'), 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id, next1.id]);

@@ -210,6 +210,7 @@ navigation mock live in `test-utils/`.
 | `MOB-Q-004`      | saving the queue creates a playlist with every queued song                                 |
 | `MOB-Q-005`      | a failed save says why; shuffle and repeat work from here                                  |
 | `MOB-Q-006`      | an empty queue says so                                                                     |
+| `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                |
 | `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                     |
 | `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                |
 | `MOB-LYR-003`    | plain text view shows the words without timing                                             |
@@ -283,15 +284,16 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/audio.test.tsx`
 
-| ID                     | Use case                                                                              |
-| :--------------------- | :------------------------------------------------------------------------------------ |
-| `MOB-AUD-001`          | sends the Audio screen settings to the native player whenever they change             |
-| `MOB-AUD-002`          | with gapless on, the next track is handed to the player once the current one loads    |
-| `MOB-AUD-003`          | when the player moves on by itself, the queue follows without loading the track again |
-| `MOB-AUD-004`          | with gapless and crossfade off, no next track is handed over                          |
-| `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                      |
-| `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                     |
-| `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0       |
+| ID                     | Use case                                                                                          |
+| :--------------------- | :------------------------------------------------------------------------------------------------ |
+| `MOB-AUD-001`          | sends the Audio screen settings to the native player whenever they change                         |
+| `MOB-AUD-002`          | with gapless on, the next track is handed to the player once the current one loads                |
+| `MOB-AUD-003`          | when the player moves on by itself, the queue follows without loading the track again             |
+| `MOB-AUD-004`          | with gapless and crossfade off, no next track is handed over                                      |
+| `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                  |
+| `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                 |
+| `MOB-AUD-007`          | with the sleep timer on "End of track", a track that ends stops there instead of playing the next |
+| `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                   |
 
 ## `__tests__/playback-extras.test.ts`
 

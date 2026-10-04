@@ -700,11 +700,12 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/output.test.tsx`
 
-| ID               | Use case                                                                               |
-| ---------------- | -------------------------------------------------------------------------------------- |
-| `WEB-OUTPUT-001` | without setSinkId there is nothing to choose, and no button                            |
-| `WEB-OUTPUT-002` | lists the output devices after the system default, with their kind                     |
-| `WEB-OUTPUT-003` | choosing a device routes the element, then the graph once it exists, and is remembered |
-| `WEB-OUTPUT-004` | the output button lists the devices, marks the current one, and switches               |
-| `WEB-OUTPUT-005` | a remembered device that is gone reads as the system default                           |
-| `WEB-OUTPUT-006` | the Now Playing card opens the same list and switches the device                       |
+| ID               | Use case                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------ |
+| `WEB-OUTPUT-001` | without setSinkId there is nothing to choose, and no button                                |
+| `WEB-OUTPUT-002` | lists the output devices after the system default, with their kind                         |
+| `WEB-OUTPUT-003` | choosing a device routes the element, then the graph once it exists, and is remembered     |
+| `WEB-OUTPUT-004` | the output button lists the devices, marks the current one, and switches                   |
+| `WEB-OUTPUT-005` | a remembered device that is gone reads as the system default                               |
+| `WEB-OUTPUT-006` | the Now Playing card opens the same list and switches the device                           |
+| `WEB-OUTPUT-007` | before a media permission the blank placeholder output is the default, not a second device |
