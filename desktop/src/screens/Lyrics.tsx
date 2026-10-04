@@ -6,7 +6,7 @@ import { useModeStore } from '../store/modeContext';
 import { showToast } from '../store/toasts';
 import { useAsync, useLyrics } from '../api/hooks';
 import { localLibrary } from '../storage/local';
-import { api } from '../api/api';
+import { ApiError, api, loadErrorMessage } from '../api/api';
 import { requireAccount } from '../api/accountGate';
 import { isAuthenticated } from '../api/auth';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
@@ -20,7 +20,7 @@ import { formatDuration } from '../lib/format';
 const OFFSET_STEP_MS = 250;
 const AUTOSCROLL_KEY = 'sonare_lyrics_autoscroll';
 
-const PROVIDERS: Record<string, string> = { lrclib: 'LRCLIB', genius: 'Genius', tags: 'File tags', user: 'Your edit' };
+const PROVIDERS: Record<string, string> = { lrclib: 'LRCLIB', tags: 'File tags', user: 'Your edit' };
 
 function readAutoScroll(): boolean {
   try {
@@ -120,6 +120,11 @@ export default function Lyrics() {
   const trackId = currentTrack.id;
   const plainText = lyricsData?.plain ?? (lines.length > 0 ? lines.map((l) => l.text).join('\n') : '');
   const hasLyrics = lines.length > 0 || !!plainText;
+  // A 404 is "no lyrics"; anything else (LRCLIB down, server unreachable) is worth a retry.
+  const loadError =
+    !isLocal && !hasLyrics && server.error && !(server.error instanceof ApiError && server.error.status === 404)
+      ? server.error
+      : null;
   const source =
     lyricsData?.provider === 'lrc'
       ? `${(currentTrack.localPath?.split(/[\\/]/).pop() ?? currentTrack.title).replace(/\.[^.]+$/, '')}.lrc`
@@ -393,6 +398,15 @@ export default function Lyrics() {
                 <div className="h-8 bg-s2/40 rounded w-1/2" />
                 <div className="h-8 bg-s2/40 rounded w-2/3" />
                 <div className="h-8 bg-s2/40 rounded w-3/5" />
+              </div>
+            ) : loadError ? (
+              <div className="flex flex-col items-center justify-center gap-3 grow text-center py-16" role="alert">
+                <Icon name="lyrics" size={36} className="text-t4" />
+                <span className="text-title-l text-t2 font-semibold">Couldn't load lyrics</span>
+                <span className="text-body-s text-t3">{loadErrorMessage(loadError)}</span>
+                <Button variant="out" onClick={() => void refetch()}>
+                  Try again
+                </Button>
               </div>
             ) : showSynced ? (
               <div className="flex flex-col gap-4 @3xl:gap-5 pt-2">

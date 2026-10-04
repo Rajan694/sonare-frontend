@@ -289,6 +289,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LYRICS-011` | asks for lyrics in the preferred script, and asks again when it changes             |
 | `WEB-LYRICS-012` | a guest who signs in to edit lyrics lands back in the editor                        |
 | `WEB-LYRICS-013` | a guest who signs in to fix the timing gets that change saved                       |
+| `WEB-LYRICS-014` | LRCLIB down says so and retries, instead of "No lyrics"                             |
 
 ## `test/screens/playlists.test.tsx`
 

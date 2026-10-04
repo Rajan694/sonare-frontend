@@ -307,12 +307,12 @@ describe('lyrics', () => {
   it('WEB-LYRICS-009 unsynced lyrics show as plain text with no timing controls', async () => {
     server.use(
       http.get(`${API}/tracks/:id/lyrics`, () =>
-        HttpResponse.json({ synced: false, provider: 'genius', offsetMs: 0, lines: [], plain: 'Verse one\nVerse two' }),
+        HttpResponse.json({ synced: false, provider: 'lrclib', offsetMs: 0, lines: [], plain: 'Verse one\nVerse two' }),
       ),
     );
     open();
     expect(await screen.findByText(/Verse one\s+Verse two/)).toBeInTheDocument();
-    expect(screen.getByText('Genius')).toBeInTheDocument();
+    expect(screen.getByText('LRCLIB')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show lyrics later' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Synced' })).toBeDisabled();
   });
@@ -375,6 +375,24 @@ describe('lyrics', () => {
     await takePendingAction()?.();
     open();
     await waitFor(() => expect(offsets).toEqual([{ offsetMs: 250 }]));
+  });
+
+  it('WEB-LYRICS-014 LRCLIB down says so and retries, instead of "No lyrics"', async () => {
+    let down = true;
+    server.use(
+      http.get(`${API}/tracks/:id/lyrics`, () =>
+        down
+          ? apiError(502, 'LYRICS_UNAVAILABLE', "The lyrics service isn't responding. Try again in a moment.")
+          : HttpResponse.json({ synced: false, provider: 'lrclib', offsetMs: 0, lines: [], plain: 'Back again' }),
+      ),
+    );
+    const { user } = open();
+    expect(await screen.findByText("Couldn't load lyrics")).toBeInTheDocument();
+    expect(screen.getByText("The lyrics service isn't responding. Try again in a moment.")).toBeInTheDocument();
+    expect(screen.queryByText('No lyrics available for this track')).not.toBeInTheDocument();
+    down = false;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Back again')).toBeInTheDocument();
   });
 });
 

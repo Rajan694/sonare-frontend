@@ -10,7 +10,7 @@ import { SettingsScreen } from '../src/screens/Settings';
 import { SignInScreen } from '../src/screens/SignIn';
 import { ModeSwitchScreen } from '../src/screens/ModeSwitch';
 import { FoldersScreen } from '../src/screens/Folders';
-import { api } from '../src/data/api';
+import { ApiError, api } from '../src/data/api';
 import { useAuthStore } from '../src/data/auth';
 import { EQ_PRESET_GAINS, useSettingsStore } from '../src/data/settings';
 import { useAudioStore } from '../src/store/audio';
@@ -280,6 +280,26 @@ describe('Lyrics', () => {
     const local = render(<LyricsScreen />);
     expect(await local.findByText('No lyrics found for this song.')).toBeTruthy();
     expect(lyrics).not.toHaveBeenCalled();
+  });
+
+  it('MOB-LYR-005 LRCLIB down shows the reason and a retry, not "No lyrics found"', async () => {
+    const message = "The lyrics service isn't responding. Try again in a moment.";
+    const lyrics = jest
+      .spyOn(api, 'lyrics')
+      .mockRejectedValueOnce(new ApiError(message, 502, 'LYRICS_UNAVAILABLE'))
+      .mockResolvedValueOnce({
+        synced: false,
+        lines: [],
+        plain: 'Back again',
+        offsetMs: 0,
+        provider: 'lrclib',
+      } as never);
+    const { findByText, queryByText, getByText } = render(<LyricsScreen />);
+    expect(await findByText(message)).toBeTruthy();
+    expect(queryByText('No lyrics found for this song.')).toBeNull();
+    fireEvent.press(getByText('Try again'));
+    expect(await findByText('Back again')).toBeTruthy();
+    expect(lyrics).toHaveBeenCalledTimes(2);
   });
 });
 

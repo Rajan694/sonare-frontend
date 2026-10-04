@@ -51,13 +51,18 @@ export default function Overview() {
       {data && (
         <div className={loading ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
           <Panel className="mb-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
               <StatusLine ok={data.health.piped.up} label="Piped" detail={data.health.piped.url} />
               <StatusLine ok={data.health.database} label="Postgres" />
               <StatusLine
                 ok={data.health.redis}
                 label="Redis"
                 detail={data.health.redis ? undefined : 'cache bypassed'}
+              />
+              <StatusLine
+                ok={data.health.ffmpeg}
+                label="ffmpeg"
+                detail={data.health.ffmpeg ? undefined : 'placeholder waveforms'}
               />
               <div className="text-label-m text-t3 flex items-center gap-3 flex-wrap">
                 <span>Backend up {fmtDuration(data.health.uptimeSec)}</span>

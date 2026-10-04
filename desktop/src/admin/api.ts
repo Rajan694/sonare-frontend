@@ -126,6 +126,8 @@ export interface Health {
   piped: { up: boolean; url: string };
   database: boolean;
   redis: boolean;
+  /** Without ffmpeg the backend serves placeholder waveforms. */
+  ffmpeg: boolean;
   uptimeSec: number;
   node: string;
   memoryMb: number;

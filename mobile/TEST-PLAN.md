@@ -214,6 +214,7 @@ navigation mock live in `test-utils/`.
 | `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                |
 | `MOB-LYR-003`    | plain text view shows the words without timing                                             |
 | `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files |
+| `MOB-LYR-005`    | LRCLIB down shows the reason and a retry, not "No lyrics found"                            |
 | `MOB-EQ-001`     | presets and switches respond to taps                                                       |
 | `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                          |
 | `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                    |

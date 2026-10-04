@@ -210,7 +210,6 @@ export const api = {
       offsetMs: number;
       lines: { atMs: number; text: string }[];
       plain?: string;
-      attribution?: { name: string; url: string };
     }>(`/tracks/${encodeURIComponent(id)}/lyrics`, {
       params: script === 'original' ? { prefer } : { prefer, script },
     });
