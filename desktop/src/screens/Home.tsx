@@ -15,6 +15,11 @@ import { Card } from '../components/ui/Card';
 import { Tile } from '../components/ui/Tile';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer, staggerItem, transition } from '../lib/motion';
+import { useLayout } from '../lib/layout';
+import { usePlaybackPosition } from '../store/playbackPosition';
+import { formatDuration } from '../lib/format';
+import Artwork from '../components/music/Artwork';
+import { cn } from '../lib/cn';
 import type { Track } from '../types';
 
 export default function Home() {
@@ -22,6 +27,7 @@ export default function Home() {
   const isOnline = mode === 'online';
   const { currentTrack, playTrack, isPlaying, togglePlay } = usePlayerStore();
   const { user } = useAuth();
+  const layout = useLayout();
 
   const {
     data: trendingData,
@@ -81,6 +87,24 @@ export default function Home() {
   // Greeting based on real user or generic
   const userName = user?.displayName || user?.email?.split('@')[0] || '';
   const greeting = isOnline ? (userName ? `Welcome back, ${userName}` : 'Welcome back') : 'Your device library';
+
+  // Phones get the M01 / M02 composition rather than the desktop one squeezed down.
+  if (layout === 'phone') {
+    return (
+      <PhoneHome
+        isOnline={isOnline}
+        userName={user ? userName.split(' ')[0] : null}
+        trending={trendingTracks}
+        trendingLoading={trendingLoading}
+        trendingFailed={trendingFailed}
+        recent={recentTracks}
+        localCount={local.tracks.length}
+        onPlay={handlePlay}
+        retry={retryButton}
+        trendingError={trendingError}
+      />
+    );
+  }
 
   return (
     <motion.div
@@ -300,6 +324,181 @@ export default function Home() {
             />
           ))}
         </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** "Thursday evening", the line above the M01 greeting. */
+function dayPart(now = new Date()) {
+  const h = now.getHours();
+  const part = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
+  return `${DAYS[now.getDay()]} ${part}`;
+}
+
+/** Design M01 (online) / M02 (offline) at phone width. */
+function PhoneHome({
+  isOnline,
+  userName,
+  trending,
+  trendingLoading,
+  trendingFailed,
+  trendingError,
+  recent,
+  localCount,
+  onPlay,
+  retry,
+}: {
+  isOnline: boolean;
+  userName: string | null;
+  trending: Track[];
+  trendingLoading: boolean;
+  trendingFailed: boolean;
+  trendingError: unknown;
+  recent: Track[];
+  localCount: number;
+  onPlay: (track: Track, queue: Track[]) => void;
+  retry: React.ReactNode;
+}) {
+  const { currentTrack, isPlaying, togglePlay, durationMs } = usePlayerStore();
+  const position = usePlaybackPosition();
+  const resume = currentTrack ?? recent[0] ?? null;
+  const progress = currentTrack && durationMs ? Math.min(1, position / durationMs) : 0;
+  const gold = !isOnline || resume?.source === 'local';
+  const jumpBackIn = recent.slice(0, 4);
+  const shelf = recent.slice(4, 14);
+
+  return (
+    <motion.div
+      className="flex flex-col gap-[22px] px-5 pt-1 pb-8 overflow-auto h-full"
+      variants={staggerContainer}
+      initial="hidden"
+      animate="visible"
+    >
+      {isOnline ? (
+        <motion.div className="flex flex-col gap-0.5" variants={staggerItem} transition={transition.normal}>
+          <span className="text-body-s text-t3">{dayPart()}</span>
+          <span className="text-h1 text-t1 font-semibold">
+            {userName ? `Welcome back, ${userName}` : 'Welcome to Sonare'}
+          </span>
+        </motion.div>
+      ) : (
+        <motion.div className="offstrip gap-2.5" variants={staggerItem} transition={transition.normal}>
+          <Icon name="wifi-off" size={18} className="text-gold flex-none" />
+          <span className="flex flex-col gap-px">
+            <span className="text-label-l text-gold">You&apos;re offline</span>
+            <span className="text-body-s text-t2">
+              {localCount
+                ? `Showing the ${localCount.toLocaleString()} songs stored on this device.`
+                : 'No music stored on this device yet.'}
+            </span>
+          </span>
+        </motion.div>
+      )}
+
+      {resume && (
+        <motion.button
+          className="surf flex items-center gap-3.5 p-3 text-left cursor-pointer"
+          variants={staggerItem}
+          transition={transition.normal}
+          onClick={() => (currentTrack ? togglePlay() : onPlay(resume, recent))}
+          aria-label={`${currentTrack && isPlaying ? 'Pause' : 'Play'} ${resume.title}`}
+        >
+          <Artwork src={trackArtwork(resume, 140)} size={68} radius="sm" rings alt="" />
+          <span className="flex flex-col gap-1.5 grow min-w-0">
+            <span className="text-overline text-t3 uppercase">
+              {isOnline ? 'Continue listening' : 'Resume · On device'}
+            </span>
+            <span className="text-title-m text-t1 truncate">{resume.title}</span>
+            <span className="flex items-center gap-2">
+              <span className={cn('track', gold && 'track-gold')}>
+                <i style={{ width: `${progress * 100}%` }} />
+                <b style={{ left: `${progress * 100}%` }} />
+              </span>
+              <span className="text-mono-s font-mono text-t3 flex-none">
+                {currentTrack ? formatDuration(position) : resume.artist}
+              </span>
+            </span>
+          </span>
+          <span className={cn('playbtn-fab flex-none', gold && 'bg-gold')}>
+            <Icon name={currentTrack && isPlaying ? 'pause' : 'play'} size={22} />
+          </span>
+        </motion.button>
+      )}
+
+      {isOnline && jumpBackIn.length > 1 && (
+        <motion.div className="flex flex-col gap-3" variants={staggerItem} transition={transition.normal}>
+          <div className="shead">
+            <span className="text-h2 text-t1 font-semibold">Jump back in</span>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5">
+            {jumpBackIn.map((t) => (
+              <button
+                key={t.id}
+                className="tile text-left cursor-pointer min-w-0"
+                onClick={() => onPlay(t, recent)}
+                aria-label={`Play ${t.title}`}
+              >
+                <Artwork src={trackArtwork(t, 64)} size={40} radius="sm" alt="" />
+                <span className="flex flex-col gap-px grow min-w-0">
+                  <span className="text-label-l text-t1 truncate">{t.title}</span>
+                  <span className="text-label-s text-t3 truncate">{t.artist}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      {isOnline && shelf.length > 0 && (
+        <motion.div className="flex flex-col gap-3" variants={staggerItem} transition={transition.normal}>
+          <div className="shead">
+            <span className="text-h2 text-t1 font-semibold">Recently played</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5">
+            {shelf.map((t, i) => (
+              <Card
+                key={t.id}
+                title={t.title}
+                subtitle={t.artist}
+                width={132}
+                artVariant={`a${((i % 12) + 1) as 1}`}
+                thumbnail={trackArtwork(t, 300)}
+                onPlay={() => onPlay(t, recent)}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
+      <motion.div className="flex flex-col gap-3" variants={staggerItem} transition={transition.normal}>
+        <div className="shead">
+          <span className="text-h2 text-t1 font-semibold">{isOnline ? 'Trending now' : 'On this device'}</span>
+        </div>
+        {trendingFailed ? (
+          <EmptyState
+            icon="wifi-off"
+            title="Could not load trending"
+            description={loadErrorMessage(trendingError)}
+            action={retry}
+          />
+        ) : trendingLoading && trending.length === 0 ? (
+          Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-14 rounded-md bg-s2/40 animate-pulse" />)
+        ) : (
+          <div className="flex flex-col gap-0.5 -mx-2.5">
+            {trending.slice(0, isOnline ? 10 : 50).map((track, i) => (
+              <SongRow
+                key={track.id}
+                track={track}
+                index={i + 1}
+                isActive={currentTrack?.id === track.id}
+                onClick={() => onPlay(track, trending)}
+              />
+            ))}
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

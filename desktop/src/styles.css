@@ -1,5 +1,29 @@
 @import 'tailwindcss';
 
+/* The design's faces, bundled so the app looks the same offline (both SIL OFL 1.1):
+   Geist from the `geist` package (one variable file, 100-900), JetBrains Mono's Latin subset. */
+@font-face {
+  font-family: 'Geist';
+  src: url('./assets/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./assets/fonts/JetBrainsMono-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./assets/fonts/JetBrainsMono-500.woff2') format('woff2');
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @theme {
   /* ===== COLORS ===== */
   --color-bg: #000000;

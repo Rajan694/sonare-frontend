@@ -6,6 +6,7 @@ import { useAuth } from '../../api/hooks';
 import { BrandMark } from '../ui/BrandMark';
 import { Segmented } from '../ui/Segmented';
 import { IconButton } from '../ui/Button';
+import Icon from '../ui/Icon';
 import SearchField from './SearchField';
 import type { Mode } from '../../types';
 
@@ -83,15 +84,13 @@ function HomeHeader() {
           size={40}
           onClick={() => navigate('/search')}
         />
-        {offline && CAPS.localLibrary ? (
+        {offline && CAPS.localLibrary && (
           <IconButton icon="folder" label="Music folders" size={40} onClick={() => navigate('/folders')} />
-        ) : (
-          <IconButton icon="settings" label="Settings" size={40} onClick={() => navigate('/settings')} />
         )}
         {user ? (
           <button
             className="ib w-10 h-10 p-0 ml-0.5"
-            aria-label="Your profile"
+            aria-label="Profile and settings"
             data-tip={user.displayName}
             onClick={() => navigate('/settings')}
           >
@@ -100,11 +99,16 @@ function HomeHeader() {
             </span>
           </button>
         ) : (
+          // Guests get the same profile spot (M01): Settings, which starts with Sign in / Create account.
           <button
-            className="btn btn-acc btn-sm ml-1"
-            onClick={() => navigate('/signin', { state: { mode: 'signin' } })}
+            className="ib w-10 h-10 p-0 ml-0.5"
+            aria-label="Profile and settings"
+            data-tip="Settings"
+            onClick={() => navigate('/settings')}
           >
-            Sign in
+            <span className="flex items-center justify-center w-8 h-8 rounded-full bg-s3">
+              <Icon name="user" size={16} className="text-t2" />
+            </span>
           </button>
         )}
       </div>

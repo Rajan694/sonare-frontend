@@ -148,6 +148,29 @@ interface IconProps {
   'aria-hidden'?: boolean;
 }
 
+// The design's transport glyphs are solid shapes, not lucide's outlines (design-system/screens).
+const SOLID: Partial<Record<IconName, React.ReactNode>> = {
+  play: <path d="M7.2 4.6v14.8L20 12z" />,
+  pause: (
+    <>
+      <rect x="6.4" y="4.6" width="3.9" height="14.8" rx="1.2" />
+      <rect x="13.7" y="4.6" width="3.9" height="14.8" rx="1.2" />
+    </>
+  ),
+  'skip-forward': (
+    <>
+      <path d="M5 5.2v13.6L15 12z" />
+      <rect x="16.6" y="5.2" width="2.9" height="13.6" rx="1.2" />
+    </>
+  ),
+  'skip-back': (
+    <>
+      <path d="M19 5.2v13.6L9 12z" />
+      <rect x="4.5" y="5.2" width="2.9" height="13.6" rx="1.2" />
+    </>
+  ),
+};
+
 export default function Icon({
   name,
   size = 16,
@@ -155,6 +178,21 @@ export default function Icon({
   strokeWidth = 1.6,
   'aria-hidden': ariaHidden = true,
 }: IconProps) {
+  const solid = SOLID[name];
+  if (solid) {
+    return (
+      <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        className={cn('flex-none', `icon-${name}`, className)}
+        aria-hidden={ariaHidden}
+      >
+        {solid}
+      </svg>
+    );
+  }
   const Component = ICONS[name];
   if (!Component) return null;
   return (
