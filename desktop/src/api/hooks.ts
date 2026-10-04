@@ -1,9 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from './api';
-import { useLocalLibrary } from '../storage/local';
 import { onFavouritesSaved } from './favourites';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
-import type { Folder, User } from '../types';
+import type { User } from '../types';
 import { useDevicePrefs } from '../storage/devicePrefs';
 
 export interface AsyncState<T> {
@@ -128,13 +127,6 @@ export function useSearch(
   });
 }
 
-export function useSuggestions(query: string) {
-  const debouncedQuery = useDebounce(query.trim(), 250);
-  return useAsync(() => api.searchSuggestions(debouncedQuery), [debouncedQuery], {
-    enabled: debouncedQuery.length > 0,
-  });
-}
-
 export function useGenres() {
   return useAsync(() => api.getGenres(), []);
 }
@@ -226,10 +218,6 @@ export function useLibraryArtists(cursor?: string) {
   return useAuthAsync(() => api.getLibraryArtists(cursor), [cursor], { accountOnly: true });
 }
 
-export function useLibraryGenres() {
-  return useAuthAsync(() => api.getLibraryGenres(), [], { accountOnly: true });
-}
-
 export function useFavourites(cursor?: string) {
   const result = useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor], { accountOnly: true });
   const { refetch } = result;
@@ -244,10 +232,6 @@ export function useRecentlyPlayed(limit: number = 20) {
 
 export function useMostPlayed(params?: { limit?: number; window?: '30d' }) {
   return useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], { accountOnly: true });
-}
-
-export function useNewReleases() {
-  return useAuthAsync(() => api.getNewReleases(), [], { accountOnly: true });
 }
 
 const PLAYLISTS_CHANGED = 'sonare:playlists-changed';
@@ -283,9 +267,4 @@ export function usePeaks(trackId: string | undefined, bars: number = 150) {
     [trackId, bars],
     { enabled: !!trackId && !trackId.startsWith('local:') },
   );
-}
-
-export function useFolders(): AsyncState<Folder[]> {
-  const local = useLocalLibrary();
-  return { data: local.folders, loading: !local.ready, error: null, refetch: () => void 0 };
 }

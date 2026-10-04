@@ -14,24 +14,6 @@ export const fadeRise: Variants = {
   exit: { opacity: 0, y: -4 },
 };
 
-export const fadeIn: Variants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 },
-  exit: { opacity: 0 },
-};
-
-export const slideRight: Variants = {
-  hidden: { opacity: 0, x: 24 },
-  visible: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 24 },
-};
-
-export const slideUp: Variants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: 16 },
-};
-
 export const staggerContainer: Variants = {
   hidden: {},
   visible: { transition: { staggerChildren: 0.04, delayChildren: 0.05 } },

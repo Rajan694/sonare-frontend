@@ -103,12 +103,6 @@ export const api = {
     });
   },
 
-  searchSuggestions(q: string) {
-    return request<string[]>('/search/suggestions', {
-      params: { q },
-    });
-  },
-
   getTrending(region: string = 'IN', limit: number = 50) {
     return request<Page<Track>>('/trending', {
       params: { region, limit },
@@ -261,10 +255,6 @@ export const api = {
     return request<Page<Artist>>('/me/library/artists', { params: { cursor } });
   },
 
-  getLibraryGenres() {
-    return request<{ id: string; name: string }[]>('/me/library/genres');
-  },
-
   getFavouriteTracks(cursor?: string) {
     return request<Page<Track>>('/me/favourites/tracks', { params: { cursor } });
   },
@@ -293,10 +283,6 @@ export const api = {
 
   getMostPlayed(params?: { limit?: number; window?: '30d' }) {
     return request<Page<Track>>('/me/most-played', { params });
-  },
-
-  getNewReleases() {
-    return request<Page<Album>>('/me/new-releases');
   },
 
   getMadeForYou() {
