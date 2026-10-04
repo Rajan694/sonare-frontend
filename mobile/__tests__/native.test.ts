@@ -76,9 +76,7 @@ describe('Native Layer', () => {
         totalBytes: 5000,
       };
       await SonareDownloads.start(startOpts);
-      expect(NativeModules.SonareDownloads.start).toHaveBeenCalledWith(
-        startOpts,
-      );
+      expect(NativeModules.SonareDownloads.start).toHaveBeenCalledWith(startOpts);
 
       const pausedBytes = await SonareDownloads.pause('d1');
       expect(pausedBytes).toBe(100);
@@ -91,10 +89,7 @@ describe('Native Layer', () => {
     });
 
     it('MOB-NAT-005 deleteFile, exists, pickFolder, defaultLocation invoke file system methods', async () => {
-      const deleted = await SonareDownloads.deleteFile(
-        'file:///music/song.opus',
-        'song.opus',
-      );
+      const deleted = await SonareDownloads.deleteFile('file:///music/song.opus', 'song.opus');
       expect(deleted).toBe(true);
 
       const exists = await SonareDownloads.exists('file:///music/song.opus');

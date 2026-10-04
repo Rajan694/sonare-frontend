@@ -5,7 +5,7 @@ import { HomeScreen } from '../src/screens/Home';
 import { SearchScreen } from '../src/screens/Search';
 import { LibraryScreen } from '../src/screens/Library';
 import { PlaylistsScreen } from '../src/screens/Playlists';
-import { PlaylistScreen } from '../src/screens/Playlist';
+import { PlaylistDetailScreen } from '../src/screens/PlaylistDetail';
 import { AlbumScreen } from '../src/screens/Album';
 import { ArtistScreen } from '../src/screens/Artist';
 import { api, ApiError } from '../src/data/api';
@@ -15,32 +15,15 @@ import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
 import { navigationRef } from '../src/data/accountGate';
-import {
-  alice,
-  makeAlbum,
-  makeArtist,
-  makeDownload,
-  makePlaylist,
-  makeTrack,
-  nav,
-  page,
-  route,
-} from '../test-utils';
+import { alice, makeAlbum, makeArtist, makeDownload, makePlaylist, makeTrack, nav, page, route } from '../test-utils';
 
-jest.mock('@react-navigation/native', () =>
-  require('../test-utils').navigationMock(),
-);
+jest.mock('@react-navigation/native', () => require('../test-utils').navigationMock());
 
-const signIn = () =>
-  useAuthStore.setState({ status: 'signedIn', user: alice } as never);
-const guest = () =>
-  useAuthStore.setState({ status: 'guest', user: null } as never);
+const signIn = () => useAuthStore.setState({ status: 'signedIn', user: alice } as never);
+const guest = () => useAuthStore.setState({ status: 'guest', user: null } as never);
 
 /** Stub an api method for this test. */
-function stub<K extends keyof typeof api>(
-  name: K,
-  impl: (...args: any[]) => any,
-) {
+function stub<K extends keyof typeof api>(name: K, impl: (...args: any[]) => any) {
   return jest.spyOn(api, name).mockImplementation(impl as never);
 }
 
@@ -64,20 +47,12 @@ beforeEach(() => {
 });
 
 describe('Home', () => {
-  const recent = [
-    makeTrack({ title: 'Recent A' }),
-    makeTrack({ title: 'Recent B' }),
-  ];
+  const recent = [makeTrack({ title: 'Recent A' }), makeTrack({ title: 'Recent B' })];
 
   it('MOB-HOME-001 a signed-in user is welcomed by first name and can pick up their last song', async () => {
     signIn();
     stub('recentlyPlayed', async () =>
-      page([
-        recent[0],
-        makeTrack({ id: 'local:x', source: 'local', title: 'Other phone' }),
-        recent[1],
-        recent[0],
-      ]),
+      page([recent[0], makeTrack({ id: 'local:x', source: 'local', title: 'Other phone' }), recent[1], recent[0]]),
     );
     stub('favourites', async () => page([]));
     const playTrack = jest.spyOn(usePlayerStore.getState(), 'playTrack');
@@ -85,7 +60,7 @@ describe('Home', () => {
     expect(getByText('Welcome back, Alice')).toBeTruthy();
     fireEvent.press(await findByLabelText('Continue listening to Recent A'));
     // Only this account's server songs, without repeats, make up the queue.
-    expect(playTrack).toHaveBeenCalledWith(recent[0], recent);
+    expect(playTrack).toHaveBeenCalledWith(recent[0], recent, { kind: 'Recently played', name: 'Jump back in' });
     expect(queryByText('Other phone')).toBeNull();
   });
 
@@ -109,20 +84,17 @@ describe('Home', () => {
   it('MOB-HOME-003 a guest is invited to sign in and no account data is requested', async () => {
     const recentSpy = stub('recentlyPlayed', async () => page([]));
     const favSpy = stub('favourites', async () => page([]));
-    const { getByText, getByLabelText } = render(<HomeScreen />);
+    const { getByText } = render(<HomeScreen />);
     expect(getByText('Welcome to Sonare')).toBeTruthy();
     expect(getByText("You're listening as a guest")).toBeTruthy();
-    fireEvent.press(getByLabelText('Sign in'));
+    fireEvent.press(getByText('Sign in'));
     expect(nav.navigate).toHaveBeenCalledWith('SignIn', { mode: 'signin' });
     expect(recentSpy).not.toHaveBeenCalled();
     expect(favSpy).not.toHaveBeenCalled();
   });
 
   it('MOB-HOME-004 trending plays within the chart; when the music service is down it says so and retries', async () => {
-    const chart = [
-      makeTrack({ title: 'Hit One' }),
-      makeTrack({ title: 'Hit Two' }),
-    ];
+    const chart = [makeTrack({ title: 'Hit One' }), makeTrack({ title: 'Hit Two' })];
     let down = true;
     stub('trending', async () => {
       if (down)
@@ -132,29 +104,25 @@ describe('Home', () => {
       return page(chart);
     });
     const { findByText, getByText, findByLabelText } = render(<HomeScreen />);
-    expect(
-      await findByText(
-        "Sonare's music service isn't responding. Try again in a moment.",
-      ),
-    ).toBeTruthy();
+    expect(await findByText("Sonare's music service isn't responding. Try again in a moment.")).toBeTruthy();
     down = false;
     fireEvent.press(getByText('Try again'));
     fireEvent.press(await findByLabelText('Hit Two by ' + chart[1].artist));
     expect(usePlayerStore.getState().currentTrack?.id).toBe(chart[1].id);
-    expect(usePlayerStore.getState().queue.map(t => t.id)).toEqual(
-      chart.map(t => t.id),
-    );
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual(chart.map((t) => t.id));
   });
 
-  it('MOB-HOME-005 choosing Offline asks first; the header opens search and settings', () => {
-    const { getByLabelText } = render(<HomeScreen />);
+  it('MOB-HOME-005 choosing Offline asks first; the header opens search, and the profile opens settings', () => {
+    const { getByLabelText, queryByLabelText } = render(<HomeScreen />);
+    // No separate settings button next to the profile.
+    expect(queryByLabelText('Settings')).toBeNull();
     fireEvent.press(getByLabelText('Offline'));
     expect(nav.navigate).toHaveBeenCalledWith('ModeSwitch', {
       targetMode: 'offline',
     });
     expect(useModeStore.getState().mode).toBe('online');
     fireEvent.press(getByLabelText('Search'));
-    fireEvent.press(getByLabelText('Settings'));
+    fireEvent.press(getByLabelText('Profile and settings'));
     expect(nav.navigate).toHaveBeenCalledWith('Search');
     expect(nav.navigate).toHaveBeenCalledWith('Settings');
   });
@@ -194,15 +162,11 @@ describe('Search', () => {
       artist: 'Radiohead',
       album: 'OK Computer',
     });
-    const search = stub('search', async () =>
-      page([{ ...song, kind: 'track' }]),
-    );
-    const { getByLabelText, findByText, getByText, getAllByText } = render(
-      <SearchScreen />,
-    );
-    expect(
-      getByText('Search for songs, albums, artists and playlists.'),
-    ).toBeTruthy();
+    const search = stub('search', async () => page([{ ...song, kind: 'track' }]));
+    stub('genres', async () => []);
+    const { getByLabelText, findByText, getByText, getAllByText } = render(<SearchScreen />);
+    // Before typing, the browse categories show.
+    expect(getByText('Browse categories')).toBeTruthy();
     fireEvent.changeText(getByLabelText('Search all music'), 'para');
     fireEvent.changeText(getByLabelText('Search all music'), '  paranoid ');
     expect(await findByText(/· 1 results/)).toBeTruthy();
@@ -226,10 +190,7 @@ describe('Search', () => {
     fireEvent.changeText(getByLabelText('Search all music'), 'song');
     fireEvent.press(await findByLabelText(`Song B by ${b.artist}`));
     expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
-    expect(usePlayerStore.getState().queue.map(t => t.id)).toEqual([
-      a.id,
-      b.id,
-    ]);
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([a.id, b.id]);
   });
 
   it('MOB-SEARCH-003 album and artist results open their pages; filters change the search type', async () => {
@@ -252,9 +213,34 @@ describe('Search', () => {
     fireEvent.press(getByLabelText('Radiohead'));
     expect(nav.navigate).toHaveBeenCalledWith('Artist', { id: 'yt:rh' });
     fireEvent.press(getByText('Albums'));
-    await waitFor(() =>
-      expect(search).toHaveBeenLastCalledWith('radiohead', 'albums'),
-    );
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('radiohead', 'albums'));
+  });
+
+  it('MOB-SEARCH-006 the Genres chip shows the categories, and a category searches for its query', async () => {
+    const search = stub('search', async () => page([]));
+    stub('genres', async () => [
+      { id: 'sufi', name: 'Sufi', query: 'sufi songs' },
+      { id: 'qawwali', name: 'Qawwali' },
+    ]);
+    const { getByLabelText, getByText, findByLabelText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'lofi');
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('lofi', 'all'));
+    // The server has no genre search: the chip shows categories instead of searching again.
+    fireEvent.press(getByText('Genres'));
+    expect(getByText('Browse categories')).toBeTruthy();
+    fireEvent.press(await findByLabelText('Browse Sufi'));
+    expect(getByLabelText('Search all music').props.value).toBe('sufi songs');
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('sufi songs', 'all'));
+    expect(search).toHaveBeenCalledTimes(2);
+  });
+
+  it('MOB-SEARCH-007 a genre opened from the Library arrives as the search', async () => {
+    const search = stub('search', async () => page([]));
+    route.params = { q: 'bhojpuri songs' };
+    const { getByLabelText } = render(<SearchScreen />);
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('bhojpuri songs', 'all'));
+    expect(getByLabelText('Search all music').props.value).toBe('bhojpuri songs');
+    expect(nav.setParams).toHaveBeenCalledWith({ q: undefined });
   });
 
   it('MOB-SEARCH-004 no results says so; a failed search can be retried', async () => {
@@ -275,11 +261,8 @@ describe('Search', () => {
     useModeStore.setState({ mode: 'offline' });
     const search = jest.spyOn(api, 'search');
     const { getByLabelText, getByText } = render(<SearchScreen />);
-    fireEvent.changeText(
-      getByLabelText('Search music on this device'),
-      'anything',
-    );
-    await new Promise(r => setTimeout(r, 400));
+    fireEvent.changeText(getByLabelText('Search music on this device'), 'anything');
+    await new Promise((r) => setTimeout(r, 400));
     expect(search).not.toHaveBeenCalled();
     expect(getByText('Not on this device')).toBeTruthy();
     fireEvent.press(getByText('Go online'));
@@ -311,26 +294,20 @@ describe('Library', () => {
     expect(queryByText('Phone file')).toBeNull();
     fireEvent.press(getByText('Play all'));
     expect(usePlayerStore.getState().currentTrack?.id).toBe(mine[0].id);
-    expect(usePlayerStore.getState().queue.map(t => t.id)).toEqual([
-      mine[0].id,
-      mine[1].id,
-    ]);
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([mine[0].id, mine[1].id]);
   });
 
-  it('MOB-LIB-S-003 the sort chip cycles recently added → most played → A-Z and refetches', async () => {
+  it('MOB-LIB-S-003 the sort chip opens a sheet of orders; picking one refetches', async () => {
     signIn();
     const lib = stub('libraryTracks', async () => page(mine));
-    const { findByText, getByText } = render(<LibraryScreen />);
-    fireEvent.press(await findByText('Recently added'));
-    fireEvent.press(await findByText('Most played'));
-    expect(getByText('A-Z')).toBeTruthy();
-    await waitFor(() =>
-      expect(lib.mock.calls.map(c => c[0])).toEqual([
-        'addedAt',
-        'playCount',
-        'title',
-      ]),
-    );
+    const { findByLabelText, getByLabelText } = render(<LibraryScreen />);
+    fireEvent.press(await findByLabelText('Sort: Recently added'));
+    fireEvent.press(await findByLabelText('Most played'));
+    fireEvent.press(await findByLabelText('Sort: Most played'));
+    expect(getByLabelText('Most played').props.accessibilityState).toEqual({ selected: true });
+    fireEvent.press(getByLabelText('A-Z'));
+    expect(await findByLabelText('Sort: A-Z')).toBeTruthy();
+    await waitFor(() => expect(lib.mock.calls.map((c) => c[0])).toEqual(['addedAt', 'playCount', 'title']));
   });
 
   it('MOB-LIB-S-004 "only on this phone" keeps just the downloaded songs', async () => {
@@ -339,9 +316,7 @@ describe('Library', () => {
     useDownloadsStore.setState({
       items: { [mine[1].id]: makeDownload(mine[1]) },
     });
-    const { findByLabelText, getByLabelText, queryByLabelText } = render(
-      <LibraryScreen />,
-    );
+    const { findByLabelText, getByLabelText, queryByLabelText } = render(<LibraryScreen />);
     await findByLabelText(`Mine 1 by ${mine[0].artist}`);
     fireEvent.press(getByLabelText('Show only songs on this phone'));
     expect(queryByLabelText(`Mine 1 by ${mine[0].artist}`)).toBeNull();
@@ -350,22 +325,19 @@ describe('Library', () => {
     expect(getByLabelText(`Mine 1 by ${mine[0].artist}`)).toBeTruthy();
   });
 
-  it('MOB-LIB-S-005 the Folders tab opens the folders screen; Downloads opens downloads', async () => {
+  it('MOB-LIB-S-005 there is no Folders tab (Settings has music folders); Downloads opens downloads', async () => {
     signIn();
     stub('libraryTracks', async () => page([]));
-    const { getByText, getByLabelText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Folders'));
+    const { queryByText, getByLabelText } = render(<LibraryScreen />);
+    expect(queryByText('Folders')).toBeNull();
     fireEvent.press(getByLabelText('Downloads'));
-    expect(nav.navigate).toHaveBeenCalledWith('Folders');
     expect(nav.navigate).toHaveBeenCalledWith('Downloads');
   });
 });
 
 describe('Playlists', () => {
   it('MOB-PLS-001 a guest is asked to sign up before creating a playlist', () => {
-    const navigate = jest
-      .spyOn(navigationRef, 'navigate')
-      .mockImplementation(() => {});
+    const navigate = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
     jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
     const { getByText, getByLabelText } = render(<PlaylistsScreen />);
     expect(getByText('Make playlists with an account')).toBeTruthy();
@@ -378,13 +350,11 @@ describe('Playlists', () => {
   it("MOB-PLS-002 lists the user's playlists with their kind; tapping one opens it", async () => {
     signIn();
     const gym = makePlaylist({ id: 'sonare:gym', name: 'Gym', kind: 'synced' });
-    jest
-      .spyOn(useLibraryStore.getState(), 'reloadPlaylists')
-      .mockImplementation(async () => {
-        useLibraryStore.setState({
-          playlists: [gym, makePlaylist({ name: 'Chart', kind: 'online' })],
-        });
+    jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockImplementation(async () => {
+      useLibraryStore.setState({
+        playlists: [gym, makePlaylist({ name: 'Chart', kind: 'online' })],
       });
+    });
     const { findByLabelText, getByText } = render(<PlaylistsScreen />);
     fireEvent.press(await findByLabelText('Gym'));
     expect(nav.navigate).toHaveBeenCalledWith('Playlist', { id: 'sonare:gym' });
@@ -394,18 +364,13 @@ describe('Playlists', () => {
 
   it('MOB-PLS-003 creating a playlist names it and opens it', async () => {
     signIn();
-    jest
-      .spyOn(useLibraryStore.getState(), 'reloadPlaylists')
-      .mockResolvedValue();
+    jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockResolvedValue();
     const create = jest
       .spyOn(useLibraryStore.getState(), 'createPlaylist')
       .mockResolvedValue(makePlaylist({ id: 'sonare:new' }));
     const { getByLabelText, findByLabelText } = render(<PlaylistsScreen />);
     fireEvent.press(getByLabelText('New playlist'));
-    fireEvent.changeText(
-      await findByLabelText('Playlist name'),
-      '  Road trip ',
-    );
+    fireEvent.changeText(await findByLabelText('Playlist name'), '  Road trip ');
     await act(async () => {
       fireEvent(getByLabelText('Playlist name'), 'submitEditing', {
         nativeEvent: { text: '  Road trip ' },
@@ -419,12 +384,8 @@ describe('Playlists', () => {
     signIn();
     const gym = makePlaylist({ id: 'sonare:gym', name: 'Gym' });
     useLibraryStore.setState({ playlists: [gym] });
-    jest
-      .spyOn(useLibraryStore.getState(), 'reloadPlaylists')
-      .mockResolvedValue();
-    const del = jest
-      .spyOn(useLibraryStore.getState(), 'deletePlaylist')
-      .mockResolvedValue();
+    jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockResolvedValue();
+    const del = jest.spyOn(useLibraryStore.getState(), 'deletePlaylist').mockResolvedValue();
     const alert = jest.spyOn(Alert, 'alert');
     const { getByLabelText, findByLabelText } = render(<PlaylistsScreen />);
     fireEvent.press(getByLabelText('Options for Gym'));
@@ -442,7 +403,7 @@ describe('Playlists', () => {
       text: string;
       onPress?: () => void;
     }[];
-    await act(async () => buttons.find(b => b.text === 'Delete')!.onPress!());
+    await act(async () => buttons.find((b) => b.text === 'Delete')!.onPress!());
     expect(del).toHaveBeenCalledWith('sonare:gym');
   });
 
@@ -451,31 +412,20 @@ describe('Playlists', () => {
     signIn();
     useLibraryStore.setState({ playlists: [makePlaylist({ name: 'Gym' })] });
     const { getByText, queryByLabelText } = render(<PlaylistsScreen />);
-    expect(
-      getByText(
-        'Playlists sync from the Sonare server — switch back to Online.',
-      ),
-    ).toBeTruthy();
+    expect(getByText('Playlists sync from the Sonare server — switch back to Online.')).toBeTruthy();
     expect(queryByLabelText('Gym')).toBeNull();
   });
 });
 
 describe('Playlist, album and artist pages', () => {
-  const songs = [
-    makeTrack({ title: 'One', durationMs: 120_000 }),
-    makeTrack({ title: 'Two', durationMs: 180_000 }),
-  ];
+  const songs = [makeTrack({ title: 'One', durationMs: 120_000 }), makeTrack({ title: 'Two', durationMs: 180_000 })];
 
   it("MOB-PL-001 the user's own playlist shows its length and plays from the start", async () => {
     signIn();
     route.params = { id: 'sonare:gym' };
-    stub('myPlaylist', async () =>
-      makePlaylist({ id: 'sonare:gym', name: 'Gym', trackCount: 2 }),
-    );
+    stub('myPlaylist', async () => makePlaylist({ id: 'sonare:gym', name: 'Gym', trackCount: 2 }));
     stub('myPlaylistTracks', async () => page(songs));
-    const { findByText, getByText, getByLabelText } = render(
-      <PlaylistScreen />,
-    );
+    const { findByText, getByText, getByLabelText } = render(<PlaylistDetailScreen />);
     expect(await findByText('Gym')).toBeTruthy();
     expect(getByText('Made by you')).toBeTruthy();
     expect(getByText(/2 songs · 5 min/)).toBeTruthy();
@@ -489,13 +439,9 @@ describe('Playlist, album and artist pages', () => {
 
   it('MOB-PL-002 a public playlist has no owner options', async () => {
     route.params = { id: 'yt:PL1' };
-    stub('playlist', async () =>
-      makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }),
-    );
+    stub('playlist', async () => makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }));
     stub('playlistTracks', async () => page(songs));
-    const { findByText, queryByLabelText, getByText } = render(
-      <PlaylistScreen />,
-    );
+    const { findByText, queryByLabelText, getByText } = render(<PlaylistDetailScreen />);
     expect(await findByText('Hits')).toBeTruthy();
     expect(getByText('Online playlist')).toBeTruthy();
     expect(queryByLabelText('Playlist options')).toBeNull();
@@ -504,17 +450,11 @@ describe('Playlist, album and artist pages', () => {
   it('MOB-PL-003 deleting the playlist from its options leaves the page once it is gone', async () => {
     signIn();
     route.params = { id: 'sonare:gym' };
-    stub('myPlaylist', async () =>
-      makePlaylist({ id: 'sonare:gym', name: 'Gym' }),
-    );
+    stub('myPlaylist', async () => makePlaylist({ id: 'sonare:gym', name: 'Gym' }));
     stub('myPlaylistTracks', async () => page([]));
-    jest
-      .spyOn(useLibraryStore.getState(), 'deletePlaylist')
-      .mockResolvedValue();
+    jest.spyOn(useLibraryStore.getState(), 'deletePlaylist').mockResolvedValue();
     const alert = jest.spyOn(Alert, 'alert');
-    const { findByLabelText, getByLabelText, findByText } = render(
-      <PlaylistScreen />,
-    );
+    const { findByLabelText, getByLabelText, findByText } = render(<PlaylistDetailScreen />);
     expect(await findByText(/This playlist is empty/)).toBeTruthy();
     fireEvent.press(await findByLabelText('Playlist options'));
     fireEvent.press(getByLabelText('Delete playlist'));
@@ -523,30 +463,34 @@ describe('Playlist, album and artist pages', () => {
       text: string;
       onPress?: () => void;
     }[];
-    await act(async () => buttons.find(b => b.text === 'Delete')!.onPress!());
+    await act(async () => buttons.find((b) => b.text === 'Delete')!.onPress!());
     await waitFor(() => expect(nav.goBack).toHaveBeenCalled());
   });
 
-  // BUG: the heart on the playlist and album pages is wired to `onPress={() => {}}`, so it
-  // looks like a favourite button but saves nothing. Remove `.failing` once it is hooked up.
-  test.failing(
-    'MOB-PL-004 the favourite button on a playlist saves it',
-    async () => {
-      signIn();
-      route.params = { id: 'yt:PL1' };
-      stub('playlist', async () =>
-        makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }),
-      );
-      stub('playlistTracks', async () => page(songs));
-      const anyCall = jest.fn();
-      for (const k of Object.keys(api) as (keyof typeof api)[])
-        if (!['playlist', 'playlistTracks'].includes(k))
-          jest.spyOn(api, k).mockImplementation(anyCall as never);
-      const { findByLabelText } = render(<PlaylistScreen />);
-      fireEvent.press(await findByLabelText('Favourite playlist'));
-      expect(anyCall).toHaveBeenCalled();
-    },
-  );
+  it('MOB-PL-004 the favourite button on a playlist saves it', async () => {
+    signIn();
+    route.params = { id: 'yt:PL1' };
+    stub('playlist', async () => makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }));
+    stub('playlistTracks', async () => page(songs));
+    const anyCall = jest.fn();
+    for (const k of Object.keys(api) as (keyof typeof api)[])
+      if (!['playlist', 'playlistTracks'].includes(k)) jest.spyOn(api, k).mockImplementation(anyCall as never);
+    const { findByLabelText } = render(<PlaylistDetailScreen />);
+    fireEvent.press(await findByLabelText('Favourite playlist'));
+    expect(anyCall).toHaveBeenCalled();
+    // Saved the same way as an album: the library lists it with the saved albums.
+    await waitFor(() => expect(api.setAlbumFavourite).toHaveBeenCalledWith('yt:PL1', true));
+  });
+
+  it('MOB-PL-005 your own playlist has no favourite button', async () => {
+    signIn();
+    route.params = { id: 'sonare:mine' };
+    stub('myPlaylist', async () => makePlaylist({ id: 'sonare:mine', name: 'Mine', kind: 'synced' }));
+    stub('myPlaylistTracks', async () => page(songs));
+    const { findByText, queryByLabelText } = render(<PlaylistDetailScreen />);
+    expect(await findByText('Mine')).toBeTruthy();
+    expect(queryByLabelText('Favourite playlist')).toBeNull();
+  });
 
   it('MOB-ALB-001 an album shows its artist link and year, and shuffle plays it all', async () => {
     route.params = { id: 'yt:inr' };
@@ -572,9 +516,9 @@ describe('Playlist, album and artist pages', () => {
     expect(
       usePlayerStore
         .getState()
-        .queue.map(t => t.id)
+        .queue.map((t) => t.id)
         .sort(),
-    ).toEqual(songs.map(t => t.id).sort());
+    ).toEqual(songs.map((t) => t.id).sort());
   });
 
   it('MOB-ALB-002 "Add to queue" appends the whole album', async () => {
@@ -586,28 +530,21 @@ describe('Playlist, album and artist pages', () => {
     const { findByText, getByLabelText } = render(<AlbumScreen />);
     await findByText('One');
     fireEvent.press(getByLabelText('Add to queue'));
-    expect(usePlayerStore.getState().queue.map(t => t.id)).toEqual([
-      now.id,
-      ...songs.map(t => t.id),
-    ]);
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([now.id, ...songs.map((t) => t.id)]);
   });
 
-  test.failing(
-    'MOB-ALB-003 the favourite button on an album saves it',
-    async () => {
-      signIn();
-      route.params = { id: 'yt:inr' };
-      stub('album', async () => makeAlbum({ id: 'yt:inr' }));
-      stub('albumTracks', async () => page(songs));
-      const anyCall = jest.fn();
-      for (const k of Object.keys(api) as (keyof typeof api)[])
-        if (!['album', 'albumTracks'].includes(k))
-          jest.spyOn(api, k).mockImplementation(anyCall as never);
-      const { findByLabelText } = render(<AlbumScreen />);
-      fireEvent.press(await findByLabelText('Favourite album'));
-      expect(anyCall).toHaveBeenCalled();
-    },
-  );
+  it('MOB-ALB-003 the favourite button on an album saves it', async () => {
+    signIn();
+    route.params = { id: 'yt:inr' };
+    stub('album', async () => makeAlbum({ id: 'yt:inr' }));
+    stub('albumTracks', async () => page(songs));
+    const anyCall = jest.fn();
+    for (const k of Object.keys(api) as (keyof typeof api)[])
+      if (!['album', 'albumTracks'].includes(k)) jest.spyOn(api, k).mockImplementation(anyCall as never);
+    const { findByLabelText } = render(<AlbumScreen />);
+    fireEvent.press(await findByLabelText('Favourite album'));
+    expect(anyCall).toHaveBeenCalled();
+  });
 
   it('MOB-ART-001 an artist shows listeners and albums; album tiles open the album', async () => {
     route.params = { id: 'yt:rh' };
@@ -619,9 +556,7 @@ describe('Playlist, album and artist pages', () => {
       } as never),
     );
     stub('artistTopTracks', async () => page(songs));
-    stub('artistAlbums', async () =>
-      page([makeAlbum({ id: 'yt:kida', title: 'Kid A', year: 2000 })]),
-    );
+    stub('artistAlbums', async () => page([makeAlbum({ id: 'yt:kida', title: 'Kid A', year: 2000 })]));
     const { findByText, findByLabelText } = render(<ArtistScreen />);
     expect(await findByText('Radiohead')).toBeTruthy();
     expect(await findByText(/1,234,567/)).toBeTruthy();
@@ -632,9 +567,7 @@ describe('Playlist, album and artist pages', () => {
   it('MOB-ART-002 following saves to the account; a failure turns it back', async () => {
     signIn();
     route.params = { id: 'yt:rh' };
-    stub('artist', async () =>
-      makeArtist({ id: 'yt:rh', name: 'Portishead', following: false }),
-    );
+    stub('artist', async () => makeArtist({ id: 'yt:rh', name: 'Portishead', following: false }));
     stub('artistTopTracks', async () => page([]));
     stub('artistAlbums', async () => page([]));
     const follow = stub('setFollowing', async () => ({ ok: true }));

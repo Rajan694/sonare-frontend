@@ -4,13 +4,7 @@ import { formatDuration, generatePeaks, songCount } from '../src/lib/format';
 import { hasInternet } from '../src/lib/connectivity';
 import { confirmDeletePlaylist } from '../src/lib/confirmDeletePlaylist';
 import { confirmRemoveDownloads } from '../src/lib/confirmRemoveDownloads';
-import {
-  durations,
-  easings,
-  springConfig,
-  AnimatedView,
-  FadeView,
-} from '../src/lib/motion';
+import { durations, easings, springConfig, springs, AnimatedView, FadeView } from '../src/lib/motion';
 import { useLibraryStore } from '../src/store/library';
 import { useDownloadsStore } from '../src/store/downloads';
 import { render } from '@testing-library/react-native';
@@ -24,9 +18,7 @@ describe('Lib Layer', () => {
   describe('cn.ts', () => {
     it('MOB-LIB-001 joins truthy class names and ignores falsy values', () => {
       expect(cn('btn', 'btn-primary')).toBe('btn btn-primary');
-      expect(cn('btn', false && 'hidden', undefined, null, 'active')).toBe(
-        'btn active',
-      );
+      expect(cn('btn', false && 'hidden', undefined, null, 'active')).toBe('btn active');
       expect(cn()).toBe('');
     });
   });
@@ -44,7 +36,7 @@ describe('Lib Layer', () => {
       const peaks2 = generatePeaks('track_123', 20);
       expect(peaks1).toHaveLength(20);
       expect(peaks1).toEqual(peaks2);
-      peaks1.forEach(p => {
+      peaks1.forEach((p) => {
         expect(p).toBeGreaterThanOrEqual(4);
         expect(p).toBeLessThanOrEqual(22);
       });
@@ -81,15 +73,11 @@ describe('Lib Layer', () => {
 
   describe('confirmDeletePlaylist.ts', () => {
     it('MOB-LIB-007 displays Alert and resolves true when user confirms deletion', async () => {
-      jest
-        .spyOn(useLibraryStore.getState(), 'deletePlaylist')
-        .mockResolvedValue();
-      jest
-        .spyOn(Alert, 'alert')
-        .mockImplementation((title, message, buttons) => {
-          const deleteButton = buttons?.find(b => b.text === 'Delete');
-          deleteButton?.onPress?.();
-        });
+      jest.spyOn(useLibraryStore.getState(), 'deletePlaylist').mockResolvedValue();
+      jest.spyOn(Alert, 'alert').mockImplementation((title, message, buttons) => {
+        const deleteButton = buttons?.find((b) => b.text === 'Delete');
+        deleteButton?.onPress?.();
+      });
 
       const result = await confirmDeletePlaylist({
         id: 'p1',
@@ -100,31 +88,25 @@ describe('Lib Layer', () => {
     });
 
     it('MOB-LIB-008 resolves false when user cancels deletion', async () => {
-      jest
-        .spyOn(Alert, 'alert')
-        .mockImplementation((title, message, buttons) => {
-          const cancelButton = buttons?.find(b => b.text === 'Cancel');
-          cancelButton?.onPress?.();
-        });
+      jest.spyOn(Alert, 'alert').mockImplementation((title, message, buttons) => {
+        const cancelButton = buttons?.find((b) => b.text === 'Cancel');
+        cancelButton?.onPress?.();
+      });
 
       const result = await confirmDeletePlaylist({ id: 'p2' });
       expect(result).toBe(false);
     });
 
     it('MOB-LIB-009 shows error alert and resolves false when delete fails', async () => {
-      jest
-        .spyOn(useLibraryStore.getState(), 'deletePlaylist')
-        .mockRejectedValue(new Error('Server error'));
+      jest.spyOn(useLibraryStore.getState(), 'deletePlaylist').mockRejectedValue(new Error('Server error'));
       let alertCalls = 0;
-      jest
-        .spyOn(Alert, 'alert')
-        .mockImplementation((title, message, buttons) => {
-          alertCalls++;
-          if (alertCalls === 1) {
-            const deleteButton = buttons?.find(b => b.text === 'Delete');
-            deleteButton?.onPress?.();
-          }
-        });
+      jest.spyOn(Alert, 'alert').mockImplementation((title, message, buttons) => {
+        alertCalls++;
+        if (alertCalls === 1) {
+          const deleteButton = buttons?.find((b) => b.text === 'Delete');
+          deleteButton?.onPress?.();
+        }
+      });
 
       const result = await confirmDeletePlaylist({
         id: 'p3',
@@ -137,15 +119,11 @@ describe('Lib Layer', () => {
 
   describe('confirmRemoveDownloads.ts', () => {
     it('MOB-LIB-010 displays Alert and deletes files from downloads store', async () => {
-      const removeSpy = jest
-        .spyOn(useDownloadsStore.getState(), 'remove')
-        .mockResolvedValue({ fileDeleted: true });
-      jest
-        .spyOn(Alert, 'alert')
-        .mockImplementation((title, message, buttons) => {
-          const deleteBtn = buttons?.find(b => b.text === 'Delete');
-          deleteBtn?.onPress?.();
-        });
+      const removeSpy = jest.spyOn(useDownloadsStore.getState(), 'remove').mockResolvedValue({ fileDeleted: true });
+      jest.spyOn(Alert, 'alert').mockImplementation((title, message, buttons) => {
+        const deleteBtn = buttons?.find((b) => b.text === 'Delete');
+        deleteBtn?.onPress?.();
+      });
 
       confirmRemoveDownloads([
         {
@@ -174,15 +152,13 @@ describe('Lib Layer', () => {
         reason: 'File moved',
       });
       let alertCalls = 0;
-      jest
-        .spyOn(Alert, 'alert')
-        .mockImplementation((title, message, buttons) => {
-          alertCalls++;
-          if (alertCalls === 1) {
-            const deleteBtn = buttons?.find(b => b.text === 'Delete');
-            deleteBtn?.onPress?.();
-          }
-        });
+      jest.spyOn(Alert, 'alert').mockImplementation((title, message, buttons) => {
+        alertCalls++;
+        if (alertCalls === 1) {
+          const deleteBtn = buttons?.find((b) => b.text === 'Delete');
+          deleteBtn?.onPress?.();
+        }
+      });
 
       // Test multiple items kept message
       confirmRemoveDownloads([
@@ -271,7 +247,7 @@ describe('Lib Layer', () => {
       report('Plain string failure', false, 'unhandledRejection');
       report({ code: 42 });
 
-      expect(sent.map(r => r.method)).toEqual(['POST', 'POST', 'POST']);
+      expect(sent.map((r) => r.method)).toEqual(['POST', 'POST', 'POST']);
       expect(sent[0].url).toMatch(/\/client-errors$/);
       expect(sent[0].body).toMatchObject({
         source: 'mobile',
@@ -330,10 +306,7 @@ describe('Lib Layer', () => {
 
       // React Native's own dev tracker (the red box) still gets every rejection.
       const devTracker = { onUnhandled: jest.fn(), onHandled: jest.fn() };
-      jest.doMock(
-        'react-native/Libraries/promiseRejectionTrackingOptions',
-        () => ({ default: devTracker }),
-      );
+      jest.doMock('react-native/Libraries/promiseRejectionTrackingOptions', () => ({ default: devTracker }));
 
       const { installErrorReporting: install } = freshModule();
       install();
@@ -374,20 +347,25 @@ describe('Lib Layer', () => {
       (globalThis as any).HermesInternal = { hasPromise: () => false };
       const { installErrorReporting: install } = freshModule();
       expect(() => install()).not.toThrow();
-      expect(sent.map(r => r.body.message)).toEqual(['Boot failed']);
+      expect(sent.map((r) => r.body.message)).toEqual(['Boot failed']);
     });
   });
 
   describe('motion.tsx', () => {
-    it('MOB-LIB-015 durations, easings, springConfig constants exported', () => {
+    it('MOB-LIB-015 durations, easings and the springs exported; springs settle without overshoot', () => {
       expect(durations.fast).toBe(150);
       expect(durations.base).toBe(250);
       expect(durations.slow).toBe(350);
       expect(easings.standard).toEqual([0.4, 0.0, 0.2, 1]);
       expect(easings.decelerate).toEqual([0.0, 0.0, 0.2, 1]);
       expect(easings.accelerate).toEqual([0.4, 0.0, 1, 1]);
-      expect(springConfig.stiffness).toBe(300);
-      expect(springConfig.damping).toBe(20);
+      expect(springConfig).toEqual({ damping: 28, stiffness: 280, overshootClamping: true });
+      // No bounce past the end anywhere (sheets, swipes, presses, sliding indicators).
+      for (const spring of [springConfig, ...Object.values(springs)]) {
+        expect(spring.overshootClamping).toBe(true);
+        // Well damped too (ζ = damping / 2√stiffness ≥ 0.6 with mass 1), so it eases in smoothly.
+        expect(spring.damping / (2 * Math.sqrt(spring.stiffness))).toBeGreaterThanOrEqual(0.6);
+      }
     });
 
     it('MOB-LIB-016 AnimatedView rises in after its delay; FadeView fades with visibility; reduced motion skips both', async () => {
@@ -398,9 +376,7 @@ describe('Lib Layer', () => {
       );
       // MotiView is the element carrying the animation props.
       const motiOf = (r: ReturnType<typeof render>) =>
-        r.UNSAFE_root.findAll(
-          (n: any) => n.type === 'View' && n.props.animate !== undefined,
-        );
+        r.UNSAFE_root.findAll((n: any) => n.type === 'View' && n.props.animate !== undefined);
       const [moti] = motiOf(anim);
       expect(moti.props).toMatchObject({
         from: { opacity: 0, translateY: 8 },
@@ -420,9 +396,7 @@ describe('Lib Layer', () => {
       expect(fade.getByText('Fade Content')).toBeTruthy();
 
       // With "reduce motion" on, content appears without animation and hidden content is gone.
-      (
-        AccessibilityInfo.isReduceMotionEnabled as jest.Mock
-      ).mockResolvedValueOnce(true);
+      (AccessibilityInfo.isReduceMotionEnabled as jest.Mock).mockResolvedValueOnce(true);
       let reduced: typeof import('../src/lib/motion') | undefined;
       jest.isolateModules(() => {
         reduced = require('../src/lib/motion');

@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { View, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
+import { Ambient } from '../components/music/Ambient';
 import { IconButton } from '../components/ui/IconButton';
-import { Badge } from '../components/ui/Badge';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
@@ -17,61 +18,56 @@ import { useNavigation } from '@react-navigation/native';
 import { formatDuration } from '../lib/format';
 import { cn } from '../lib/cn';
 import { Waveform } from '../components/music/Waveform';
-import {
-  PanGestureHandler,
-  PanGestureHandlerGestureEvent,
-} from 'react-native-gesture-handler';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  runOnJS,
-} from 'react-native-reanimated';
+import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated';
+import { springs } from '../lib/motion';
 import Icon from '../components/ui/Icon';
 import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
+import { OUTPUT_ICON, usePlayerSheets } from '../components/music/PlayerSheets';
+import { outputDetail, useOutputStore } from '../store/output';
+import { useSleepTimerStore } from '../store/sleepTimer';
 
 const SWIPE_THRESHOLD = 50;
 
 export function NowPlayingScreen() {
-  const mode = useModeStore(state => state.mode);
-  const currentTrack = usePlayerStore(state => state.currentTrack);
-  const isPlaying = usePlayerStore(state => state.isPlaying);
-  const setIsPlaying = usePlayerStore(state => state.setIsPlaying);
-  const shuffle = usePlayerStore(state => state.shuffle);
-  const toggleShuffle = usePlayerStore(state => state.toggleShuffle);
-  const repeat = usePlayerStore(state => state.repeat);
-  const cycleRepeat = usePlayerStore(state => state.cycleRepeat);
-  const playPrevious = usePlayerStore(state => state.playPrevious);
-  const playNext = usePlayerStore(state => state.playNext);
-  const positionMs = usePlayerStore(state => state.positionMs);
-  const durationMs = usePlayerStore(state => state.durationMs);
-  const buffering = usePlayerStore(state => state.buffering);
-  const error = usePlayerStore(state => state.error);
-  const seekTo = usePlayerStore(state => state.seekTo);
-  const favourite = useLibraryStore(
-    state => !!currentTrack && !!state.favouriteIds[currentTrack.id],
-  );
+  const mode = useModeStore((state) => state.mode);
+  const currentTrack = usePlayerStore((state) => state.currentTrack);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const shuffle = usePlayerStore((state) => state.shuffle);
+  const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
+  const repeat = usePlayerStore((state) => state.repeat);
+  const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
+  const playPrevious = usePlayerStore((state) => state.playPrevious);
+  const playNext = usePlayerStore((state) => state.playNext);
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  const durationMs = usePlayerStore((state) => state.durationMs);
+  const buffering = usePlayerStore((state) => state.buffering);
+  const error = usePlayerStore((state) => state.error);
+  const seekTo = usePlayerStore((state) => state.seekTo);
+  const favourite = useLibraryStore((state) => !!currentTrack && !!state.favouriteIds[currentTrack.id]);
+  const playingFrom = usePlayerStore((state) => state.playingFrom);
+  const output = useOutputStore((state) => state.current);
+  const sleepOn = useSleepTimerStore((state) => state.timer.kind !== 'off');
+  const showSheet = usePlayerSheets((state) => state.show);
   // A finished download plays from the phone too.
   const onDevice = useDownloadsStore(
-    state =>
+    (state) =>
       currentTrack?.source === 'local' ||
-      (!!currentTrack &&
-        state.items[currentTrack.id]?.status === 'done' &&
-        !state.items[currentTrack.id]?.missing),
+      (!!currentTrack && state.items[currentTrack.id]?.status === 'done' && !state.items[currentTrack.id]?.missing),
   );
-  const peaks = useAsync(
-    () => api.peaks(currentTrack!.id, 76),
-    [currentTrack?.id],
-    {
-      enabled: currentTrack?.source === 'server',
-    },
-  );
+  const peaks = useAsync(() => api.peaks(currentTrack!.id, 76), [currentTrack?.id], {
+    enabled: currentTrack?.source === 'server',
+  });
   const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
   const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
 
   const navigation = useNavigation<any>();
+  // The output card and the extra utility buttons need room on shorter phones.
+  const { width, height } = useWindowDimensions();
+  const artSize = width - 44 >= 314 && height >= 780 ? 314 : width - 44 >= 240 && height >= 640 ? 240 : 200;
 
   const translateX = useSharedValue(0);
 
@@ -79,25 +75,17 @@ export function NowPlayingScreen() {
     const { translationX } = event.nativeEvent;
 
     if (translationX > SWIPE_THRESHOLD) {
-      translateX.value = withSpring(
-        400,
-        { damping: 20, stiffness: 200 },
-        () => {
-          runOnJS(playPrevious)();
-          translateX.value = 0;
-        },
-      );
+      translateX.value = withSpring(400, springs.fling, () => {
+        runOnJS(playPrevious)();
+        translateX.value = 0;
+      });
     } else if (translationX < -SWIPE_THRESHOLD) {
-      translateX.value = withSpring(
-        -400,
-        { damping: 20, stiffness: 200 },
-        () => {
-          runOnJS(playNext)();
-          translateX.value = 0;
-        },
-      );
+      translateX.value = withSpring(-400, springs.fling, () => {
+        runOnJS(playNext)();
+        translateX.value = 0;
+      });
     } else {
-      translateX.value = withSpring(0, { damping: 20, stiffness: 300 });
+      translateX.value = withSpring(0, springs.snapBack);
     }
   };
 
@@ -134,9 +122,13 @@ export function NowPlayingScreen() {
   }
 
   const isGold = mode === 'offline' || currentTrack.source === 'local';
+  const accent = isGold ? '#FFC24D' : '#00E28A';
+  // Where the queue came from; a song's own album when it was started from elsewhere.
+  const eyebrow = playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
 
   return (
     <Screen scrollable={false} className="bg-bg">
+      <Ambient uri={artworkUrl(currentTrack, 64)} />
       <Header
         left={
           <IconButton
@@ -146,16 +138,13 @@ export function NowPlayingScreen() {
           />
         }
         title={
-          currentTrack.album ? (
+          eyebrow ? (
             <View className="items-center">
               <Text className="text-[11px] font-semibold tracking-[0.9px] text-t3 uppercase">
-                PLAYING FROM ALBUM
+                PLAYING FROM {eyebrow.kind}
               </Text>
-              <Text
-                className="text-ll font-semibold text-t1 truncate max-w-[200px]"
-                numberOfLines={1}
-              >
-                {currentTrack.album}
+              <Text className="text-ll font-semibold text-t1 truncate max-w-[200px]" numberOfLines={1}>
+                {eyebrow.name}
               </Text>
             </View>
           ) : undefined
@@ -168,23 +157,17 @@ export function NowPlayingScreen() {
           />
         }
       />
-      <View className="flex-1 px-5 pt-1 pb-6">
+      <View className="flex-1 px-[22px] pt-1 pb-[22px]">
         {/* Large Artwork matching M09 (~306px) */}
-        <PanGestureHandler
-          onGestureEvent={handleGestureEvent as any}
-          onEnded={handleGestureEnd as any}
-        >
-          <AnimatedViewComponent
-            style={artworkStyle}
-            className="self-center mt-2 mb-4"
-          >
+        <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
+          <AnimatedViewComponent style={artworkStyle} className="self-center mt-3 mb-[26px]">
             <View className="relative">
               <Artwork
                 uri={artworkUrl(currentTrack, 640)}
                 fallbackUri={artworkUrl(currentTrack, 300)}
-                size={306}
+                size={artSize}
                 rings
-                className="rounded-2xl shadow-2xl"
+                className="rounded-xl shadow-e4"
                 sharedTransitionTag={`artwork-${currentTrack.id}`}
               />
             </View>
@@ -195,10 +178,7 @@ export function NowPlayingScreen() {
           {/* Title and Heart */}
           <View className="flex-row items-center justify-between gap-3">
             <View className="flex-1 gap-1 min-w-0">
-              <Text
-                className="text-h1 font-bold text-t1 truncate"
-                numberOfLines={1}
-              >
+              <Text className="text-h1 font-semibold text-t1 truncate" numberOfLines={1}>
                 {currentTrack.title}
               </Text>
               <Text
@@ -216,62 +196,60 @@ export function NowPlayingScreen() {
             <IconButton
               icon={
                 <Icon
-                  name="heart"
+                  name={favourite ? 'heart-filled' : 'heart'}
                   size={23}
-                  color={
-                    favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'
-                  }
+                  color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
                 />
               }
               size={44}
               onPress={() =>
-                requireAccount(
-                  'Create a free account to save songs you love.',
-                  () =>
-                    useLibraryStore
-                      .getState()
-                      .toggleFavourite(currentTrack)
-                      .catch(() => {}),
+                requireAccount('Create a free account to save songs you love.', () =>
+                  useLibraryStore
+                    .getState()
+                    .toggleFavourite(currentTrack)
+                    .catch(() => {}),
                 )
               }
-              accessibilityLabel={
-                favourite ? 'Remove from favourites' : 'Add to favourites'
+              accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
+            />
+            <IconButton
+              icon={<Icon name="plus" size={23} color="#9A9AA8" />}
+              size={44}
+              onPress={() =>
+                requireAccount('Create a free account to make playlists.', () =>
+                  useTrackMenuStore.getState().open(currentTrack, { view: 'playlists' }),
+                )
               }
+              accessibilityLabel="Add to playlist"
             />
             <TrackDownloadButton track={currentTrack} />
           </View>
 
           {/* Badges line: Source pill + Codec */}
           <View className="flex-row items-center gap-2">
-            <Badge
-              label={onDevice ? 'ON THIS DEVICE' : 'STREAMING'}
-              variant={onDevice ? 'local' : 'cloud'}
-              icon={
-                <Icon
-                  name={onDevice ? 'smartphone' : 'cloud'}
-                  size={12}
-                  color={onDevice ? '#FFC24D' : '#00E28A'}
-                />
-              }
-            />
+            <View
+              className={cn(
+                'flex-row items-center gap-1.5 h-6 px-[9px] rounded-full',
+                onDevice ? 'bg-goldbg' : 'bg-accbg',
+              )}
+            >
+              <Icon name={onDevice ? 'smartphone' : 'cloud'} size={13} color={onDevice ? '#FFC24D' : '#00E28A'} />
+              <Text className={cn('text-ls', onDevice ? 'text-gold' : 'text-acc')}>
+                {onDevice ? 'ON THIS DEVICE' : 'STREAMING'}
+              </Text>
+            </View>
             {currentTrack.codec && (
               <Text className="text-mono-s font-mono text-t3">
                 {[
                   currentTrack.codec,
-                  currentTrack.bitrateKbps
-                    ? `${currentTrack.bitrateKbps} kbps`
-                    : null,
+                  currentTrack.bitrateKbps ? `${currentTrack.bitrateKbps} kbps` : null,
                   currentTrack.bitDepth ? `${currentTrack.bitDepth}-bit` : null,
                 ]
                   .filter(Boolean)
                   .join(' · ')}
               </Text>
             )}
-            {error && (
-              <Text className="text-red text-bs ml-2 flex-1 truncate">
-                {error}
-              </Text>
-            )}
+            {error && <Text className="text-red text-bs ml-2 flex-1 truncate">{error}</Text>}
           </View>
 
           {/* Waveform Seek Rail */}
@@ -282,22 +260,14 @@ export function NowPlayingScreen() {
                 progress={progress}
                 mode={isGold ? 'offline' : 'online'}
                 peaks={peaks.data?.peaks}
-                onSeek={
-                  durationMs
-                    ? f => seekTo(Math.round(f * durationMs))
-                    : undefined
-                }
+                onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
               />
             </View>
 
             <View className="flex-row justify-between">
-              <Text className="text-mono-s font-mono text-t2">
-                {formatDuration(positionMs)}
-              </Text>
+              <Text className="text-mono-s font-mono text-t2">{formatDuration(positionMs)}</Text>
               <Text className="text-mono-s font-mono text-t3">
-                {durationMs
-                  ? `-${formatDuration(remainingMs)}`
-                  : formatDuration(currentTrack.durationMs || 0)}
+                {durationMs ? `-${formatDuration(remainingMs)}` : formatDuration(currentTrack.durationMs || 0)}
               </Text>
             </View>
           </View>
@@ -305,13 +275,7 @@ export function NowPlayingScreen() {
           {/* Transport Controls */}
           <View className="flex-row items-center justify-between mt-1 px-1">
             <IconButton
-              icon={
-                <Icon
-                  name="shuffle"
-                  size={21}
-                  color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#7E7E8C'}
-                />
-              }
+              icon={<Icon name="shuffle" size={21} color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
               size={44}
               onPress={toggleShuffle}
               accessibilityLabel="Toggle shuffle"
@@ -336,11 +300,7 @@ export function NowPlayingScreen() {
               {buffering && isPlaying ? (
                 <ActivityIndicator color="#000000" />
               ) : (
-                <Icon
-                  name={isPlaying ? 'pause' : 'play'}
-                  size={27}
-                  color="#000000"
-                />
+                <Icon name={isPlaying ? 'pause' : 'play'} size={27} color="#000000" />
               )}
             </Pressable>
 
@@ -353,17 +313,7 @@ export function NowPlayingScreen() {
 
             <IconButton
               icon={
-                <Icon
-                  name="repeat"
-                  size={21}
-                  color={
-                    repeat !== 'off'
-                      ? isGold
-                        ? '#FFC24D'
-                        : '#00E28A'
-                      : '#7E7E8C'
-                  }
-                />
+                <Icon name="repeat" size={21} color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />
               }
               size={44}
               onPress={cycleRepeat}
@@ -372,21 +322,33 @@ export function NowPlayingScreen() {
           </View>
 
           {/* Bottom Utility Row */}
-          <View className="flex-row items-center justify-between mt-1 px-4">
+          <View className="flex-row items-center justify-between mt-2">
             <IconButton
-              icon={<Icon name="lyrics" size={21} color="#7E7E8C" />}
+              icon={<Icon name="lyrics" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => navigation.navigate('Lyrics')}
               accessibilityLabel="Lyrics"
             />
             <IconButton
-              icon={<Icon name="equalizer" size={21} color="#7E7E8C" />}
+              icon={<Icon name="equalizer" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => navigation.navigate('Equalizer')}
               accessibilityLabel="Equalizer"
             />
             <IconButton
-              icon={<Icon name="playlist" size={21} color="#7E7E8C" />}
+              icon={<Icon name="output" size={21} color="#9A9AA8" />}
+              size={44}
+              onPress={() => showSheet('output')}
+              accessibilityLabel="Audio output"
+            />
+            <IconButton
+              icon={<Icon name="clock" size={21} color={sleepOn ? accent : '#9A9AA8'} />}
+              size={44}
+              onPress={() => showSheet('sleep')}
+              accessibilityLabel={sleepOn ? 'Sleep timer on' : 'Sleep timer'}
+            />
+            <IconButton
+              icon={<Icon name="queue" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => navigation.navigate('Queue')}
               accessibilityLabel="Queue"
@@ -395,6 +357,33 @@ export function NowPlayingScreen() {
         </View>
 
         <View className="flex-1" />
+
+        {/* Audio output card (design M09) */}
+        <Pressable
+          onPress={() => showSheet('output')}
+          className="flex-row items-center gap-2.5 px-3 py-2.5 bg-[rgba(17,17,20,0.86)] border border-ln2 rounded-[14px]"
+          accessibilityRole="button"
+          accessibilityLabel={`Audio output: ${output?.name ?? 'Phone speaker'}`}
+        >
+          <View className="w-[30px] h-[30px] items-center justify-center">
+            <Icon name={output ? OUTPUT_ICON[output.type] : 'output'} size={18} color={accent} />
+          </View>
+          <View className="flex-1 gap-px min-w-0">
+            <Text className="text-ll text-t1" numberOfLines={1}>
+              {output?.name ?? 'Phone speaker'}
+            </Text>
+            <Text className="text-ls text-t3" numberOfLines={1}>
+              {output?.type === 'speaker' || !output
+                ? onDevice
+                  ? 'Playing locally · no network used'
+                  : 'Streaming to this phone'
+                : outputDetail(output)}
+            </Text>
+          </View>
+          <View className="w-8 h-8 items-center justify-center">
+            <Icon name="chevron-right" size={16} color="#9A9AA8" />
+          </View>
+        </Pressable>
       </View>
     </Screen>
   );

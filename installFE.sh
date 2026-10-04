@@ -8,21 +8,26 @@ load_nvm() {
     [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 }
 
-echo "=== Installing mobile (React Native) packages ==="
 load_nvm
 nvm use 22 2>/dev/null
+
+echo "=== Installing the git hooks (husky + lint-staged) ==="
+cd "$SCRIPT_DIR" && npm install
+
+echo ""
+echo "=== Installing mobile (React Native) packages ==="
 cd "$SCRIPT_DIR/mobile" && npm install
 
 echo ""
-echo "=== Installing other-screens (React + TypeScript + NeutralinoJS) packages ==="
-cd "$SCRIPT_DIR/other-screens" && npm install
+echo "=== Installing desktop (React + TypeScript + NeutralinoJS) packages ==="
+cd "$SCRIPT_DIR/desktop" && npm install
 
 echo ""
 echo "=== Downloading NeutralinoJS binaries ==="
 npx neu update
 
 echo ""
-echo "=== Building other-screens once (creates resources/, needed for app + tray icons) ==="
+echo "=== Building desktop once (creates resources/, needed for app + tray icons) ==="
 npm run build
 
 echo ""

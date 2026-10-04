@@ -92,17 +92,41 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            if (project.hasProperty('SONARE_UPLOAD_STORE_FILE')) {
+                storeFile file(SONARE_UPLOAD_STORE_FILE)
+                storePassword SONARE_UPLOAD_STORE_PASSWORD
+                keyAlias SONARE_UPLOAD_KEY_ALIAS
+                keyPassword SONARE_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
+            manifestPlaceholders = [usesCleartextTraffic: "true"]
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
+            manifestPlaceholders = [usesCleartextTraffic: "false"]
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+        }
+    }
+}
+
+gradle.taskGraph.whenReady { taskGraph ->
+    def isReleaseTask = taskGraph.allTasks.any { task ->
+        task.name.contains("Release")
+    }
+    if (isReleaseTask) {
+        def missing = []
+        if (!project.hasProperty('SONARE_UPLOAD_STORE_FILE')) missing.add('SONARE_UPLOAD_STORE_FILE')
+        if (!project.hasProperty('SONARE_UPLOAD_STORE_PASSWORD')) missing.add('SONARE_UPLOAD_STORE_PASSWORD')
+        if (!project.hasProperty('SONARE_UPLOAD_KEY_ALIAS')) missing.add('SONARE_UPLOAD_KEY_ALIAS')
+        if (!project.hasProperty('SONARE_UPLOAD_KEY_PASSWORD')) missing.add('SONARE_UPLOAD_KEY_PASSWORD')
+        if (!missing.isEmpty()) {
+            throw new GradleException("Missing release signing properties in ~/.gradle/gradle.properties: " + missing.join(", "))
         }
     }
 }
@@ -113,6 +137,9 @@ dependencies {
     // Playback engine for com.mobile.player (background audio, media session, lock screen).
     implementation("androidx.media3:media3-exoplayer:1.8.0")
     implementation("androidx.media3:media3-session:1.8.0")
+
+    // JVM unit tests for the audio processing (app/src/test).
+    testImplementation("junit:junit:4.13.2")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

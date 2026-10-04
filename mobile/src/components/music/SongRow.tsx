@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '../ui/Text';
 import { cn } from '../../lib/cn';
 import { Track } from '../../data/types';
 import { artworkUrl } from '../../data/config';
@@ -8,11 +9,7 @@ import { SourceGlyph } from './SourceGlyph';
 import { EqualizerBars } from './EqualizerBars';
 import { IconButton } from '../ui/IconButton';
 import { formatDuration } from '../../lib/format';
-import Animated, {
-  FadeIn,
-  Layout,
-  ReduceMotion,
-} from 'react-native-reanimated';
+import Animated, { FadeIn, Layout, ReduceMotion } from 'react-native-reanimated';
 import Icon from '../ui/Icon';
 import { useLibraryStore } from '../../store/library';
 import { useTrackMenuStore, type TrackMenuAction } from '../../store/trackMenu';
@@ -42,18 +39,15 @@ export function SongRow({
   className,
   extraAction,
 }: SongRowProps) {
-  const favourite = useLibraryStore(s => !!s.favouriteIds[track.id]);
+  const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
   // Only the active row cares, so the others never re-render on play/pause.
-  const playing = usePlayerStore(s => isActive && s.isPlaying);
-  const accent = track.source === 'local' ? '#FFC24D' : '#00E28A';
-  // A finished download is on this phone too.
-  const onPhone = useDownloadsStore(
-    s => s.items[track.id]?.status === 'done' && !s.items[track.id]?.missing,
-  );
+  const playing = usePlayerStore((s) => isActive && s.isPlaying);
+  // A finished download is on this phone too, and plays from it: gold, like a local file.
+  const onPhone = useDownloadsStore((s) => s.items[track.id]?.status === 'done' && !s.items[track.id]?.missing);
+  const local = track.source === 'local' || onPhone;
+  const accent = local ? '#FFC24D' : '#00E28A';
 
-  const subtitle = track.album
-    ? `${track.artist} · ${track.album}`
-    : track.artist;
+  const subtitle = track.album ? `${track.artist} · ${track.album}` : track.artist;
 
   return (
     <Animated.View
@@ -65,9 +59,7 @@ export function SongRow({
     >
       <Pressable
         onPress={onPress}
-        onLongPress={() =>
-          useTrackMenuStore.getState().open(track, { extraAction })
-        }
+        onLongPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
         accessibilityRole="button"
         accessibilityLabel={`${track.title} by ${track.artist}`}
         accessibilityHint="Long press for more options"
@@ -82,20 +74,14 @@ export function SongRow({
             {isActive ? (
               <EqualizerBars isPlaying={playing} color={accent} />
             ) : (
-              <Text className="text-t3 text-[12px] text-right font-mono w-full">
-                {index + 1}
-              </Text>
+              <Text className="text-t3 text-[12px] text-right font-mono w-full">{index + 1}</Text>
             )}
           </View>
         )}
 
         {showArtwork && (
           <View className="mr-3">
-            <Artwork
-              uri={artworkUrl(track, 64)}
-              size={44}
-              className="rounded-sm"
-            />
+            <Artwork uri={artworkUrl(track, 64)} size={44} className="rounded-sm" />
           </View>
         )}
 
@@ -103,19 +89,12 @@ export function SongRow({
           <View className="flex-row items-center gap-1.5 min-w-0">
             <Text
               numberOfLines={1}
-              className={cn(
-                'text-tm font-medium shrink',
-                isActive
-                  ? track.source === 'local'
-                    ? 'text-gold'
-                    : 'text-acc'
-                  : 'text-t1',
-              )}
+              className={cn('text-tm font-medium shrink', isActive ? (local ? 'text-gold' : 'text-acc') : 'text-t1')}
             >
               {track.title}
             </Text>
-            <SourceGlyph source={onPhone ? 'local' : track.source} size={18} />
-            {favourite && <Icon name="heart" size={12} color={accent} />}
+            <SourceGlyph source={local ? 'local' : 'server'} size={18} />
+            {favourite && <Icon name="heart-filled" size={12} color={accent} />}
           </View>
           <Text numberOfLines={1} className="text-t2 text-bs">
             {subtitle}
@@ -123,17 +102,13 @@ export function SongRow({
         </View>
 
         {track.durationMs ? (
-          <Text className="text-t3 text-mono-s font-mono mr-1">
-            {formatDuration(track.durationMs)}
-          </Text>
+          <Text className="text-t3 text-mono-s font-mono mr-1">{formatDuration(track.durationMs)}</Text>
         ) : null}
 
         <IconButton
           icon={<Icon name="more" size={16} color="#7E7E8C" />}
           size={32}
-          onPress={() =>
-            useTrackMenuStore.getState().open(track, { extraAction })
-          }
+          onPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
           accessibilityLabel={`More options for ${track.title}`}
         />
       </Pressable>

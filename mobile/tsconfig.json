@@ -1,16 +1,10 @@
 {
+  "extends": "@react-native/typescript-config",
   "compilerOptions": {
-    "target": "esnext",
-    "module": "esnext",
-    "jsx": "react-native",
-    "lib": ["esnext"],
-    "moduleResolution": "bundler",
-    "strict": false,
+    "strict": true,
     "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "resolveJsonModule": true
+    "types": ["jest", "node"]
   },
-  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts"],
+  "include": ["**/*.ts", "**/*.tsx", "nativewind-env.d.ts", "../shared/**/*.ts"],
   "exclude": ["**/node_modules", "**/Pods"]
 }

@@ -1,28 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Keychain from 'react-native-keychain';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
-import {
-  API_BASE,
-  API_ORIGIN,
-  absoluteUrl,
-  artworkUrl,
-} from '../src/data/config';
+import { apiBase, apiOrigin, absoluteUrl, artworkUrl } from '../src/data/config';
 import { httpRequest, NetworkError } from '../src/data/http';
 import { useAuthStore } from '../src/data/auth';
 import { api, ApiError, isOwnPlaylist } from '../src/data/api';
 import { useSettingsStore, API_QUALITY } from '../src/data/settings';
-import {
-  queuePlay,
-  startBackgroundSync,
-  useSyncStatus,
-  requestSync,
-} from '../src/data/sync';
-import {
-  requireAccount,
-  takePendingAction,
-  clearPendingAction,
-  navigationRef,
-} from '../src/data/accountGate';
+import { queuePlay, startBackgroundSync, useSyncStatus, requestSync } from '../src/data/sync';
+import { requireAccount, takePendingAction, clearPendingAction, navigationRef } from '../src/data/accountGate';
 import { useAsync } from '../src/data/hooks';
 import { artGradients } from '../src/data/gradients';
 import { useModeStore } from '../src/store/mode';
@@ -49,35 +35,28 @@ describe('Data Layer', () => {
 
   describe('config.ts', () => {
     it('MOB-DATA-001 formats API_BASE and API_ORIGIN for default dev environment', () => {
-      expect(API_BASE).toContain('3010');
-      expect(API_ORIGIN).toContain('10.0.2.2:3010');
+      expect(apiBase()).toContain('3010');
+      expect(apiOrigin()).toContain('localhost:3010');
     });
 
     it('MOB-DATA-002 absoluteUrl resolves relative paths and returns full URLs as-is; returns undefined for null', () => {
-      expect(absoluteUrl('/api/v1/tracks/1')).toBe(
-        'http://10.0.2.2:3010/api/v1/tracks/1',
-      );
-      expect(absoluteUrl('https://example.com/art.jpg')).toBe(
-        'https://example.com/art.jpg',
-      );
+      expect(absoluteUrl('/api/v1/tracks/1')).toBe('http://localhost:3010/api/v1/tracks/1');
+      expect(absoluteUrl('https://example.com/art.jpg')).toBe('https://example.com/art.jpg');
       expect(absoluteUrl(null)).toBeUndefined();
       expect(absoluteUrl(undefined)).toBeUndefined();
     });
 
     it('MOB-DATA-003 artworkUrl generates formatted artwork URL with size parameter', () => {
       expect(artworkUrl({ thumbnail: '/api/v1/tracks/1/artwork' }, 300)).toBe(
-        'http://10.0.2.2:3010/api/v1/tracks/1/artwork?size=300',
+        'http://localhost:3010/api/v1/tracks/1/artwork?size=300',
       );
       expect(artworkUrl({ thumbnail: '/api/v1/tracks/1/artwork' })).toBe(
-        'http://10.0.2.2:3010/api/v1/tracks/1/artwork?size=140',
+        'http://localhost:3010/api/v1/tracks/1/artwork?size=140',
       );
       expect(artworkUrl(null)).toBeUndefined();
-      expect(
-        artworkUrl(
-          { thumbnail: 'https://cdn.example.com/art.png' },
-          200 as any,
-        ),
-      ).toBe('https://cdn.example.com/art.png');
+      expect(artworkUrl({ thumbnail: 'https://cdn.example.com/art.png' }, 200 as any)).toBe(
+        'https://cdn.example.com/art.png',
+      );
     });
   });
 
@@ -149,7 +128,7 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = OriginXHR as any;
 
-      await httpRequest(`${API_ORIGIN}/api/v1/test`, {
+      await httpRequest(`${apiOrigin()}/api/v1/test`, {
         headers: { 'Custom-Header': 'val' },
       });
       expect(setHeaders['X-Sonare-Client']).toBe('mobile');
@@ -169,9 +148,7 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = ErrorXHR as any;
 
-      await expect(httpRequest('http://fail.test')).rejects.toThrow(
-        NetworkError,
-      );
+      await expect(httpRequest('http://fail.test')).rejects.toThrow(NetworkError);
       global.XMLHttpRequest = originalXHR;
     });
 
@@ -187,26 +164,37 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = TimeoutXHR as any;
 
-      await expect(
-        httpRequest('http://timeout.test', { timeoutMs: 100 }),
-      ).rejects.toThrow('Network request timed out');
+      await expect(httpRequest('http://timeout.test', { timeoutMs: 100 })).rejects.toThrow('Network request timed out');
       global.XMLHttpRequest = originalXHR;
     });
   });
 
   describe('auth.ts', () => {
-    it('MOB-DATA-009 hydrate restores session from AsyncStorage', async () => {
+    beforeEach(async () => {
+      await Keychain.resetGenericPassword({ service: 'sonare.session' });
+      await AsyncStorage.clear();
+      useAuthStore.setState({
+        status: 'guest',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+    });
+
+    it('MOB-DATA-009 hydrate restores session from Keychain, or migrates from AsyncStorage', async () => {
       const user = {
         id: 'u1',
         email: 'test@example.com',
         displayName: 'Tester',
         role: 'user' as const,
       };
+
+      // Test migration from AsyncStorage when Keychain is empty
       await AsyncStorage.setItem(
         'sonare.session',
         JSON.stringify({
-          accessToken: 'acc_tok',
-          refreshToken: 'ref_tok',
+          accessToken: 'migrated_acc_tok',
+          refreshToken: 'migrated_ref_tok',
           user,
         }),
       );
@@ -214,7 +202,28 @@ describe('Data Layer', () => {
       await useAuthStore.getState().hydrate();
       expect(useAuthStore.getState().status).toBe('signedIn');
       expect(useAuthStore.getState().user).toEqual(user);
-      expect(useAuthStore.getState().accessToken).toBe('acc_tok');
+      expect(useAuthStore.getState().accessToken).toBe('migrated_acc_tok');
+
+      // Check migration moved it to keychain and removed from AsyncStorage
+      const migratedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(migratedKeychain).toBeTruthy();
+      if (migratedKeychain) {
+        expect(JSON.parse(migratedKeychain.password).accessToken).toBe('migrated_acc_tok');
+      }
+      expect(await AsyncStorage.getItem('sonare.session')).toBeNull();
+
+      // Test restoring directly from Keychain
+      useAuthStore.setState({
+        status: 'loading',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+      await useAuthStore.getState().hydrate();
+      expect(useAuthStore.getState().status).toBe('signedIn');
+      expect(useAuthStore.getState().accessToken).toBe('migrated_acc_tok');
     });
 
     it('MOB-DATA-010 hydrate falls back to guest mode on corrupted session', async () => {
@@ -224,14 +233,16 @@ describe('Data Layer', () => {
         accessToken: null,
         refreshToken: null,
       });
-      await AsyncStorage.setItem('sonare.session', 'invalid json string');
+      await Keychain.setGenericPassword('session', 'invalid json string', {
+        service: 'sonare.session',
+      });
       await useAuthStore.getState().hydrate();
       expect(useAuthStore.getState().status).toBe('guest');
       expect(useAuthStore.getState().user).toBeNull();
     });
 
-    it('MOB-DATA-011 signIn authenticates user and saves session', async () => {
-      const originalXHR = global.XMLHttpRequest;
+    it('MOB-DATA-011 signIn authenticates user and saves session to keychain not AsyncStorage', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
       const user = {
         id: 'u2',
         email: 'login@test.com',
@@ -252,11 +263,21 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = LoginXHR as any;
+      (globalThis as any).XMLHttpRequest = LoginXHR as any;
 
       await useAuthStore.getState().signIn('login@test.com', 'password123');
       expect(useAuthStore.getState().status).toBe('signedIn');
       expect(useAuthStore.getState().accessToken).toBe('new_acc');
+
+      // Verify saved to Keychain and NOT AsyncStorage
+      const savedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(savedKeychain).toBeTruthy();
+      if (savedKeychain) {
+        expect(JSON.parse(savedKeychain.password).accessToken).toBe('new_acc');
+      }
+      expect(await AsyncStorage.getItem('sonare.session')).toBeNull();
 
       // Failure path
       class FailLoginXHR {
@@ -271,16 +292,14 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = FailLoginXHR as any;
-      await expect(
-        useAuthStore.getState().signIn('bad', 'bad'),
-      ).rejects.toThrow('Invalid credentials');
+      (globalThis as any).XMLHttpRequest = FailLoginXHR as any;
+      await expect(useAuthStore.getState().signIn('bad', 'bad')).rejects.toThrow('Invalid credentials');
 
-      global.XMLHttpRequest = originalXHR;
+      (globalThis as any).XMLHttpRequest = originalXHR;
     });
 
     it('MOB-DATA-012 signUp registers user and saves session', async () => {
-      const originalXHR = global.XMLHttpRequest;
+      const originalXHR = (globalThis as any).XMLHttpRequest;
       const user = {
         id: 'u3',
         email: 'signup@test.com',
@@ -301,18 +320,21 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = RegisterXHR as any;
+      (globalThis as any).XMLHttpRequest = RegisterXHR as any;
 
-      await useAuthStore
-        .getState()
-        .signUp('signup@test.com', 'password123', 'New User');
+      await useAuthStore.getState().signUp('signup@test.com', 'password123', 'New User');
       expect(useAuthStore.getState().status).toBe('signedIn');
       expect(useAuthStore.getState().user?.displayName).toBe('New User');
-      global.XMLHttpRequest = originalXHR;
+
+      const savedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(savedKeychain).toBeTruthy();
+      (globalThis as any).XMLHttpRequest = originalXHR;
     });
 
-    it('MOB-DATA-013 signOut calls server logout and clears local session', async () => {
-      const originalXHR = global.XMLHttpRequest;
+    it('MOB-DATA-013 signOut calls server logout and clears keychain and session', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
       class LogoutXHR {
         status = 200;
         responseText = JSON.stringify({ ok: true });
@@ -323,13 +345,18 @@ describe('Data Layer', () => {
           setTimeout(() => this.onload?.(), 0);
         }
       }
-      global.XMLHttpRequest = LogoutXHR as any;
+      (globalThis as any).XMLHttpRequest = LogoutXHR as any;
 
       await useAuthStore.getState().signOut();
       expect(useAuthStore.getState().status).toBe('guest');
       expect(useAuthStore.getState().accessToken).toBeNull();
       expect(useAuthStore.getState().user).toBeNull();
-      global.XMLHttpRequest = originalXHR;
+
+      const savedKeychain = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(savedKeychain).toBe(false);
+      (globalThis as any).XMLHttpRequest = originalXHR;
     });
 
     it('MOB-DATA-014 refresh rotates refresh token and updates session', async () => {
@@ -341,7 +368,6 @@ describe('Data Layer', () => {
           id: 'u4',
           email: 'u4@test.com',
           displayName: 'U4',
-          role: 'user',
         },
       });
 
@@ -376,7 +402,6 @@ describe('Data Layer', () => {
           id: 'u5',
           email: 'u5@test.com',
           displayName: 'U5',
-          role: 'user',
         },
       });
 
@@ -414,7 +439,6 @@ describe('Data Layer', () => {
           id: 'u6',
           email: 'u6@test.com',
           displayName: 'U6',
-          role: 'user',
         },
       });
 
@@ -437,16 +461,226 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = DedupRefreshXHR as any;
 
-      const [r1, r2] = await Promise.all([
-        useAuthStore.getState().refresh(),
-        useAuthStore.getState().refresh(),
-      ]);
+      const [r1, r2] = await Promise.all([useAuthStore.getState().refresh(), useAuthStore.getState().refresh()]);
       expect(r1).toBe('dedup_acc');
       expect(r2).toBe('dedup_acc');
       // Both callers shared one request, so the rotated refresh token was used once.
       expect(callCount).toBe(1);
       expect(useAuthStore.getState().refreshToken).toBe('dedup_ref2');
       global.XMLHttpRequest = originalXHR;
+    });
+  });
+
+  describe('session storage (keychain)', () => {
+    beforeEach(async () => {
+      await Keychain.resetGenericPassword({ service: 'sonare.session' });
+      await AsyncStorage.clear();
+      useAuthStore.setState({
+        status: 'guest',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+    });
+
+    it('MOB-DATA-049 signIn saves session to keychain and leaves AsyncStorage empty', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
+      const user = {
+        id: 'u-kc-1',
+        email: 'kc_signin@test.com',
+        displayName: 'Keychain User',
+        role: 'user' as const,
+      };
+      class LoginXHR {
+        status = 200;
+        responseText = JSON.stringify({
+          accessToken: 'acc_kc_123',
+          refreshToken: 'ref_kc_123',
+          user,
+        });
+        onload: (() => void) | null = null;
+        open() {}
+        setRequestHeader() {}
+        send() {
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      (globalThis as any).XMLHttpRequest = LoginXHR as any;
+
+      await useAuthStore.getState().signIn('kc_signin@test.com', 'password123');
+
+      expect(useAuthStore.getState().status).toBe('signedIn');
+      expect(useAuthStore.getState().accessToken).toBe('acc_kc_123');
+
+      const keychainCreds = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(keychainCreds).toBeTruthy();
+      if (keychainCreds) {
+        expect(keychainCreds.username).toBe('session');
+        const parsed = JSON.parse(keychainCreds.password);
+        expect(parsed.accessToken).toBe('acc_kc_123');
+        expect(parsed.refreshToken).toBe('ref_kc_123');
+        expect(parsed.user.email).toBe('kc_signin@test.com');
+      }
+
+      const asyncStorageValue = await AsyncStorage.getItem('sonare.session');
+      expect(asyncStorageValue).toBeNull();
+
+      (globalThis as any).XMLHttpRequest = originalXHR;
+    });
+
+    it('MOB-DATA-050 hydrate migrates legacy AsyncStorage session to keychain', async () => {
+      const user = {
+        id: 'u-legacy',
+        email: 'legacy@test.com',
+        displayName: 'Legacy User',
+        role: 'user' as const,
+      };
+      const sessionData = {
+        accessToken: 'legacy_acc',
+        refreshToken: 'legacy_ref',
+        user,
+      };
+
+      await AsyncStorage.setItem('sonare.session', JSON.stringify(sessionData));
+      expect(await Keychain.getGenericPassword({ service: 'sonare.session' })).toBe(false);
+
+      await useAuthStore.getState().hydrate();
+
+      expect(useAuthStore.getState().status).toBe('signedIn');
+      expect(useAuthStore.getState().accessToken).toBe('legacy_acc');
+      expect(useAuthStore.getState().user).toEqual(user);
+
+      const migratedCreds = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(migratedCreds).toBeTruthy();
+      if (migratedCreds) {
+        expect(JSON.parse(migratedCreds.password)).toEqual(sessionData);
+      }
+
+      expect(await AsyncStorage.getItem('sonare.session')).toBeNull();
+    });
+
+    it('MOB-DATA-051 hydrate with nothing stored defaults to guest status', async () => {
+      useAuthStore.setState({
+        status: 'loading',
+        user: null,
+        accessToken: null,
+        refreshToken: null,
+      });
+
+      await useAuthStore.getState().hydrate();
+
+      expect(useAuthStore.getState().status).toBe('guest');
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().accessToken).toBeNull();
+      expect(useAuthStore.getState().refreshToken).toBeNull();
+    });
+
+    it('MOB-DATA-052 signOut resets keychain credentials and reverts status to guest', async () => {
+      const originalXHR = (globalThis as any).XMLHttpRequest;
+      class LogoutXHR {
+        status = 200;
+        responseText = JSON.stringify({ ok: true });
+        onload: (() => void) | null = null;
+        open() {}
+        setRequestHeader() {}
+        send() {
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      (globalThis as any).XMLHttpRequest = LogoutXHR as any;
+
+      const user = {
+        id: 'u-signout',
+        email: 'signout@test.com',
+        displayName: 'Signout User',
+      };
+      await Keychain.setGenericPassword(
+        'session',
+        JSON.stringify({ accessToken: 'so_acc', refreshToken: 'so_ref', user }),
+        { service: 'sonare.session' },
+      );
+      useAuthStore.setState({
+        status: 'signedIn',
+        user,
+        accessToken: 'so_acc',
+        refreshToken: 'so_ref',
+      });
+
+      await useAuthStore.getState().signOut();
+
+      expect(useAuthStore.getState().status).toBe('guest');
+      expect(useAuthStore.getState().user).toBeNull();
+      expect(useAuthStore.getState().accessToken).toBeNull();
+      expect(useAuthStore.getState().refreshToken).toBeNull();
+
+      const clearedCreds = await Keychain.getGenericPassword({
+        service: 'sonare.session',
+      });
+      expect(clearedCreds).toBe(false);
+
+      (globalThis as any).XMLHttpRequest = originalXHR;
+    });
+
+    /** Fakes XHR with a fixed response and records every request sent. */
+    function recordXHR(status: number, body: unknown) {
+      const sent: {
+        url: string;
+        headers: Record<string, string>;
+        body: any;
+      }[] = [];
+      class RecordingXHR {
+        status = status;
+        responseText = JSON.stringify(body);
+        onload: (() => void) | null = null;
+        private req = { url: '', headers: {} as Record<string, string> };
+        open(_m: string, url: string) {
+          this.req.url = url;
+        }
+        setRequestHeader(k: string, v: string) {
+          this.req.headers[k] = v;
+        }
+        send(data: string) {
+          sent.push({ ...this.req, body: JSON.parse(data) });
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      const original = (globalThis as any).XMLHttpRequest;
+      (globalThis as any).XMLHttpRequest = RecordingXHR;
+      return {
+        sent,
+        restore: () => ((globalThis as any).XMLHttpRequest = original),
+      };
+    }
+
+    it('MOB-DATA-053 requestPasswordReset posts the email; a server error is thrown with its message', async () => {
+      const ok = recordXHR(200, { ok: true });
+      await useAuthStore.getState().requestPasswordReset('alice@sonare.test');
+      expect(ok.sent).toHaveLength(1);
+      expect(ok.sent[0].url).toMatch(/\/auth\/forgot-password$/);
+      expect(ok.sent[0].body).toEqual({ email: 'alice@sonare.test' });
+      expect(ok.sent[0].headers.Authorization).toBeUndefined();
+      ok.restore();
+
+      const limited = recordXHR(429, {
+        error: { code: 'RATE_LIMITED', message: 'Too many attempts' },
+      });
+      await expect(useAuthStore.getState().requestPasswordReset('alice@sonare.test')).rejects.toThrow(
+        'Too many attempts',
+      );
+      limited.restore();
+    });
+
+    it('MOB-DATA-054 resendVerification sends the access token', async () => {
+      useAuthStore.setState({ accessToken: 'acc-123' } as never);
+      const rec = recordXHR(200, { ok: true });
+      await useAuthStore.getState().resendVerification();
+      expect(rec.sent[0].url).toMatch(/\/auth\/resend-verification$/);
+      expect(rec.sent[0].headers.Authorization).toBe('Bearer acc-123');
+      rec.restore();
     });
   });
 
@@ -565,9 +799,7 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-027 reportPlays posts batch play events to /me/sync', async () => {
       mockApiResponse(200, { ok: true });
-      const res = await api.reportPlays([
-        { trackRef: { kind: 'server', id: 't1' }, at: Date.now(), ms: 120000 },
-      ]);
+      const res = await api.reportPlays([{ trackRef: { kind: 'server', id: 't1' }, at: Date.now(), ms: 120000 }]);
       expect(res.ok).toBe(true);
     });
 
@@ -603,9 +835,7 @@ describe('Data Layer', () => {
           attempts++;
           this.status = attempts === 1 ? 401 : 200;
           this.responseText =
-            attempts === 1
-              ? JSON.stringify({ error: { message: 'Token expired' } })
-              : JSON.stringify({ ok: true });
+            attempts === 1 ? JSON.stringify({ error: { message: 'Token expired' } }) : JSON.stringify({ ok: true });
         }
         setRequestHeader() {}
         send() {
@@ -613,9 +843,7 @@ describe('Data Layer', () => {
         }
       }
       global.XMLHttpRequest = RefreshOn401XHR as any;
-      jest
-        .spyOn(useAuthStore.getState(), 'refresh')
-        .mockResolvedValue('new_token');
+      jest.spyOn(useAuthStore.getState(), 'refresh').mockResolvedValue('new_token');
 
       const res = await api.me();
       expect(res).toEqual({ ok: true });
@@ -667,11 +895,9 @@ describe('Data Layer', () => {
     it('MOB-DATA-033 hydrate loads settings from storage and server', async () => {
       useAuthStore.setState({
         status: 'signedIn',
-        user: { id: 'u1', email: 'a@b.com', displayName: 'A', role: 'user' },
+        user: { id: 'u1', email: 'a@b.com', displayName: 'A' },
       });
-      jest
-        .spyOn(api, 'settings')
-        .mockResolvedValue({ downloadQuality: 'high', downloadFormat: 'm4a' });
+      jest.spyOn(api, 'settings').mockResolvedValue({ downloadQuality: 'high', downloadFormat: 'm4a' });
       await AsyncStorage.setItem(
         'sonare.settings',
         JSON.stringify({ downloadQuality: 'normal', downloadFormat: 'm4a' }),
@@ -685,15 +911,11 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-034 update saves settings locally and debounces server sync', async () => {
       useAuthStore.setState({ status: 'signedIn' });
-      const saveSpy = jest
-        .spyOn(api, 'saveSettings')
-        .mockResolvedValue({ ok: true });
-      useSettingsStore
-        .getState()
-        .update({ downloadQuality: 'low', downloadFormat: 'opus' });
+      const saveSpy = jest.spyOn(api, 'saveSettings').mockResolvedValue({ ok: true });
+      useSettingsStore.getState().update({ downloadQuality: 'low', downloadFormat: 'opus' });
       expect(useSettingsStore.getState().downloadQuality).toBe('low');
 
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise((r) => setTimeout(r, 500));
       expect(saveSpy).toHaveBeenCalledWith({
         downloadQuality: 'low',
         downloadFormat: 'opus',
@@ -703,6 +925,25 @@ describe('Data Layer', () => {
       useAuthStore.setState({ status: 'guest' });
       useSettingsStore.getState().update({ downloadQuality: 'high' });
       expect(useSettingsStore.getState().downloadQuality).toBe('high');
+    });
+
+    it('MOB-DATA-055 a hand-made (Custom) EQ stays on the phone; gapless and normalization sync', async () => {
+      useAuthStore.setState({ status: 'signedIn' });
+      const save = jest.spyOn(api, 'saveSettings').mockResolvedValue({ ok: true });
+      useSettingsStore.getState().update({ eqPreset: 'Custom' });
+      await new Promise((r) => setTimeout(r, 500));
+      expect(save).not.toHaveBeenCalled();
+      useSettingsStore.getState().update({ eqPreset: 'Bass', gapless: false, normalization: true });
+      await new Promise((r) => setTimeout(r, 500));
+      expect(save).toHaveBeenCalledWith({ eqPreset: 'Bass', gapless: false, normalization: true });
+    });
+
+    it("MOB-DATA-056 signing in keeps the phone's Custom EQ but takes the account's other settings", async () => {
+      useAuthStore.setState({ status: 'signedIn' });
+      await AsyncStorage.setItem('sonare.settings', JSON.stringify({ eqPreset: 'Custom', gapless: true }));
+      jest.spyOn(api, 'settings').mockResolvedValue({ eqPreset: 'Vocal', gapless: false, normalization: true });
+      await useSettingsStore.getState().hydrate();
+      expect(useSettingsStore.getState()).toMatchObject({ eqPreset: 'Custom', gapless: false, normalization: true });
     });
 
     it('MOB-DATA-035 sanitizes invalid settings values with pick helper', async () => {
@@ -715,9 +956,7 @@ describe('Data Layer', () => {
         }),
       );
       await useSettingsStore.getState().hydrate();
-      expect(['low', 'normal', 'high']).toContain(
-        useSettingsStore.getState().downloadQuality,
-      );
+      expect(['low', 'normal', 'high']).toContain(useSettingsStore.getState().downloadQuality);
     });
   });
 
@@ -725,7 +964,7 @@ describe('Data Layer', () => {
     it('MOB-DATA-036 queuePlay adds pending play and triggers background upload', async () => {
       useAuthStore.setState({
         status: 'signedIn',
-        user: { id: 'u1', email: 'a@b.com', displayName: 'A', role: 'user' },
+        user: { id: 'u1', email: 'a@b.com', displayName: 'A' },
       });
       useModeStore.setState({ mode: 'online' });
       jest.spyOn(api, 'reportPlays').mockResolvedValue({ ok: true });
@@ -740,18 +979,14 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-037 queuePlay stores a local file by fingerprint and a server song by bare id, for the signed-in user', async () => {
       useAuthStore.setState({
-        user: { id: 'u-37', email: 'x@y.z', displayName: 'X', role: 'user' },
+        user: { id: 'u-37', email: 'x@y.z', displayName: 'X' },
       } as never);
       queuePlay('local:fingerprint123', 1000, 60000.4);
       queuePlay('yt:abc', 2000, 45000);
       // They may be uploaded (and cleared) right away, so check what was written to storage.
       await waitFor(() => {
-        const writes = (AsyncStorage.setItem as jest.Mock).mock.calls.filter(
-          c => c[0] === 'sonare.pendingPlays',
-        );
-        const mine = writes
-          .flatMap(c => JSON.parse(c[1]))
-          .filter((p: any) => p.at === 1000 || p.at === 2000);
+        const writes = (AsyncStorage.setItem as jest.Mock).mock.calls.filter((c) => c[0] === 'sonare.pendingPlays');
+        const mine = writes.flatMap((c) => JSON.parse(c[1])).filter((p: any) => p.at === 1000 || p.at === 2000);
         expect(mine).toEqual(
           expect.arrayContaining([
             {
@@ -779,17 +1014,13 @@ describe('Data Layer', () => {
     });
 
     it('MOB-DATA-039 flush schedules retry on network error and drops invalid 4xx errors', async () => {
-      jest
-        .spyOn(api, 'reportPlays')
-        .mockRejectedValueOnce(new ApiError('Not found', 404));
+      jest.spyOn(api, 'reportPlays').mockRejectedValueOnce(new ApiError('Not found', 404));
       queuePlay('yt:track-bad', Date.now(), 30000);
       await waitFor(() => {
         expect(useSyncStatus.getState().syncing).toBe(false);
       });
 
-      jest
-        .spyOn(api, 'reportPlays')
-        .mockRejectedValueOnce(new Error('Network offline'));
+      jest.spyOn(api, 'reportPlays').mockRejectedValueOnce(new Error('Network offline'));
       queuePlay('yt:track-retry', Date.now(), 30000);
       requestSync();
       await waitFor(() => {
@@ -798,12 +1029,8 @@ describe('Data Layer', () => {
     });
 
     it('MOB-DATA-040 startBackgroundSync wires its network and app-state triggers once, even if called twice', () => {
-      const netSpy = jest
-        .spyOn(NetInfo, 'addEventListener')
-        .mockImplementation(() => jest.fn());
-      const appSpy = jest
-        .spyOn(AppState, 'addEventListener')
-        .mockImplementation(() => ({ remove: jest.fn() } as any));
+      const netSpy = jest.spyOn(NetInfo, 'addEventListener').mockImplementation(() => jest.fn());
+      const appSpy = jest.spyOn(AppState, 'addEventListener').mockImplementation(() => ({ remove: jest.fn() }) as any);
 
       startBackgroundSync();
       startBackgroundSync();
@@ -827,9 +1054,7 @@ describe('Data Layer', () => {
     it('MOB-DATA-042 requireAccount stores pending action and navigates to SignIn when guest', () => {
       useAuthStore.setState({ status: 'guest' });
       const action = jest.fn();
-      const navSpy = jest
-        .spyOn(navigationRef, 'navigate')
-        .mockImplementation(() => {});
+      const navSpy = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
       jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
 
       requireAccount('favourite track', action);
@@ -865,9 +1090,7 @@ describe('Data Layer', () => {
   describe('hooks.ts', () => {
     it('MOB-DATA-045 useAsync executes promise and provides data, loading, error, refetch', async () => {
       const fetcher = jest.fn().mockResolvedValue('loaded data');
-      const { result } = renderHook(() =>
-        useAsync(fetcher, [], { refetchOnFocus: true }),
-      );
+      const { result } = renderHook(() => useAsync(fetcher, [], { refetchOnFocus: true }));
 
       await waitFor(() => {
         expect(result.current.loading).toBe(false);
@@ -877,9 +1100,7 @@ describe('Data Layer', () => {
 
       // Error case
       const errorFetcher = jest.fn().mockRejectedValue('String error message');
-      const { result: errResult } = renderHook(() =>
-        useAsync(errorFetcher, []),
-      );
+      const { result: errResult } = renderHook(() => useAsync(errorFetcher, []));
       await waitFor(() => {
         expect(errResult.current.loading).toBe(false);
       });
@@ -888,9 +1109,7 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-046 useAsync respects enabled flag', async () => {
       const fetcher = jest.fn().mockResolvedValue('disabled');
-      const { result } = renderHook(() =>
-        useAsync(fetcher, [], { enabled: false }),
-      );
+      const { result } = renderHook(() => useAsync(fetcher, [], { enabled: false }));
 
       expect(result.current.loading).toBe(false);
       expect(result.current.data).toBeNull();
@@ -899,15 +1118,10 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-047 useAsync re-runs when dependency changes or refetch is invoked', async () => {
       let count = 0;
-      const fetcher = jest
-        .fn()
-        .mockImplementation(() => Promise.resolve(++count));
-      const { result, rerender } = renderHook(
-        ({ dep }) => useAsync(fetcher, [dep]),
-        {
-          initialProps: { dep: 'a' },
-        },
-      );
+      const fetcher = jest.fn().mockImplementation(() => Promise.resolve(++count));
+      const { result, rerender } = renderHook(({ dep }: { dep: string }) => useAsync(fetcher, [dep]), {
+        initialProps: { dep: 'a' },
+      });
 
       await waitFor(() => expect(result.current.data).toBe(1));
       act(() => {
@@ -926,7 +1140,7 @@ describe('Data Layer', () => {
       for (const [key, colors] of Object.entries(artGradients)) {
         expect(key).toMatch(/^a\d+$/);
         expect(colors).toHaveLength(3);
-        colors.forEach(c => expect(c).toMatch(/^#[0-9A-Fa-f]{6}$/));
+        colors.forEach((c) => expect(c).toMatch(/^#[0-9A-Fa-f]{6}$/));
       }
     });
   });

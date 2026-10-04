@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, FlatList, Pressable, RefreshControl } from 'react-native';
+import { View, FlatList, Pressable, RefreshControl } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -23,8 +24,8 @@ import Icon from '../components/ui/Icon';
 
 export function PlaylistsScreen() {
   const navigation = useNavigation<any>();
-  const mode = useModeStore(state => state.mode);
-  const playlists = useLibraryStore(state => state.playlists);
+  const mode = useModeStore((state) => state.mode);
+  const playlists = useLibraryStore((state) => state.playlists);
   const [error, setError] = useState<Error | null>(null);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
@@ -37,10 +38,10 @@ export function PlaylistsScreen() {
   };
   const deleteFromOptions = () => {
     setOptionsOpen(false);
-    if (options) void confirmDeletePlaylist(options);
+    if (options) confirmDeletePlaylist(options);
   };
 
-  const signedIn = useAuthStore(state => state.status === 'signedIn');
+  const signedIn = useAuthStore((state) => state.status === 'signedIn');
   const reload = useCallback(() => {
     if (useAuthStore.getState().status !== 'signedIn') return;
     useLibraryStore
@@ -48,19 +49,14 @@ export function PlaylistsScreen() {
       .reloadPlaylists()
       .then(() => setError(null), setError);
   }, []);
-  const startCreating = () =>
-    requireAccount('Create a free account to make playlists.', () =>
-      setCreating(true),
-    );
+  const startCreating = () => requireAccount('Create a free account to make playlists.', () => setCreating(true));
   useFocusEffect(reload);
 
   // Submitting from the keyboard passes the field's text: state can lag the last keystrokes.
   const create = async (text: string = name) => {
     if (!text.trim()) return;
     try {
-      const playlist = await useLibraryStore
-        .getState()
-        .createPlaylist(text.trim());
+      const playlist = await useLibraryStore.getState().createPlaylist(text.trim());
       setCreating(false);
       setName('');
       navigation.navigate('Playlist', { id: playlist.id });
@@ -92,7 +88,7 @@ export function PlaylistsScreen() {
 
       <FlatList
         data={online ? playlists : []}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => navigation.navigate('Playlist', { id: item.id })}
@@ -103,49 +99,25 @@ export function PlaylistsScreen() {
             accessibilityHint="Long press for options"
           >
             <Artwork
-              uri={
-                item.trackCount
-                  ? artworkUrl(
-                      { thumbnail: `/api/v1/playlists/${item.id}/artwork` },
-                      140,
-                    )
-                  : undefined
-              }
+              uri={item.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${item.id}/artwork` }, 140) : undefined}
               size={56}
               rings
               className="rounded-md"
             />
             <View className="flex-1 gap-1 min-w-0">
-              <Text
-                className="text-tm font-medium text-t1 truncate"
-                numberOfLines={1}
-              >
+              <Text className="text-tm font-medium text-t1 truncate" numberOfLines={1}>
                 {item.name}
               </Text>
               <View className="flex-row items-center gap-2">
-                <Text className="text-bs text-t2">
-                  {songCount(item.trackCount)}
-                </Text>
+                <Text className="text-bs text-t2">{songCount(item.trackCount)}</Text>
                 {item.kind === 'synced' && (
-                  <Badge
-                    label="Synced"
-                    variant="neutral"
-                    icon={<Icon name="refresh" size={10} color="#9A9AA8" />}
-                  />
+                  <Badge label="Synced" variant="neutral" icon={<Icon name="refresh" size={10} color="#9A9AA8" />} />
                 )}
                 {item.kind === 'local' && (
-                  <Badge
-                    label="Local"
-                    variant="local"
-                    icon={<Icon name="smartphone" size={10} color="#FFC24D" />}
-                  />
+                  <Badge label="Local" variant="local" icon={<Icon name="smartphone" size={10} color="#FFC24D" />} />
                 )}
                 {item.kind === 'online' && (
-                  <Badge
-                    label="Online"
-                    variant="cloud"
-                    icon={<Icon name="cloud" size={10} color="#00E28A" />}
-                  />
+                  <Badge label="Online" variant="cloud" icon={<Icon name="cloud" size={10} color="#00E28A" />} />
                 )}
               </View>
             </View>
@@ -158,12 +130,7 @@ export function PlaylistsScreen() {
           </Pressable>
         )}
         refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={reload}
-            tintColor="#00E28A"
-            colors={['#00E28A']}
-          />
+          <RefreshControl refreshing={false} onRefresh={reload} tintColor="#00E28A" colors={['#00E28A']} />
         }
         ListEmptyComponent={
           online && !signedIn ? (
@@ -174,18 +141,9 @@ export function PlaylistsScreen() {
             />
           ) : online ? (
             <View className="items-center py-8">
-              <StateView
-                error={error}
-                onRetry={reload}
-                empty="No playlists yet."
-              />
+              <StateView error={error} onRetry={reload} empty="No playlists yet." />
               {!error && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={startCreating}
-                  className="mt-4"
-                >
+                <Button variant="outline" size="sm" onPress={startCreating} className="mt-4">
                   New playlist
                 </Button>
               )}
@@ -205,15 +163,11 @@ export function PlaylistsScreen() {
             value={name}
             onChangeText={setName}
             autoFocus
-            onSubmitEditing={e => create(e.nativeEvent.text)}
+            onSubmitEditing={(e) => create(e.nativeEvent.text)}
             returnKeyType="done"
             accessibilityLabel="Playlist name"
           />
-          <Button
-            variant="accent"
-            onPress={() => create()}
-            disabled={!name.trim()}
-          >
+          <Button variant="accent" onPress={() => create()} disabled={!name.trim()}>
             Create
           </Button>
         </View>

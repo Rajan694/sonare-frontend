@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePlayerStore } from '../src/store/player';
+import { useAudioStore } from '../src/store/audio';
 import {
   useDownloadsStore,
   localUriFor,
@@ -132,7 +133,7 @@ describe('Store Layer', () => {
       usePlayerStore.getState().playTrack(mockTrack1, [mockTrack1, mockTrack3]);
       usePlayerStore.getState().playNextInQueue(mockTrack2);
       const state = usePlayerStore.getState();
-      expect(state.queue.map(t => t.id)).toEqual(['t1', 't2', 't3']);
+      expect(state.queue.map((t) => t.id)).toEqual(['t1', 't2', 't3']);
 
       // When currentTrack is null
       usePlayerStore.setState({ currentTrack: null, queue: [] });
@@ -144,7 +145,7 @@ describe('Store Layer', () => {
       usePlayerStore.getState().playTrack(mockTrack1, [mockTrack1, mockTrack2]);
       usePlayerStore.getState().addToQueue(mockTrack3);
       const state = usePlayerStore.getState();
-      expect(state.queue.map(t => t.id)).toEqual(['t1', 't2', 't3']);
+      expect(state.queue.map((t) => t.id)).toEqual(['t1', 't2', 't3']);
 
       // When currentTrack is null
       usePlayerStore.setState({ currentTrack: null, queue: [] });
@@ -153,9 +154,7 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-007 toggleShuffle shuffles remaining queue keeping current track first', () => {
-      usePlayerStore
-        .getState()
-        .playTrack(mockTrack1, [mockTrack1, mockTrack2, mockTrack3]);
+      usePlayerStore.getState().playTrack(mockTrack1, [mockTrack1, mockTrack2, mockTrack3]);
       usePlayerStore.getState().toggleShuffle();
       const state = usePlayerStore.getState();
       expect(state.shuffle).toBe(true);
@@ -279,21 +278,15 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-013 enqueue adds new server tracks and skips existing ones', () => {
-      const added = useDownloadsStore
-        .getState()
-        .enqueue([mockTrack1, mockTrack2]);
+      const added = useDownloadsStore.getState().enqueue([mockTrack1, mockTrack2]);
       expect(added).toBe(2);
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t1.status,
-      );
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t1.status);
 
       const addedSecond = useDownloadsStore.getState().enqueue([mockTrack1]);
       expect(addedSecond).toBe(0);
 
       // Local track ignored
-      const addedLocal = useDownloadsStore
-        .getState()
-        .enqueue([{ ...mockTrack1, id: 'local:1', source: 'local' }]);
+      const addedLocal = useDownloadsStore.getState().enqueue([{ ...mockTrack1, id: 'local:1', source: 'local' }]);
       expect(addedLocal).toBe(0);
     });
 
@@ -303,9 +296,7 @@ describe('Store Layer', () => {
       expect(useDownloadsStore.getState().items.t1.status).toBe('paused');
 
       useDownloadsStore.getState().resume('t1');
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t1.status,
-      );
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t1.status);
     });
 
     it('MOB-STORE-015 pauseAll and resumeAll batch update active downloads', async () => {
@@ -315,12 +306,8 @@ describe('Store Layer', () => {
       expect(useDownloadsStore.getState().items.t2.status).toBe('paused');
 
       useDownloadsStore.getState().resumeAll();
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t1.status,
-      );
-      expect(['queued', 'downloading']).toContain(
-        useDownloadsStore.getState().items.t2.status,
-      );
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t1.status);
+      expect(['queued', 'downloading']).toContain(useDownloadsStore.getState().items.t2.status);
     });
 
     it('MOB-STORE-016 remove discards active download and deletes finished file', async () => {
@@ -354,9 +341,7 @@ describe('Store Layer', () => {
           },
         },
       });
-      jest
-        .spyOn(SonareDownloads, 'deleteFile')
-        .mockRejectedValueOnce({ code: 'E_MISSING' });
+      jest.spyOn(SonareDownloads, 'deleteFile').mockRejectedValueOnce({ code: 'E_MISSING' });
       const delFail = await useDownloadsStore.getState().remove('d_err');
       expect(delFail.fileDeleted).toBe(false);
       expect(delFail.reason).toContain('no longer where it was');
@@ -449,20 +434,19 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-020 load fetches favourites and user playlists from server', async () => {
-      jest
-        .spyOn(api, 'favourites')
-        .mockResolvedValue({ items: [mockTrack1], nextCursor: null });
+      jest.spyOn(api, 'favourites').mockResolvedValue({ items: [mockTrack1] } as any);
       jest.spyOn(api, 'myPlaylists').mockResolvedValue({
         items: [
           {
             id: 'sonare:1',
-            title: 'Favorites',
+            name: 'Favorites',
             kind: 'synced',
             trackCount: 1,
+            downloadedCount: 0,
+            updatedAt: Date.now(),
           },
         ],
-        nextCursor: null,
-      });
+      } as any);
 
       await useLibraryStore.getState().load();
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(true);
@@ -472,7 +456,16 @@ describe('Store Layer', () => {
     it('MOB-STORE-021 reset clears favourites and playlists', () => {
       useLibraryStore.setState({
         favouriteIds: { t1: true },
-        playlists: [{ id: 'p1', title: 'P1', kind: 'synced', trackCount: 0 }],
+        playlists: [
+          {
+            id: 'p1',
+            name: 'P1',
+            kind: 'synced',
+            trackCount: 0,
+            downloadedCount: 0,
+            updatedAt: Date.now(),
+          },
+        ],
       });
       useLibraryStore.getState().reset();
       expect(useLibraryStore.getState().favouriteIds).toEqual({});
@@ -486,9 +479,7 @@ describe('Store Layer', () => {
     });
 
     it('MOB-STORE-023 toggleFavourite optimistically toggles and calls api.setFavourite', async () => {
-      const setFavSpy = jest
-        .spyOn(api, 'setFavourite')
-        .mockResolvedValue({ ok: true });
+      const setFavSpy = jest.spyOn(api, 'setFavourite').mockResolvedValue({ ok: true });
       await useLibraryStore.getState().toggleFavourite(mockTrack1);
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(true);
       expect(setFavSpy).toHaveBeenCalledWith('t1', true);
@@ -498,27 +489,31 @@ describe('Store Layer', () => {
       expect(setFavSpy).toHaveBeenCalledWith('t1', false);
 
       // Failure rollback
-      jest
-        .spyOn(api, 'setFavourite')
-        .mockRejectedValueOnce(new Error('Network fail'));
-      await expect(
-        useLibraryStore.getState().toggleFavourite(mockTrack1),
-      ).rejects.toThrow('Network fail');
+      jest.spyOn(api, 'setFavourite').mockRejectedValueOnce(new Error('Network fail'));
+      await expect(useLibraryStore.getState().toggleFavourite(mockTrack1)).rejects.toThrow('Network fail');
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(false);
     });
 
     it('MOB-STORE-024 reloadPlaylists, createPlaylist, deletePlaylist, addToPlaylist manage playlist state', async () => {
       jest.spyOn(api, 'myPlaylists').mockResolvedValue({
         items: [
-          { id: 'sonare:2', title: 'Party', kind: 'synced', trackCount: 2 },
+          {
+            id: 'sonare:2',
+            name: 'Party',
+            kind: 'synced',
+            trackCount: 2,
+            downloadedCount: 0,
+            updatedAt: Date.now(),
+          },
         ],
-        nextCursor: null,
-      });
+      } as any);
       jest.spyOn(api, 'createPlaylist').mockResolvedValue({
         id: 'sonare:3',
-        title: 'Chill',
+        name: 'Chill',
         kind: 'synced',
         trackCount: 0,
+        downloadedCount: 0,
+        updatedAt: Date.now(),
       });
       jest.spyOn(api, 'deletePlaylist').mockResolvedValue({ ok: true });
       jest.spyOn(api, 'addToPlaylist').mockResolvedValue({ ok: true });
@@ -528,9 +523,7 @@ describe('Store Layer', () => {
       expect(useLibraryStore.getState().playlists[0].id).toBe('sonare:3');
 
       await useLibraryStore.getState().deletePlaylist('sonare:3');
-      expect(
-        useLibraryStore.getState().playlists.find(p => p.id === 'sonare:3'),
-      ).toBeUndefined();
+      expect(useLibraryStore.getState().playlists.find((p) => p.id === 'sonare:3')).toBeUndefined();
 
       await useLibraryStore.getState().addToPlaylist('sonare:2', mockTrack1);
       expect(api.addToPlaylist).toHaveBeenCalledWith('sonare:2', ['t1']);
@@ -539,9 +532,7 @@ describe('Store Layer', () => {
 
   describe('useModeStore', () => {
     it('MOB-STORE-025 setMode updates mode, userChangedMode flag, and triggers toast', () => {
-      useModeStore
-        .getState()
-        .setMode('offline', { title: 'Switched', description: 'Offline mode' });
+      useModeStore.getState().setMode('offline', { title: 'Switched', description: 'Offline mode' });
       expect(useModeStore.getState().mode).toBe('offline');
       expect(useModeStore.getState().toastVisible).toBe(true);
       expect(useModeStore.getState().toastInfo?.title).toBe('Switched');
@@ -569,9 +560,7 @@ describe('Store Layer', () => {
   describe('useTrackMenuStore', () => {
     it('MOB-STORE-028 open, setView, close manage track action sheet state', () => {
       const extraAction = { label: 'Remove', onPress: jest.fn() };
-      useTrackMenuStore
-        .getState()
-        .open(mockTrack1, { view: 'menu', extraAction });
+      useTrackMenuStore.getState().open(mockTrack1, { view: 'menu', extraAction });
       expect(useTrackMenuStore.getState().track).toEqual(mockTrack1);
       expect(useTrackMenuStore.getState().view).toBe('menu');
       expect(useTrackMenuStore.getState().extraAction).toEqual(extraAction);
@@ -582,6 +571,46 @@ describe('Store Layer', () => {
       useTrackMenuStore.getState().close();
       expect(useTrackMenuStore.getState().track).toBeNull();
       expect(useTrackMenuStore.getState().extraAction).toBeUndefined();
+    });
+  });
+
+  describe('upcomingTrack', () => {
+    const t = (id: string) => ({ id: `yt:${id}`, title: id, source: 'server' }) as Track;
+    const [x, y, z] = [t('x'), t('y'), t('z')];
+
+    it('MOB-STORE-029 the next track is the following one; repeat all wraps; repeat one and the end have none', () => {
+      usePlayerStore.setState({ currentTrack: x, queue: [x, y, z], repeat: 'off' });
+      expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:y');
+      usePlayerStore.setState({ currentTrack: z });
+      expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
+      usePlayerStore.setState({ repeat: 'all' });
+      expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:x');
+      usePlayerStore.setState({ repeat: 'one', currentTrack: x });
+      expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
+      // A single song on repeat all has nothing "next" to preload.
+      usePlayerStore.setState({ repeat: 'all', queue: [x] });
+      expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
+    });
+  });
+
+  describe('useAudioStore', () => {
+    it('MOB-STORE-030 saved audio settings come back on launch; broken values are ignored', async () => {
+      await AsyncStorage.setItem(
+        'sonare.audio',
+        JSON.stringify({
+          enabled: false,
+          bassBoost: 250,
+          virtualizer: 30,
+          speed: 3,
+          crossfade: true,
+          customGains: [1, 2],
+        }),
+      );
+      await useAudioStore.getState().hydrate();
+      const state = useAudioStore.getState();
+      expect(state).toMatchObject({ enabled: false, bassBoost: 100, virtualizer: 30, crossfade: true });
+      expect(state.speed).toBe(1); // 3× is not offered
+      expect(state.customGains).toHaveLength(8);
     });
   });
 });

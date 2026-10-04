@@ -1,0 +1,12 @@
+{
+  "name": "sonare-frontend",
+  "private": true,
+  "description": "Git hooks for the desktop and mobile apps; each app has its own package.json.",
+  "scripts": {
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
+  }
+}

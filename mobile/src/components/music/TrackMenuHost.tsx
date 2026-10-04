@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Pressable, ScrollView } from 'react-native';
+import { Text } from '../ui/Text';
 import { Artwork } from './Artwork';
 import { Sheet } from '../ui/Sheet';
 import { Button } from '../ui/Button';
@@ -26,12 +27,7 @@ function MenuItem({
   onPress: () => void;
 }) {
   return (
-    <Button
-      variant="ghost"
-      className="justify-start px-2 py-3"
-      onPress={onPress}
-      accessibilityLabel={label}
-    >
+    <Button variant="ghost" className="justify-start px-2 py-3" onPress={onPress} accessibilityLabel={label}>
       <View className="mr-3 w-[18px] items-center">
         <Icon name={icon} size={18} color="#FFFFFF" />
       </View>
@@ -41,8 +37,8 @@ function MenuItem({
 }
 
 function PlaylistPicker({ track }: { track: Track }) {
-  const close = useTrackMenuStore(s => s.close);
-  const playlists = useLibraryStore(s => s.playlists);
+  const close = useTrackMenuStore((s) => s.close);
+  const playlists = useLibraryStore((s) => s.playlists);
   const [newName, setNewName] = React.useState('');
   const [note, setNote] = React.useState<string | null>(null);
 
@@ -59,9 +55,7 @@ function PlaylistPicker({ track }: { track: Track }) {
   const createAndAdd = async (text: string = newName) => {
     if (!text.trim()) return;
     try {
-      const playlist = await useLibraryStore
-        .getState()
-        .createPlaylist(text.trim());
+      const playlist = await useLibraryStore.getState().createPlaylist(text.trim());
       await addTo(playlist.id);
     } catch (e: any) {
       setNote(e?.message || 'Could not create playlist');
@@ -77,7 +71,7 @@ function PlaylistPicker({ track }: { track: Track }) {
           placeholder="New playlist name"
           value={newName}
           onChangeText={setNewName}
-          onSubmitEditing={e => createAndAdd(e.nativeEvent.text)}
+          onSubmitEditing={(e) => createAndAdd(e.nativeEvent.text)}
           returnKeyType="done"
           accessibilityLabel="New playlist name"
         />
@@ -91,7 +85,7 @@ function PlaylistPicker({ track }: { track: Track }) {
         </Button>
       </View>
       <ScrollView style={{ maxHeight: 260 }}>
-        {playlists.map(p => (
+        {playlists.map((p) => (
           <Pressable
             key={p.id}
             onPress={() => addTo(p.id)}
@@ -100,14 +94,7 @@ function PlaylistPicker({ track }: { track: Track }) {
             accessibilityLabel={`Add to ${p.name}`}
           >
             <Artwork
-              uri={
-                p.trackCount
-                  ? artworkUrl(
-                      { thumbnail: `/api/v1/playlists/${p.id}/artwork` },
-                      64,
-                    )
-                  : undefined
-              }
+              uri={p.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${p.id}/artwork` }, 64) : undefined}
               size={40}
             />
             <View className="flex-1">
@@ -118,11 +105,7 @@ function PlaylistPicker({ track }: { track: Track }) {
             </View>
           </Pressable>
         ))}
-        {playlists.length === 0 && (
-          <Text className="text-t3 text-bm py-2">
-            No playlists yet — name one above.
-          </Text>
-        )}
+        {playlists.length === 0 && <Text className="text-t3 text-bm py-2">No playlists yet — name one above.</Text>}
       </ScrollView>
       {note && <Text className="text-red text-bs">{note}</Text>}
     </View>
@@ -131,9 +114,9 @@ function PlaylistPicker({ track }: { track: Track }) {
 
 function Menu({ track }: { track: Track }) {
   const { close, open, extraAction } = useTrackMenuStore();
-  const favourite = useLibraryStore(s => !!s.favouriteIds[track.id]);
-  const download = useDownloadsStore(s => s.items[track.id]);
-  const online = useModeStore(s => s.mode) === 'online';
+  const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
+  const download = useDownloadsStore((s) => s.items[track.id]);
+  const online = useModeStore((s) => s.mode) === 'online';
 
   const run = (fn: () => unknown) => () => {
     close();
@@ -142,16 +125,8 @@ function Menu({ track }: { track: Track }) {
 
   return (
     <View className="gap-2">
-      <MenuItem
-        icon="play"
-        label="Play next"
-        onPress={run(() => usePlayerStore.getState().playNextInQueue(track))}
-      />
-      <MenuItem
-        icon="playlist"
-        label="Add to queue"
-        onPress={run(() => usePlayerStore.getState().addToQueue(track))}
-      />
+      <MenuItem icon="play" label="Play next" onPress={run(() => usePlayerStore.getState().playNextInQueue(track))} />
+      <MenuItem icon="playlist" label="Add to queue" onPress={run(() => usePlayerStore.getState().addToQueue(track))} />
       <MenuItem
         icon="heart"
         label={favourite ? 'Remove from favourites' : 'Add to favourites'}
@@ -170,20 +145,13 @@ function Menu({ track }: { track: Track }) {
         // Closes first so a guest's sign-in screen isn't hidden under this sheet; signed in,
         // it reopens straight away on the picker. Guests land back here after signing in.
         onPress={run(() =>
-          requireAccount('Create a free account to make playlists.', () =>
-            open(track, { view: 'playlists' }),
-          ),
+          requireAccount('Create a free account to make playlists.', () => open(track, { view: 'playlists' })),
         )}
       />
       {track.source === 'server' &&
         (download?.status === 'done' ? (
-          <MenuItem
-            icon="trash"
-            label="Delete download"
-            onPress={run(() => confirmRemoveDownloads([download]))}
-          />
-        ) : download?.status === 'queued' ||
-          download?.status === 'downloading' ? (
+          <MenuItem icon="trash" label="Delete download" onPress={run(() => confirmRemoveDownloads([download]))} />
+        ) : download?.status === 'queued' || download?.status === 'downloading' ? (
           <MenuItem
             icon="pause"
             label="Pause download"
@@ -202,22 +170,16 @@ function Menu({ track }: { track: Track }) {
             onPress={run(() => useDownloadsStore.getState().enqueue([track]))}
           />
         ) : null)}
-      {extraAction && (
-        <MenuItem
-          icon="more"
-          label={extraAction.label}
-          onPress={run(extraAction.onPress)}
-        />
-      )}
+      {extraAction && <MenuItem icon="more" label={extraAction.label} onPress={run(extraAction.onPress)} />}
     </View>
   );
 }
 
 /** The one long-press sheet for songs; open it with useTrackMenuStore().open(track). */
 export function TrackMenuHost() {
-  const current = useTrackMenuStore(s => s.track);
-  const view = useTrackMenuStore(s => s.view);
-  const close = useTrackMenuStore(s => s.close);
+  const current = useTrackMenuStore((s) => s.track);
+  const view = useTrackMenuStore((s) => s.view);
+  const close = useTrackMenuStore((s) => s.close);
   // Keep showing the last track while the sheet slides away.
   const last = React.useRef<Track | null>(null);
   if (current) last.current = current;
@@ -238,11 +200,7 @@ export function TrackMenuHost() {
               </Text>
             </View>
           </View>
-          {view === 'playlists' ? (
-            <PlaylistPicker key={track.id} track={track} />
-          ) : (
-            <Menu track={track} />
-          )}
+          {view === 'playlists' ? <PlaylistPicker key={track.id} track={track} /> : <Menu track={track} />}
         </View>
       )}
     </Sheet>

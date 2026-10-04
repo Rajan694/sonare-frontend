@@ -1,8 +1,4 @@
-import {
-  EmitterSubscription,
-  NativeEventEmitter,
-  NativeModules,
-} from 'react-native';
+import { EmitterSubscription, NativeEventEmitter, NativeModules } from 'react-native';
 
 /**
  * The app's native downloader (android/app/src/main/java/com/mobile/downloads). It writes
@@ -62,35 +58,22 @@ interface NativeSonareDownloads {
   defaultLocation(): Promise<string>;
 }
 
-const native = NativeModules.SonareDownloads as
-  | NativeSonareDownloads
-  | undefined;
+const native = NativeModules.SonareDownloads as NativeSonareDownloads | undefined;
 if (!native) {
-  console.warn(
-    'SonareDownloads native module is missing — rebuild the Android app.',
-  );
+  console.warn('SonareDownloads native module is missing — rebuild the Android app.');
 }
-const emitter = native
-  ? new NativeEventEmitter(NativeModules.SonareDownloads)
-  : null;
+const emitter = native ? new NativeEventEmitter(NativeModules.SonareDownloads) : null;
 
-function on<T>(
-  event: string,
-  handler: (payload: T) => void,
-): EmitterSubscription | { remove: () => void } {
+function on<T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } {
   return (
-    emitter?.addListener(`SonareDownloads.${event}`, handler) ?? {
+    emitter?.addListener(`SonareDownloads.${event}`, (...args) => handler(args[0] as T)) ?? {
       remove: () => {},
     }
   );
 }
 
 const missing = () =>
-  Promise.reject(
-    new Error(
-      'Downloads need the Android app rebuilt with the SonareDownloads module',
-    ),
-  );
+  Promise.reject(new Error('Downloads need the Android app rebuilt with the SonareDownloads module'));
 
 export const SonareDownloads = {
   available: !!native,
@@ -101,13 +84,10 @@ export const SonareDownloads = {
   discard: (id: string) => native?.discard(id) ?? Promise.resolve(),
   partSize: (id: string) => native?.partSize(id) ?? Promise.resolve(0),
   /** Rejects with code E_MISSING when the file has moved or is gone, E_DELETE when it can't be deleted. */
-  deleteFile: (uri: string, expectedName?: string) =>
-    native?.deleteFile(uri, expectedName ?? null) ?? missing(),
-  exists: (uri: string, expectedName?: string) =>
-    native?.exists(uri, expectedName ?? null) ?? Promise.resolve(false),
+  deleteFile: (uri: string, expectedName?: string) => native?.deleteFile(uri, expectedName ?? null) ?? missing(),
+  exists: (uri: string, expectedName?: string) => native?.exists(uri, expectedName ?? null) ?? Promise.resolve(false),
   pickFolder: () => native?.pickFolder() ?? missing(),
-  defaultLocation: () =>
-    native?.defaultLocation() ?? Promise.resolve('Music/Sonare'),
+  defaultLocation: () => native?.defaultLocation() ?? Promise.resolve('Music/Sonare'),
 
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),
   onDone: (handler: (e: DoneEvent) => void) => on('done', handler),

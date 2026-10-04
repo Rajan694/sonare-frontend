@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from './Text';
 import { cn } from '../../lib/cn';
 
 interface ChipProps {
@@ -12,15 +13,7 @@ interface ChipProps {
   className?: string;
 }
 
-export function Chip({
-  label,
-  icon,
-  onPress,
-  active = false,
-  size = 'md',
-  variant = 'default',
-  className,
-}: ChipProps) {
+export function Chip({ label, icon, onPress, active = false, size = 'md', variant = 'default', className }: ChipProps) {
   const Component = onPress ? Pressable : View;
 
   return (
@@ -31,12 +24,14 @@ export function Chip({
         accessibilityLabel: label,
       })}
       className={cn(
-        'flex-row items-center rounded-full bg-s2 border border-ln2 flex-none',
+        'flex-row items-center rounded-full border flex-none',
         size === 'sm' ? 'h-[26px] px-2.5 gap-1.5' : 'h-[32px] px-3.5 gap-1.5',
-        active &&
-          (variant === 'gold'
+        // One background and border at a time: cn() only joins, so two bg-* classes fight.
+        !active
+          ? 'bg-s2 border-ln2'
+          : variant === 'gold'
             ? 'bg-[rgba(255,194,77,0.22)] border-[rgba(255,194,77,0.45)]'
-            : 'bg-[rgba(0,226,138,0.20)] border-[rgba(0,226,138,0.45)]'),
+            : 'bg-[rgba(0,226,138,0.20)] border-[rgba(0,226,138,0.45)]',
         className,
       )}
     >

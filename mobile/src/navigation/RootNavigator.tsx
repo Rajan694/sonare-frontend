@@ -15,21 +15,21 @@ import { useLibraryStore } from '../store/library';
 import { navigationRef, takePendingAction } from '../data/accountGate';
 import { TrackMenuHost } from '../components/music/TrackMenuHost';
 import { useModeStore } from '../store/mode';
-import { View, Text, ActivityIndicator } from 'react-native';
-import Animated, {
-  FadeInUp,
-  FadeOutUp,
-  ReduceMotion,
-} from 'react-native-reanimated';
+import { View, ActivityIndicator, Pressable } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Icon from '../components/ui/Icon';
+import { Text } from '../components/ui/Text';
+import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
+import { loadServerOrigin } from '../data/config';
+import { PlayerSheetsHost } from '../components/music/PlayerSheets';
+import { useDevicePrefsStore } from '../store/devicePrefs';
 import { cn } from '../lib/cn';
 
-const Stack = createNativeStackNavigator<
-  Record<string, object | undefined>,
-  undefined
->();
+const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
 
 function ModeToast() {
-  const mode = useModeStore(state => state.mode);
+  const insets = useSafeAreaInsets();
+  const mode = useModeStore((state) => state.mode);
   const prevMode = useRef(mode);
   const [toast, setToast] = useState<{
     mode: 'online' | 'offline';
@@ -49,7 +49,7 @@ function ModeToast() {
         visible: true,
       });
       const timer = setTimeout(() => {
-        setToast(t => (t ? { ...t, visible: false } : null));
+        setToast((t) => (t ? { ...t, visible: false } : null));
       }, 4000);
       return () => clearTimeout(timer);
     }
@@ -57,36 +57,36 @@ function ModeToast() {
 
   if (!toast?.visible) return null;
 
-  const defaultTitle = `Switched to ${
-    toast.mode === 'offline' ? 'Offline' : 'Online'
-  } Mode`;
+  const defaultTitle = `Switched to ${toast.mode === 'offline' ? 'Offline' : 'Online'} Mode`;
   const defaultDesc =
     toast.mode === 'offline'
       ? 'Server content hidden. Playback continues from this device.'
       : 'Server content restored. Playback continues.';
 
+  const gold = toast.mode === 'offline';
   return (
     <Animated.View
-      entering={FadeInUp.springify()
-        .damping(20)
-        .reduceMotion(ReduceMotion.System)}
+      entering={FadeInUp.springify().damping(20).reduceMotion(ReduceMotion.System)}
       exiting={FadeOutUp.reduceMotion(ReduceMotion.System)}
-      className="absolute top-12 left-4 right-4 bg-s1 rounded-2xl border border-gold/30 p-3 shadow-2xl flex-row items-center gap-3 z-50 pointer-events-none"
+      className={cn(
+        'absolute left-5 right-5 z-50 flex-row items-start gap-3 px-3.5 py-3 rounded-[14px] bg-s1 border shadow-e3',
+        gold ? 'border-[rgba(255,194,77,0.32)]' : 'border-[rgba(0,226,138,0.32)]',
+      )}
+      style={{ top: insets.top + 8 }}
     >
-      <View className="w-2 rounded-full self-stretch bg-gold" />
-      <View className="flex-1 ml-1 py-1">
-        <Text
-          className={cn(
-            'text-h2 font-medium',
-            toast.mode === 'offline' ? 'text-gold' : 'text-acc',
-          )}
-        >
-          {toast.title ?? defaultTitle}
-        </Text>
-        <Text className="text-t2 text-bs mt-0.5">
-          {toast.description ?? defaultDesc}
-        </Text>
+      <View className={cn('w-1.5 h-1.5 rounded-full mt-1.5', gold ? 'bg-gold' : 'bg-acc')} />
+      <View className="flex-1 gap-0.5">
+        <Text className={cn('text-ll', gold ? 'text-gold' : 'text-acc')}>{toast.title ?? defaultTitle}</Text>
+        <Text className="text-t2 text-bs">{toast.description ?? defaultDesc}</Text>
       </View>
+      <Pressable
+        onPress={() => setToast((t) => (t ? { ...t, visible: false } : null))}
+        accessibilityRole="button"
+        accessibilityLabel="Dismiss"
+        hitSlop={10}
+      >
+        <Icon name="close" size={14} color="#7E7E8C" />
+      </Pressable>
     </Animated.View>
   );
 }
@@ -100,7 +100,7 @@ function useSessionEffects(status: string) {
   useEffect(() => {
     if (status === 'loading') return;
     // Account settings (download quality / format) follow whoever is signed in.
-    void useSettingsStore.getState().hydrate();
+    useSettingsStore.getState().hydrate();
     if (status === 'signedIn') {
       useLibraryStore
         .getState()
@@ -113,13 +113,17 @@ function useSessionEffects(status: string) {
 }
 
 export function RootNavigator() {
-  const status = useAuthStore(s => s.status);
-  const hydrate = useAuthStore(s => s.hydrate);
+  const status = useAuthStore((s) => s.status);
+  const hydrate = useAuthStore((s) => s.hydrate);
 
   useEffect(() => {
-    hydrate();
-    // Picks up downloads that were running when the app last closed.
-    void useDownloadsStore.getState().hydrate();
+    useDevicePrefsStore.getState().hydrate();
+    // A server address saved in Settings applies before the first request goes out.
+    loadServerOrigin().finally(() => {
+      hydrate();
+      // Picks up downloads that were running when the app last closed.
+      useDownloadsStore.getState().hydrate();
+    });
   }, [hydrate]);
   useSessionEffects(status);
 
@@ -147,10 +151,16 @@ export function RootNavigator() {
         <Stack.Screen name="Queue" component={QueueScreen} />
         {/* Opened from Now Playing, over it; from Settings it opens inside the tab. */}
         <Stack.Screen name="Equalizer" component={EqualizerScreen} />
-        <Stack.Screen name="ModeSwitch" component={ModeSwitchScreen} />
+        {/* A sheet over the screen it was opened from, which stays visible (dimmed) behind it. */}
+        <Stack.Screen
+          name="ModeSwitch"
+          component={ModeSwitchScreen}
+          options={{ presentation: 'transparentModal', animation: 'fade' }}
+        />
         <Stack.Screen name="SignIn" component={SignInScreen} />
       </Stack.Navigator>
       <TrackMenuHost />
+      <PlayerSheetsHost />
     </NavigationContainer>
   );
 }

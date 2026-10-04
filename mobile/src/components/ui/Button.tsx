@@ -1,11 +1,9 @@
 import React from 'react';
-import { Text, Pressable } from 'react-native';
+import { Pressable } from 'react-native';
+import { Text } from './Text';
 import { cn } from '../../lib/cn';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import { springs } from '../../lib/motion';
 
 interface ButtonProps {
   onPress: () => void;
@@ -39,8 +37,8 @@ export function Button({
   return (
     <AnimatedPressable
       onPress={onPress}
-      onPressIn={() => (scale.value = withSpring(0.97, { damping: 20 }))}
-      onPressOut={() => (scale.value = withSpring(1, { damping: 20 }))}
+      onPressIn={() => (scale.value = withSpring(0.98, springs.press))}
+      onPressOut={() => (scale.value = withSpring(1, springs.press))}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -49,7 +47,7 @@ export function Button({
         'flex-row items-center rounded-full',
         !/\bjustify-/.test(className ?? '') && 'justify-center',
         size === 'sm' && 'h-[32px] px-3.5 gap-1.5',
-        size === 'md' && 'h-[40px] px-4.5 gap-2',
+        size === 'md' && 'h-[40px] px-[18px] gap-2',
         size === 'lg' && 'h-[48px] px-6 gap-2.5',
         variant === 'accent' && 'bg-acc shadow-glow-acc',
         variant === 'gold' && 'bg-gold shadow-glow-gold',
@@ -69,10 +67,7 @@ export function Button({
             size === 'sm' ? 'text-bs' : size === 'md' ? 'text-bm' : 'text-tm',
             variant === 'accent' && 'text-black',
             variant === 'gold' && 'text-black',
-            (variant === 'outline' ||
-              variant === 'solid' ||
-              variant === 'ghost') &&
-              'text-t1',
+            (variant === 'outline' || variant === 'solid' || variant === 'ghost') && 'text-t1',
           )}
         >
           {children}

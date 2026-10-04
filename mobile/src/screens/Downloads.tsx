@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -36,12 +37,10 @@ function statusLine(d: DownloadItem): string {
   const pct = downloadProgress(d);
   const size =
     d.totalBytes > 0
-      ? `${formatBytes(d.receivedBytes)} of ${formatBytes(
-          d.totalBytes,
-        )} · ${Math.round((pct ?? 0) * 100)}%`
+      ? `${formatBytes(d.receivedBytes)} of ${formatBytes(d.totalBytes)} · ${Math.round((pct ?? 0) * 100)}%`
       : d.receivedBytes > 0
-      ? formatBytes(d.receivedBytes)
-      : '';
+        ? formatBytes(d.receivedBytes)
+        : '';
   switch (d.status) {
     case 'queued':
       return size ? `Waiting · ${size}` : 'Waiting';
@@ -80,18 +79,8 @@ function Row({
   onPress?: () => void;
 }) {
   return (
-    <Pressable
-      onPress={onPress}
-      disabled={!onPress}
-      className="flex-row items-center gap-3 px-3 py-2.5"
-    >
-      <Artwork
-        uri={artworkUrl(
-          { thumbnail: d.thumbnail ?? `/api/v1/tracks/${d.id}/artwork` },
-          64,
-        )}
-        size={44}
-      />
+    <Pressable onPress={onPress} disabled={!onPress} className="flex-row items-center gap-3 px-3 py-2.5">
+      <Artwork uri={artworkUrl({ thumbnail: d.thumbnail ?? `/api/v1/tracks/${d.id}/artwork` }, 64)} size={44} />
       <View className="flex-1 min-w-0 gap-0.5">
         <Text className="text-t1 text-tm font-medium" numberOfLines={1}>
           {d.title}
@@ -101,10 +90,7 @@ function Row({
         </Text>
         <View>
           {typeof sub === 'string' ? (
-            <Text
-              className={cn('text-bs', subClass ?? 'text-t3')}
-              numberOfLines={2}
-            >
+            <Text className={cn('text-bs', subClass ?? 'text-t3')} numberOfLines={2}>
               {sub}
             </Text>
           ) : (
@@ -119,40 +105,32 @@ function Row({
 
 export function DownloadsScreen() {
   const navigation = useNavigation<any>();
-  const items = useDownloadsStore(s => s.items);
-  const location = useDownloadsStore(s => s.location);
-  const ready = useDownloadsStore(s => s.ready);
+  const items = useDownloadsStore((s) => s.items);
+  const location = useDownloadsStore((s) => s.location);
+  const ready = useDownloadsStore((s) => s.ready);
   const { pause, resume, pauseAll, resumeAll } = useDownloadsStore.getState();
-  const mode = useModeStore(s => s.mode);
-  const currentId = usePlayerStore(s => s.currentTrack?.id);
+  const mode = useModeStore((s) => s.mode);
+  const currentId = usePlayerStore((s) => s.currentTrack?.id);
 
   useEffect(() => {
-    void useDownloadsStore.getState().checkFiles();
+    useDownloadsStore.getState().checkFiles();
   }, []);
 
-  const list = useMemo(
-    () => Object.values(items).sort((a, b) => b.addedAt - a.addedAt),
-    [items],
-  );
-  const active = list.filter(d => d.status !== 'done');
-  const done = list.filter(d => d.status === 'done');
-  const running = active.filter(
-    d => d.status === 'queued' || d.status === 'downloading',
-  );
-  const stopped = active.filter(
-    d => d.status === 'paused' || d.status === 'failed',
-  );
+  const list = useMemo(() => Object.values(items).sort((a, b) => b.addedAt - a.addedAt), [items]);
+  const active = list.filter((d) => d.status !== 'done');
+  const done = list.filter((d) => d.status === 'done');
+  const running = active.filter((d) => d.status === 'queued' || d.status === 'downloading');
+  const stopped = active.filter((d) => d.status === 'paused' || d.status === 'failed');
   const doneBytes = done.reduce((n, d) => n + d.totalBytes, 0);
 
   const play = (d: DownloadItem) => {
     const queue = downloadedTracks(items);
-    const track =
-      queue.find(t => t.id === d.id) ??
-      (mode === 'online' ? downloadTrack(d) : null);
+    const track = queue.find((t) => t.id === d.id) ?? (mode === 'online' ? downloadTrack(d) : null);
     if (track)
-      usePlayerStore
-        .getState()
-        .playTrack(track, queue.some(t => t.id === track.id) ? queue : [track]);
+      usePlayerStore.getState().playTrack(track, queue.some((t) => t.id === track.id) ? queue : [track], {
+        kind: 'Library',
+        name: 'Downloads',
+      });
   };
 
   return (
@@ -201,7 +179,7 @@ export function DownloadsScreen() {
                 variant="outline"
                 size="sm"
                 className="flex-1"
-                onPress={() => void pauseAll()}
+                onPress={() => pauseAll()}
                 icon={<Icon name="pause" size={15} color="#FFFFFF" />}
               >
                 Pause all
@@ -226,8 +204,7 @@ export function DownloadsScreen() {
             <Icon name="download" size={32} color="#5A5A66" />
             <Text className="text-t1 text-tl">No downloads yet</Text>
             <Text className="text-t3 text-bm text-center max-w-[300px]">
-              Long-press a song and choose Download, or use the download button
-              on an album or playlist.
+              Long-press a song and choose Download, or use the download button on an album or playlist.
             </Text>
           </View>
         )}
@@ -235,25 +212,18 @@ export function DownloadsScreen() {
         {active.length > 0 && (
           <View className="gap-2">
             <Text className="text-t3 text-ov uppercase ml-1">In progress</Text>
-            <View className="bg-s1 border border-ln rounded-xl overflow-hidden">
+            <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
               {active.map((d, i) => {
                 const pct = downloadProgress(d) ?? 0;
-                const isRunning =
-                  d.status === 'queued' || d.status === 'downloading';
+                const isRunning = d.status === 'queued' || d.status === 'downloading';
                 return (
-                  <View
-                    key={d.id}
-                    className={cn(i > 0 && 'border-t border-ln')}
-                  >
+                  <View key={d.id} className={cn(i > 0 && 'border-t border-ln')}>
                     <Row
                       d={d}
                       sub={
                         <View className="gap-1.5">
                           <Text
-                            className={cn(
-                              'text-bs',
-                              d.status === 'failed' ? 'text-red' : 'text-t3',
-                            )}
+                            className={cn('text-bs', d.status === 'failed' ? 'text-red' : 'text-t3')}
                             numberOfLines={2}
                           >
                             {statusLine(d)}
@@ -261,12 +231,7 @@ export function DownloadsScreen() {
                           {d.status !== 'failed' && (
                             <View className="h-[3px] bg-ln2 rounded-full overflow-hidden">
                               <View
-                                className={cn(
-                                  'h-full',
-                                  d.status === 'downloading'
-                                    ? 'bg-acc'
-                                    : 'bg-gold opacity-70',
-                                )}
+                                className={cn('h-full', d.status === 'downloading' ? 'bg-acc' : 'bg-gold opacity-70')}
                                 style={{ width: `${Math.round(pct * 100)}%` }}
                               />
                             </View>
@@ -278,23 +243,15 @@ export function DownloadsScreen() {
                         <IconButton
                           icon={<Icon name="pause" size={18} color="#FFFFFF" />}
                           size={40}
-                          onPress={() => void pause(d.id)}
+                          onPress={() => pause(d.id)}
                           accessibilityLabel={`Pause ${d.title}`}
                         />
                       ) : (
                         <IconButton
-                          icon={
-                            <Icon
-                              name={d.status === 'failed' ? 'refresh' : 'play'}
-                              size={18}
-                              color="#FFFFFF"
-                            />
-                          }
+                          icon={<Icon name={d.status === 'failed' ? 'refresh' : 'play'} size={18} color="#FFFFFF" />}
                           size={40}
                           onPress={() => resume(d.id)}
-                          accessibilityLabel={`${
-                            d.status === 'failed' ? 'Retry' : 'Resume'
-                          } ${d.title}`}
+                          accessibilityLabel={`${d.status === 'failed' ? 'Retry' : 'Resume'} ${d.title}`}
                         />
                       )}
                       <IconButton
@@ -324,28 +281,14 @@ export function DownloadsScreen() {
                 <Text className="text-t2 text-bs">Delete all</Text>
               </Pressable>
             </View>
-            <View className="bg-s1 border border-ln rounded-xl overflow-hidden">
+            <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
               {done.map((d, i) => (
                 <View key={d.id} className={cn(i > 0 && 'border-t border-ln')}>
                   <Row
                     d={d}
-                    onPress={
-                      !d.missing || mode === 'online'
-                        ? () => play(d)
-                        : undefined
-                    }
-                    subClass={
-                      d.missing
-                        ? 'text-gold'
-                        : currentId === d.id
-                        ? 'text-acc'
-                        : undefined
-                    }
-                    sub={
-                      d.missing
-                        ? 'File moved or deleted outside Sonare'
-                        : fileLine(d)
-                    }
+                    onPress={!d.missing || mode === 'online' ? () => play(d) : undefined}
+                    subClass={d.missing ? 'text-gold' : currentId === d.id ? 'text-acc' : undefined}
+                    sub={d.missing ? 'File moved or deleted outside Sonare' : fileLine(d)}
                   >
                     <IconButton
                       icon={<Icon name="trash" size={18} color="#9A9AA8" />}

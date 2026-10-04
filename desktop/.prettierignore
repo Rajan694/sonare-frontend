@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+coverage
+package-lock.json
+bin
+resources
+.tmp
+.storage
+neutralinojs.log
+test-results
+playwright-report

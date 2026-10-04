@@ -17,10 +17,7 @@ export function SourceGlyph({ source, size = 18 }: SourceGlyphProps) {
       style={{
         width: size,
         height: size,
-        backgroundColor:
-          source === 'local'
-            ? 'rgba(255, 194, 77, 0.15)'
-            : 'rgba(0, 226, 138, 0.15)',
+        backgroundColor: source === 'local' ? 'rgba(255, 194, 77, 0.15)' : 'rgba(0, 226, 138, 0.15)',
       }}
     >
       {source === 'local' ? (

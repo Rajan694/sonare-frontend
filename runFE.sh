@@ -63,6 +63,8 @@ load_android_sdk() {
 
 METRO_PORT=""
 MOBILE_APP_ID="com.mobile"
+# The Sonare backend (sonare-backend runBE.sh); debug builds reach it at localhost:3010.
+BACKEND_PORT=3010
 
 # Debug builds reach Metro at the emulator's 10.0.2.2 alias by default, i.e. over the
 # emulator's own network. Cutting that network to test Offline Mode then cut Metro too
@@ -131,7 +133,7 @@ run_linux_window() {
 
     # In the background with `wait`, so a TERM from ../run.sh is handled straight away
     # and closes the window too, instead of waiting for it to exit on its own.
-    "$binary" --load-dir-res --path=. --port="$nl_port" --url="http://localhost:$LINUX_VITE_PORT" &
+    "$binary" --load-dir-res --path=. --port="$nl_port" --url="http://localhost:$LINUX_VITE_PORT" --window-enable-inspector=true &
     LINUX_NL_PID=$!
     wait "$LINUX_NL_PID"
 }
@@ -166,19 +168,19 @@ parse_mobile_args() {
 case "$TARGET" in
     web)
         [ $# -gt 0 ] && { echo "Error: 'web' takes no options"; usage; }
-        cd "$SCRIPT_DIR/other-screens"
+        cd "$SCRIPT_DIR/desktop"
         npx neu run -- --mode=browser
         ;;
     linux)
         [ $# -gt 0 ] && { echo "Error: 'linux' takes no options"; usage; }
-        cd "$SCRIPT_DIR/other-screens"
+        cd "$SCRIPT_DIR/desktop"
         run_linux_window
         ;;
     windows)
         [ $# -gt 0 ] && { echo "Error: 'windows' takes no options"; usage; }
-        cd "$SCRIPT_DIR/other-screens"
+        cd "$SCRIPT_DIR/desktop"
         npx neu build --release
-        echo "Build output in: other-screens/dist/"
+        echo "Build output in: desktop/dist/sonare-desktop/"
         ;;
     mobile)
         parse_mobile_args "$@"
@@ -224,6 +226,14 @@ case "$TARGET" in
         echo "Warming the JS bundle..."
         curl -s -o /dev/null "http://127.0.0.1:$PORT/index.bundle?platform=android&dev=true&minify=false"
 
+        # Debug builds call the backend at localhost:3010 (mobile/src/data/config.ts); carry
+        # that over the adb link too, so the emulator and a USB phone both reach this machine.
+        if ! adb reverse "tcp:$BACKEND_PORT" "tcp:$BACKEND_PORT" >/dev/null 2>&1; then
+            echo "Note: could not forward port $BACKEND_PORT to the device (is one attached?)."
+            echo "      Without it the app can't reach the backend; on Wi-Fi only, set the"
+            echo "      computer's LAN address in the app under Settings → Server address."
+        fi
+
         # Already installed: point it at localhost before it launches. A fresh install
         # has no data directory yet, so it gets pointed right after and restarted.
         METRO_HOST_SET=0
@@ -234,7 +244,10 @@ case "$TARGET" in
             echo "      Declining it leaves a red \"Unable to load script\" box."
         fi
 
-        npx react-native run-android --no-packager --port "$PORT"
+        # Native code (Reanimated, Worklets, Screens, SVG...) is C++ compiled once per ABI.
+        # gradle.properties lists all four for release builds; a dev run only needs the
+        # attached device's, which cuts the native build to a quarter.
+        npx react-native run-android --no-packager --port "$PORT" --active-arch-only
 
         if [ "$METRO_HOST_SET" = 0 ] && point_app_at_local_metro "$PORT"; then
             adb shell am force-stop "$MOBILE_APP_ID"

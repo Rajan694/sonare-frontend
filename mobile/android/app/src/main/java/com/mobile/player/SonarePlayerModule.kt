@@ -20,6 +20,8 @@ import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableMap
 import com.facebook.react.bridge.WritableMap
 import com.google.common.util.concurrent.ListenableFuture
+import com.mobile.player.dsp.AudioEffects
+import com.mobile.player.dsp.DspSettings
 
 /**
  * JS face of [SonarePlaybackService]. Talks to the service through a MediaController, which
@@ -28,6 +30,10 @@ import com.google.common.util.concurrent.ListenableFuture
  *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs } every 500ms while playing
  *  - `SonarePlayer.error`    { message }
  *  - `SonarePlayer.remote`   { command: "next" | "previous" } from notification / lock screen
+ *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
+ *                            (gapless or crossfade), sent before the state change it causes
+ *  - `SonarePlayer.output`   { id, type, name } when the audio output changes (headphones, Bluetooth…)
+ *  - `SonarePlayer.sleep`    {} when the sleep timer paused playback
  */
 class SonarePlayerModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private val main = Handler(Looper.getMainLooper())
@@ -69,6 +75,9 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         c.addListener(listener)
         RemoteCommands.listener = { command ->
           emit(EVENT_REMOTE, Arguments.createMap().apply { putString("command", command) })
+        }
+        EngineEvents.advanceListener = { mediaId ->
+          emit(EVENT_ADVANCE, Arguments.createMap().apply { putString("mediaId", mediaId) })
         }
         pending.forEach { it(c) }
         pending.clear()
@@ -145,14 +154,9 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     if (context.hasActiveReactInstance()) context.emitDeviceEvent(event, payload)
   }
 
-  /** Replace whatever is loaded with one track; the lock screen shows its metadata. */
-  @ReactMethod
-  fun load(options: ReadableMap, promise: Promise) {
+  private fun mediaItem(options: ReadableMap): MediaItem? {
     val url = options.getString("url")
-    if (url.isNullOrEmpty()) {
-      promise.reject("E_NO_URL", "load() needs a url")
-      return
-    }
+    if (url.isNullOrEmpty()) return null
     val metadata =
       MediaMetadata.Builder()
         .setTitle(options.getString("title"))
@@ -160,21 +164,122 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         .setAlbumTitle(if (options.hasKey("album")) options.getString("album") else null)
         .setArtworkUri(if (options.hasKey("artworkUrl")) options.getString("artworkUrl")?.let(Uri::parse) else null)
         .build()
-    val item =
-      MediaItem.Builder()
-        .setMediaId(if (options.hasKey("id")) options.getString("id") ?: url else url)
-        .setUri(url)
-        .setMediaMetadata(metadata)
-        .build()
+    return MediaItem.Builder()
+      .setMediaId(if (options.hasKey("id")) options.getString("id") ?: url else url)
+      .setUri(url)
+      .setMediaMetadata(metadata)
+      .build()
+  }
+
+  /** Replace whatever is loaded with one track; the lock screen shows its metadata. */
+  @ReactMethod
+  fun load(options: ReadableMap, promise: Promise) {
+    val item = mediaItem(options)
+    if (item == null) {
+      promise.reject("E_NO_URL", "load() needs a url")
+      return
+    }
     val startMs = if (options.hasKey("startMs")) options.getDouble("startMs").toLong() else 0L
     val autoplay = !options.hasKey("autoplay") || options.getBoolean("autoplay")
 
-    withController { c ->
-      c.setMediaItem(item, startMs)
-      c.prepare()
-      c.playWhenReady = autoplay
+    withController {
+      val engine = PlaybackEngine.instance
+      if (engine == null) {
+        promise.reject("E_NO_ENGINE", "The playback service is not running")
+        return@withController
+      }
+      engine.load(item, startMs, autoplay)
       promise.resolve(null)
     }
+  }
+
+  /** The track after the current one (null: none), for gapless playback and crossfades. */
+  @ReactMethod
+  fun setNext(options: ReadableMap?) {
+    val item = options?.let(::mediaItem)
+    withController { PlaybackEngine.instance?.setNext(item) }
+  }
+
+  /** `{ crossfadeMs, gapless }`; crossfadeMs 0 turns crossfading off. */
+  @ReactMethod
+  fun setTransitions(options: ReadableMap) {
+    val value =
+      Transitions(
+        crossfadeMs = if (options.hasKey("crossfadeMs")) options.getDouble("crossfadeMs").toLong().coerceIn(0, 12_000) else 0,
+        gapless = options.hasKey("gapless") && options.getBoolean("gapless"),
+      )
+    PlaybackEngine.pendingTransitions = value
+    main.post { PlaybackEngine.instance?.setTransitions(value) }
+  }
+
+  /** Playback speed, 0.5..2; pitch is preserved. */
+  @ReactMethod
+  fun setSpeed(speed: Double) {
+    val value = speed.toFloat().coerceIn(0.5f, 2f)
+    PlaybackEngine.pendingSpeed = value
+    main.post { PlaybackEngine.instance?.setSpeed(value) }
+  }
+
+  /** `{ enabled, gains: number[8], bassBoost, virtualizer, normalization }` for the audio processor. */
+  @ReactMethod
+  fun setAudioEffects(options: ReadableMap) {
+    val gains = options.getArray("gains")
+    AudioEffects.update(
+      DspSettings(
+        enabled = !options.hasKey("enabled") || options.getBoolean("enabled"),
+        gains = List(DspSettings.EQ_BANDS.size) { i -> if (gains != null && i < gains.size()) gains.getDouble(i) else 0.0 },
+        bassBoost = if (options.hasKey("bassBoost")) options.getDouble("bassBoost") else 0.0,
+        virtualizer = if (options.hasKey("virtualizer")) options.getDouble("virtualizer") else 0.0,
+        normalization = options.hasKey("normalization") && options.getBoolean("normalization"),
+      ),
+    )
+  }
+
+  /** Where audio is going right now: `{ id, type, name }`. */
+  @ReactMethod
+  fun getOutputDevice(promise: Promise) {
+    promise.resolve(outputs.current())
+  }
+
+  /** Every output music can go to right now: `[{ id, type, name }]`. */
+  @ReactMethod
+  fun getOutputDevices(promise: Promise) {
+    promise.resolve(outputs.list())
+  }
+
+  /**
+   * Plays on this output (an id from getOutputDevices) while it stays connected; -1 goes
+   * back to Android's choice. Android may still move a call or an alarm elsewhere.
+   */
+  @ReactMethod
+  fun setOutputDevice(id: Double) {
+    val deviceId = id.toInt()
+    PlaybackEngine.preferredDeviceId = deviceId
+    main.post {
+      PlaybackEngine.instance?.setPreferredDevice(if (deviceId >= 0) outputs.info(deviceId) else null)
+      outputs.refresh()
+    }
+  }
+
+  private val sleepTick = Runnable {
+    withController { it.pause() }
+    emit(EVENT_SLEEP, Arguments.createMap())
+  }
+
+  /**
+   * Pauses after `ms` (0 cancels). Runs here rather than in JS, whose timers can stall while
+   * the app is in the background.
+   */
+  @ReactMethod
+  fun setSleepTimer(ms: Double) {
+    main.removeCallbacks(sleepTick)
+    if (ms > 0) main.postDelayed(sleepTick, ms.toLong())
+  }
+
+  /** Stops when the current track ends instead of moving on (the sleep timer's "End of track"). */
+  @ReactMethod
+  fun setPauseAtEndOfTrack(value: Boolean) {
+    main.post { PlaybackEngine.instance?.setPauseAtEndOfTrack(value) }
   }
 
   @ReactMethod fun play() = withController { it.play() }
@@ -187,22 +292,33 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     emitProgress(it)
   }
 
-  /** Stop and unload; the notification goes away with it. */
+  /**
+   * Stop and unload; the notification goes away with it. Straight to the engine, like load():
+   * through the controller it reached the player asynchronously, so the startup stop() could
+   * land after a restored track had loaded and unload it again.
+   */
   @ReactMethod
-  fun stop() = withController {
-    it.stop()
-    it.clearMediaItems()
-  }
+  fun stop() = withController { PlaybackEngine.instance?.stop() }
 
   // Required by NativeEventEmitter.
   @ReactMethod fun addListener(eventName: String) {}
 
   @ReactMethod fun removeListeners(count: Double) {}
 
+  private val outputs = OutputDevices(context) { emit(EVENT_OUTPUT, it) }
+
+  override fun initialize() {
+    super.initialize()
+    outputs.start()
+  }
+
   override fun invalidate() {
+    outputs.stop()
+    main.removeCallbacks(sleepTick)
     main.post {
       stopProgress()
       RemoteCommands.listener = null
+      EngineEvents.advanceListener = null
       controller?.release()
       controller = null
     }
@@ -216,5 +332,8 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     private const val EVENT_PROGRESS = "SonarePlayer.progress"
     private const val EVENT_ERROR = "SonarePlayer.error"
     private const val EVENT_REMOTE = "SonarePlayer.remote"
+    private const val EVENT_ADVANCE = "SonarePlayer.advance"
+    private const val EVENT_OUTPUT = "SonarePlayer.output"
+    private const val EVENT_SLEEP = "SonarePlayer.sleep"
   }
 }

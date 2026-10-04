@@ -16,8 +16,8 @@ const GOLD = '#FFC24D';
  * resumes. Nothing for local files, or offline when the song isn't on the phone.
  */
 export function TrackDownloadButton({ track }: { track: Track }) {
-  const item = useDownloadsStore(s => s.items[track.id]);
-  const online = useModeStore(s => s.mode) === 'online';
+  const item = useDownloadsStore((s) => s.items[track.id]);
+  const online = useModeStore((s) => s.mode) === 'online';
   if (track.source !== 'server') return null;
 
   if (item?.status === 'done') {
@@ -47,14 +47,7 @@ export function TrackDownloadButton({ track }: { track: Track }) {
                 transform: [{ rotate: '-90deg' }],
               }}
             >
-              <Circle
-                cx={15}
-                cy={15}
-                r={r}
-                stroke="#2A2A31"
-                strokeWidth={2}
-                fill="none"
-              />
+              <Circle cx={15} cy={15} r={r} stroke="#2A2A31" strokeWidth={2} fill="none" />
               <Circle
                 cx={15}
                 cy={15}
@@ -71,7 +64,7 @@ export function TrackDownloadButton({ track }: { track: Track }) {
           </View>
         }
         size={44}
-        onPress={() => void useDownloadsStore.getState().pause(track.id)}
+        onPress={() => useDownloadsStore.getState().pause(track.id)}
         accessibilityLabel={`Downloading ${Math.round(ratio * 100)}%, pause`}
       />
     );
@@ -83,11 +76,7 @@ export function TrackDownloadButton({ track }: { track: Track }) {
         icon={<Icon name="download" size={22} color={GOLD} />}
         size={44}
         onPress={() => useDownloadsStore.getState().resume(track.id)}
-        accessibilityLabel={
-          item.status === 'failed'
-            ? 'Download failed, retry'
-            : 'Resume download'
-        }
+        accessibilityLabel={item.status === 'failed' ? 'Download failed, retry' : 'Resume download'}
       />
     );
   }

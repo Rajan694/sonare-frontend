@@ -31,9 +31,7 @@ const mockDefaultTheme = {
 
 jest.mock('@react-navigation/native', () => {
   const actual = jest.requireActual('@react-navigation/native');
-  const { BaseNavigationContainer } = jest.requireActual(
-    '@react-navigation/core',
-  );
+  const { BaseNavigationContainer } = jest.requireActual('@react-navigation/core');
   const mockLinking = actual.LinkingContext;
   const mockR = require('react');
 
@@ -79,10 +77,7 @@ jest.mock('@react-navigation/bottom-tabs', () => {
               accessibilityRole: 'tab',
               accessibilityLabel: screen.props.name,
               accessibilityState: { selected: i === active },
-              tintColor:
-                i === active
-                  ? screenOptions.tabBarActiveTintColor
-                  : screenOptions.tabBarInactiveTintColor,
+              tintColor: i === active ? screenOptions.tabBarActiveTintColor : screenOptions.tabBarInactiveTintColor,
               onPress: () => setActive(i),
             }),
           ),
@@ -107,19 +102,12 @@ describe('Navigation Layer', () => {
             name: 'Tabs',
             state: {
               index: 1,
-              routes: [
-                { name: 'Home' },
-                { name: 'Library' },
-                { name: 'Playlists' },
-                { name: 'Search' },
-              ],
+              routes: [{ name: 'Home' }, { name: 'Library' }, { name: 'Playlists' }, { name: 'Search' }],
             } as any,
           },
         ],
       } as any);
-      const navSpy = jest
-        .spyOn(navigationRef as any, 'navigate')
-        .mockImplementation(() => {});
+      const navSpy = jest.spyOn(navigationRef as any, 'navigate').mockImplementation(() => {});
 
       openInCurrentTab('Album', { id: 'alb-1' });
       expect(navSpy).toHaveBeenCalledWith('Tabs', {
@@ -130,12 +118,8 @@ describe('Navigation Layer', () => {
 
     it('MOB-NAV-002 defaults to Home tab if root state has no active tab', () => {
       jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
-      jest
-        .spyOn(navigationRef, 'getRootState')
-        .mockReturnValue({ routes: [] } as any);
-      const navSpy = jest
-        .spyOn(navigationRef as any, 'navigate')
-        .mockImplementation(() => {});
+      jest.spyOn(navigationRef, 'getRootState').mockReturnValue({ routes: [] } as any);
+      const navSpy = jest.spyOn(navigationRef as any, 'navigate').mockImplementation(() => {});
 
       openInCurrentTab('Settings');
       expect(navSpy).toHaveBeenCalledWith('Tabs', {
@@ -157,19 +141,15 @@ describe('Navigation Layer', () => {
       useAuthStore.setState({ status: 'loading' });
       const load = jest.spyOn(useLibraryStore.getState(), 'load');
       const { UNSAFE_getByType, queryAllByRole } = render(<RootNavigator />);
-      expect(UNSAFE_getByType('ActivityIndicator')).toBeTruthy();
+      expect(UNSAFE_getByType('ActivityIndicator' as never)).toBeTruthy();
       expect(queryAllByRole('tab')).toHaveLength(0);
       expect(load).not.toHaveBeenCalled();
     });
 
     it('MOB-NAV-004 signing in loads the library, then finishes what the guest was doing', async () => {
-      const load = jest
-        .spyOn(useLibraryStore.getState(), 'load')
-        .mockResolvedValue();
+      const load = jest.spyOn(useLibraryStore.getState(), 'load').mockResolvedValue();
       const reset = jest.spyOn(useLibraryStore.getState(), 'reset');
-      const hydrate = jest
-        .spyOn(useSettingsStore.getState(), 'hydrate')
-        .mockResolvedValue();
+      const hydrate = jest.spyOn(useSettingsStore.getState(), 'hydrate').mockResolvedValue();
       jest.spyOn(navigationRef, 'isReady').mockReturnValue(false);
       useAuthStore.setState({ status: 'guest', user: null } as never);
       const liked = jest.fn();
@@ -218,8 +198,7 @@ describe('Navigation Layer', () => {
           <TabNavigator />
         </NavigationContainer>,
       );
-    const tabs = (r: ReturnType<typeof renderTabs>) =>
-      r.getAllByRole('tab').map(t => t.props.accessibilityLabel);
+    const tabs = (r: ReturnType<typeof renderTabs>) => r.getAllByRole('tab').map((t) => t.props.accessibilityLabel);
 
     it('MOB-NAV-006 shows Home, Library, Playlists and Search, starts on Home, and switches on press', () => {
       useAuthStore.setState({ status: 'guest', user: null } as never);
@@ -227,27 +206,18 @@ describe('Navigation Layer', () => {
       expect(tabs(r)).toEqual(['Home', 'Library', 'Playlists', 'Search']);
       expect(r.getByText('Welcome to Sonare')).toBeTruthy();
       fireEvent.press(r.getByRole('tab', { name: 'Library' }));
-      expect(
-        r.getByRole('tab', { name: 'Library' }).props.accessibilityState
-          .selected,
-      ).toBe(true);
+      expect(r.getByRole('tab', { name: 'Library' }).props.accessibilityState.selected).toBe(true);
       expect(r.getByText('Your library lives in your account')).toBeTruthy();
     });
 
-    it('MOB-NAV-007 the active tab is green online and gold offline', () => {
+    it('MOB-NAV-007 the active tab is green in both modes (M01 / M02: navigation is not a source)', () => {
       useModeStore.setState({ mode: 'online' });
       const online = renderTabs();
-      expect(online.getByRole('tab', { name: 'Home' }).props.tintColor).toBe(
-        '#00E28A',
-      );
-      expect(online.getByRole('tab', { name: 'Search' }).props.tintColor).toBe(
-        '#7E7E8C',
-      );
+      expect(online.getByRole('tab', { name: 'Home' }).props.tintColor).toBe('#00E28A');
+      expect(online.getByRole('tab', { name: 'Search' }).props.tintColor).toBe('#7E7E8C');
       online.unmount();
       useModeStore.setState({ mode: 'offline' });
-      expect(
-        renderTabs().getByRole('tab', { name: 'Home' }).props.tintColor,
-      ).toBe('#FFC24D');
+      expect(renderTabs().getByRole('tab', { name: 'Home' }).props.tintColor).toBe('#00E28A');
     });
   });
 });

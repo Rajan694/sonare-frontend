@@ -12,6 +12,7 @@ export const nav = {
   push: jest.fn(),
   replace: jest.fn(),
   setOptions: jest.fn(),
+  setParams: jest.fn((params: Record<string, unknown>) => Object.assign(route.params, params)),
   canGoBack: () => true,
 };
 export const route: { params: Record<string, unknown> } = { params: {} };
@@ -89,10 +90,7 @@ export function makePlaylist(over: Partial<Playlist> = {}): Playlist {
   } as Playlist;
 }
 
-export function makeDownload(
-  track: Track,
-  over: Partial<DownloadItem> = {},
-): DownloadItem {
+export function makeDownload(track: Track, over: Partial<DownloadItem> = {}): DownloadItem {
   return {
     id: track.id,
     title: track.title,

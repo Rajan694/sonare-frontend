@@ -35,40 +35,19 @@ module.exports = {
         mono: ['JetBrains Mono', 'monospace'],
       },
       fontSize: {
-        dis: [
-          '40px',
-          { lineHeight: '44px', letterSpacing: '-0.6px', fontWeight: '700' },
-        ],
-        dis2: [
-          '32px',
-          { lineHeight: '36px', letterSpacing: '-0.4px', fontWeight: '700' },
-        ],
-        h1: [
-          '24px',
-          { lineHeight: '30px', letterSpacing: '-0.2px', fontWeight: '600' },
-        ],
-        h2: [
-          '20px',
-          { lineHeight: '26px', letterSpacing: '-0.1px', fontWeight: '600' },
-        ],
+        dis: ['40px', { lineHeight: '44px', letterSpacing: '-0.6px', fontWeight: '700' }],
+        dis2: ['32px', { lineHeight: '36px', letterSpacing: '-0.4px', fontWeight: '700' }],
+        h1: ['24px', { lineHeight: '30px', letterSpacing: '-0.2px', fontWeight: '600' }],
+        h2: ['20px', { lineHeight: '26px', letterSpacing: '-0.1px', fontWeight: '600' }],
         tl: ['17px', { lineHeight: '24px', fontWeight: '600' }],
         tm: ['15px', { lineHeight: '22px', fontWeight: '500' }],
         bl: ['15px', { lineHeight: '22px', fontWeight: '400' }],
         bm: ['14px', { lineHeight: '20px', fontWeight: '400' }],
         bs: ['13px', { lineHeight: '18px', fontWeight: '400' }],
         ll: ['13px', { lineHeight: '16px', fontWeight: '500' }],
-        lm: [
-          '12px',
-          { lineHeight: '16px', letterSpacing: '0.2px', fontWeight: '500' },
-        ],
-        ls: [
-          '11px',
-          { lineHeight: '14px', letterSpacing: '0.4px', fontWeight: '500' },
-        ],
-        ov: [
-          '11px',
-          { lineHeight: '14px', letterSpacing: '0.9px', fontWeight: '600' },
-        ],
+        lm: ['12px', { lineHeight: '16px', letterSpacing: '0.2px', fontWeight: '500' }],
+        ls: ['11px', { lineHeight: '14px', letterSpacing: '0.4px', fontWeight: '500' }],
+        ov: ['11px', { lineHeight: '14px', letterSpacing: '0.9px', fontWeight: '600' }],
         mono: ['13px', { lineHeight: '16px', fontWeight: '500' }],
         'mono-s': ['11px', { lineHeight: '14px', fontWeight: '500' }],
       },

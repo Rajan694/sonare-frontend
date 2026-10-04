@@ -15,12 +15,30 @@ export const easings = {
 } as const;
 
 export const springConfig = {
-  damping: 20,
-  stiffness: 300,
+  damping: 28,
+  stiffness: 280,
+  overshootClamping: true,
+} as const;
+
+/**
+ * Springs for everything that moves. They keep the spring's ease-out but clamp the
+ * overshoot, so sheets, swipes and presses settle without bouncing past their stop.
+ */
+export const springs = {
+  /** Bottom sheets opening, closing and snapping back after a drag. */
+  sheet: { damping: 30, stiffness: 260, overshootClamping: true },
+  /** Something dragged and let go short of its threshold returning to rest. */
+  snapBack: { damping: 28, stiffness: 300, overshootClamping: true },
+  /** Flinging an item off screen (swipe to skip, swipe up to open). */
+  fling: { damping: 26, stiffness: 220, overshootClamping: true },
+  /** Press feedback on buttons. */
+  press: { damping: 30, stiffness: 500, overshootClamping: true },
+  /** Selection indicators sliding between options. */
+  slide: { damping: 30, stiffness: 320, overshootClamping: true },
 } as const;
 
 let reduceMotionEnabled = false;
-AccessibilityInfo.isReduceMotionEnabled().then(enabled => {
+AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
   reduceMotionEnabled = enabled ?? false;
 });
 
@@ -63,9 +81,7 @@ export function FadeView({
   return (
     <MotiView
       animate={{ opacity: visible ? 1 : 0 }}
-      transition={
-        { type: 'timing', duration: durations.fast } as MotiTransitionProp
-      }
+      transition={{ type: 'timing', duration: durations.fast } as MotiTransitionProp}
       {...props}
     >
       {children}
