@@ -330,7 +330,8 @@ describe('sidebar', () => {
     await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
     expect(store.getState().ui.sidebarCollapsed).toBe(true);
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toHaveAttribute('aria-expanded', 'false');
-    expect(screen.getByRole('link', { name: 'Your Library' })).toHaveAttribute('data-tip-side', 'right');
+    expect(screen.getByRole('link', { name: 'Playlists' })).toHaveAttribute('data-tip-side', 'right');
+    expect(screen.getByRole('link', { name: 'Most played' })).toHaveAttribute('href', '/library?view=most-played');
     expect(screen.queryByText('Sign in to make playlists')).not.toBeInTheDocument();
   });
 

@@ -19,7 +19,6 @@ import { toggleSidebar } from '../../store/uiSlice';
 const NAV_ITEMS = [
   { to: '/home', icon: 'home' as const, label: 'Home' },
   { to: '/search', icon: 'search' as const, label: 'Search' },
-  { to: '/library', icon: 'library' as const, label: 'Your Library' },
   { to: '/playlists', icon: 'playlist' as const, label: 'Playlists' },
 ] as const;
 
@@ -42,6 +41,18 @@ function playlistIcon(kind: Playlist['kind']) {
 const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4'] as const;
 
 const LIKED_SONGS = '/library?view=favourites';
+
+/** Pinned above the user's playlists. Liked Songs replaces the Favourites library link. */
+const PINNED = [
+  { to: LIKED_SONGS, icon: 'heart' as const, label: 'Liked Songs', sub: 'Your favourites', tile: 'bg-accbg text-acc' },
+  {
+    to: '/library?view=most-played',
+    icon: 'trending' as const,
+    label: 'Most played',
+    sub: 'Your top tracks',
+    tile: 'bg-goldbg text-gold',
+  },
+] as const;
 
 export default function Sidebar() {
   const location = useLocation();
@@ -126,7 +137,7 @@ export default function Sidebar() {
           {LIBRARY_ITEMS.filter((item) => {
             if (item.to === '/folders' && !CAPS.localLibrary) return false;
             if (item.to === '/downloads' && !CAPS.downloads) return false;
-            if (item.to === LIKED_SONGS) return false; // Liked Songs is pinned under Playlists instead
+            if (item.to === LIKED_SONGS) return false;
             return true;
           }).map((item) => (
             <Link
@@ -165,25 +176,30 @@ export default function Sidebar() {
           </div>
 
           <div className="flex flex-col gap-0.5">
-            <Link
-              to={LIKED_SONGS}
-              className={cn(
-                'sitem h-11',
-                collapsed && 'justify-center px-0',
-                location.pathname + location.search === LIKED_SONGS && 'on',
-              )}
-              {...tip('Liked Songs')}
-            >
-              <span className="art-r-xs flex items-center justify-center flex-none w-[30px] h-[30px] bg-accbg text-acc">
-                <Icon name="heart" size={15} />
-              </span>
-              {!collapsed && (
-                <span className="flex flex-col grow gap-px min-w-0">
-                  <span className="text-label-l text-t1 truncate">Liked Songs</span>
-                  <span className="text-label-s text-t3 truncate">Your favourites</span>
+            {PINNED.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                className={cn(
+                  'sitem h-11',
+                  collapsed && 'justify-center px-0',
+                  location.pathname + location.search === item.to && 'on',
+                )}
+                {...tip(item.label)}
+              >
+                <span
+                  className={cn('art-r-xs flex items-center justify-center flex-none w-[30px] h-[30px]', item.tile)}
+                >
+                  <Icon name={item.icon} size={15} />
                 </span>
-              )}
-            </Link>
+                {!collapsed && (
+                  <span className="flex flex-col grow gap-px min-w-0">
+                    <span className="text-label-l text-t1 truncate">{item.label}</span>
+                    <span className="text-label-s text-t3 truncate">{item.sub}</span>
+                  </span>
+                )}
+              </Link>
+            ))}
             {playlistsLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="sitem h-11 animate-pulse bg-s2/30 rounded" />

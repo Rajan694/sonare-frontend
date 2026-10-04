@@ -67,6 +67,7 @@ import {
   Bluetooth,
   ListPlus,
   ArrowUpDown,
+  TrendingUp,
 } from 'lucide-react';
 
 const ICONS = {
@@ -116,6 +117,7 @@ const ICONS = {
   'layout-grid': LayoutGrid,
   list: List,
   clock: Clock,
+  trending: TrendingUp,
   star: Star,
   radio: Radio,
   logout: LogOut,
