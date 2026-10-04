@@ -210,14 +210,14 @@ describe('Navigation Layer', () => {
       expect(r.getByText('Your library lives in your account')).toBeTruthy();
     });
 
-    it('MOB-NAV-007 the active tab is green online and gold offline', () => {
+    it('MOB-NAV-007 the active tab is green in both modes (M01 / M02: navigation is not a source)', () => {
       useModeStore.setState({ mode: 'online' });
       const online = renderTabs();
       expect(online.getByRole('tab', { name: 'Home' }).props.tintColor).toBe('#00E28A');
       expect(online.getByRole('tab', { name: 'Search' }).props.tintColor).toBe('#7E7E8C');
       online.unmount();
       useModeStore.setState({ mode: 'offline' });
-      expect(renderTabs().getByRole('tab', { name: 'Home' }).props.tintColor).toBe('#FFC24D');
+      expect(renderTabs().getByRole('tab', { name: 'Home' }).props.tintColor).toBe('#00E28A');
     });
   });
 });

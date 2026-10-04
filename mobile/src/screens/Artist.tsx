@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, ScrollView, Pressable } from 'react-native';
+import { View, FlatList, ScrollView, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -7,6 +8,7 @@ import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { SongRow } from '../components/music/SongRow';
 import { Artwork } from '../components/music/Artwork';
+import { Ambient } from '../components/music/Ambient';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { api } from '../data/api';
@@ -55,6 +57,7 @@ export function ArtistScreen() {
 
   return (
     <Screen scrollable={false}>
+      <Ambient uri={artworkUrl(info, 64)} />
       <Header
         title={<Text className="text-ll font-medium text-t2">Artist</Text>}
         left={
@@ -90,7 +93,7 @@ export function ArtistScreen() {
                   size="sm"
                   onPress={toggleFollow}
                   accessibilityLabel={following ? 'Unfollow' : 'Follow'}
-                  icon={following ? <Icon name="heart" size={14} color="#00E28A" /> : undefined}
+                  icon={following ? <Icon name="heart-filled" size={14} color="#00E28A" /> : undefined}
                 >
                   {following ? 'Following' : 'Follow'}
                 </Button>
@@ -120,7 +123,8 @@ export function ArtistScreen() {
               </View>
             </View>
 
-            <View className="px-5 pt-3 pb-1">
+            {/* The list is inset 12px; 8 more puts headings on the 20px page margin. */}
+            <View className="px-2 pt-3 pb-1">
               <Text className="text-h2 font-semibold text-t1">Popular</Text>
             </View>
           </View>
@@ -137,14 +141,13 @@ export function ArtistScreen() {
         ListFooterComponent={
           (albums.data?.items.length ?? 0) > 0 ? (
             <View className="mt-4 mb-8">
-              <View className="flex-row items-baseline justify-between px-5 mb-3">
+              <View className="flex-row items-baseline justify-between px-2 mb-3">
                 <Text className="text-h2 font-semibold text-t1">Albums</Text>
               </View>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                className="overflow-visible -mx-5 px-5"
-                contentContainerStyle={{ gap: 12 }}
+                contentContainerStyle={{ gap: 12, paddingHorizontal: 8 }}
               >
                 {albums.data!.items.map((a) => (
                   <Pressable

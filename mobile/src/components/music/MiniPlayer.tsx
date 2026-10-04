@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '../ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/mode';
@@ -107,7 +108,13 @@ export function MiniPlayer() {
 
         <View className="flex-row items-center gap-0.5">
           <IconButton
-            icon={<Icon name="heart" size={18} color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
+            icon={
+              <Icon
+                name={favourite ? 'heart-filled' : 'heart'}
+                size={18}
+                color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
+              />
+            }
             size={32}
             onPress={() => {
               if (currentTrack) toggleFavourite(currentTrack).catch(() => {});

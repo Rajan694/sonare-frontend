@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -100,8 +101,8 @@ export function EqualizerScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="overflow-visible -mx-5 px-5"
-            contentContainerStyle={{ gap: 8 }}
+            className="-mx-5"
+            contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
           >
             {presets.map((p) => (
               <Chip
@@ -115,7 +116,7 @@ export function EqualizerScreen() {
           </ScrollView>
 
           {/* 8-band equalizer */}
-          <View className="bg-s1 border border-ln rounded-xl p-4.5 pt-4 pb-3.5 gap-3.5">
+          <View className="bg-s1 border border-ln rounded-lg px-[18px] pt-4 pb-3.5 gap-3.5">
             <View className="flex-row justify-between items-center px-1">
               <Text className="text-ll font-semibold text-t2">8-band equalizer</Text>
               <Text className="text-mono-s font-mono text-t3">+12 / −12 dB</Text>
@@ -126,8 +127,7 @@ export function EqualizerScreen() {
                   <Text className="text-mono-s font-mono text-t3">{formatDb(gains[i])}</Text>
                   <Slider
                     orientation="vertical"
-                    origin="center"
-                    className="h-28"
+                    className="h-[150px]"
                     value={gains[i]}
                     min={-EQ_MAX_DB}
                     max={EQ_MAX_DB}
@@ -145,11 +145,11 @@ export function EqualizerScreen() {
           </View>
 
           {/* Effects */}
-          <View className="bg-s1 border border-ln rounded-xl py-1.5 overflow-hidden">
+          <View className="bg-s1 border border-ln rounded-lg py-1.5 overflow-hidden">
             {(
               [
-                { label: 'Bass boost', icon: 'volume', value: bassBoost, key: 'bassBoost' },
-                { label: 'Virtualizer', icon: 'visualizer', value: virtualizer, key: 'virtualizer' },
+                { label: 'Bass boost', icon: 'disc', value: bassBoost, key: 'bassBoost' },
+                { label: 'Virtualizer', icon: 'expand', value: virtualizer, key: 'virtualizer' },
               ] as const
             ).map((effect) => (
               <View key={effect.key} className="flex-row items-center gap-3.5 px-4 py-3 border-b border-ln">
@@ -196,10 +196,10 @@ export function EqualizerScreen() {
         </View>
 
         {/* Playback: these work with the equalizer switched off too. */}
-        <View className="bg-s1 border border-ln rounded-xl py-1.5 overflow-hidden">
+        <View className="bg-s1 border border-ln rounded-lg py-1.5 overflow-hidden">
           <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
             <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-              <Icon name="timer" size={18} color="#7E7E8C" />
+              <Icon name="speed" size={18} color="#7E7E8C" />
             </View>
             <View className="flex-1 gap-0.5 min-w-0">
               <Text className="text-tm font-medium text-t1 truncate">Playback speed</Text>
@@ -258,7 +258,7 @@ export function EqualizerScreen() {
         {output && (
           <Pressable
             onPress={() => usePlayerSheets.getState().show('output')}
-            className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3"
+            className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3"
             accessibilityRole="button"
             accessibilityLabel={`Audio output: ${output.name}`}
           >

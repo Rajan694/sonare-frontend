@@ -169,14 +169,19 @@ describe('Queue', () => {
     expect(queryByText('Next one')).toBeNull();
   });
 
-  it("MOB-Q-003 a song's menu can remove it from the queue", () => {
-    // The row passes "Remove from queue" to the shared song menu.
+  it("MOB-Q-003 a song's × removes it from the queue", () => {
     const { getByLabelText } = render(<QueueScreen />);
-    fireEvent.press(getByLabelText('More options for Next one'));
-    const extra = useTrackMenuStore.getState().extraAction!;
-    expect(extra.label).toBe('Remove from queue');
-    act(() => extra.onPress());
+    fireEvent.press(getByLabelText('Remove Next one from the queue'));
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id]);
+  });
+
+  it('MOB-Q-005 a queued song moves with its handle (screen readers: increment / decrement)', () => {
+    const { getByLabelText } = render(<QueueScreen />);
+    fireEvent(getByLabelText('Reorder Next one'), 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id, next1.id]);
+    // It can't move above the song that's playing.
+    fireEvent(getByLabelText('Reorder Next two'), 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id, next1.id]);
   });
 
   it('MOB-Q-004 saving the queue creates a playlist with every queued song', async () => {

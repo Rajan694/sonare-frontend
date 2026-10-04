@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from './Text';
 import { MotiView, MotiTransitionProp } from 'moti';
 import { springs } from '../../lib/motion';
 import { cn } from '../../lib/cn';

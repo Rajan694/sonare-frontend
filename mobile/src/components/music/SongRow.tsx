@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '../ui/Text';
 import { cn } from '../../lib/cn';
 import { Track } from '../../data/types';
 import { artworkUrl } from '../../data/config';
@@ -41,9 +42,10 @@ export function SongRow({
   const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
   // Only the active row cares, so the others never re-render on play/pause.
   const playing = usePlayerStore((s) => isActive && s.isPlaying);
-  const accent = track.source === 'local' ? '#FFC24D' : '#00E28A';
-  // A finished download is on this phone too.
+  // A finished download is on this phone too, and plays from it: gold, like a local file.
   const onPhone = useDownloadsStore((s) => s.items[track.id]?.status === 'done' && !s.items[track.id]?.missing);
+  const local = track.source === 'local' || onPhone;
+  const accent = local ? '#FFC24D' : '#00E28A';
 
   const subtitle = track.album ? `${track.artist} · ${track.album}` : track.artist;
 
@@ -87,15 +89,12 @@ export function SongRow({
           <View className="flex-row items-center gap-1.5 min-w-0">
             <Text
               numberOfLines={1}
-              className={cn(
-                'text-tm font-medium shrink',
-                isActive ? (track.source === 'local' ? 'text-gold' : 'text-acc') : 'text-t1',
-              )}
+              className={cn('text-tm font-medium shrink', isActive ? (local ? 'text-gold' : 'text-acc') : 'text-t1')}
             >
               {track.title}
             </Text>
-            <SourceGlyph source={onPhone ? 'local' : track.source} size={18} />
-            {favourite && <Icon name="heart" size={12} color={accent} />}
+            <SourceGlyph source={local ? 'local' : 'server'} size={18} />
+            {favourite && <Icon name="heart-filled" size={12} color={accent} />}
           </View>
           <Text numberOfLines={1} className="text-t2 text-bs">
             {subtitle}

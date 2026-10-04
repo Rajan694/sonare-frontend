@@ -1,10 +1,11 @@
 import React from 'react';
-import { View, Text, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { View, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
+import { Ambient } from '../components/music/Ambient';
 import { IconButton } from '../components/ui/IconButton';
-import { Badge } from '../components/ui/Badge';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
@@ -66,7 +67,7 @@ export function NowPlayingScreen() {
   const navigation = useNavigation<any>();
   // The output card and the extra utility buttons need room on shorter phones.
   const { width, height } = useWindowDimensions();
-  const artSize = width - 40 >= 306 && height >= 760 ? 306 : width - 40 >= 240 && height >= 640 ? 240 : 200;
+  const artSize = width - 44 >= 314 && height >= 780 ? 314 : width - 44 >= 240 && height >= 640 ? 240 : 200;
 
   const translateX = useSharedValue(0);
 
@@ -127,6 +128,7 @@ export function NowPlayingScreen() {
 
   return (
     <Screen scrollable={false} className="bg-bg">
+      <Ambient uri={artworkUrl(currentTrack, 64)} />
       <Header
         left={
           <IconButton
@@ -155,17 +157,17 @@ export function NowPlayingScreen() {
           />
         }
       />
-      <View className="flex-1 px-5 pt-1 pb-6">
+      <View className="flex-1 px-[22px] pt-1 pb-[22px]">
         {/* Large Artwork matching M09 (~306px) */}
         <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
-          <AnimatedViewComponent style={artworkStyle} className="self-center mt-2 mb-4">
+          <AnimatedViewComponent style={artworkStyle} className="self-center mt-3 mb-[26px]">
             <View className="relative">
               <Artwork
                 uri={artworkUrl(currentTrack, 640)}
                 fallbackUri={artworkUrl(currentTrack, 300)}
                 size={artSize}
                 rings
-                className="rounded-2xl shadow-2xl"
+                className="rounded-xl shadow-e4"
                 sharedTransitionTag={`artwork-${currentTrack.id}`}
               />
             </View>
@@ -176,7 +178,7 @@ export function NowPlayingScreen() {
           {/* Title and Heart */}
           <View className="flex-row items-center justify-between gap-3">
             <View className="flex-1 gap-1 min-w-0">
-              <Text className="text-h1 font-bold text-t1 truncate" numberOfLines={1}>
+              <Text className="text-h1 font-semibold text-t1 truncate" numberOfLines={1}>
                 {currentTrack.title}
               </Text>
               <Text
@@ -192,7 +194,13 @@ export function NowPlayingScreen() {
               </Text>
             </View>
             <IconButton
-              icon={<Icon name="heart" size={23} color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
+              icon={
+                <Icon
+                  name={favourite ? 'heart-filled' : 'heart'}
+                  size={23}
+                  color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
+                />
+              }
               size={44}
               onPress={() =>
                 requireAccount('Create a free account to save songs you love.', () =>
@@ -219,13 +227,17 @@ export function NowPlayingScreen() {
 
           {/* Badges line: Source pill + Codec */}
           <View className="flex-row items-center gap-2">
-            <Badge
-              label={onDevice ? 'ON THIS DEVICE' : 'STREAMING'}
-              variant={onDevice ? 'local' : 'cloud'}
-              icon={
-                <Icon name={onDevice ? 'smartphone' : 'cloud'} size={12} color={onDevice ? '#FFC24D' : '#00E28A'} />
-              }
-            />
+            <View
+              className={cn(
+                'flex-row items-center gap-1.5 h-6 px-[9px] rounded-full',
+                onDevice ? 'bg-goldbg' : 'bg-accbg',
+              )}
+            >
+              <Icon name={onDevice ? 'smartphone' : 'cloud'} size={13} color={onDevice ? '#FFC24D' : '#00E28A'} />
+              <Text className={cn('text-ls', onDevice ? 'text-gold' : 'text-acc')}>
+                {onDevice ? 'ON THIS DEVICE' : 'STREAMING'}
+              </Text>
+            </View>
             {currentTrack.codec && (
               <Text className="text-mono-s font-mono text-t3">
                 {[
@@ -263,7 +275,7 @@ export function NowPlayingScreen() {
           {/* Transport Controls */}
           <View className="flex-row items-center justify-between mt-1 px-1">
             <IconButton
-              icon={<Icon name="shuffle" size={21} color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#7E7E8C'} />}
+              icon={<Icon name="shuffle" size={21} color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
               size={44}
               onPress={toggleShuffle}
               accessibilityLabel="Toggle shuffle"
@@ -301,7 +313,7 @@ export function NowPlayingScreen() {
 
             <IconButton
               icon={
-                <Icon name="repeat" size={21} color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#7E7E8C'} />
+                <Icon name="repeat" size={21} color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />
               }
               size={44}
               onPress={cycleRepeat}
@@ -310,33 +322,33 @@ export function NowPlayingScreen() {
           </View>
 
           {/* Bottom Utility Row */}
-          <View className="flex-row items-center justify-between mt-1 px-4">
+          <View className="flex-row items-center justify-between mt-2">
             <IconButton
-              icon={<Icon name="lyrics" size={21} color="#7E7E8C" />}
+              icon={<Icon name="lyrics" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => navigation.navigate('Lyrics')}
               accessibilityLabel="Lyrics"
             />
             <IconButton
-              icon={<Icon name="equalizer" size={21} color="#7E7E8C" />}
+              icon={<Icon name="equalizer" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => navigation.navigate('Equalizer')}
               accessibilityLabel="Equalizer"
             />
             <IconButton
-              icon={<Icon name="output" size={21} color="#7E7E8C" />}
+              icon={<Icon name="output" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => showSheet('output')}
               accessibilityLabel="Audio output"
             />
             <IconButton
-              icon={<Icon name="clock" size={21} color={sleepOn ? accent : '#7E7E8C'} />}
+              icon={<Icon name="clock" size={21} color={sleepOn ? accent : '#9A9AA8'} />}
               size={44}
               onPress={() => showSheet('sleep')}
               accessibilityLabel={sleepOn ? 'Sleep timer on' : 'Sleep timer'}
             />
             <IconButton
-              icon={<Icon name="playlist" size={21} color="#7E7E8C" />}
+              icon={<Icon name="queue" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => navigation.navigate('Queue')}
               accessibilityLabel="Queue"
@@ -349,16 +361,18 @@ export function NowPlayingScreen() {
         {/* Audio output card (design M09) */}
         <Pressable
           onPress={() => showSheet('output')}
-          className="flex-row items-center gap-3.5 px-4 py-3 bg-s1 border border-ln rounded-xl"
+          className="flex-row items-center gap-2.5 px-3 py-2.5 bg-[rgba(17,17,20,0.86)] border border-ln2 rounded-[14px]"
           accessibilityRole="button"
           accessibilityLabel={`Audio output: ${output?.name ?? 'Phone speaker'}`}
         >
-          <Icon name={output ? OUTPUT_ICON[output.type] : 'speaker'} size={20} color={accent} />
-          <View className="flex-1 gap-0.5 min-w-0">
-            <Text className="text-tm font-medium text-t1" numberOfLines={1}>
+          <View className="w-[30px] h-[30px] items-center justify-center">
+            <Icon name={output ? OUTPUT_ICON[output.type] : 'output'} size={18} color={accent} />
+          </View>
+          <View className="flex-1 gap-px min-w-0">
+            <Text className="text-ll text-t1" numberOfLines={1}>
               {output?.name ?? 'Phone speaker'}
             </Text>
-            <Text className="text-bs text-t3" numberOfLines={1}>
+            <Text className="text-ls text-t3" numberOfLines={1}>
               {output?.type === 'speaker' || !output
                 ? onDevice
                   ? 'Playing locally · no network used'
@@ -366,7 +380,9 @@ export function NowPlayingScreen() {
                 : outputDetail(output)}
             </Text>
           </View>
-          <Icon name="chevron-right" size={16} color="#7E7E8C" />
+          <View className="w-8 h-8 items-center justify-center">
+            <Icon name="chevron-right" size={16} color="#9A9AA8" />
+          </View>
         </Pressable>
       </View>
     </Screen>

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -137,8 +138,7 @@ export function SearchScreen() {
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            className="overflow-visible -mx-5 px-5"
-            contentContainerStyle={{ gap: 8 }}
+            contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
           >
             {(online ? ONLINE_FILTERS : OFFLINE_FILTERS).map((f) => (
               <Chip
@@ -281,8 +281,8 @@ export function SearchScreen() {
                     <ScrollView
                       horizontal
                       showsHorizontalScrollIndicator={false}
-                      className="overflow-visible -mx-5 px-5"
-                      contentContainerStyle={{ gap: 16 }}
+                      className="-mx-5"
+                      contentContainerStyle={{ gap: 16, paddingHorizontal: 20 }}
                     >
                       {artists.map((item) => (
                         <Pressable

@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, ScrollView, Alert, Pressable } from 'react-native';
+import { View, ScrollView, Alert, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -107,7 +108,7 @@ export function SettingsScreen() {
 
       <ScrollView className="flex-1 px-5 pt-2" contentContainerStyle={{ paddingBottom: 160, gap: 18 }}>
         {/* Account Profile Card */}
-        <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3.5">
+        <View className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3.5">
           <View className="w-[52px] h-[52px] rounded-full bg-s3 items-center justify-center overflow-hidden">
             {user?.displayName ? (
               <Text className="text-t1 text-h2 font-semibold">{user.displayName.charAt(0).toUpperCase()}</Text>
@@ -136,7 +137,7 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Guest / Account actions */}
+        {/* Guests: the way in (signed-in people find Sign out at the bottom) */}
         {!user ? (
           <View className="flex-row gap-2.5">
             <Button
@@ -156,14 +157,10 @@ export function SettingsScreen() {
               Sign in
             </Button>
           </View>
-        ) : (
-          <Button variant="outline" size="sm" onPress={confirmSignOut} accessibilityLabel="Sign out">
-            <Text className="text-red text-bm font-medium">Sign out</Text>
-          </Button>
-        )}
+        ) : null}
 
         {user?.emailVerified === false && (
-          <View className="bg-s1 border border-ln rounded-xl p-3.5 flex-row items-center gap-3">
+          <View className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3">
             <View className="flex-1 gap-0.5">
               <Text className="text-tm font-semibold text-t1">Email not verified</Text>
               <Text className="text-bs text-t3">Verify it so you can reset your password if you forget it.</Text>
@@ -175,7 +172,7 @@ export function SettingsScreen() {
         )}
 
         {/* Connection Mode Section */}
-        <View className="bg-s1 border border-ln rounded-xl p-3.5 gap-3">
+        <View className="bg-s1 border border-ln rounded-lg p-3.5 gap-3">
           <View className="gap-0.5">
             <Text className="text-tm font-semibold text-t1">Connection mode</Text>
             <Text className="text-bs text-t3">Controls what the whole app shows</Text>
@@ -218,10 +215,96 @@ export function SettingsScreen() {
           )}
         </View>
 
+        {/* Playback Settings Group */}
+        <View className="gap-2">
+          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Playback</Text>
+          <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
+            <Pressable
+              onPress={() => navigation.navigate('Equalizer')}
+              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="equalizer" size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Equalizer & effects</Text>
+                <Text className="text-bs text-t3 truncate">8-band EQ, effects, speed & crossfade</Text>
+              </View>
+              <Icon name="chevron-right" size={16} color="#7E7E8C" />
+            </Pressable>
+
+            <Pressable
+              onPress={() => showSheet('output')}
+              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
+              accessibilityRole="button"
+              accessibilityLabel="Audio output"
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="output" size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Audio output</Text>
+                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                  {output?.name ?? 'Phone speaker'}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color="#7E7E8C" />
+            </Pressable>
+            <Pressable
+              onPress={() => showSheet('sleep')}
+              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
+              accessibilityRole="button"
+              accessibilityLabel="Sleep timer"
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="clock" size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Sleep timer</Text>
+                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                  {sleepTimerLabel(sleepTimer)}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color="#7E7E8C" />
+            </Pressable>
+            <Pressable
+              onPress={() => showSheet('lyrics')}
+              className="flex-row items-center gap-3.5 px-4 py-3.5"
+              accessibilityRole="button"
+              accessibilityLabel="Lyrics language"
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="lyrics" size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Lyrics language</Text>
+                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                  {lyricsScriptLabel(lyricsScript)}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color="#7E7E8C" />
+            </Pressable>
+          </View>
+        </View>
+
         {/* Downloads */}
         <View className="gap-2">
-          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Downloads</Text>
-          <View className="bg-s1 border border-ln rounded-xl overflow-hidden">
+          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Library</Text>
+          <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
+            <Pressable
+              onPress={() => navigation.navigate('Folders')}
+              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="folder" size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Music folders</Text>
+                <Text className="text-bs text-t3 truncate">Not available on this phone yet</Text>
+              </View>
+              <Icon name="chevron-right" size={16} color="#7E7E8C" />
+            </Pressable>
+
             <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
               <View className="gap-0.5">
                 <Text className="text-tm font-medium text-t1">Download quality</Text>
@@ -264,7 +347,7 @@ export function SettingsScreen() {
               accessibilityLabel="Download location"
             >
               <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="folder" size={18} color="#7E7E8C" />
+                <Icon name="folder" size={18} color="#9A9AA8" />
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Download location</Text>
@@ -281,7 +364,7 @@ export function SettingsScreen() {
               accessibilityLabel="Manage downloads"
             >
               <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="download" size={18} color="#7E7E8C" />
+                <Icon name="download" size={18} color="#9A9AA8" />
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Manage downloads</Text>
@@ -294,95 +377,10 @@ export function SettingsScreen() {
           </View>
         </View>
 
-        {/* Playback Settings Group */}
-        <View className="gap-2">
-          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Playback</Text>
-          <View className="bg-s1 border border-ln rounded-xl py-1 overflow-hidden">
-            <Pressable
-              onPress={() => navigation.navigate('Equalizer')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="equalizer" size={18} color="#7E7E8C" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Equalizer & effects</Text>
-                <Text className="text-bs text-t3 truncate">8-band EQ, effects, speed & crossfade</Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
-
-            <Pressable
-              onPress={() => showSheet('output')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
-              accessibilityRole="button"
-              accessibilityLabel="Audio output"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="output" size={18} color="#7E7E8C" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Audio output</Text>
-                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                  {output?.name ?? 'Phone speaker'}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
-            <Pressable
-              onPress={() => showSheet('sleep')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
-              accessibilityRole="button"
-              accessibilityLabel="Sleep timer"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="clock" size={18} color="#7E7E8C" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Sleep timer</Text>
-                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                  {sleepTimerLabel(sleepTimer)}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
-            <Pressable
-              onPress={() => showSheet('lyrics')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
-              accessibilityRole="button"
-              accessibilityLabel="Lyrics language"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="lyrics" size={18} color="#7E7E8C" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Lyrics language</Text>
-                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                  {lyricsScriptLabel(lyricsScript)}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('Folders')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="folder" size={18} color="#7E7E8C" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Music folders</Text>
-                <Text className="text-bs text-t3 truncate">Not available on this phone yet</Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
-          </View>
-        </View>
-
         {/* Connection: which backend this phone talks to */}
         <View className="gap-2">
           <Text className="text-ov font-semibold text-t3 uppercase pl-1">Server</Text>
-          <View className="bg-s1 border border-ln rounded-xl py-1 overflow-hidden">
+          <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
             <Pressable
               onPress={() => showSheet('server')}
               className="flex-row items-center gap-3.5 px-4 py-3.5"
@@ -390,7 +388,7 @@ export function SettingsScreen() {
               accessibilityLabel="Server address"
             >
               <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="server" size={18} color="#7E7E8C" />
+                <Icon name="server" size={18} color="#9A9AA8" />
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Server address</Text>
@@ -402,6 +400,30 @@ export function SettingsScreen() {
             </Pressable>
           </View>
         </View>
+
+        {user && (
+          <View className="gap-2">
+            <Text className="text-ov font-semibold text-t3 uppercase pl-1">Account</Text>
+            <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
+              <Pressable
+                onPress={confirmSignOut}
+                className="flex-row items-center gap-3.5 px-4 py-3.5"
+                accessibilityRole="button"
+                accessibilityLabel="Sign out"
+              >
+                <View className="w-9 h-9 items-center justify-center rounded-sm bg-[rgba(255,77,94,0.12)]">
+                  <Icon name="logout" size={18} color="#FF4D5E" />
+                </View>
+                <View className="flex-1 gap-0.5 min-w-0">
+                  <Text className="text-tm font-medium text-red">Sign out</Text>
+                  <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                    From this phone only
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        )}
       </ScrollView>
     </Screen>
   );

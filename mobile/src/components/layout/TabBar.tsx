@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Pressable } from 'react-native';
+import { Text } from '../ui/Text';
 import { cn } from '../../lib/cn';
 
 interface TabBarProps {

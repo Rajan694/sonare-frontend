@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../ui/Text';
 import { create } from 'zustand';
 import { OptionSheet } from '../ui/OptionSheet';
 import { Sheet } from '../ui/Sheet';

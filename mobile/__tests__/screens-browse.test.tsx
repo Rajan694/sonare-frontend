@@ -84,10 +84,10 @@ describe('Home', () => {
   it('MOB-HOME-003 a guest is invited to sign in and no account data is requested', async () => {
     const recentSpy = stub('recentlyPlayed', async () => page([]));
     const favSpy = stub('favourites', async () => page([]));
-    const { getByText, getByLabelText } = render(<HomeScreen />);
+    const { getByText } = render(<HomeScreen />);
     expect(getByText('Welcome to Sonare')).toBeTruthy();
     expect(getByText("You're listening as a guest")).toBeTruthy();
-    fireEvent.press(getByLabelText('Sign in'));
+    fireEvent.press(getByText('Sign in'));
     expect(nav.navigate).toHaveBeenCalledWith('SignIn', { mode: 'signin' });
     expect(recentSpy).not.toHaveBeenCalled();
     expect(favSpy).not.toHaveBeenCalled();
@@ -112,15 +112,17 @@ describe('Home', () => {
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual(chart.map((t) => t.id));
   });
 
-  it('MOB-HOME-005 choosing Offline asks first; the header opens search and settings', () => {
-    const { getByLabelText } = render(<HomeScreen />);
+  it('MOB-HOME-005 choosing Offline asks first; the header opens search, and the profile opens settings', () => {
+    const { getByLabelText, queryByLabelText } = render(<HomeScreen />);
+    // No separate settings button next to the profile.
+    expect(queryByLabelText('Settings')).toBeNull();
     fireEvent.press(getByLabelText('Offline'));
     expect(nav.navigate).toHaveBeenCalledWith('ModeSwitch', {
       targetMode: 'offline',
     });
     expect(useModeStore.getState().mode).toBe('online');
     fireEvent.press(getByLabelText('Search'));
-    fireEvent.press(getByLabelText('Settings'));
+    fireEvent.press(getByLabelText('Profile and settings'));
     expect(nav.navigate).toHaveBeenCalledWith('Search');
     expect(nav.navigate).toHaveBeenCalledWith('Settings');
   });

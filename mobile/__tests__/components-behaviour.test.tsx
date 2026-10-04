@@ -79,8 +79,15 @@ describe('small pieces', () => {
   it('MOB-COMP-007 Icon draws the mapped glyph at its size and colour, and nothing for an unknown name', () => {
     const { toJSON, rerender } = render(<Icon name="play" size={24} color="#00E28A" />);
     const el = toJSON() as { type: string; props: Record<string, unknown> };
-    expect(el.type).toBe('Icon-Play');
-    expect(el.props).toMatchObject({ size: 24, color: '#00E28A' });
+    // The design's own glyph: play is a solid shape, so the colour is its fill.
+    expect(el.type).toBe('Svg');
+    expect(el.props).toMatchObject({ testID: 'icon-play', width: 24, height: 24, fill: '#00E28A', stroke: 'none' });
+    rerender(<Icon name="search" size={20} color="#9A9AA8" />);
+    expect((toJSON() as { props: Record<string, unknown> }).props).toMatchObject({
+      testID: 'icon-search',
+      fill: 'none',
+      stroke: '#9A9AA8',
+    });
     rerender(<Icon name={'no-such-icon' as never} />);
     expect(toJSON()).toBeNull();
   });
@@ -97,10 +104,10 @@ describe('small pieces', () => {
 
   it('MOB-COMP-023 SourceGlyph shows a gold phone for local files and a green cloud for the server', () => {
     const local = render(<SourceGlyph source="local" />);
-    expect(JSON.stringify(local.toJSON())).toMatch(/Icon-Smartphone.*#FFC24D/);
+    expect(JSON.stringify(local.toJSON())).toMatch(/icon-smartphone.*#FFC24D/);
     const server = render(<SourceGlyph source="server" size={20} />);
-    expect(JSON.stringify(server.toJSON())).toMatch(/Icon-Cloud.*#00E28A/);
-    expect(JSON.stringify(server.toJSON())).toContain('"size":12');
+    expect(JSON.stringify(server.toJSON())).toMatch(/icon-cloud.*#00E28A/);
+    expect(JSON.stringify(server.toJSON())).toContain('"width":12');
   });
 
   it('MOB-COMP-013 Toast shows its message and detail, and fades out when hidden', () => {
@@ -194,7 +201,7 @@ describe('mini player', () => {
     usePlayerStore.setState({ currentTrack: song });
     useDownloadsStore.setState({ items: { [song.id]: makeDownload(song) } });
     const saved = render(<MiniPlayer />);
-    expect(JSON.stringify(saved.toJSON())).toContain('Icon-Smartphone');
+    expect(JSON.stringify(saved.toJSON())).toContain('icon-smartphone');
   });
 });
 

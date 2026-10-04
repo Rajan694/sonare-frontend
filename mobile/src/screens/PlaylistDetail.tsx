@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, FlatList, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -10,6 +11,7 @@ import { DownloadAllButton } from '../components/music/DownloadAllButton';
 import { Badge } from '../components/ui/Badge';
 import { Sheet } from '../components/ui/Sheet';
 import { Artwork } from '../components/music/Artwork';
+import { Ambient } from '../components/music/Ambient';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
@@ -74,6 +76,7 @@ export function PlaylistDetailScreen() {
 
   return (
     <Screen scrollable={false}>
+      <Ambient uri={tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 64) : undefined} />
       <Header
         title={<Text className="text-ll font-medium text-t2">Playlist</Text>}
         left={
@@ -119,7 +122,7 @@ export function PlaylistDetailScreen() {
                 <Text className="text-t3 text-bs">{own ? 'Made by you' : 'Online playlist'}</Text>
                 <View className="flex-row items-center gap-1.5 flex-wrap mt-0.5">
                   {info?.kind === 'synced' && (
-                    <Badge label="Synced" variant="neutral" icon={<Icon name="refresh" size={10} color="#9A9AA8" />} />
+                    <Badge label="Synced" variant="download" icon={<Icon name="refresh" size={10} color="#4DA3FF" />} />
                   )}
                   {own && info?.downloadedCount ? (
                     <Badge
@@ -140,7 +143,13 @@ export function PlaylistDetailScreen() {
               <View className="flex-row items-center gap-1">
                 {!own && (
                   <IconButton
-                    icon={<Icon name="heart" size={20} color={isSaved ? '#00E28A' : '#9A9AA8'} />}
+                    icon={
+                      <Icon
+                        name={isSaved ? 'heart-filled' : 'heart'}
+                        size={20}
+                        color={isSaved ? '#00E28A' : '#9A9AA8'}
+                      />
+                    }
                     size={44}
                     onPress={toggleSaved}
                     accessibilityLabel="Favourite playlist"

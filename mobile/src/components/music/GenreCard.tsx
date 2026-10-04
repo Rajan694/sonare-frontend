@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, Text, StyleSheet } from 'react-native';
+import { Pressable, StyleSheet } from 'react-native';
+import { Text } from '../ui/Text';
 import Svg, { Defs, LinearGradient, Stop, Rect, Circle } from 'react-native-svg';
 import { artGradients } from '../../data/gradients';
 
@@ -34,14 +35,17 @@ const KEYS = Object.keys(artGradients);
 export function GenreCard({ genre, index, onPress }: { genre: Genre; index: number; onPress: () => void }) {
   const stops = artGradients[KEYS[index % KEYS.length]];
   const id = `genre-${genre.id}`;
+  // A percentage-sized Svg only paints its first measured width, so it gets the card's real size.
+  const [size, setSize] = React.useState({ width: 0, height: 0 });
   return (
     <Pressable
       onPress={onPress}
-      className="flex-1 h-[84px] rounded-lg overflow-hidden justify-end p-3 active:opacity-80"
+      onLayout={(e) => setSize({ width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height })}
+      className="flex-1 h-[92px] rounded-md overflow-hidden justify-end p-3.5 bg-s2 active:opacity-80"
       accessibilityRole="button"
       accessibilityLabel={`Browse ${genre.name}`}
     >
-      <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+      <Svg style={StyleSheet.absoluteFill} width={size.width} height={size.height}>
         <Defs>
           <LinearGradient id={id} x1="0%" y1="0%" x2="82%" y2="100%">
             <Stop offset="0%" stopColor={stops[0]} />
@@ -49,7 +53,7 @@ export function GenreCard({ genre, index, onPress }: { genre: Genre; index: numb
             <Stop offset="100%" stopColor={stops[2]} />
           </LinearGradient>
         </Defs>
-        <Rect width="100%" height="100%" fill={`url(#${id})`} />
+        <Rect width={size.width} height={size.height} fill={`url(#${id})`} />
         <Circle cx="85%" cy="20%" r="46" stroke="rgba(255,255,255,0.07)" strokeWidth="1" fill="none" />
         <Circle cx="85%" cy="20%" r="78" stroke="rgba(255,255,255,0.04)" strokeWidth="1" fill="none" />
       </Svg>

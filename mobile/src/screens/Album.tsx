@@ -1,9 +1,11 @@
 import React from 'react';
-import { View, Text, FlatList, Pressable } from 'react-native';
+import { View, FlatList, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
+import { Ambient } from '../components/music/Ambient';
 import { SongRow } from '../components/music/SongRow';
 import { DownloadAllButton } from '../components/music/DownloadAllButton';
 import { Badge } from '../components/ui/Badge';
@@ -59,6 +61,7 @@ export function AlbumScreen() {
 
   return (
     <Screen scrollable={false}>
+      <Ambient uri={artworkUrl(info, 64)} />
       <Header
         title={<Text className="text-ll font-medium text-t2">Album</Text>}
         left={
@@ -75,7 +78,6 @@ export function AlbumScreen() {
         keyExtractor={(item, index) => `${item.id}:${index}`}
         ListHeaderComponent={
           <View className="px-5 pt-2 pb-4 items-center">
-            {/* Ambient artwork-derived blur background */}
             <View className="items-center mb-3.5">
               <Artwork uri={artworkUrl(info, 300)} size={200} rings className="rounded-lg shadow-e4" />
             </View>
@@ -114,7 +116,13 @@ export function AlbumScreen() {
             <View className="flex-row items-center justify-between w-full pt-1 px-1">
               <View className="flex-row items-center gap-1">
                 <IconButton
-                  icon={<Icon name="heart" size={20} color={favourite ? '#00E28A' : '#9A9AA8'} />}
+                  icon={
+                    <Icon
+                      name={favourite ? 'heart-filled' : 'heart'}
+                      size={20}
+                      color={favourite ? '#00E28A' : '#9A9AA8'}
+                    />
+                  }
                   size={44}
                   onPress={toggleFavourite}
                   accessibilityLabel="Favourite album"

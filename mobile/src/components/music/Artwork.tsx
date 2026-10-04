@@ -50,8 +50,9 @@ export function Artwork({
     );
   }
 
-  // Draw gradient matching the specific variant or a valid gradient
-  const stops = gradKey ? artGradients[gradKey] : gradient;
+  // Draw gradient matching the specific variant or a valid gradient; a cover that is missing or
+  // can't load (offline, say) gets the design's generated artwork, the same one every time.
+  const stops = gradKey ? artGradients[gradKey] : (gradient ?? generatedArt(primaryUri ?? fallbackUri ?? ''));
   if (stops) {
     // Two colours run corner to corner; a third adds a stop in the middle.
     const offsets = stops.length > 2 ? ['0%', '45%', '100%'] : ['0%', '100%'];
@@ -112,4 +113,13 @@ export function Artwork({
       sharedTransitionTag={sharedTransitionTag}
     />
   );
+}
+
+const GENERATED = Object.values(artGradients);
+
+/** One of the design's a1-a12 gradients, chosen by the cover's address so it doesn't change. */
+function generatedArt(seed: string) {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
+  return GENERATED[Math.abs(h) % GENERATED.length];
 }

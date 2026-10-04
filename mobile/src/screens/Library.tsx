@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, FlatList, Text, RefreshControl, Pressable } from 'react-native';
+import { View, FlatList, RefreshControl, Pressable, useWindowDimensions } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Button } from '../components/ui/Button';
@@ -44,6 +45,9 @@ const SORTS: { value: Sort; label: string; icon: IconName }[] = [
 const LIBRARY_FROM = { kind: 'Library', name: 'Your songs' };
 
 export function LibraryScreen() {
+  const { width: screenWidth } = useWindowDimensions();
+  // Grid cells get an exact width: flex-1 would stretch the items of a short last row.
+  const cell = (columns: number, gap: number) => ({ width: (screenWidth - 24 - gap * (columns - 1)) / columns });
   const navigation = useNavigation<any>();
   const setMode = useModeStore((state) => state.setMode);
   const mode = useModeStore((state) => state.mode);
@@ -238,7 +242,8 @@ export function LibraryScreen() {
                   viewMode === 'grid' ? (
                     <Pressable
                       onPress={() => playTrack(item, displayTracks, LIBRARY_FROM)}
-                      className="flex-1 p-1 mb-3"
+                      className="p-1 mb-3"
+                      style={cell(2, 12)}
                       accessibilityRole="button"
                       accessibilityLabel={`Play ${item.title} by ${item.artist}`}
                     >
@@ -335,7 +340,8 @@ export function LibraryScreen() {
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => navigation.navigate('Album', { id: item.id })}
-                  className="flex-1 p-1 mb-3"
+                  className="p-1 mb-3"
+                  style={cell(2, 12)}
                   accessibilityRole="button"
                   accessibilityLabel={`${item.title} by ${item.artist}`}
                 >
@@ -376,7 +382,8 @@ export function LibraryScreen() {
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => navigation.navigate('Artist', { id: item.id })}
-                  className="flex-1 items-center gap-1.5 mb-4"
+                  className="items-center gap-1.5 mb-4"
+                  style={cell(3, 8)}
                   accessibilityRole="button"
                   accessibilityLabel={item.name}
                 >

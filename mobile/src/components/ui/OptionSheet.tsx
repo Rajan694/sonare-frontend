@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, Pressable, ScrollView } from 'react-native';
+import { View, Pressable, ScrollView } from 'react-native';
+import { Text } from './Text';
 import { Sheet } from './Sheet';
 import Icon, { type IconName } from './Icon';
 import { cn } from '../../lib/cn';

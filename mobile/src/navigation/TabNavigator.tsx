@@ -15,7 +15,6 @@ import { FoldersScreen } from '../screens/Folders';
 import { DownloadsScreen } from '../screens/Downloads';
 import { EqualizerScreen } from '../screens/Equalizer';
 import { MiniPlayer } from '../components/music/MiniPlayer';
-import { Toast } from '../components/ui/Toast';
 import { useModeStore } from '../store/mode';
 import Icon from '../components/ui/Icon';
 
@@ -51,12 +50,12 @@ const PlaylistsStack = tabStack('PlaylistsRoot', PlaylistsScreen);
 const SearchStack = tabStack('SearchRoot', SearchScreen);
 
 export function TabNavigator() {
-  const mode = useModeStore((state) => state.mode);
   const toastVisible = useModeStore((state) => state.toastVisible);
   const hideToast = useModeStore((state) => state.hideToast);
   // Clear the Android gesture bar / iOS home indicator; a fixed height alone puts labels under it.
   const insets = useSafeAreaInsets();
 
+  // The mode toast itself is ModeToast in RootNavigator (one toast per switch).
   React.useEffect(() => {
     if (toastVisible) {
       const t = setTimeout(hideToast, 3000);
@@ -86,12 +85,14 @@ export function TabNavigator() {
             paddingTop: 8,
           },
           tabBarLabelStyle: {
+            fontFamily: 'Geist',
             fontSize: 10,
             fontWeight: '600',
             letterSpacing: 0.3,
             marginTop: 4,
           },
-          tabBarActiveTintColor: mode === 'offline' ? '#FFC24D' : '#00E28A',
+          // Green in both modes (M01 / M02): the tab is navigation, not a source.
+          tabBarActiveTintColor: '#00E28A',
           tabBarInactiveTintColor: '#7E7E8C',
         }}
       >
@@ -125,11 +126,6 @@ export function TabNavigator() {
         />
       </Tab.Navigator>
       <MiniPlayer />
-      <Toast
-        visible={toastVisible}
-        message={mode === 'online' ? 'Online Mode enabled' : 'Offline Mode enabled'}
-        mode={mode}
-      />
     </View>
   );
 }

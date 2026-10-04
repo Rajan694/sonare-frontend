@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, Text, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable } from 'react-native';
+import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -211,7 +212,7 @@ export function DownloadsScreen() {
         {active.length > 0 && (
           <View className="gap-2">
             <Text className="text-t3 text-ov uppercase ml-1">In progress</Text>
-            <View className="bg-s1 border border-ln rounded-xl overflow-hidden">
+            <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
               {active.map((d, i) => {
                 const pct = downloadProgress(d) ?? 0;
                 const isRunning = d.status === 'queued' || d.status === 'downloading';
@@ -280,7 +281,7 @@ export function DownloadsScreen() {
                 <Text className="text-t2 text-bs">Delete all</Text>
               </Pressable>
             </View>
-            <View className="bg-s1 border border-ln rounded-xl overflow-hidden">
+            <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
               {done.map((d, i) => (
                 <View key={d.id} className={cn(i > 0 && 'border-t border-ln')}>
                   <Row

@@ -5,7 +5,8 @@ import { generatePeaks } from '../../lib/format';
 
 const BARS = 76;
 const MIN_H = 4;
-const MAX_H = 26;
+// The design's .wave (34px tall in Now Playing) and .wave-sm (22px in the Lyrics bar).
+const HEIGHT = { md: 34, sm: 22 } as const;
 
 interface WaveformProps {
   trackId: string;
@@ -15,15 +16,18 @@ interface WaveformProps {
   peaks?: number[] | null;
   /** Tap-to-seek; receives the tapped position as a 0..1 fraction. */
   onSeek?: (fraction: number) => void;
+  size?: keyof typeof HEIGHT;
   className?: string;
 }
 
-export function Waveform({ trackId, progress, mode, peaks, onSeek, className }: WaveformProps) {
+export function Waveform({ trackId, progress, mode, peaks, onSeek, size = 'md', className }: WaveformProps) {
+  const maxH = HEIGHT[size] - 4;
   const heights = React.useMemo(() => {
-    if (!peaks?.length) return generatePeaks(trackId, BARS);
+    // The stand-in shape is drawn for the 26px rail; scale it to this one.
+    if (!peaks?.length) return generatePeaks(trackId, BARS).map((h) => (h * maxH) / 26);
     const max = Math.max(...peaks) || 1;
-    return peaks.map((p) => MIN_H + (p / max) * (MAX_H - MIN_H));
-  }, [trackId, peaks]);
+    return peaks.map((p) => MIN_H + (p / max) * (maxH - MIN_H));
+  }, [trackId, peaks, maxH]);
   const activeIndex = Math.floor(progress * heights.length);
   const [width, setWidth] = React.useState(0);
 
@@ -36,7 +40,12 @@ export function Waveform({ trackId, progress, mode, peaks, onSeek, className }: 
       accessibilityLabel="Seek"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
     >
-      <View className={cn('flex-row items-end gap-[2px] h-[32px] w-full', className)} pointerEvents="none">
+      {/* Thin 2px bars centred on the line (3px white playhead), spread across the rail. */}
+      <View
+        className={cn('flex-row items-center justify-between w-full', className)}
+        style={{ height: HEIGHT[size] }}
+        pointerEvents="none"
+      >
         {heights.map((height, i) => {
           const isPlayed = i < activeIndex;
           const isPlayhead = i === activeIndex;
@@ -51,7 +60,7 @@ export function Waveform({ trackId, progress, mode, peaks, onSeek, className }: 
           return (
             <View
               key={i}
-              className={cn('flex-1 rounded-full', bgColor)}
+              className={cn('rounded-full', bgColor)}
               style={{
                 height: Math.max(MIN_H, height),
                 width: isPlayhead ? 3 : 2,
