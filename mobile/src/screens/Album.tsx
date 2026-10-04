@@ -28,6 +28,7 @@ export function AlbumScreen() {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
 
   const album = useAsync(() => api.album(id), [id]);
+  const from = album.data ? { kind: 'Album', name: album.data.title } : undefined;
   const tracksQuery = useAsync(() => api.albumTracks(id), [id]);
   const tracks = tracksQuery.data?.items ?? [];
   const info = album.data;
@@ -51,7 +52,7 @@ export function AlbumScreen() {
   const playAll = (shuffled: boolean) => {
     if (!tracks.length) return;
     if (shuffled !== shuffle) toggleShuffle();
-    playTrack(shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0], tracks);
+    playTrack(shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0], tracks, from);
   };
 
   const isCurrentAlbumPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
@@ -163,7 +164,7 @@ export function AlbumScreen() {
         renderItem={({ item, index }) => (
           <SongRow
             track={item}
-            onPress={() => playTrack(item, tracks)}
+            onPress={() => playTrack(item, tracks, from)}
             isActive={currentTrack?.id === item.id}
             showArtwork={false}
             index={index}

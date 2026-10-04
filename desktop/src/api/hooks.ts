@@ -4,6 +4,7 @@ import { useLocalLibrary } from '../storage/local';
 import { onFavouritesSaved } from './favourites';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
 import type { Folder, User } from '../types';
+import { useDevicePrefs } from '../storage/devicePrefs';
 
 export interface AsyncState<T> {
   data: T | null;
@@ -267,9 +268,10 @@ export function useMyPlaylists() {
 }
 
 export function useLyrics(trackId: string | undefined, prefer: 'synced' | 'plain' = 'synced') {
+  const { lyricsScript } = useDevicePrefs();
   return useAsync(
-    () => (trackId ? api.getLyrics(trackId, prefer) : Promise.reject(new Error('Missing track id'))),
-    [trackId, prefer],
+    () => (trackId ? api.getLyrics(trackId, prefer, lyricsScript) : Promise.reject(new Error('Missing track id'))),
+    [trackId, prefer, lyricsScript],
     // Local files are unknown to the server; their lyrics come from the editor only.
     { enabled: !!trackId && !trackId.startsWith('local:') },
   );

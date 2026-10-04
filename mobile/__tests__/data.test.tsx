@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Keychain from 'react-native-keychain';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
-import { API_BASE, API_ORIGIN, absoluteUrl, artworkUrl } from '../src/data/config';
+import { apiBase, apiOrigin, absoluteUrl, artworkUrl } from '../src/data/config';
 import { httpRequest, NetworkError } from '../src/data/http';
 import { useAuthStore } from '../src/data/auth';
 import { api, ApiError, isOwnPlaylist } from '../src/data/api';
@@ -35,12 +35,12 @@ describe('Data Layer', () => {
 
   describe('config.ts', () => {
     it('MOB-DATA-001 formats API_BASE and API_ORIGIN for default dev environment', () => {
-      expect(API_BASE).toContain('3010');
-      expect(API_ORIGIN).toContain('10.0.2.2:3010');
+      expect(apiBase()).toContain('3010');
+      expect(apiOrigin()).toContain('localhost:3010');
     });
 
     it('MOB-DATA-002 absoluteUrl resolves relative paths and returns full URLs as-is; returns undefined for null', () => {
-      expect(absoluteUrl('/api/v1/tracks/1')).toBe('http://10.0.2.2:3010/api/v1/tracks/1');
+      expect(absoluteUrl('/api/v1/tracks/1')).toBe('http://localhost:3010/api/v1/tracks/1');
       expect(absoluteUrl('https://example.com/art.jpg')).toBe('https://example.com/art.jpg');
       expect(absoluteUrl(null)).toBeUndefined();
       expect(absoluteUrl(undefined)).toBeUndefined();
@@ -48,10 +48,10 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-003 artworkUrl generates formatted artwork URL with size parameter', () => {
       expect(artworkUrl({ thumbnail: '/api/v1/tracks/1/artwork' }, 300)).toBe(
-        'http://10.0.2.2:3010/api/v1/tracks/1/artwork?size=300',
+        'http://localhost:3010/api/v1/tracks/1/artwork?size=300',
       );
       expect(artworkUrl({ thumbnail: '/api/v1/tracks/1/artwork' })).toBe(
-        'http://10.0.2.2:3010/api/v1/tracks/1/artwork?size=140',
+        'http://localhost:3010/api/v1/tracks/1/artwork?size=140',
       );
       expect(artworkUrl(null)).toBeUndefined();
       expect(artworkUrl({ thumbnail: 'https://cdn.example.com/art.png' }, 200 as any)).toBe(
@@ -128,7 +128,7 @@ describe('Data Layer', () => {
       }
       global.XMLHttpRequest = OriginXHR as any;
 
-      await httpRequest(`${API_ORIGIN}/api/v1/test`, {
+      await httpRequest(`${apiOrigin()}/api/v1/test`, {
         headers: { 'Custom-Header': 'val' },
       });
       expect(setHeaders['X-Sonare-Client']).toBe('mobile');

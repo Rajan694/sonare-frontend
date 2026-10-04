@@ -9,7 +9,11 @@ const mockSonarePlayerNative = {
   setTransitions: jest.fn(),
   setSpeed: jest.fn(),
   setAudioEffects: jest.fn(),
-  getOutputDevice: jest.fn().mockResolvedValue({ type: 'speaker', name: 'Phone speaker' }),
+  getOutputDevice: jest.fn().mockResolvedValue({ id: 1, type: 'speaker', name: 'Phone speaker' }),
+  getOutputDevices: jest.fn().mockResolvedValue([{ id: 1, type: 'speaker', name: 'Phone speaker' }]),
+  setOutputDevice: jest.fn(),
+  setSleepTimer: jest.fn(),
+  setPauseAtEndOfTrack: jest.fn(),
 };
 
 const mockSonareDownloadsNative = {
@@ -169,6 +173,7 @@ jest.mock('react-native', () => {
     KeyboardAvoidingView: 'KeyboardAvoidingView',
     RefreshControl: 'RefreshControl',
     StatusBar: mockStatusBar,
+    useWindowDimensions: jest.fn(() => ({ width: 412, height: 915, scale: 2.625, fontScale: 1 })),
     Dimensions: {
       get: jest.fn().mockReturnValue({ width: 1080, height: 2400 }),
       addEventListener: jest.fn(() => ({ remove: jest.fn() })),

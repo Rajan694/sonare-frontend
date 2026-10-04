@@ -40,6 +40,14 @@ function toLrc(lines: { atMs: number; text: string }[]): string {
     .join('\n');
 }
 
+/**
+ * What a guest tried before being sent to sign in. The gate runs its action while this
+ * screen is still unmounted, so the action only records the intent and the screen carries
+ * it out once it's back with the lyrics loaded.
+ */
+type Resume = { kind: 'edit' } | { kind: 'offset'; delta: number };
+let resumeAfterSignIn: Resume | null = null;
+
 export default function Lyrics() {
   const navigate = useNavigate();
   const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/now-playing'));
@@ -85,6 +93,13 @@ export default function Lyrics() {
     lineRefs.current[activeLineIndex]?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, [activeLineIndex, autoScroll]);
 
+  // Back from signing in: finish what the guest started, once the lyrics have loaded.
+  const resumeRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!resumeAfterSignIn || loading || !isAuthenticated()) return;
+    resumeRef.current();
+  }, [loading, currentTrack?.id]);
+
   if (!currentTrack) {
     return (
       <div className="@container flex items-center justify-center h-full p-8">
@@ -112,10 +127,13 @@ export default function Lyrics() {
 
   // Server lyrics are saved to the account; a guest signs in first and then carries on here.
   const needsAccount = !isLocal && !isAuthenticated();
-  const askToSignIn = () => requireAccount('Create a free account to fix lyrics and their timing.', () => {});
+  const askToSignIn = (resume: Resume) =>
+    requireAccount('Create a free account to fix lyrics and their timing.', () => {
+      resumeAfterSignIn = resume;
+    });
 
   function changeOffset(delta: number) {
-    if (needsAccount) return askToSignIn();
+    if (needsAccount) return askToSignIn({ kind: 'offset', delta });
     const next = offsetMs + delta;
     setOffsetMs(next);
     const save = isLocal ? localLibrary.setLyricsOffset(trackId, next) : api.updateLyricsOffset(trackId, next);
@@ -134,13 +152,14 @@ export default function Lyrics() {
   }
 
   function startEditing() {
-    if (needsAccount) return askToSignIn();
+    if (needsAccount) return askToSignIn({ kind: 'edit' });
     setDraft(synced ? toLrc(lines) : plainText);
     setEditing(true);
   }
 
   function importFile() {
-    if (needsAccount) return askToSignIn();
+    // A file picker needs a click of its own, so after signing in this opens the editor.
+    if (needsAccount) return askToSignIn({ kind: 'edit' });
     fileInput.current?.click();
   }
 
@@ -170,6 +189,13 @@ export default function Lyrics() {
       showToast({ title: 'Could not save lyrics', icon: 'info' });
     }
   }
+
+  resumeRef.current = () => {
+    const resume = resumeAfterSignIn;
+    resumeAfterSignIn = null;
+    if (resume?.kind === 'edit') startEditing();
+    else if (resume?.kind === 'offset') changeOffset(resume.delta);
+  };
 
   const glow = isOffline ? '0 0 30px rgba(255,194,77,.35)' : '0 0 30px rgba(0,226,138,.35)';
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Pressable, Dimensions, StyleSheet, Modal } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
+import { springs } from '../../lib/motion';
 import { GestureHandlerRootView, PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 
 interface SheetProps {
@@ -10,7 +11,7 @@ interface SheetProps {
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const SPRING_CONFIG = { damping: 20, stiffness: 300 };
+const SPRING_CONFIG = springs.sheet;
 
 export function Sheet({ visible, onClose, children }: SheetProps) {
   const translateY = useSharedValue(SCREEN_HEIGHT);

@@ -1,6 +1,7 @@
 import { API_BASE, getAccessToken, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
 import type { Track, Album, Artist, Playlist, Page, User } from '../types';
+import type { LyricsScript } from '../storage/devicePrefs';
 
 export class ApiError extends Error {
   public status: number;
@@ -115,7 +116,7 @@ export const api = {
   },
 
   getGenres() {
-    return request<{ id: string; name: string }[]>('/genres');
+    return request<{ id: string; name: string; query?: string }[]>('/genres');
   },
 
   getTrack(id: string) {
@@ -202,7 +203,7 @@ export const api = {
   },
 
   // Lyrics
-  getLyrics(id: string, prefer: 'synced' | 'plain' = 'synced') {
+  getLyrics(id: string, prefer: 'synced' | 'plain' = 'synced', script: LyricsScript = 'original') {
     return request<{
       synced: boolean;
       provider: string;
@@ -211,7 +212,7 @@ export const api = {
       plain?: string;
       attribution?: { name: string; url: string };
     }>(`/tracks/${encodeURIComponent(id)}/lyrics`, {
-      params: { prefer },
+      params: script === 'original' ? { prefer } : { prefer, script },
     });
   },
 

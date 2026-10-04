@@ -1,6 +1,7 @@
 import '@testing-library/jest-dom';
 import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import { cancelOpenDialog } from '../src/store/dialogs';
 
 // Web mode setup: No NL_* globals or NL_MODE === 'browser'
 (window as any).NL_MODE = 'browser';
@@ -47,6 +48,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  // A dialog left open would keep catching Escape in the next test.
+  cancelOpenDialog();
   cleanup();
   vi.clearAllMocks();
 });

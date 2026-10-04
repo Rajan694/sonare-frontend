@@ -5,7 +5,7 @@
 // Ids are namespaced: `yt:…` for server content, `sonare:…` for the user's own playlists,
 // `local:…` for device files.
 
-export type Source = 'local' | 'server';
+export type Source = "local" | "server";
 
 export interface Page<T> {
   items: T[];
@@ -66,13 +66,15 @@ export interface Artist {
   following: boolean;
   monthlyListeners?: number | null;
   thumbnail?: string;
+  /** Library only: liked or playlisted songs by an artist the user doesn't follow. */
+  songCount?: number;
 }
 
 export interface Playlist {
   id: string;
   name: string;
   description?: string | null;
-  kind: 'local' | 'synced' | 'online';
+  kind: "local" | "synced" | "online";
   trackCount: number | null;
   downloadedCount: number;
   /** The user's own playlists only; YouTube playlists (GET /playlists/:id) have no date. */
@@ -82,11 +84,11 @@ export interface Playlist {
 
 /** Search results carry a `kind` discriminator. */
 export type SearchItem =
-  | ({ kind: 'track' } & Track)
-  | ({ kind: 'album' } & Album)
-  | ({ kind: 'artist' } & Artist)
+  | ({ kind: "track" } & Track)
+  | ({ kind: "album" } & Album)
+  | ({ kind: "artist" } & Artist)
   // Playlist has its own `kind` (local/synced/online); search replaces it with the discriminator.
-  | ({ kind: 'playlist' } & Omit<Playlist, 'kind'>);
+  | ({ kind: "playlist" } & Omit<Playlist, "kind">);
 
 export interface LyricsLine {
   atMs: number;

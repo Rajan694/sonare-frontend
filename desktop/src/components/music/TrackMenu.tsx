@@ -13,6 +13,8 @@ import { localLibrary } from '../../storage/local';
 import { downloads, useDownload } from '../../storage/downloads';
 import { useModeStore } from '../../store/modeContext';
 import { deleteTrackDownload, startTrackDownload } from './TrackDownloadButton';
+import { addTracksWithToast, createPlaylistWithPrompt } from '../../api/newPlaylist';
+import { addToPlaylistDialog, confirmDialog } from '../../store/dialogs';
 
 /**
  * One context menu for every track list (FLOWS §3 D05): right-click a row, or press its
@@ -128,38 +130,24 @@ function OpenMenu({ target }: { target: MenuTarget }) {
 
   async function addToPlaylist(id: string, name: string) {
     closeTrackMenu();
-    try {
-      await api.addTracksToPlaylist(
-        id,
-        tracks.map((t) => t.id),
-      );
-      notifyPlaylistsChanged();
-      showToast({
-        title: `Added to ${name}`,
-        description: single?.title ?? `${tracks.length} songs`,
-        icon: 'playlist',
-        variant: 'acc',
-      });
-    } catch {
-      showToast({ title: 'Could not add to playlist', icon: 'info' });
-    }
+    await addTracksWithToast({ id, name }, tracks);
   }
 
   async function addToNewPlaylist() {
-    const name = window.prompt('New playlist name', single ? single.title : 'New playlist')?.trim();
-    if (!name) return;
     closeTrackMenu();
-    try {
-      const created = await api.createPlaylist({ name, kind: 'synced' });
-      await addToPlaylist(created.id, created.name);
-    } catch {
-      showToast({ title: 'Could not create playlist', icon: 'info' });
-    }
+    const created = await createPlaylistWithPrompt({ initialValue: single ? single.title : 'New playlist' });
+    if (created) await addTracksWithToast(created, tracks);
   }
 
   async function deletePlaylist(p: { id: string; name: string }) {
     closeTrackMenu();
-    if (!window.confirm(`Delete the playlist "${p.name}"? This can't be undone.`)) return;
+    const ok = await confirmDialog({
+      title: 'Delete playlist?',
+      description: `"${p.name}" is deleted from your account. This can't be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    });
+    if (!ok) return;
     try {
       await api.deleteMyPlaylist(p.id);
       notifyPlaylistsChanged();
@@ -205,10 +193,10 @@ function OpenMenu({ target }: { target: MenuTarget }) {
                 <MenuItem
                   icon="playlist"
                   onClick={() => {
-                    // Playlists live in the account: a guest is sent to sign in, then comes back here.
+                    // Playlists live in the account: a guest is sent to sign in, then picks one there.
                     if (isAuthenticated()) return setPicking(true);
                     closeTrackMenu();
-                    requireAccount('Create a free account to make playlists.', () => {});
+                    requireAccount('Create a free account to make playlists.', () => addToPlaylistDialog(tracks));
                   }}
                 >
                   Add to playlist…

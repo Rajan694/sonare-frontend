@@ -17,6 +17,9 @@ import { TrackMenuHost } from '../components/music/TrackMenuHost';
 import { useModeStore } from '../store/mode';
 import { View, Text, ActivityIndicator } from 'react-native';
 import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
+import { loadServerOrigin } from '../data/config';
+import { PlayerSheetsHost } from '../components/music/PlayerSheets';
+import { useDevicePrefsStore } from '../store/devicePrefs';
 import { cn } from '../lib/cn';
 
 const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
@@ -99,9 +102,13 @@ export function RootNavigator() {
   const hydrate = useAuthStore((s) => s.hydrate);
 
   useEffect(() => {
-    hydrate();
-    // Picks up downloads that were running when the app last closed.
-    useDownloadsStore.getState().hydrate();
+    useDevicePrefsStore.getState().hydrate();
+    // A server address saved in Settings applies before the first request goes out.
+    loadServerOrigin().finally(() => {
+      hydrate();
+      // Picks up downloads that were running when the app last closed.
+      useDownloadsStore.getState().hydrate();
+    });
   }, [hydrate]);
   useSessionEffects(status);
 
@@ -133,6 +140,7 @@ export function RootNavigator() {
         <Stack.Screen name="SignIn" component={SignInScreen} />
       </Stack.Navigator>
       <TrackMenuHost />
+      <PlayerSheetsHost />
     </NavigationContainer>
   );
 }

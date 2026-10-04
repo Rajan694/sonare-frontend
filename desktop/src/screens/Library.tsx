@@ -12,26 +12,31 @@ import {
   useMostPlayed,
   useLibraryAlbums,
   useLibraryArtists,
-  useFolders,
   useTrending,
   useAuth,
   useGenres,
 } from '../api/hooks';
-import { DEFAULT_GENRES, GenreCard, genreVariant } from '../components/music/GenreCard';
+import { DEFAULT_GENRES, GenreCard, genreQuery, genreVariant } from '../components/music/GenreCard';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import { Card } from '../components/ui/Card';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Button, { IconButton } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import Icon from '../components/ui/Icon';
+import { Select } from '../components/ui/Select';
 import { staggerContainer } from '../lib/motion';
 import { cn } from '../lib/cn';
-import { formatBytes } from '../lib/format';
 import type { Track } from '../types';
 
-const ALL_TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Folders', 'Favourites', 'Most played'] as const;
-const TABS = CAPS.localLibrary ? ALL_TABS : ALL_TABS.filter((t) => t !== 'Folders');
-type Tab = (typeof ALL_TABS)[number];
+// Folders are a screen of their own (/folders), opened from the Songs tab's Folders button.
+const TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Favourites', 'Most played'] as const;
+type Tab = (typeof TABS)[number];
+
+const SOURCE_FILTERS: { value: 'all' | 'local' | 'server'; label: string }[] = [
+  { value: 'all', label: 'All sources' },
+  { value: 'local', label: 'On device' },
+  { value: 'server', label: 'Server' },
+];
 
 type SortKey = 'addedAt' | 'title' | 'artist' | 'album' | 'durationMs';
 const SORTS: { key: SortKey; label: string; desc: boolean }[] = [
@@ -68,14 +73,13 @@ export default function Library() {
   const isOffline = mode === 'offline';
   const { user } = useAuth();
 
-  const guestTab = !isOffline && !user && activeTab !== 'Songs' && activeTab !== 'Genres' && activeTab !== 'Folders';
+  const guestTab = !isOffline && !user && activeTab !== 'Songs' && activeTab !== 'Genres';
 
   const { data: libraryTracksData, loading: libLoading } = useLibraryTracks();
   const { data: favsData, loading: favsLoading } = useFavourites();
   const { data: mostPlayedData, loading: mostLoading } = useMostPlayed();
   const { data: albumsData, loading: albumsLoading } = useLibraryAlbums();
   const { data: artistsData, loading: artistsLoading } = useLibraryArtists();
-  const { data: foldersData } = useFolders();
   const { data: trendingData } = useTrending('IN', 20);
   const { data: genres } = useGenres();
 
@@ -174,7 +178,6 @@ export default function Library() {
     Albums: 'Albums in your library',
     Artists: 'Artists in your library',
     Genres: 'Browse music by genre',
-    Folders: 'Music folders on this device',
   };
 
   return (
@@ -189,7 +192,7 @@ export default function Library() {
           </div>
           {/* Action buttons (Shuffle / Play all) */}
           <div className="flex items-center gap-2.5">
-            {CAPS.localLibrary && (
+            {CAPS.localLibrary && activeTab === 'Songs' && (
               <Link to="/folders" className="btn btn-out">
                 <Icon name="folder" size={15} />
                 <span>Folders</span>
@@ -230,32 +233,25 @@ export default function Library() {
         {isTrackTab && (
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
-              <select
-                className="chip chip-sm text-t1 bg-s2 border-ln2 appearance-none cursor-pointer"
-                aria-label="Sort order"
+              <Select
+                size="sm"
+                icon="sort"
+                ariaLabel="Sort order"
                 value={sort?.key ?? 'addedAt'}
-                onChange={(e) => {
-                  const preset = SORTS.find((s) => s.key === e.target.value);
+                options={SORTS.map((s) => ({ value: s.key, label: s.label }))}
+                onChange={(key) => {
+                  const preset = SORTS.find((s) => s.key === key);
                   setSort(preset ? { key: preset.key, desc: preset.desc } : null);
                 }}
-              >
-                {SORTS.map((s) => (
-                  <option key={s.key} value={s.key}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
+              />
 
-              <select
-                className="chip chip-sm text-t1 bg-s2 border-ln2 appearance-none cursor-pointer"
-                aria-label="Filter source"
+              <Select
+                size="sm"
+                ariaLabel="Filter source"
                 value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value as any)}
-              >
-                <option value="all">All sources</option>
-                <option value="local">On device</option>
-                <option value="server">Server</option>
-              </select>
+                options={SOURCE_FILTERS}
+                onChange={setSourceFilter}
+              />
 
               {CAPS.offlineDownloads && (
                 <button
@@ -295,6 +291,7 @@ export default function Library() {
             {headerCell('title', 'TITLE')}
             <span className="hidden @[720px]:inline">{headerCell('album', 'ALBUM')}</span>
             <span>SOURCE</span>
+            <span className="hidden @[720px]:inline text-right">PLAYS</span>
             <span className="text-right flex items-center justify-end">
               {headerCell('durationMs', <Icon name="clock" size={13} />, 'justify-end')}
             </span>
@@ -391,7 +388,11 @@ export default function Library() {
                   ))}
                 </div>
               ) : (artistsData?.items || []).length === 0 ? (
-                <EmptyState icon="mic" title="No followed artists" description="Follow artists to see them here" />
+                <EmptyState
+                  icon="mic"
+                  title="No artists yet"
+                  description="Follow artists, like songs or add them to a playlist to see their artists here"
+                />
               ) : (
                 artistsData?.items.map((artist, i) => (
                   <Link
@@ -407,38 +408,25 @@ export default function Library() {
                       radius="circ"
                     />
                     <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
-                    <span className="text-label-s text-t3 truncate">Artist</span>
+                    <span className="text-label-s text-t3 truncate">
+                      {artist.following
+                        ? 'Following'
+                        : artist.songCount
+                          ? `${artist.songCount} ${artist.songCount === 1 ? 'song' : 'songs'} in your library`
+                          : 'Artist'}
+                    </span>
                   </Link>
                 ))
               )}
             </div>
-          ) : activeTab === 'Folders' ? (
-            <div className="flex flex-col gap-2">
-              {(foldersData || []).map((folder) => (
-                <div key={folder.id} className="surf2 flex flex-col gap-3 p-4 rounded-lg">
-                  <div className="flex items-start gap-3">
-                    <span className={cn('icobox', folder.included ? 'icobox-acc' : '')}>
-                      <Icon name="folder" size={16} />
-                    </span>
-                    <div className="flex flex-col grow min-w-0">
-                      <span className="text-title-l text-t1 truncate">{folder.name}</span>
-                      <span className="text-body-s text-t3 truncate">{folder.path}</span>
-                      <span className="text-body-s text-t3 mt-0.5">
-                        {folder.trackCount} tracks · {formatBytes(folder.bytes)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           ) : activeTab === 'Genres' ? (
             <div className="grid grid-cols-2 @[720px]:grid-cols-4 gap-3">
-              {(genres?.map((g) => g.name) ?? DEFAULT_GENRES).map((name, i) => (
+              {(genres ?? DEFAULT_GENRES).map((g, i) => (
                 <GenreCard
-                  key={name}
-                  name={name}
+                  key={g.id}
+                  name={g.name}
                   variant={genreVariant(i)}
-                  to={`/search?q=${encodeURIComponent(name)}`}
+                  to={`/search?q=${encodeURIComponent(genreQuery(g))}`}
                 />
               ))}
             </div>

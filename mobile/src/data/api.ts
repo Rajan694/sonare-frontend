@@ -1,4 +1,4 @@
-import { API_BASE } from './config';
+import { apiBase } from './config';
 import { useAuthStore } from './auth';
 import { httpRequest } from './http';
 import type { Album, Artist, Lyrics, Page, Playlist, SearchItem, StreamInfo, Track, User } from './types';
@@ -27,7 +27,7 @@ function buildUrl(path: string, params?: Params): string {
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
     .join('&');
-  return `${API_BASE}${path}${query ? `?${query}` : ''}`;
+  return `${apiBase()}${path}${query ? `?${query}` : ''}`;
 }
 
 async function request<T>(path: string, { method = 'GET', params, body, timeoutMs }: RequestOptions = {}): Promise<T> {
@@ -87,10 +87,33 @@ export const api = {
     request<{ peaks: number[] }>(`/tracks/${enc(id)}/peaks`, {
       params: { bars },
     }),
-  lyrics: (id: string) =>
+  /** `script` other than 'original' asks for the version in that script when LRCLIB has one. */
+  lyrics: (id: string, script: string = 'original') =>
     request<Lyrics>(`/tracks/${enc(id)}/lyrics`, {
-      params: { prefer: 'synced' },
+      params: { prefer: 'synced', ...(script !== 'original' && { script }) },
     }),
+  /** Browse categories; `query` is what opening one searches for. */
+  genres: () => request<{ id: string; name: string; query?: string }[]>('/genres'),
+  /** Followed artists, then the artists of liked and playlisted songs. */
+  libraryArtists: () => request<Page<Artist>>('/me/library/artists'),
+  playerState: () =>
+    request<{
+      trackRef: { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string } | null;
+      positionMs: number;
+      queue: unknown[];
+      index: number;
+      shuffle: boolean;
+      repeat: 'off' | 'all' | 'one';
+      updatedAt?: number;
+    }>('/me/player-state'),
+  savePlayerState: (body: {
+    trackRef: { kind: 'server'; id: string } | null;
+    positionMs: number;
+    queue: unknown[];
+    index: number;
+    shuffle: boolean;
+    repeat: 'off' | 'all' | 'one';
+  }) => request<{ ok: boolean }>('/me/player-state', { method: 'PUT', body }),
 
   // The signed-in user
   me: () => request<User>('/me'),

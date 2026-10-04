@@ -60,7 +60,7 @@ describe('Home', () => {
     expect(getByText('Welcome back, Alice')).toBeTruthy();
     fireEvent.press(await findByLabelText('Continue listening to Recent A'));
     // Only this account's server songs, without repeats, make up the queue.
-    expect(playTrack).toHaveBeenCalledWith(recent[0], recent);
+    expect(playTrack).toHaveBeenCalledWith(recent[0], recent, { kind: 'Recently played', name: 'Jump back in' });
     expect(queryByText('Other phone')).toBeNull();
   });
 
@@ -161,8 +161,10 @@ describe('Search', () => {
       album: 'OK Computer',
     });
     const search = stub('search', async () => page([{ ...song, kind: 'track' }]));
+    stub('genres', async () => []);
     const { getByLabelText, findByText, getByText, getAllByText } = render(<SearchScreen />);
-    expect(getByText('Search for songs, albums, artists and playlists.')).toBeTruthy();
+    // Before typing, the browse categories show.
+    expect(getByText('Browse categories')).toBeTruthy();
     fireEvent.changeText(getByLabelText('Search all music'), 'para');
     fireEvent.changeText(getByLabelText('Search all music'), '  paranoid ');
     expect(await findByText(/· 1 results/)).toBeTruthy();
@@ -212,14 +214,31 @@ describe('Search', () => {
     await waitFor(() => expect(search).toHaveBeenLastCalledWith('radiohead', 'albums'));
   });
 
-  it('MOB-SEARCH-006 the Genres chip searches everything instead of sending a type the server rejects', async () => {
+  it('MOB-SEARCH-006 the Genres chip shows the categories, and a category searches for its query', async () => {
     const search = stub('search', async () => page([]));
-    const { getByLabelText, getByText } = render(<SearchScreen />);
+    stub('genres', async () => [
+      { id: 'sufi', name: 'Sufi', query: 'sufi songs' },
+      { id: 'qawwali', name: 'Qawwali' },
+    ]);
+    const { getByLabelText, getByText, findByLabelText } = render(<SearchScreen />);
     fireEvent.changeText(getByLabelText('Search all music'), 'lofi');
     await waitFor(() => expect(search).toHaveBeenLastCalledWith('lofi', 'all'));
+    // The server has no genre search: the chip shows categories instead of searching again.
     fireEvent.press(getByText('Genres'));
-    await waitFor(() => expect(search).toHaveBeenCalledTimes(2));
-    expect(search).toHaveBeenLastCalledWith('lofi', 'all');
+    expect(getByText('Browse categories')).toBeTruthy();
+    fireEvent.press(await findByLabelText('Browse Sufi'));
+    expect(getByLabelText('Search all music').props.value).toBe('sufi songs');
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('sufi songs', 'all'));
+    expect(search).toHaveBeenCalledTimes(2);
+  });
+
+  it('MOB-SEARCH-007 a genre opened from the Library arrives as the search', async () => {
+    const search = stub('search', async () => page([]));
+    route.params = { q: 'bhojpuri songs' };
+    const { getByLabelText } = render(<SearchScreen />);
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('bhojpuri songs', 'all'));
+    expect(getByLabelText('Search all music').props.value).toBe('bhojpuri songs');
+    expect(nav.setParams).toHaveBeenCalledWith({ q: undefined });
   });
 
   it('MOB-SEARCH-004 no results says so; a failed search can be retried', async () => {
@@ -276,13 +295,16 @@ describe('Library', () => {
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([mine[0].id, mine[1].id]);
   });
 
-  it('MOB-LIB-S-003 the sort chip cycles recently added → most played → A-Z and refetches', async () => {
+  it('MOB-LIB-S-003 the sort chip opens a sheet of orders; picking one refetches', async () => {
     signIn();
     const lib = stub('libraryTracks', async () => page(mine));
-    const { findByText, getByText } = render(<LibraryScreen />);
-    fireEvent.press(await findByText('Recently added'));
-    fireEvent.press(await findByText('Most played'));
-    expect(getByText('A-Z')).toBeTruthy();
+    const { findByLabelText, getByLabelText } = render(<LibraryScreen />);
+    fireEvent.press(await findByLabelText('Sort: Recently added'));
+    fireEvent.press(await findByLabelText('Most played'));
+    fireEvent.press(await findByLabelText('Sort: Most played'));
+    expect(getByLabelText('Most played').props.accessibilityState).toEqual({ selected: true });
+    fireEvent.press(getByLabelText('A-Z'));
+    expect(await findByLabelText('Sort: A-Z')).toBeTruthy();
     await waitFor(() => expect(lib.mock.calls.map((c) => c[0])).toEqual(['addedAt', 'playCount', 'title']));
   });
 
@@ -301,13 +323,12 @@ describe('Library', () => {
     expect(getByLabelText(`Mine 1 by ${mine[0].artist}`)).toBeTruthy();
   });
 
-  it('MOB-LIB-S-005 the Folders tab opens the folders screen; Downloads opens downloads', async () => {
+  it('MOB-LIB-S-005 there is no Folders tab (Settings has music folders); Downloads opens downloads', async () => {
     signIn();
     stub('libraryTracks', async () => page([]));
-    const { getByText, getByLabelText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Folders'));
+    const { queryByText, getByLabelText } = render(<LibraryScreen />);
+    expect(queryByText('Folders')).toBeNull();
     fireEvent.press(getByLabelText('Downloads'));
-    expect(nav.navigate).toHaveBeenCalledWith('Folders');
     expect(nav.navigate).toHaveBeenCalledWith('Downloads');
   });
 });

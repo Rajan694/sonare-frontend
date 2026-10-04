@@ -2,12 +2,11 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/cn';
 import { CAPS } from '../../lib/caps';
 import { useModeStore } from '../../store/modeContext';
-import { useMyPlaylists, notifyPlaylistsChanged, useAuth } from '../../api/hooks';
+import { useMyPlaylists, useAuth } from '../../api/hooks';
 import { requireAccount } from '../../api/accountGate';
-import { api } from '../../api/api';
+import { createPlaylistWithPrompt } from '../../api/newPlaylist';
 import Icon from '../ui/Icon';
 import { BrandMark } from '../ui/BrandMark';
-import { showToast } from '../../store/toasts';
 import { IconButton } from '../ui/Button';
 import Artwork from '../music/Artwork';
 import { openPlaylistMenu } from '../music/TrackMenu';
@@ -71,16 +70,8 @@ export default function Sidebar() {
   const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist);
 
   const createPlaylist = async () => {
-    const name = window.prompt('Enter playlist name:');
-    if (name?.trim()) {
-      try {
-        const created = await api.createPlaylist({ name: name.trim(), kind: 'synced' });
-        notifyPlaylistsChanged();
-        navigate(`/playlist/${created.id}`);
-      } catch (e: any) {
-        showToast({ title: 'Could not create playlist', description: e?.message, icon: 'info' });
-      }
-    }
+    const created = await createPlaylistWithPrompt();
+    if (created) navigate(`/playlist/${created.id}`);
   };
 
   return (

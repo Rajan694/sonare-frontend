@@ -13,7 +13,7 @@ import Artwork from '../components/music/Artwork';
 import Icon from '../components/ui/Icon';
 import Button from '../components/ui/Button';
 import DownloadButton from '../components/music/DownloadButton';
-import { DEFAULT_GENRES, GenreCard, genreVariant } from '../components/music/GenreCard';
+import { DEFAULT_GENRES, GenreCard, genreQuery, genreVariant } from '../components/music/GenreCard';
 import { Card } from '../components/ui/Card';
 import { EmptyState } from '../components/ui/EmptyState';
 import { fadeRise, transition } from '../lib/motion';
@@ -117,6 +117,27 @@ export default function Search() {
 
   // Find top result (prefer first match: album, song, or artist)
   const topSong = combinedTracks[0];
+
+  // The artists of the matching songs, with the server's artwork for catalog artists
+  // (device files have no artist page or picture).
+  const resultArtists = (() => {
+    const seen = new Map<string, { key: string; id: string; name: string; thumbnail?: string; linkable: boolean }>();
+    for (const t of combinedTracks) {
+      if (!t.artist) continue;
+      const server = t.source === 'server' && t.artistId.startsWith('yt:') && t.artistId !== 'yt:unknown';
+      const key = server ? t.artistId : `name:${t.artist.toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.set(key, {
+        key,
+        id: t.artistId,
+        name: t.artist,
+        thumbnail: server ? `/api/v1/artists/${t.artistId}/artwork?size=140` : undefined,
+        linkable: server,
+      });
+      if (seen.size === 6) break;
+    }
+    return [...seen.values()];
+  })();
 
   return (
     <div className="@container flex flex-col overflow-hidden h-full">
@@ -294,18 +315,35 @@ export default function Search() {
                   <div className="flex flex-col gap-3">
                     <span className="text-overline text-t3 uppercase font-semibold">Artists</span>
                     <div className="flex items-center gap-6 overflow-x-auto pb-2">
-                      {Array.from(new Set(combinedTracks.map((t) => t.artist)))
-                        .slice(0, 6)
-                        .map((artistName, i) => (
-                          <div
-                            key={artistName}
-                            className="flex flex-col items-center gap-2 w-[92px] flex-none text-center"
-                          >
-                            <Artwork alt={artistName} variant={`a${((i % 12) + 1) as 1}`} size={92} radius="circ" />
-                            <span className="text-label-m text-t1 truncate w-full">{artistName}</span>
+                      {resultArtists.map((artist, i) => {
+                        const avatar = (
+                          <>
+                            <Artwork
+                              src={artist.thumbnail}
+                              alt={artist.name}
+                              variant={`a${((i % 12) + 1) as 1}`}
+                              size={92}
+                              radius="circ"
+                            />
+                            <span className="text-label-m text-t1 truncate w-full">{artist.name}</span>
                             <span className="text-label-s text-t3">Artist</span>
+                          </>
+                        );
+                        const cls = 'flex flex-col items-center gap-2 w-[92px] flex-none text-center';
+                        return artist.linkable ? (
+                          <Link
+                            key={artist.key}
+                            to={`/artist/${artist.id}`}
+                            className={cn(cls, 'no-underline text-inherit')}
+                          >
+                            {avatar}
+                          </Link>
+                        ) : (
+                          <div key={artist.key} className={cls}>
+                            {avatar}
                           </div>
-                        ))}
+                        );
+                      })}
                     </div>
                   </div>
 
@@ -400,12 +438,12 @@ export default function Search() {
             <div className="flex flex-col gap-6">
               <span className="text-title-l text-t1 font-semibold">Browse categories</span>
               <div className="grid grid-cols-2 @md:grid-cols-4 gap-3">
-                {(genres?.map((g) => g.name) ?? DEFAULT_GENRES).map((name, i) => (
+                {(genres ?? DEFAULT_GENRES).map((g, i) => (
                   <GenreCard
-                    key={name}
-                    name={name}
+                    key={g.id}
+                    name={g.name}
                     variant={genreVariant(i)}
-                    onClick={() => dispatch(setQuery(name))}
+                    onClick={() => dispatch(setQuery(genreQuery(g)))}
                   />
                 ))}
               </div>

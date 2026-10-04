@@ -5,17 +5,18 @@ import { MemoryRouter } from 'react-router-dom';
 import Artwork, { resolveArtworkUrl, trackArtwork } from '../../src/components/music/Artwork';
 import EqualizerBars from '../../src/components/music/EqualizerBars';
 import { GenreCard, genreVariant } from '../../src/components/music/GenreCard';
-import SongRow from '../../src/components/music/SongRow';
+import SongRow, { SongTableHeader } from '../../src/components/music/SongRow';
 import TrackMenu, { closeTrackMenu, openPlaylistMenu, openTrackMenu } from '../../src/components/music/TrackMenu';
 import TrackDownloadButton from '../../src/components/music/TrackDownloadButton';
 import DownloadButton from '../../src/components/music/DownloadButton';
 import Waveform from '../../src/components/music/Waveform';
-import { bindAccountGateNavigator } from '../../src/api/accountGate';
+import { bindAccountGateNavigator, takePendingAction } from '../../src/api/accountGate';
 import { clearSession, setSession } from '../../src/api/auth';
 import type { DownloadItem } from '../../src/storage/downloads';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { answerConfirm, answerPrompt } from '../helpers/dialogs';
 
 /** A download store the test controls: each state is set directly. */
 const dl = vi.hoisted(() => {
@@ -204,6 +205,27 @@ describe('song row', () => {
     rerender(<SongRow track={track} index={3} onAdd={onAdd} added />);
     expect(screen.getByRole('button', { name: 'Reckoner added' })).toBeDisabled();
   });
+
+  it('WEB-MUSIC-031 the table shows your play count, and the artist where a song has no album', () => {
+    renderWithProviders(
+      <>
+        <SongTableHeader />
+        <SongRow track={{ ...track, playCount: 1234 }} index={1} />
+        <SongRow
+          track={makeTrack({ id: 'yt:single', title: 'Single', artist: 'Arijit Singh', album: null })}
+          index={2}
+        />
+      </>,
+    );
+    expect(screen.getByText('PLAYS')).toBeInTheDocument();
+    const [withAlbum, withoutAlbum] = screen.getAllByRole('row');
+    expect(within(withAlbum).getByLabelText('1234 plays')).toHaveTextContent('1,234');
+    expect(within(withAlbum).getAllByText('In Rainbows').length).toBeGreaterThan(0);
+    // No dash: the artist stands in for the missing album.
+    expect(within(withoutAlbum).queryByText('—')).not.toBeInTheDocument();
+    expect(within(withoutAlbum).getAllByText('Arijit Singh')).toHaveLength(2);
+    expect(within(withoutAlbum).getByLabelText('0 plays')).toHaveTextContent('0');
+  });
 });
 
 /** What a right-click hands to openTrackMenu. */
@@ -284,7 +306,6 @@ describe('track menu', () => {
 
   it('WEB-MUSIC-014 "New playlist…" creates a synced playlist named by the user and adds the song', async () => {
     setSession('a', 'r', testUser);
-    vi.spyOn(window, 'prompt').mockReturnValue('  Late nights  ');
     const calls: string[] = [];
     server.use(
       http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),
@@ -300,18 +321,20 @@ describe('track menu', () => {
     const { user, menu } = open();
     await user.click(within(menu()).getByRole('button', { name: 'Add to playlist…' }));
     await user.click(within(menu()).getByRole('button', { name: 'New playlist…' }));
+    // The app's dialog opens with the song's title as the suggested name.
+    expect(await screen.findByDisplayValue('Reckoner')).toBeInTheDocument();
+    await answerPrompt(user, '  Late nights  ');
     await waitFor(() => expect(calls).toEqual(['{"name":"Late nights","kind":"synced"}', 'add sonare:new']));
-    expect(window.prompt).toHaveBeenCalledWith('New playlist name', 'Reckoner');
   });
 
   it('WEB-MUSIC-015 cancelling the new-playlist prompt creates nothing', async () => {
     setSession('a', 'r', testUser);
-    vi.spyOn(window, 'prompt').mockReturnValue(null);
     server.use(http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))));
     const rec = recordRequests();
     const { user, menu } = open();
     await user.click(within(menu()).getByRole('button', { name: 'Add to playlist…' }));
     await user.click(within(menu()).getByRole('button', { name: 'New playlist…' }));
+    await answerPrompt(user, '');
     rec.stop();
     expect(rec.paths().filter((p) => p.startsWith('POST'))).toEqual([]);
   });
@@ -375,25 +398,41 @@ describe('track menu', () => {
 
   it('WEB-MUSIC-020 deleting a playlist from its own page asks first, deletes it and leaves the page', async () => {
     setSession('a', 'r', testUser);
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     const rec = recordRequests();
     server.use(
       http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),
       http.delete(`${API}/me/playlists/:id`, () => HttpResponse.json({ ok: true })),
     );
-    const { location } = renderWithProviders(<TrackMenu />, { route: '/playlist/sonare:p9' });
+    const { user, location } = renderWithProviders(<TrackMenu />, { route: '/playlist/sonare:p9' });
     const e = rightClick();
     act(() => openPlaylistMenu({ id: 'sonare:p9', name: 'Gym' }, e));
     fireEvent.click(within(screen.getByRole('menu')).getByRole('button', { name: 'Delete playlist' }));
-    expect(confirm).toHaveBeenCalledWith('Delete the playlist "Gym"? This can\'t be undone.');
+    expect(await screen.findByRole('alertdialog', { name: 'Delete playlist?' })).toHaveTextContent(
+      '"Gym" is deleted from your account. This can\'t be undone.',
+    );
+    await answerConfirm(user, false);
     expect(rec.paths().filter((p) => p.startsWith('DELETE'))).toEqual([]);
 
     act(() => openPlaylistMenu({ id: 'sonare:p9', name: 'Gym' }, e));
     fireEvent.click(within(screen.getByRole('menu')).getByRole('button', { name: 'Delete playlist' }));
+    await answerConfirm(user, true);
     await waitFor(() => expect(location()).toBe('/playlist'));
     rec.stop();
     expect(rec.paths()).toContain('DELETE /me/playlists/sonare%3Ap9');
     expect(dl.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Playlist deleted', description: 'Gym' }));
+  });
+
+  it('WEB-MUSIC-032 a guest who signs in from "Add to playlist" gets the playlist picker for that song', async () => {
+    bindAccountGateNavigator(vi.fn());
+    server.use(http.get(`${API}/me/playlists`, () => HttpResponse.json(page([makePlaylist({ name: 'Gym' })]))));
+    const { user, menu } = open();
+    await user.click(within(menu()).getByRole('button', { name: 'Add to playlist…' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    setSession('a', 'r', testUser);
+    act(() => void takePendingAction()?.());
+    const dialog = await screen.findByRole('dialog', { name: 'Add to playlist' });
+    expect(dialog).toHaveTextContent('Reckoner');
+    expect(await within(dialog).findByRole('button', { name: /Gym/ })).toBeInTheDocument();
   });
 });
 
@@ -415,11 +454,11 @@ describe('download controls', () => {
     expect(dl.api.resume).toHaveBeenCalledWith('yt:reck');
 
     act(() => dl.set('yt:reck', { status: 'done' }));
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true);
     await user.click(screen.getByRole('button', { name: 'Downloaded - delete download' }));
+    expect(await answerConfirm(user, false)).toBe('Delete download?');
     expect(dl.api.remove).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Downloaded - delete download' }));
-    expect(confirm).toHaveBeenCalledTimes(2);
+    await answerConfirm(user, true);
     await waitFor(() => expect(dl.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Download deleted' })));
   });
 
@@ -429,9 +468,9 @@ describe('download controls', () => {
       fileDeleted: false,
       reason: 'The file is no longer where it was downloaded',
     } as never);
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const { user } = renderWithProviders(<TrackDownloadButton track={track} />);
     await user.click(screen.getByRole('button', { name: 'Downloaded - delete download' }));
+    await answerConfirm(user, true);
     await waitFor(() =>
       expect(dl.toast).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -472,9 +511,9 @@ describe('download controls', () => {
       dl.set('yt:2', { status: 'done' });
       dl.set('yt:3', { status: 'done' });
     });
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     dl.api.removeMany.mockResolvedValueOnce(1);
     await user.click(screen.getByRole('button', { name: 'Downloaded' }));
+    expect(await answerConfirm(user, true)).toBe('Delete 3 downloaded songs?');
     expect(dl.api.removeMany).toHaveBeenCalledWith(['yt:1', 'yt:2', 'yt:3']);
     await waitFor(() => expect(dl.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Downloads removed' })));
   });
