@@ -91,35 +91,10 @@ async function call<T>(
 // ---- Types (mirror sonare-backend/src/routes/admin.routes.ts) ----
 
 export interface AdminAccount {
-  username: string;
+  email: string;
   lastLoginAt: string | null;
   /** null until the password is changed from this page. */
   passwordChangedAt: string | null;
-}
-
-export interface Setting {
-  key: string;
-  label: string;
-  description: string | null;
-  applies: 'live' | 'deploy';
-  /** Saved value; null means not set here. */
-  value: string | null;
-  fallback: string | null;
-  fallbackSource: string;
-  /** Live: what the backend uses now. Deploy: what the Piped files hold now. */
-  effective: string | null;
-  /** Deploy settings saved but not in the Piped files yet. */
-  pending: boolean;
-  updatedAt: string | null;
-  updatedBy: string | null;
-}
-
-export interface LatestCommit {
-  sha: string;
-  /** First line of the message; null when the backend could only get the hash. */
-  message: string | null;
-  date: string | null;
-  url: string;
 }
 
 export interface Health {
@@ -205,10 +180,10 @@ export interface ErrorFilter {
 // ---- Calls ----
 
 export const adminApi = {
-  async login(username: string, password: string): Promise<AdminAccount> {
+  async login(email: string, password: string): Promise<AdminAccount> {
     const r = await call<{ token: string; admin: AdminAccount }>('/login', {
       method: 'POST',
-      body: { username, password },
+      body: { email, password },
     });
     setToken(r.token);
     return r.admin;
@@ -225,23 +200,6 @@ export const adminApi = {
     });
     setToken(r.token);
     return r.admin;
-  },
-
-  config() {
-    return call<{ settings: Setting[] }>('/config');
-  },
-
-  async saveSetting(key: string, value: string | null, force = false): Promise<Setting> {
-    const r = await call<{ setting: Setting }>(`/config/${encodeURIComponent(key)}`, {
-      method: 'PUT',
-      body: { value, force },
-    });
-    return r.setting;
-  },
-
-  /** The newest NewPipeExtractor commit on dev. Suggests a value; saves nothing. */
-  latestExtractorCommit() {
-    return call<LatestCommit>('/config/piped.extractorCommit/latest');
   },
 
   overview(days: number) {
