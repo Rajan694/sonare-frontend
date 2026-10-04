@@ -292,12 +292,13 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     emitProgress(it)
   }
 
-  /** Stop and unload; the notification goes away with it. */
+  /**
+   * Stop and unload; the notification goes away with it. Straight to the engine, like load():
+   * through the controller it reached the player asynchronously, so the startup stop() could
+   * land after a restored track had loaded and unload it again.
+   */
   @ReactMethod
-  fun stop() = withController {
-    it.stop()
-    it.clearMediaItems()
-  }
+  fun stop() = withController { PlaybackEngine.instance?.stop() }
 
   // Required by NativeEventEmitter.
   @ReactMethod fun addListener(eventName: String) {}

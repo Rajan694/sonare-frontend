@@ -127,6 +127,14 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     active.playWhenReady = autoplay
   }
 
+  /** Stops and unloads; the notification goes away with it. */
+  fun stop() {
+    finishFade()
+    next = null
+    active.stop()
+    active.clearMediaItems()
+  }
+
   /** The track to move on to after the current one, or null (end of queue, repeat one). */
   fun setNext(item: MediaItem?) {
     next = item
