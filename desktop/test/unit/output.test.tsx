@@ -56,7 +56,7 @@ const devices = [
   { kind: 'audioinput', deviceId: 'mic', label: 'Microphone' },
 ];
 
-function supportSinkId() {
+function supportSinkId(list: { kind: string; deviceId: string; label: string }[] = devices) {
   vi.stubGlobal('AudioContext', FakeContext);
   Object.defineProperty(HTMLMediaElement.prototype, 'setSinkId', {
     configurable: true,
@@ -67,7 +67,7 @@ function supportSinkId() {
   Object.defineProperty(navigator, 'mediaDevices', {
     configurable: true,
     value: {
-      enumerateDevices: vi.fn(async () => devices),
+      enumerateDevices: vi.fn(async () => list),
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
     },
@@ -114,6 +114,17 @@ describe('audio output (browser)', () => {
       { id: 'hp', name: 'Headphones', kind: 'headphones', detail: 'Headphones' },
       // Browsers hide labels until a permission is granted.
       { id: 'nolabel', name: 'Output 4', kind: 'speaker', detail: 'Speaker' },
+    ]);
+  });
+
+  it('WEB-OUTPUT-007 before a media permission the blank placeholder output is the default, not a second device', async () => {
+    supportSinkId([
+      { kind: 'audioinput', deviceId: '', label: '' },
+      { kind: 'audiooutput', deviceId: '', label: '' },
+    ]);
+    const o = await fresh();
+    expect(await o.listOutputs()).toEqual([
+      { id: '', name: 'System default', kind: 'default', detail: 'Follows your system' },
     ]);
   });
 

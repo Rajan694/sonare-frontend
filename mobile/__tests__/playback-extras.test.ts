@@ -50,11 +50,12 @@ beforeEach(async () => {
 describe('sleep timer', () => {
   it('MOB-SLEEP-001 minutes are counted by the native player; the label counts down', () => {
     const { sleep } = fresh();
-    const now = Date.now();
     sleep.useSleepTimerStore.getState().set(30);
     expect(native.setSleepTimer).toHaveBeenLastCalledWith(30 * 60_000);
     const { timer } = sleep.useSleepTimerStore.getState();
     expect(timer).toMatchObject({ kind: 'minutes', minutes: 30 });
+    // Measured from when it was set, so a slow test run doesn't read 31.
+    const now = (timer as { endsAt: number }).endsAt - 30 * 60_000;
     expect(sleep.sleepTimerLabel(timer, now)).toBe('Stops in 30 min');
     expect(sleep.sleepTimerLabel(timer, now + 29 * 60_000 + 1)).toBe('Stops in 1 min');
     // Never "0 min" while it's still on.

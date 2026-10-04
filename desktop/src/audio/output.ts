@@ -124,7 +124,8 @@ async function movePulse(sink: string): Promise<boolean> {
 
 async function listSinkId(): Promise<OutputDevice[]> {
   const devices = await navigator.mediaDevices.enumerateDevices();
-  const outputs = devices.filter((d) => d.kind === 'audiooutput' && d.deviceId !== 'default');
+  // Before a media permission, browsers list one output with an empty id: that is the default.
+  const outputs = devices.filter((d) => d.kind === 'audiooutput' && d.deviceId && d.deviceId !== 'default');
   return outputs.map((d, i) => {
     const name = d.label || `Output ${i + 1}`;
     const kind: OutputKind = /bluetooth/i.test(name)

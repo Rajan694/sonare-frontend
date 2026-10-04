@@ -9,7 +9,7 @@ import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
 import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
-import { watchSleepTimer } from '../../store/sleepTimer';
+import { sleepAtTrackEnd, watchSleepTimer } from '../../store/sleepTimer';
 import { watchOutput } from '../../store/output';
 import { watchPlayerPersistence } from '../../store/playerPersist';
 
@@ -164,7 +164,13 @@ function startAudio() {
     if (e.ended) {
       if (!endedHandled) {
         endedHandled = true;
-        player.onTrackEnded();
+        if (sleepAtTrackEnd()) {
+          // Sleep timer "End of track": stop here, ready to play this track again.
+          player.setIsPlaying(false);
+          player.seekTo(0);
+        } else {
+          player.onTrackEnded();
+        }
       }
       return;
     }

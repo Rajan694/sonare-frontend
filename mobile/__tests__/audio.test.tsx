@@ -6,6 +6,7 @@ import { api } from '../src/data/api';
 import { EQ_PRESET_GAINS, useSettingsStore } from '../src/data/settings';
 import { useAudioStore } from '../src/store/audio';
 import { usePlayerStore } from '../src/store/player';
+import { useSleepTimerStore } from '../src/store/sleepTimer';
 import { makeTrack } from '../test-utils';
 
 const native = NativeModules.SonarePlayer as Record<string, jest.Mock>;
@@ -106,6 +107,21 @@ describe('AudioEngine and the native player', () => {
     act(() => mockEventEmitter.emit('SonarePlayer.advance', { mediaId: 'yt:gone' }));
     expect(usePlayerStore.getState().currentTrack?.id).toBe(a.id);
     await waitFor(() => expect(native.load).toHaveBeenCalledWith(expect.objectContaining({ id: a.id })));
+  });
+
+  it('MOB-AUD-007 with the sleep timer on "End of track", a track that ends stops there instead of playing the next', async () => {
+    await playFrom(a, [a, b, c]);
+    act(() => useSleepTimerStore.getState().set('endOfTrack'));
+    act(() => mockEventEmitter.emit('SonarePlayer.state', { mediaId: a.id, ended: true, playWhenReady: false }));
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(a.id);
+    expect(usePlayerStore.getState().isPlaying).toBe(false);
+    expect(useSleepTimerStore.getState().timer.kind).toBe('off');
+    expect(native.setPauseAtEndOfTrack).toHaveBeenLastCalledWith(false);
+
+    // With the timer off again, the next track that ends moves on as usual.
+    act(() => mockEventEmitter.emit('SonarePlayer.state', { mediaId: a.id, ended: false, playWhenReady: true }));
+    act(() => mockEventEmitter.emit('SonarePlayer.state', { mediaId: a.id, ended: true, playWhenReady: false }));
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
   });
 
   it('MOB-AUDIO-RESUME-001 a restored queue loads paused, at the saved position; the next load starts at 0', async () => {

@@ -204,11 +204,12 @@ describe('library', () => {
       ),
     );
     renderWithProviders(<Library />, { route: '/library?view=genres' });
-    expect(await screen.findByRole('link', { name: 'Devotional' })).toHaveAttribute(
+    // The built-in fallback list also has Devotional, so wait for the server-only entry.
+    expect(await screen.findByRole('link', { name: 'Qawwali' })).toHaveAttribute('href', '/search?q=Qawwali');
+    expect(screen.getByRole('link', { name: 'Devotional' })).toHaveAttribute(
       'href',
       '/search?q=devotional%20bhajan%20songs',
     );
-    expect(screen.getByRole('link', { name: 'Qawwali' })).toHaveAttribute('href', '/search?q=Qawwali');
   });
 });
 
