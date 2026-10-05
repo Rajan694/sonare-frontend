@@ -83,7 +83,7 @@ desktop_version() {
 # setup: `neu build` packs and then empties .tmp, where a running `./runFE.sh web` keeps
 # its auth token, and rewrites resources/ and dist/.
 STAGE=""
-cleanup_stage() { [ -n "$STAGE" ] && rm -rf "$STAGE"; }
+cleanup_stage() { if [ -n "$STAGE" ]; then rm -rf "$STAGE"; fi; }
 trap cleanup_stage EXIT
 
 stage_desktop() {
