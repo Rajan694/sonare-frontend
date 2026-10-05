@@ -13,46 +13,67 @@ DESKTOP="$SCRIPT_DIR/desktop"
 MOBILE="$SCRIPT_DIR/mobile"
 
 usage() {
-    echo "Usage: ./buildFE.sh <target>... [--env=dev|prod] [--formats=LIST] [--out=DIR]"
+    echo "Usage: ./buildFE.sh <dev|prod> <platform>... [version] [--formats=LIST] [--out=DIR]"
     echo ""
-    echo "Targets (one or more):"
-    echo "  android   Release APK (always talks to the production API, like any release build)"
+    echo "Environment (first):"
+    echo "  dev       Desktop and web builds use VITE_API_BASE (desktop/.env); files get '-dev'"
+    echo "  prod      Desktop and web builds use VITE_API_BASE_PROD - the ones to upload"
+    echo "            Android is a release build against the production API either way."
+    echo ""
+    echo "Platforms (one or more):"
+    echo "  android   Release APK"
     echo "  linux     Linux x64 packages: .tar.gz, .deb, and .AppImage when appimagetool is installed"
     echo "  windows   Windows x64 .exe (one file, the app's resources embedded)"
     echo "  web       The web app as a .tar.gz, for a web server"
     echo "  all       All of the above"
     echo ""
+    echo "Version (optional, x.y.z):"
+    echo "  Given     It becomes the version of what is built."
+    echo "  Left out  The patch number goes up by one (1.0.0 -> 1.0.1)."
+    echo "  Desktop, web, Linux and Windows share desktop/neutralino.config.json's version;"
+    echo "  Android has its own (versionName in mobile/android/app/build.gradle), and its"
+    echo "  versionCode goes up on every build so phones take it as an update. A lower"
+    echo "  version than the current one is refused; if the build fails, the version"
+    echo "  files are put back."
+    echo ""
     echo "Options:"
-    echo "  --env=dev|prod   Which API the desktop and web builds use (default dev):"
-    echo "                   dev  = VITE_API_BASE, prod = VITE_API_BASE_PROD (desktop/.env)."
-    echo "                   Same switch as SONARE_ENV for a plain 'npm run build'."
     echo "  --formats=LIST   Linux formats, comma-separated: tar.gz,deb,appimage (default: all)"
     echo "  --out=DIR        Where the builds go (default: dist/releases)"
     echo ""
     echo "Examples:"
-    echo "  ./buildFE.sh linux windows --env=prod"
-    echo "  ./buildFE.sh android"
-    echo "  ./buildFE.sh linux --formats=deb"
+    echo "  ./buildFE.sh prod android            # 1.0.1 -> 1.0.2, versionCode +1"
+    echo "  ./buildFE.sh prod linux windows 1.2.0"
+    echo "  ./buildFE.sh dev linux --formats=deb"
     exit 1
 }
 
+ENV=""
 TARGETS=()
-ENV="dev"
+VERSION=""
 FORMATS="tar.gz,deb,appimage"
 OUT="$SCRIPT_DIR/dist/releases"
 for arg in "$@"; do
     case "$arg" in
+        dev|prod)
+            [ -n "$ENV" ] && { echo "Error: the environment is given twice ($ENV, $arg)"; exit 1; }
+            ENV="$arg" ;;
         android|linux|windows|web) TARGETS+=("$arg") ;;
         all) TARGETS+=(android linux windows web) ;;
-        --env=*) ENV="${arg#--env=}" ;;
+        [0-9]*)
+            if ! [[ "$arg" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+                echo "Error: the version must look like 1.2.0, not '$arg'"; exit 1
+            fi
+            [ -n "$VERSION" ] && { echo "Error: the version is given twice ($VERSION, $arg)"; exit 1; }
+            VERSION="$arg" ;;
         --formats=*) FORMATS="${arg#--formats=}" ;;
         --out=*) OUT="${arg#--out=}" ;;
         -h|--help) usage ;;
         *) echo "Error: unknown argument '$arg'"; echo ""; usage ;;
     esac
 done
-[ ${#TARGETS[@]} -eq 0 ] && usage
-case "$ENV" in dev|prod) ;; *) echo "Error: --env must be dev or prod, not '$ENV'"; exit 1 ;; esac
+[ $# -eq 0 ] && usage
+[ -n "$ENV" ] || { echo "Error: say which environment first: ./buildFE.sh <dev|prod> <platform>..."; exit 1; }
+[ ${#TARGETS[@]} -gt 0 ] || { echo "Error: say which platform: android, linux, windows, web or all"; exit 1; }
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 
@@ -73,18 +94,94 @@ suffix() { [ "$ENV" = "dev" ] && echo "-dev" || true; }
 
 BUILT=()
 
-# ---- desktop (Linux, Windows) and web ---------------------------------------------------
+# ---- versions ---------------------------------------------------------------------------
 
-desktop_version() {
-    node -p "require('$DESKTOP/neutralino.config.json').version"
+NEU_CONFIG="$DESKTOP/neutralino.config.json"
+GRADLE="$MOBILE/android/app/build.gradle"
+
+desktop_version() { sed -n 's/^  "version": "\(.*\)",$/\1/p' "$NEU_CONFIG" | head -1; }
+android_version() { sed -n 's/^\s*versionName "\(.*\)"$/\1/p' "$GRADLE" | head -1; }
+android_code() { sed -n 's/^\s*versionCode \([0-9]*\)$/\1/p' "$GRADLE" | head -1; }
+
+# 1.0 -> 1.0.1, 1.2.3 -> 1.2.4
+bump_patch() {
+    local major minor patch
+    IFS=. read -r major minor patch <<< "$1"
+    echo "${major:-0}.${minor:-0}.$(( ${patch:-0} + 1 ))"
 }
+
+# True when $1 is a lower version than $2.
+version_lt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]; }
+
+# Copies of the version files, put back if the build fails.
+BACKUP=""
+CHANGED=()
+
+backup_version_file() {
+    [ -n "$BACKUP" ] || BACKUP="$(mktemp -d)"
+    cp -p "$1" "$BACKUP/$(basename "$1")"
+    CHANGED+=("$1")
+}
+
+restore_version_files() {
+    local f
+    for f in "${CHANGED[@]}"; do cp -p "$BACKUP/$(basename "$f")" "$f"; done
+}
+
+# Picks each app's new version (given, or the patch bumped) and writes it before building.
+set_versions() {
+    if has_target linux || has_target windows || has_target web; then
+        local current next
+        current="$(desktop_version)"
+        [ -n "$current" ] || { echo "Error: no version in $NEU_CONFIG"; exit 1; }
+        next="${VERSION:-$(bump_patch "$current")}"
+        if version_lt "$next" "$current"; then
+            echo "Error: desktop is already at $current; $next would be a step back."; exit 1
+        fi
+        if [ "$next" = "$current" ]; then
+            echo "Desktop/web version: $current (unchanged, a rebuild)"
+        else
+            backup_version_file "$NEU_CONFIG"
+            sed -i "0,/^  \"version\": \".*\",$/s//  \"version\": \"$next\",/" "$NEU_CONFIG"
+            echo "Desktop/web version: $current -> $next"
+        fi
+    fi
+    if has_target android; then
+        local current next code
+        current="$(android_version)"
+        code="$(android_code)"
+        [ -n "$current" ] && [ -n "$code" ] || { echo "Error: no versionName/versionCode in $GRADLE"; exit 1; }
+        next="${VERSION:-$(bump_patch "$current")}"
+        if version_lt "$next" "$current"; then
+            echo "Error: Android is already at $current; $next would be a step back."; exit 1
+        fi
+        backup_version_file "$GRADLE"
+        sed -i -e "s/^\(\s*\)versionName \".*\"$/\1versionName \"$next\"/" \
+               -e "s/^\(\s*\)versionCode [0-9]*$/\1versionCode $((code + 1))/" "$GRADLE"
+        echo "Android version:     $current -> $next (versionCode $code -> $((code + 1)))"
+    fi
+}
+
+# ---- desktop (Linux, Windows) and web ---------------------------------------------------
 
 # Builds run in a copy of desktop/ (node_modules linked in), so they never touch the dev
 # setup: `neu build` packs and then empties .tmp, where a running `./runFE.sh web` keeps
 # its auth token, and rewrites resources/ and dist/.
 STAGE=""
 cleanup_stage() { if [ -n "$STAGE" ]; then rm -rf "$STAGE"; fi; }
-trap cleanup_stage EXIT
+
+on_exit() {
+    local rc=$?
+    cleanup_stage
+    if [ $rc -ne 0 ] && [ ${#CHANGED[@]} -gt 0 ]; then
+        restore_version_files
+        echo ""
+        echo "The build failed - the version files are back as they were."
+    fi
+    [ -n "$BACKUP" ] && rm -rf "$BACKUP"
+    exit $rc
+}
+trap on_exit EXIT
 
 stage_desktop() {
     [ -n "$STAGE" ] && return
@@ -273,7 +370,7 @@ build_android() {
     echo ""
     echo "=== Building the Android release APK ==="
     if [ "$ENV" = "dev" ]; then
-        echo "Note: --env doesn't apply to Android. A release APK always uses the production API"
+        echo "Note: dev doesn't apply to Android. A release APK always uses the production API"
         echo "      (mobile/src/data/config.ts); people can point it elsewhere in Settings → Server address."
     fi
     check_signing
@@ -281,9 +378,7 @@ build_android() {
     load_jdk
     cd "$MOBILE/android"
     ./gradlew assembleRelease
-    local version
-    version="$(sed -n 's/^\s*versionName "\(.*\)"/\1/p' app/build.gradle | head -1)"
-    local name="sonare-$version-android.apk"
+    local name="sonare-$(android_version)-android.apk"
     cp app/build/outputs/apk/release/app-release.apk "$OUT/$name"
     BUILT+=("$name")
 }
@@ -291,6 +386,8 @@ build_android() {
 # ---- run -------------------------------------------------------------------------------
 
 load_nvm
+echo ""
+set_versions
 
 if has_target linux || has_target windows; then
     version="$(desktop_version)"
@@ -307,9 +404,14 @@ echo "=== Built (in $OUT) ==="
 for f in "${BUILT[@]}"; do
     printf '  %-48s %s\n' "$f" "$(du -h "$OUT/$f" | cut -f1)"
 done
+if [ ${#CHANGED[@]} -gt 0 ]; then
+    echo ""
+    echo "Version changed in (commit these):"
+    printf '  %s\n' "${CHANGED[@]#"$SCRIPT_DIR/"}"
+fi
 if [ "$ENV" = "dev" ] && { has_target linux || has_target windows || has_target web; }; then
     echo ""
-    echo "These desktop/web builds use the dev API (VITE_API_BASE). Build with --env=prod before"
+    echo "These desktop/web builds use the dev API (VITE_API_BASE). Build with prod before"
     echo "uploading them on the admin page's Releases tab."
 else
     echo ""

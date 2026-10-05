@@ -42,7 +42,7 @@ const port = Number(process.env.SONARE_VITE_PORT) || 5183;
  * SONARE_ENV=dev (the default) uses VITE_API_BASE; SONARE_ENV=prod uses VITE_API_BASE_PROD
  * and leaves out the dev auto-login, so a shipped build never carries those credentials.
  * Set it in the shell (`SONARE_ENV=prod npm run build`, the web server's build) or in .env;
- * ../buildFE.sh passes it from --env.
+ * ../buildFE.sh passes its dev|prod argument.
  */
 function apiEnvironment(mode: string): Record<string, string> {
   const env = loadEnv(mode, process.cwd(), '');
