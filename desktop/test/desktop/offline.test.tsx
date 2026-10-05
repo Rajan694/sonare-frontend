@@ -163,6 +163,16 @@ describe('switching to Offline Mode', () => {
     await user.click(wide.getByRole('button', { name: 'Offline' }));
     expect(location()).toBe('/mode-switch');
   });
+
+  it('DSK-053 About in the desktop app shows the version but no downloads (those are on the web only)', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { container } = renderWithProviders(<Settings />, { route: '/settings?section=about' });
+    const wide = within(container.firstElementChild!.children[1] as HTMLElement);
+    expect(wide.getByText('About Sonare')).toBeInTheDocument();
+    expect(wide.queryByText('Get Sonare')).toBeNull();
+    expect(fetchSpy.mock.calls.some(([url]) => String(url).includes('/releases'))).toBe(false);
+    fetchSpy.mockRestore();
+  });
 });
 
 describe('music folders screen', () => {

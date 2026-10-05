@@ -68,10 +68,12 @@ import {
   ListPlus,
   ArrowUpDown,
   TrendingUp,
+  Monitor,
 } from 'lucide-react';
 
 const ICONS = {
   home: Home,
+  monitor: Monitor,
   search: Search,
   library: Library,
   playlist: ListMusic,

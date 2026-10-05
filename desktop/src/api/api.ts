@@ -1,6 +1,6 @@
 import { API_BASE, getAccessToken, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
-import type { Track, Album, Artist, Playlist, Page, User } from '../types';
+import type { Track, Album, Artist, Playlist, Page, User, AppRelease } from '../types';
 import type { LyricsScript } from '../storage/devicePrefs';
 
 export class ApiError extends Error {
@@ -96,6 +96,15 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 }
 
 export const api = {
+  // App builds for Settings → About
+  getReleases() {
+    return request<{ items: AppRelease[] }>('/releases', { skipAuth: true });
+  },
+
+  releaseDownloadUrl(id: string): string {
+    return `${API_BASE}/releases/${encodeURIComponent(id)}/download`;
+  },
+
   // Catalog
   search(q: string, type: 'songs' | 'albums' | 'artists' | 'playlists' | 'all' = 'all', cursor?: string) {
     return request<Page<Track | Album | Artist | Playlist>>('/search', {

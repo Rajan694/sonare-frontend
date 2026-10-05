@@ -179,18 +179,19 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/offline.test.tsx`
 
-| ID        | Use case                                                                     |
-| :-------- | :--------------------------------------------------------------------------- |
-| `DSK-026` | with no internet the app starts in Offline Mode and says why                 |
-| `DSK-027` | with internet it stays online and syncs                                      |
-| `DSK-028` | "stay offline" survives a restart; going online clears it                    |
-| `DSK-029` | offline, the queue skips songs that are not on this device                   |
-| `DSK-030` | the confirmation shows what stays available and remembers "stay offline"     |
-| `DSK-031` | settings on the desktop include the connection mode and the library sections |
-| `DSK-032` | with no folders it invites the user to add one, using the folder picker      |
-| `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work  |
-| `DSK-034` | a failed scan is reported instead of breaking the page                       |
-| `DSK-035` | the downloads folder cannot be removed from the list                         |
+| ID        | Use case                                                                                |
+| :-------- | :-------------------------------------------------------------------------------------- |
+| `DSK-026` | with no internet the app starts in Offline Mode and says why                            |
+| `DSK-027` | with internet it stays online and syncs                                                 |
+| `DSK-028` | "stay offline" survives a restart; going online clears it                               |
+| `DSK-029` | offline, the queue skips songs that are not on this device                              |
+| `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                |
+| `DSK-031` | settings on the desktop include the connection mode and the library sections            |
+| `DSK-053` | About in the desktop app shows the version but no downloads (those are on the web only) |
+| `DSK-032` | with no folders it invites the user to add one, using the folder picker                 |
+| `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work             |
+| `DSK-034` | a failed scan is reported instead of breaking the page                                  |
+| `DSK-035` | the downloads folder cannot be removed from the list                                    |
 
 ## `test/desktop/player.test.ts`
 
@@ -330,6 +331,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                |
 | `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                           |
 | `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch   |
+| `WEB-SETTINGS-012` | about: lists the uploaded builds, this device first, as download links                 |
+| `WEB-SETTINGS-013` | about: says when nothing is uploaded, and offers a retry when the list fails           |
+| `WEB-SETTINGS-014` | about: only a higher version than this app is called newer; a -dev build of it is not  |
 
 ## `test/screens/signin.test.tsx`
 

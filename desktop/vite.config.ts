@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -37,12 +37,38 @@ function neutralinoGlobalsPort(): Plugin {
 // servers would keep rewriting each other's.
 const port = Number(process.env.SONARE_VITE_PORT) || 5183;
 
+/**
+ * Which backend the app talks to, the desktop counterpart of React Native's __DEV__.
+ * SONARE_ENV=dev (the default) uses VITE_API_BASE; SONARE_ENV=prod uses VITE_API_BASE_PROD
+ * and leaves out the dev auto-login, so a shipped build never carries those credentials.
+ * Set it in the shell (`SONARE_ENV=prod npm run build`, the web server's build) or in .env;
+ * ../buildFE.sh passes it from --env.
+ */
+function apiEnvironment(mode: string): Record<string, string> {
+  const env = loadEnv(mode, process.cwd(), '');
+  const target = env.SONARE_ENV || 'dev';
+  if (target !== 'dev' && target !== 'prod') {
+    throw new Error(`SONARE_ENV must be dev or prod, not "${target}"`);
+  }
+  if (target === 'dev') return { 'import.meta.env.VITE_SONARE_ENV': JSON.stringify('dev') };
+  if (!env.VITE_API_BASE_PROD) {
+    throw new Error('SONARE_ENV=prod needs VITE_API_BASE_PROD (in desktop/.env or the environment)');
+  }
+  return {
+    'import.meta.env.VITE_SONARE_ENV': JSON.stringify('prod'),
+    'import.meta.env.VITE_API_BASE': JSON.stringify(env.VITE_API_BASE_PROD),
+    'import.meta.env.VITE_DEV_EMAIL': JSON.stringify(''),
+    'import.meta.env.VITE_DEV_PASSWORD': JSON.stringify(''),
+  };
+}
+
 // Neutralino serves the built app from `documentRoot` and bundles `cli.resourcesPath`,
 // both of which point at /resources/ - so that is where Vite builds to. Everything in
 // public/ (icons/) is copied there too, which keeps the tray and window icon paths in
 // neutralino.config.json valid.
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss(), neutralinoGlobalsPort()],
+  define: apiEnvironment(mode),
   cacheDir: port === 5183 ? undefined : `node_modules/.vite-${port}`,
   server: {
     port,
@@ -53,4 +79,4 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: true,
   },
-});
+}));

@@ -1,4 +1,4 @@
-import React, { useEffect, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon, { type IconName } from '../components/ui/Icon';
 import Button from '../components/ui/Button';
@@ -8,7 +8,7 @@ import { Select } from '../components/ui/Select';
 import { OutputCard } from '../components/music/OutputPicker';
 import { outputSupport } from '../audio/output';
 import { LYRICS_SCRIPTS, updateDevicePrefs, useDevicePrefs } from '../storage/devicePrefs';
-import { CAPS } from '../lib/caps';
+import { CAPS, CLIENT } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { useLocalLibrary } from '../storage/local';
 import { showToast } from '../store/toasts';
@@ -25,6 +25,9 @@ import { useDownloads } from '../storage/downloads';
 import { useAuth } from '../api/hooks';
 import { resendVerification, signOut } from '../api/auth';
 import { formatBytes } from '../lib/format';
+import { api, loadErrorMessage } from '../api/api';
+import type { AppRelease, ReleasePlatform } from '../types';
+import { version as APP_VERSION } from '../../neutralino.config.json';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
   { id: 'low', label: 'Low (data saver)' },
@@ -523,11 +526,7 @@ export default function Settings() {
     </div>
   );
 
-  const renderAbout = () => (
-    <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-      <Row icon="info" label="About Sonare" desc="Version 1.0.0 · Offline-first music player" />
-    </div>
-  );
+  const renderAbout = () => <AboutSection />;
 
   const renderSectionContent = (id: string) => {
     switch (id) {
@@ -633,6 +632,154 @@ export default function Settings() {
           <div className="flex flex-col gap-6 max-w-[800px]">{renderSectionContent(currentSection.id)}</div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---- About: version, and on the web the app builds the admin page uploaded ----
+
+const PLATFORM_INFO: Record<ReleasePlatform, { label: string; icon: IconName }> = {
+  android: { label: 'Android', icon: 'smartphone' },
+  linux: { label: 'Linux', icon: 'monitor' },
+  windows: { label: 'Windows', icon: 'monitor' },
+};
+
+const FORMAT_LABELS: Record<string, string> = {
+  apk: 'APK',
+  appimage: 'AppImage',
+  deb: '.deb',
+  rpm: '.rpm',
+  'tar.gz': '.tar.gz',
+  zip: '.zip',
+  exe: '.exe',
+  msi: '.msi',
+};
+
+/** The platform the browser runs on, so its builds come first. */
+function currentPlatform(): ReleasePlatform | null {
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return 'android';
+  if (/Windows/i.test(ua)) return 'windows';
+  if (/Linux|X11/i.test(ua) && !/CrOS/i.test(ua)) return 'linux';
+  return null;
+}
+
+/** 1.10.0 > 1.9.2, and 1.0.0 > 1.0.0-dev (a tagged build comes before its release). */
+function compareVersions(a: string, b: string): number {
+  const [coreA, tagA = ''] = a.split(/-(.*)/);
+  const [coreB, tagB = ''] = b.split(/-(.*)/);
+  const pa = coreA.split('.').map(Number);
+  const pb = coreB.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff) return diff;
+  }
+  if (tagA === tagB) return 0;
+  if (!tagA) return 1;
+  if (!tagB) return -1;
+  return tagA.localeCompare(tagB, 'en', { numeric: true });
+}
+
+// Only the web build offers the downloads: the installed apps already are one.
+const OFFERS_DOWNLOADS = CLIENT === 'web';
+
+function AboutSection() {
+  const [releases, setReleases] = useState<AppRelease[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const { mode } = useModeStore();
+  const here = currentPlatform();
+
+  useEffect(() => {
+    if (!OFFERS_DOWNLOADS || mode === 'offline') return;
+    let live = true;
+    setError(null);
+    api.getReleases().then(
+      (r) => live && setReleases(r.items),
+      (e) => live && setError(loadErrorMessage(e)),
+    );
+    return () => {
+      live = false;
+    };
+  }, [mode, attempt]);
+
+  const platforms = (Object.keys(PLATFORM_INFO) as ReleasePlatform[])
+    .map((p) => ({
+      platform: p,
+      builds: (releases ?? []).filter((r) => r.platform === p).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)),
+    }))
+    .filter((p) => p.builds.length > 0)
+    .sort((a, b) => Number(b.platform === here) - Number(a.platform === here));
+
+  let downloads: React.ReactNode;
+  if (mode === 'offline') {
+    downloads = <Row icon="wifi-off" label="Downloads need Online mode" desc="Switch to Online to see the builds" />;
+  } else if (error) {
+    downloads = (
+      <Row icon="info" label="Couldn't load the downloads" desc={error}>
+        <Button variant="out" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+          Retry
+        </Button>
+      </Row>
+    );
+  } else if (!releases) {
+    downloads = <Row icon="loader" label="Loading downloads…" />;
+  } else if (platforms.length === 0) {
+    downloads = <Row icon="download" label="No downloads yet" desc="Builds for other devices will show up here" />;
+  } else {
+    downloads = platforms.map(({ platform, builds }) => {
+      const info = PLATFORM_INFO[platform];
+      const newest = builds[0];
+      const isHere = platform === here;
+      const newer = isHere && compareVersions(newest.version, APP_VERSION) > 0;
+      const desc = [`Version ${newest.version}`, newer ? 'newer than this app' : null, newest.notes]
+        .filter(Boolean)
+        .join(' · ');
+      return (
+        <div key={platform} className="lrow flex-wrap">
+          <span className="icobox">
+            <Icon name={info.icon} size={18} />
+          </span>
+          <span className="flex flex-col grow min-w-0 gap-0.5">
+            <span className="flex items-center gap-2 text-body-m text-t1 font-medium">
+              {info.label}
+              {isHere && <span className="badge bg-accbg text-acc">This device</span>}
+            </span>
+            <span className="text-body-s text-t3 truncate" title={desc}>
+              {desc}
+            </span>
+          </span>
+          <span className="flex flex-wrap items-center justify-end gap-2 flex-none">
+            {builds.map((r) => (
+              <a
+                key={r.id}
+                href={api.releaseDownloadUrl(r.id)}
+                download={r.fileName}
+                className={`btn btn-sm ${isHere && r === newest ? 'btn-acc' : 'btn-out'}`}
+                title={`${r.fileName} · ${formatBytes(r.sizeBytes)} · version ${r.version}`}
+                aria-label={`Download ${info.label} ${FORMAT_LABELS[r.format] ?? r.format}, ${formatBytes(r.sizeBytes)}`}
+              >
+                <Icon name="download" size={15} />
+                {FORMAT_LABELS[r.format] ?? r.format}
+              </a>
+            ))}
+          </span>
+        </div>
+      );
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
+        <Row icon="info" label="About Sonare" desc={`Version ${APP_VERSION} · Offline-first music player`} />
+      </div>
+      {OFFERS_DOWNLOADS && (
+        <div className="flex flex-col gap-2">
+          <span className="text-overline text-t3 pl-1">Get Sonare</span>
+          <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">{downloads}</div>
+        </div>
+      )}
     </div>
   );
 }
