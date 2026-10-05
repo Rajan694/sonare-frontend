@@ -29,7 +29,7 @@ interface SongRowProps {
   extraAction?: TrackMenuAction;
 }
 
-export function SongRow({
+export const SongRow = ({
   track,
   onPress,
   isActive = false,
@@ -38,7 +38,7 @@ export function SongRow({
   index,
   className,
   extraAction,
-}: SongRowProps) {
+}: SongRowProps) => {
   const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
   // Only the active row cares, so the others never re-render on play/pause.
   const playing = usePlayerStore((s) => isActive && s.isPlaying);
@@ -114,4 +114,4 @@ export function SongRow({
       </Pressable>
     </Animated.View>
   );
-}
+};

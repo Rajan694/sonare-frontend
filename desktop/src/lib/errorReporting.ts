@@ -12,15 +12,15 @@ let budget = MAX_PER_PAGE;
 const lastSent = new Map<string, number>();
 
 /** Browser noise and network failures: not bugs, and offline mode makes the latter routine. */
-function ignored(err: Error): boolean {
+const ignored = (err: Error): boolean => {
   return (
     err.name === 'AbortError' ||
     /ResizeObserver loop|^Script error\.?$/.test(err.message) ||
     (err.name === 'TypeError' && /fetch|NetworkError|Load failed|network/i.test(err.message))
   );
-}
+};
 
-function toError(value: unknown): Error {
+const toError = (value: unknown): Error => {
   if (value instanceof Error) return value;
   if (typeof value === 'string') return new Error(value);
   try {
@@ -28,9 +28,9 @@ function toError(value: unknown): Error {
   } catch {
     return new Error(String(value));
   }
-}
+};
 
-export function reportError(value: unknown, level: 'error' | 'warning' = 'error'): void {
+export const reportError = (value: unknown, level: 'error' | 'warning' = 'error'): void => {
   const err = toError(value);
   if (ignored(err) || !navigator.onLine) return;
   const now = Date.now();
@@ -57,11 +57,11 @@ export function reportError(value: unknown, level: 'error' | 'warning' = 'error'
     }),
     keepalive: true,
   }).catch(() => {});
-}
+};
 
 let installed = false;
 
-export function installErrorReporting(): void {
+export const installErrorReporting = (): void => {
   if (installed) return;
   installed = true;
   window.addEventListener('error', (e) => {
@@ -69,4 +69,4 @@ export function installErrorReporting(): void {
     if (e instanceof ErrorEvent && e.message) reportError(e.error ?? e.message);
   });
   window.addEventListener('unhandledrejection', (e) => reportError(e.reason));
-}
+};

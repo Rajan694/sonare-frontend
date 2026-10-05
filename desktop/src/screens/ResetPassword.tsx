@@ -5,7 +5,7 @@ import { Field } from '../components/ui/Field';
 import { resetPassword } from '../api/auth';
 
 /** Opened from the emailed reset link: /reset-password?token=… */
-export default function ResetPassword() {
+const ResetPassword = () => {
   const navigate = useNavigate();
   const token = useSearchParams()[0].get('token') ?? '';
   const [password, setPassword] = useState('');
@@ -14,7 +14,7 @@ export default function ResetPassword() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirm) {
       setError("The passwords don't match");
@@ -30,7 +30,7 @@ export default function ResetPassword() {
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   const goToSignIn = () => navigate('/signin', { replace: true, state: { mode: 'signin' } });
 
@@ -88,4 +88,5 @@ export default function ResetPassword() {
       </form>
     </div>
   );
-}
+};
+export default ResetPassword;

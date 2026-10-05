@@ -9,20 +9,20 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { cn } from '../lib/cn';
 import { formatBytes } from '../lib/format';
 
-function scannedAgo(ts: number) {
+const scannedAgo = (ts: number) => {
   if (!ts) return 'Not scanned yet';
   const mins = Math.round((Date.now() - ts) / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins} min ago`;
   const hours = Math.round(mins / 60);
   return hours < 24 ? `${hours} h ago` : new Date(ts).toLocaleDateString();
-}
+};
 
-export default function Folders() {
+const Folders = () => {
   const { folders, ready, scanning } = useLocalLibrary();
   const [busy, setBusy] = useState(false);
 
-  async function run(label: string, fn: () => Promise<unknown>) {
+  const run = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(true);
     try {
       await fn();
@@ -31,7 +31,7 @@ export default function Folders() {
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   const addFolder = () =>
     run('Adding folder', async () => {
@@ -238,4 +238,5 @@ export default function Folders() {
       )}
     </div>
   );
-}
+};
+export default Folders;

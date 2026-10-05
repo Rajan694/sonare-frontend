@@ -23,7 +23,7 @@ type Modules = {
   auth: typeof import('../src/data/auth');
 };
 
-function fresh(): Modules {
+const fresh = (): Modules => {
   jest.resetModules();
   return {
     player: require('../src/store/player'),
@@ -35,7 +35,7 @@ function fresh(): Modules {
     api: require('../src/data/api'),
     auth: require('../src/data/auth'),
   };
-}
+};
 
 const emit = (event: string, payload: unknown = {}) =>
   act(() => mockEventEmitter.emit(`SonarePlayer.${event}`, payload));

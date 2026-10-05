@@ -1,4 +1,4 @@
-export function hasInternet(timeoutMs = 4000): Promise<boolean> {
+export const hasInternet = (timeoutMs = 4000): Promise<boolean> => {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -22,4 +22,4 @@ export function hasInternet(timeoutMs = 4000): Promise<boolean> {
       clearTimeout(timeoutId);
       return false;
     });
-}
+};

@@ -20,7 +20,7 @@ interface WaveformProps {
   className?: string;
 }
 
-export function Waveform({ trackId, progress, mode, peaks, onSeek, size = 'md', className }: WaveformProps) {
+export const Waveform = ({ trackId, progress, mode, peaks, onSeek, size = 'md', className }: WaveformProps) => {
   const maxH = HEIGHT[size] - 4;
   const heights = React.useMemo(() => {
     // The stand-in shape is drawn for the 26px rail; scale it to this one.
@@ -71,4 +71,4 @@ export function Waveform({ trackId, progress, mode, peaks, onSeek, size = 'md', 
       </View>
     </Pressable>
   );
-}
+};

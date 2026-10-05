@@ -49,15 +49,15 @@ const scope = self as unknown as DedicatedWorkerGlobalScope;
 const medias = new Map<number, StreamMedia>();
 const runs = new Map<number, Run>();
 
-function post(event: StreamDecoderEvent, transfer: Transferable[] = []) {
+const post = (event: StreamDecoderEvent, transfer: Transferable[] = []) => {
   scope.postMessage(event, transfer);
-}
+};
 
-function gcd(a: number, b: number): number {
+const gcd = (a: number, b: number): number => {
   return b ? gcd(b, a % b) : a;
-}
+};
 
-function packetAt(media: StreamMedia, seconds: number): number {
+const packetAt = (media: StreamMedia, seconds: number): number => {
   let lo = 0;
   let hi = media.count - 1;
   while (lo < hi) {
@@ -66,14 +66,14 @@ function packetAt(media: StreamMedia, seconds: number): number {
     else hi = mid - 1;
   }
   return lo;
-}
+};
 
 /**
  * The decoded samples, one Float32Array per channel. Always copies whole planes:
  * WebKitGTK's AudioData.copyTo crashes the page when given a frameOffset together with a
  * format conversion.
  */
-function planesOf(data: AudioData): Float32Array<ArrayBuffer>[] {
+const planesOf = (data: AudioData): Float32Array<ArrayBuffer>[] => {
   const frames = data.numberOfFrames;
   const channels = data.numberOfChannels;
   if (data.format === 'f32-planar') {
@@ -90,7 +90,7 @@ function planesOf(data: AudioData): Float32Array<ArrayBuffer>[] {
     for (let i = 0; i < frames; i++) plane[i] = interleaved[i * channels + c];
     return plane;
   });
-}
+};
 
 /** Decodes from `target` onwards, as far as the page has asked for. */
 class Run {

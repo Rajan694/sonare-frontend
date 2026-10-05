@@ -51,7 +51,7 @@ const queue = [
   makeTrack({ id: 'yt:q3', title: 'Last One' }),
 ];
 
-function ToastProbe() {
+const ToastProbe = () => {
   return (
     <ul aria-label="toasts">
       {useToasts().map((t) => (
@@ -59,7 +59,7 @@ function ToastProbe() {
       ))}
     </ul>
   );
-}
+};
 
 const setWidth = (w: number) => Object.defineProperty(window, 'innerWidth', { value: w, configurable: true });
 
@@ -442,7 +442,7 @@ describe('queue panel', () => {
 });
 
 describe('player keyboard shortcuts', () => {
-  function Harness() {
+  const Harness = () => {
     usePlayerShortcuts();
     return (
       <>
@@ -451,7 +451,7 @@ describe('player keyboard shortcuts', () => {
         <span role="slider" tabIndex={0} aria-label="Fader" />
       </>
     );
-  }
+  };
   const setup = (p = makePlayer({ queue: [song], index: 0 })) => ({
     ...renderWithProviders(<Harness />, { player: p }),
     p,
@@ -533,7 +533,7 @@ describe('top bar', () => {
 });
 
 describe('app shell', () => {
-  function shell(route: string, store = makeStore()) {
+  const shell = (route: string, store = makeStore()) => {
     return renderWithProviders(
       <Routes>
         <Route element={<AppShell />}>
@@ -542,7 +542,7 @@ describe('app shell', () => {
       </Routes>,
       { route, store },
     );
-  }
+  };
 
   it('WEB-LAYOUT-032 picks the desktop, tablet or phone shell by width, and drops chrome on now-playing', () => {
     const web = shell('/home');

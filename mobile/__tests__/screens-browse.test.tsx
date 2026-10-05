@@ -23,9 +23,9 @@ const signIn = () => useAuthStore.setState({ status: 'signedIn', user: alice } a
 const guest = () => useAuthStore.setState({ status: 'guest', user: null } as never);
 
 /** Stub an api method for this test. */
-function stub<K extends keyof typeof api>(name: K, impl: (...args: any[]) => any) {
+const stub = <K extends keyof typeof api>(name: K, impl: (...args: any[]) => any) => {
   return jest.spyOn(api, name).mockImplementation(impl as never);
-}
+};
 
 beforeEach(() => {
   jest.restoreAllMocks();

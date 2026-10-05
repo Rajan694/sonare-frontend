@@ -4,7 +4,7 @@ import { useEffect, useState, type DependencyList } from 'react';
  * Loads on mount and whenever deps change. While a reload runs, `data` keeps the previous
  * result so the page holds its layout (callers dim it with `loading`).
  */
-export function useLoad<T>(load: () => Promise<T>, deps: DependencyList) {
+export const useLoad = <T>(load: () => Promise<T>, deps: DependencyList) => {
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,4 +30,4 @@ export function useLoad<T>(load: () => Promise<T>, deps: DependencyList) {
   }, [...deps, nonce]);
 
   return { data, setData, error, loading, reload: () => setNonce((n) => n + 1) };
-}
+};

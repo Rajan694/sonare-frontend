@@ -14,7 +14,13 @@ interface SegmentedControlProps {
   className?: string;
 }
 
-export function SegmentedControl({ options, value, onChange, variant = 'default', className }: SegmentedControlProps) {
+export const SegmentedControl = ({
+  options,
+  value,
+  onChange,
+  variant = 'default',
+  className,
+}: SegmentedControlProps) => {
   const [containerWidth, setContainerWidth] = React.useState(160);
   const activeIndex = options.findIndex((opt) => opt.value === value);
   const slidePosition = useSharedValue(activeIndex);
@@ -92,4 +98,4 @@ export function SegmentedControl({ options, value, onChange, variant = 'default'
       })}
     </View>
   );
-}
+};

@@ -2,7 +2,7 @@ import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
-export function Notice({ tone = 'error', children }: { tone?: 'error' | 'warn'; children: React.ReactNode }) {
+export const Notice = ({ tone = 'error', children }: { tone?: 'error' | 'warn'; children: React.ReactNode }) => {
   return (
     <div
       role={tone === 'error' ? 'alert' : 'status'}
@@ -15,4 +15,4 @@ export function Notice({ tone = 'error', children }: { tone?: 'error' | 'warn'; 
       <div className="min-w-0">{children}</div>
     </div>
   );
-}
+};

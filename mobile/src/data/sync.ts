@@ -33,15 +33,15 @@ const RETRY_FIRST_MS = 5_000;
 const RETRY_MAX_MS = 5 * 60_000;
 
 /** Split a namespaced id (contract 8.1) into a TrackRef; the backend stores the bare id. */
-function trackRef(trackId: string): TrackRef {
+const trackRef = (trackId: string): TrackRef => {
   if (trackId.startsWith('local:')) return { kind: 'local', fingerprint: trackId.slice('local:'.length) };
   return { kind: 'server', id: trackId.replace(/^yt:/, '') };
-}
+};
 
-function playKey(p: PendingPlay): string {
+const playKey = (p: PendingPlay): string => {
   const ref = p.trackRef.kind === 'local' ? p.trackRef.fingerprint : p.trackRef.id;
   return `${p.userId ?? ''}|${p.trackRef.kind}|${ref}|${p.at}`;
-}
+};
 
 // ── The queue ────────────────────────────────────────────────────────────────
 // Kept in memory and mirrored to AsyncStorage. Writes are chained so an older snapshot
@@ -51,7 +51,7 @@ let queue: PendingPlay[] = [];
 let loaded: Promise<void> | null = null;
 let saving: Promise<unknown> = Promise.resolve();
 
-function load(): Promise<void> {
+const load = (): Promise<void> => {
   loaded ??= AsyncStorage.getItem(QUEUE_KEY)
     .then((raw) => {
       const saved = raw ? (JSON.parse(raw) as PendingPlay[]) : [];
@@ -60,16 +60,16 @@ function load(): Promise<void> {
     })
     .catch(() => {});
   return loaded;
-}
+};
 
-function save() {
+const save = () => {
   const snapshot = JSON.stringify(queue);
   saving = saving.then(() => AsyncStorage.setItem(QUEUE_KEY, snapshot)).catch(() => {});
-}
+};
 
-function pendingFor(userId: string | undefined): PendingPlay[] {
+const pendingFor = (userId: string | undefined): PendingPlay[] => {
   return userId ? queue.filter((p) => !p.userId || p.userId === userId) : [];
-}
+};
 
 // ── Status, for Settings ─────────────────────────────────────────────────────
 
@@ -84,11 +84,11 @@ export const useSyncStatus = create<SyncStatus>(() => ({
   syncing: false,
 }));
 
-function publish(syncing = useSyncStatus.getState().syncing) {
+const publish = (syncing = useSyncStatus.getState().syncing) => {
   const pending = pendingFor(useAuthStore.getState().user?.id).length;
   const now = useSyncStatus.getState();
   if (now.pending !== pending || now.syncing !== syncing) useSyncStatus.setState({ pending, syncing });
-}
+};
 
 // ── Uploading ────────────────────────────────────────────────────────────────
 
@@ -98,26 +98,26 @@ let rerun = false;
 let retryTimer: ReturnType<typeof setTimeout> | undefined;
 let retryDelay = RETRY_FIRST_MS;
 
-function scheduleRetry() {
+const scheduleRetry = () => {
   clearTimeout(retryTimer);
   // No network: NetInfo wakes us instead of a timer.
   if (!networkUp) return;
   retryTimer = setTimeout(requestSync, retryDelay);
   retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
-}
+};
 
 /** A 4xx other than auth/rate-limit means the server will never take these plays. */
-function rejected(e: unknown): boolean {
+const rejected = (e: unknown): boolean => {
   return e instanceof ApiError && e.status >= 400 && e.status < 500 && ![401, 403, 408, 429].includes(e.status);
-}
+};
 
-function drop(done: PendingPlay[]) {
+const drop = (done: PendingPlay[]) => {
   const gone = new Set(done.map(playKey));
   queue = queue.filter((p) => !gone.has(playKey(p)));
   save();
-}
+};
 
-async function flush(): Promise<void> {
+const flush = async (): Promise<void> => {
   await load();
   const auth = useAuthStore.getState();
   const plays = pendingFor(auth.user?.id);
@@ -136,10 +136,10 @@ async function flush(): Promise<void> {
   } finally {
     publish(false);
   }
-}
+};
 
 /** Upload whatever is waiting, if we can. Safe to call often: runs are serialised. */
-export function requestSync(): void {
+export const requestSync = (): void => {
   if (inFlight) {
     // Plays recorded mid-upload go in one follow-up run.
     rerun = true;
@@ -152,10 +152,10 @@ export function requestSync(): void {
       requestSync();
     }
   });
-}
+};
 
 /** Queue a play the listener has actually heard; it uploads in the background. */
-export function queuePlay(trackId: string, at: number, ms: number): void {
+export const queuePlay = (trackId: string, at: number, ms: number): void => {
   queue.push({
     trackRef: trackRef(trackId),
     at,
@@ -167,11 +167,11 @@ export function queuePlay(trackId: string, at: number, ms: number): void {
     save();
     requestSync();
   });
-}
+};
 
 let started = false;
 /** Wire the triggers once, at launch. */
-export function startBackgroundSync(): void {
+export const startBackgroundSync = (): void => {
   if (started) return;
   started = true;
 
@@ -199,4 +199,4 @@ export function startBackgroundSync(): void {
     if (state === 'active') requestSync();
   });
   requestSync();
-}
+};

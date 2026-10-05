@@ -31,15 +31,15 @@ type AuthListener = (user: User | null) => void;
 const listeners = new Set<AuthListener>();
 const authSettleListeners = new Set<() => void>();
 
-function notifyListeners() {
+const notifyListeners = () => {
   listeners.forEach((fn) => fn(currentUser));
-}
+};
 
-export function isAuthReady(): boolean {
+export const isAuthReady = (): boolean => {
   return isAuthSettled;
-}
+};
 
-export function onAuthReady(fn: () => void): () => void {
+export const onAuthReady = (fn: () => void): (() => void) => {
   if (isAuthSettled) {
     fn();
     return () => {};
@@ -48,38 +48,38 @@ export function onAuthReady(fn: () => void): () => void {
   return () => {
     authSettleListeners.delete(fn);
   };
-}
+};
 
-function markAuthSettled() {
+const markAuthSettled = () => {
   isAuthSettled = true;
   authSettleListeners.forEach((fn) => fn());
   authSettleListeners.clear();
-}
+};
 
-export function onAuthChange(fn: AuthListener): () => void {
+export const onAuthChange = (fn: AuthListener): (() => void) => {
   listeners.add(fn);
   return () => {
     listeners.delete(fn);
   };
-}
+};
 
-export function getAccessToken(): string | null {
+export const getAccessToken = (): string | null => {
   return currentAccessToken;
-}
+};
 
-export function getRefreshToken(): string | null {
+export const getRefreshToken = (): string | null => {
   return currentRefreshToken;
-}
+};
 
-export function getCurrentUser(): User | null {
+export const getCurrentUser = (): User | null => {
   return currentUser;
-}
+};
 
-export function isAuthenticated(): boolean {
+export const isAuthenticated = (): boolean => {
   return !!currentAccessToken;
-}
+};
 
-export function setSession(accessToken: string, refreshToken: string, user: User) {
+export const setSession = (accessToken: string, refreshToken: string, user: User) => {
   currentAccessToken = accessToken;
   currentRefreshToken = refreshToken;
   currentUser = user;
@@ -90,9 +90,9 @@ export function setSession(accessToken: string, refreshToken: string, user: User
   localStorage.removeItem(SIGNED_OUT_KEY);
 
   notifyListeners();
-}
+};
 
-export function clearSession() {
+export const clearSession = () => {
   currentAccessToken = null;
   currentRefreshToken = null;
   currentUser = null;
@@ -102,10 +102,10 @@ export function clearSession() {
   localStorage.removeItem(USER_KEY);
 
   notifyListeners();
-}
+};
 
 /** POSTs to /auth/<path>; throws the server's message on an error status. */
-async function postAuth<T>(path: string, body: unknown, accessToken?: string | null): Promise<T> {
+const postAuth = async <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> => {
   const res = await fetch(`${API_BASE}/auth/${path}`, {
     method: 'POST',
     headers: accessToken ? { ...JSON_HEADERS, Authorization: `Bearer ${accessToken}` } : JSON_HEADERS,
@@ -116,7 +116,7 @@ async function postAuth<T>(path: string, body: unknown, accessToken?: string | n
     throw new Error(json?.error?.message || `Request failed with status ${res.status}`);
   }
   return json as T;
-}
+};
 
 interface SessionResponse {
   accessToken: string;
@@ -124,30 +124,30 @@ interface SessionResponse {
   user: User;
 }
 
-export async function signIn(email: string, password: string): Promise<User> {
+export const signIn = async (email: string, password: string): Promise<User> => {
   const json = await postAuth<SessionResponse>('login', { email, password });
   setSession(json.accessToken, json.refreshToken, json.user);
   return json.user;
-}
+};
 
-export async function signUp(email: string, password: string, displayName: string): Promise<User> {
+export const signUp = async (email: string, password: string, displayName: string): Promise<User> => {
   const json = await postAuth<SessionResponse>('register', { email, password, displayName });
   setSession(json.accessToken, json.refreshToken, json.user);
   return json.user;
-}
+};
 
 /** The server answers ok whether or not the address has an account. */
-export async function requestPasswordReset(email: string): Promise<void> {
+export const requestPasswordReset = async (email: string): Promise<void> => {
   await postAuth('forgot-password', { email });
-}
+};
 
 /** Every device is signed out by the server, this one included. */
-export async function resetPassword(token: string, password: string): Promise<void> {
+export const resetPassword = async (token: string, password: string): Promise<void> => {
   await postAuth('reset-password', { token, password });
   clearSession();
-}
+};
 
-export async function verifyEmail(token: string): Promise<void> {
+export const verifyEmail = async (token: string): Promise<void> => {
   await postAuth('verify-email', { token });
   // The link may belong to another account than the one signed in here, so ask the server.
   if (!currentAccessToken) return;
@@ -155,19 +155,19 @@ export async function verifyEmail(token: string): Promise<void> {
     headers: { ...JSON_HEADERS, Authorization: `Bearer ${currentAccessToken}` },
   }).catch(() => null);
   if (res?.ok) setCurrentUser(await res.json());
-}
+};
 
-export async function resendVerification(): Promise<void> {
+export const resendVerification = async (): Promise<void> => {
   await postAuth('resend-verification', {}, currentAccessToken);
-}
+};
 
-function setCurrentUser(user: User) {
+const setCurrentUser = (user: User) => {
   currentUser = user;
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   notifyListeners();
-}
+};
 
-export async function signOut(): Promise<void> {
+export const signOut = async (): Promise<void> => {
   try {
     if (currentAccessToken) {
       await fetch(`${API_BASE}/auth/logout`, {
@@ -186,11 +186,11 @@ export async function signOut(): Promise<void> {
     clearSession();
     localStorage.setItem(SIGNED_OUT_KEY, '1');
   }
-}
+};
 
 let refreshPromise: Promise<string | null> | null = null;
 
-export async function refreshAccessToken(): Promise<string | null> {
+export const refreshAccessToken = async (): Promise<string | null> => {
   if (refreshPromise) return refreshPromise;
 
   if (!currentRefreshToken) {
@@ -230,9 +230,9 @@ export async function refreshAccessToken(): Promise<string | null> {
   })();
 
   return refreshPromise;
-}
+};
 
-export async function initDevAuth(): Promise<void> {
+export const initDevAuth = async (): Promise<void> => {
   // Someone who signed out stays a guest; dev auto-login is only for a fresh start.
   if (currentAccessToken || localStorage.getItem(SIGNED_OUT_KEY)) {
     markAuthSettled();
@@ -272,4 +272,4 @@ export async function initDevAuth(): Promise<void> {
   })();
 
   return authSettlePromise;
-}
+};

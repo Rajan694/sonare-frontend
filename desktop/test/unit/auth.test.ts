@@ -5,12 +5,12 @@ import { testUser } from '../helpers/fixtures';
 useMockServer();
 
 /** auth.ts reads localStorage and the env when it loads, so each test gets a fresh copy. */
-async function freshAuth() {
+const freshAuth = async () => {
   vi.resetModules();
   const auth = await import('../../src/api/auth');
   const gate = await import('../../src/api/accountGate');
   return { ...auth, ...gate };
-}
+};
 
 const tokens = { accessToken: 'acc', refreshToken: 'ref', user: testUser };
 

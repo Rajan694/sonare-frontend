@@ -17,7 +17,7 @@ const SMALL = [
 ];
 
 /** The Sonare logo tile: black waveform on the green gradient. */
-export function BrandMark({ size = 56 }: { size?: number }) {
+export const BrandMark = ({ size = 56 }: { size?: number }) => {
   const gradient = `sonare-${useId().replace(/[^\w-]/g, '')}`;
   const bars = size > 32 ? DISPLAY : SMALL;
   return (
@@ -34,4 +34,4 @@ export function BrandMark({ size = 56 }: { size?: number }) {
       ))}
     </Svg>
   );
-}
+};

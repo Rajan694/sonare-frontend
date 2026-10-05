@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-export default async function globalTeardown() {
+const globalTeardown = async () => {
   const bePid = (globalThis as any).__BACKEND_PID__;
   const fePid = (globalThis as any).__VITE_PID__;
 
@@ -25,4 +25,6 @@ export default async function globalTeardown() {
   if (fs.existsSync(viteCache)) {
     fs.rmSync(viteCache, { recursive: true, force: true });
   }
-}
+};
+
+export default globalTeardown;

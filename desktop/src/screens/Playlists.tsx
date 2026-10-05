@@ -11,7 +11,7 @@ import Icon from '../components/ui/Icon';
 import { staggerContainer, staggerItem, transition } from '../lib/motion';
 import type { Playlist } from '../types';
 
-export default function Playlists() {
+const Playlists = () => {
   const { mode } = useModeStore();
   const isOffline = mode === 'offline';
   const { user } = useAuth();
@@ -165,4 +165,5 @@ export default function Playlists() {
       </motion.div>
     </motion.div>
   );
-}
+};
+export default Playlists;

@@ -11,17 +11,17 @@ const RAIL_ITEMS = [
   { to: '/settings', icon: 'settings' as const, label: 'Settings' },
 ] as const;
 
-export default function IconRail() {
+const IconRail = () => {
   const location = useLocation();
 
-  function isActive(to: string) {
+  const isActive = (to: string) => {
     if (to === '/home') return location.pathname === '/home';
     if (to === '/search') return location.pathname.startsWith('/search');
     if (to === '/library') return location.pathname.startsWith('/library');
     if (to === '/playlists') return location.pathname.startsWith('/playlist');
     if (to === '/settings') return location.pathname.startsWith('/settings');
     return false;
-  }
+  };
 
   return (
     <aside className="flex flex-col items-center justify-center flex-none w-[76px] h-full border-r border-ln py-3.5 px-2.5 gap-1.5 bg-s0">
@@ -43,4 +43,5 @@ export default function IconRail() {
       })}
     </aside>
   );
-}
+};
+export default IconRail;

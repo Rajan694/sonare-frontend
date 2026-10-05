@@ -74,6 +74,6 @@ export const PlayerContext = createContext<PlayerStore>({
   clearUpcoming: () => void 0,
 });
 
-export function usePlayerStore() {
+export const usePlayerStore = () => {
   return useContext(PlayerContext);
-}
+};

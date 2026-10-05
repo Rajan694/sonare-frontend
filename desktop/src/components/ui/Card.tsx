@@ -17,7 +17,7 @@ interface CardProps {
   onMore?: (e: React.MouseEvent) => void;
 }
 
-export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width = 160, onPlay, onMore }: CardProps) {
+export const Card = ({ title, subtitle, artVariant = 'a1', to, thumbnail, width = 160, onPlay, onMore }: CardProps) => {
   const body = (
     <>
       <Artwork src={thumbnail} variant={artVariant} size={width} radius="md" alt={title} />
@@ -67,4 +67,4 @@ export function Card({ title, subtitle, artVariant = 'a1', to, thumbnail, width 
       )}
     </div>
   );
-}
+};

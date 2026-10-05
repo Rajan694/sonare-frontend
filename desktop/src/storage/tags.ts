@@ -28,7 +28,7 @@ const utf8 = new TextDecoder('utf-8');
 const SITE_STAMP =
   /\s*(::+|[-|]\s*|[([])?\s*(www\.)?[a-z0-9-]+\.(com|me|in|net|org|se|co|info|pk|fm|io|live|site|xyz|app|cc|to|mobi|biz|tv|club|online|world|pro|ws)\b(\.[a-z]{2,3})*\s*(::+|[)\]])?/gi;
 
-export function clean(s: string | undefined): string | undefined {
+export const clean = (s: string | undefined): string | undefined => {
   const v = s
     ?.replace(/\0+$/g, '')
     .replace(/\0/g, ' ')
@@ -36,23 +36,23 @@ export function clean(s: string | undefined): string | undefined {
     .replace(/\s{2,}/g, ' ')
     .trim();
   return v ? v : undefined;
-}
+};
 
-function ascii(b: Uint8Array, at: number, len: number): string {
+const ascii = (b: Uint8Array, at: number, len: number): string => {
   return String.fromCharCode(...b.subarray(at, at + len));
-}
+};
 
-function u32(b: Uint8Array, at: number): number {
+const u32 = (b: Uint8Array, at: number): number => {
   return ((b[at] << 24) >>> 0) + (b[at + 1] << 16) + (b[at + 2] << 8) + b[at + 3];
-}
+};
 
-function synchsafe(b: Uint8Array, at: number): number {
+const synchsafe = (b: Uint8Array, at: number): number => {
   return (b[at] << 21) | (b[at + 1] << 14) | (b[at + 2] << 7) | b[at + 3];
-}
+};
 
 // ---------- ID3v2 / MP3 ----------
 
-function decodeId3Text(data: Uint8Array): string | undefined {
+const decodeId3Text = (data: Uint8Array): string | undefined => {
   if (data.length === 0) return undefined;
   const enc = data[0];
   const body = data.subarray(1);
@@ -67,7 +67,7 @@ function decodeId3Text(data: Uint8Array): string | undefined {
   else text = latin1.decode(body);
   // Multi-value frames separate values with NUL; keep the first.
   return clean(text.split('\0').filter(Boolean)[0]);
-}
+};
 
 const ID3_FIELDS: Record<string, keyof AudioTags> = {
   TIT2: 'title',
@@ -85,7 +85,7 @@ const ID3_FIELDS: Record<string, keyof AudioTags> = {
   TLE: 'durationMs',
 };
 
-async function readId3(read: RangeReader, fileSize: number): Promise<AudioTags> {
+const readId3 = async (read: RangeReader, fileSize: number): Promise<AudioTags> => {
   const head = await read(0, 10);
   const tags: AudioTags = { codec: 'MP3' };
   let audioStart = 0;
@@ -123,7 +123,7 @@ async function readId3(read: RangeReader, fileSize: number): Promise<AudioTags> 
   }
   if (!tags.durationMs) Object.assign(tags, await mp3Duration(read, audioStart, fileSize));
   return tags;
-}
+};
 
 const MPEG1_L3_KBPS = [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320];
 const MPEG2_L3_KBPS = [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
@@ -135,7 +135,7 @@ const SAMPLE_RATES = [
 ];
 
 /** Duration from the Xing/Info frame count when present, else from the CBR bitrate. */
-async function mp3Duration(read: RangeReader, start: number, fileSize: number): Promise<AudioTags> {
+const mp3Duration = async (read: RangeReader, start: number, fileSize: number): Promise<AudioTags> => {
   const b = await read(start, 4096);
   for (let i = 0; i + 4 < b.length; i++) {
     if (b[i] !== 0xff || (b[i + 1] & 0xe0) !== 0xe0) continue;
@@ -160,7 +160,7 @@ async function mp3Duration(read: RangeReader, start: number, fileSize: number): 
     return { durationMs: Math.round(((fileSize - start) * 8) / kbps), bitrateKbps: kbps };
   }
   return {};
-}
+};
 
 // ---------- Vorbis comments (FLAC, Ogg Vorbis, Opus) ----------
 
@@ -173,7 +173,7 @@ const VORBIS_FIELDS: Record<string, keyof AudioTags> = {
   GENRE: 'genre',
 };
 
-function parseVorbisComments(b: Uint8Array, at: number, tags: AudioTags) {
+const parseVorbisComments = (b: Uint8Array, at: number, tags: AudioTags) => {
   const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
   if (at + 4 > b.length) return;
   let p = at + 4 + dv.getUint32(at, true);
@@ -192,9 +192,9 @@ function parseVorbisComments(b: Uint8Array, at: number, tags: AudioTags) {
     if (field === 'year') tags.year = parseInt(value, 10) || undefined;
     else (tags as Record<string, unknown>)[field] = value;
   }
-}
+};
 
-async function readFlac(read: RangeReader): Promise<AudioTags> {
+const readFlac = async (read: RangeReader): Promise<AudioTags> => {
   const tags: AudioTags = { codec: 'FLAC' };
   let pos = 4;
   for (let guard = 0; guard < 64; guard++) {
@@ -215,9 +215,9 @@ async function readFlac(read: RangeReader): Promise<AudioTags> {
     if (last) break;
   }
   return tags;
-}
+};
 
-async function readOgg(read: RangeReader, fileSize: number): Promise<AudioTags> {
+const readOgg = async (read: RangeReader, fileSize: number): Promise<AudioTags> => {
   const b = await read(0, 64 * 1024);
   const text = latin1.decode(b);
   const opus = text.indexOf('OpusTags');
@@ -243,7 +243,7 @@ async function readOgg(read: RangeReader, fileSize: number): Promise<AudioTags> 
     if (granule > 0 && rate > 0) tags.durationMs = Math.round((granule / rate) * 1000);
   }
   return tags;
-}
+};
 
 // ---------- MP4 / M4A ----------
 
@@ -256,7 +256,12 @@ const MP4_FIELDS: Record<string, keyof AudioTags> = {
   '\xa9gen': 'genre',
 };
 
-function walkAtoms(b: Uint8Array, start: number, end: number, fn: (type: string, body: number, end: number) => void) {
+const walkAtoms = (
+  b: Uint8Array,
+  start: number,
+  end: number,
+  fn: (type: string, body: number, end: number) => void,
+) => {
   let p = start;
   while (p + 8 <= end) {
     let size = u32(b, p);
@@ -265,9 +270,9 @@ function walkAtoms(b: Uint8Array, start: number, end: number, fn: (type: string,
     fn(type, p + 8, Math.min(p + size, end));
     p += size;
   }
-}
+};
 
-async function readMp4(read: RangeReader, fileSize: number): Promise<AudioTags> {
+const readMp4 = async (read: RangeReader, fileSize: number): Promise<AudioTags> => {
   const tags: AudioTags = { codec: 'AAC' };
   // Find `moov` among the top-level atoms; it may sit after the media data.
   let pos = 0;
@@ -316,11 +321,11 @@ async function readMp4(read: RangeReader, fileSize: number): Promise<AudioTags> 
     }
   });
   return tags;
-}
+};
 
 // ---------- entry point ----------
 
-export function tagsFromFileName(path: string): { title: string; artist?: string; album?: string } {
+export const tagsFromFileName = (path: string): { title: string; artist?: string; album?: string } => {
   const parts = path.split(/[\\/]/);
   const file = parts.pop() ?? path;
   const base = file
@@ -331,9 +336,9 @@ export function tagsFromFileName(path: string): { title: string; artist?: string
   const dash = base.indexOf(' - ');
   if (dash > 0) return { artist: base.slice(0, dash).trim(), title: base.slice(dash + 3).trim(), album: parent };
   return { title: base, album: parent };
-}
+};
 
-export async function readTags(path: string, fileSize: number, read: RangeReader): Promise<AudioTags> {
+export const readTags = async (path: string, fileSize: number, read: RangeReader): Promise<AudioTags> => {
   const ext = path.split('.').pop()?.toLowerCase() ?? '';
   try {
     const magic = await read(0, 12);
@@ -348,4 +353,4 @@ export async function readTags(path: string, fileSize: number, read: RangeReader
     // Truncated or unusual file — fall through to file-name metadata.
   }
   return {};
-}
+};

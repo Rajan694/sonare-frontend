@@ -10,7 +10,7 @@ interface FieldProps extends Omit<TextInputProps, 'style'> {
   className?: string;
 }
 
-export function Field({ icon, clearButton, onClear, className, ...props }: FieldProps) {
+export const Field = ({ icon, clearButton, onClear, className, ...props }: FieldProps) => {
   return (
     <View
       className={cn('flex-row items-center h-[44px] px-3.5 bg-s2 border border-ln2 rounded-full gap-2.5', className)}
@@ -29,4 +29,4 @@ export function Field({ icon, clearButton, onClear, className, ...props }: Field
       ) : null}
     </View>
   );
-}
+};

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAppDispatch } from '../store';
 import { openQueue } from '../store/uiSlice';
 
-export default function Queue() {
+const Queue = () => {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
 
@@ -13,4 +13,5 @@ export default function Queue() {
   }, [dispatch, navigate]);
 
   return null;
-}
+};
+export default Queue;

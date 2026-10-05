@@ -12,7 +12,7 @@ import Icon from '../components/ui/Icon';
  * folders to list or manage; this says so instead of showing example folders and buttons
  * that do nothing. Songs you download from Sonare appear under Downloads.
  */
-export function FoldersScreen() {
+export const FoldersScreen = () => {
   const navigation = useNavigation<any>();
 
   return (
@@ -40,4 +40,4 @@ export function FoldersScreen() {
       </View>
     </Screen>
   );
-}
+};

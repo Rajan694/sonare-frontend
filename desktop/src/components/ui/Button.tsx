@@ -24,7 +24,7 @@ const sizeClasses = {
   lg: 'h-12 px-[24px] text-[15px]',
 };
 
-export default function Button({ variant = 'solid', size = 'md', icon, children, className, ...props }: ButtonProps) {
+const Button = ({ variant = 'solid', size = 'md', icon, children, className, ...props }: ButtonProps) => {
   return (
     <button
       className={cn(
@@ -39,7 +39,8 @@ export default function Button({ variant = 'solid', size = 'md', icon, children,
       {children}
     </button>
   );
-}
+};
+export default Button;
 
 interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   icon: IconName;
@@ -54,7 +55,7 @@ interface IconButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> 
   bordered?: boolean;
 }
 
-export function IconButton({
+export const IconButton = ({
   icon,
   label,
   tip,
@@ -64,7 +65,7 @@ export function IconButton({
   bordered,
   className,
   ...props
-}: IconButtonProps) {
+}: IconButtonProps) => {
   const dim = { 28: 'w-7 h-7', 32: 'w-8 h-8', 40: 'w-10 h-10', 44: 'w-11 h-11' }[size];
   const iconSize = { 28: 14, 32: 16, 40: 18, 44: 20 }[size];
   return (
@@ -78,4 +79,4 @@ export function IconButton({
       <Icon name={icon} size={iconSize} />
     </button>
   );
-}
+};

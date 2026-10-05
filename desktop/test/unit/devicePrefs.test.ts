@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-async function fresh() {
+const fresh = async () => {
   vi.resetModules();
   return import('../../src/storage/devicePrefs');
-}
+};
 
 describe('device preferences', () => {
   it('WEB-PREFS-001 start at the original lyrics and the system output, and restore what was saved', async () => {

@@ -54,12 +54,12 @@ const DOWNLOAD_FORMATS: { id: DownloadFormat; label: string }[] = [
   { id: 'm4a', label: 'AAC (.m4a)' },
 ];
 
-function useDownloadLocation() {
+const useDownloadLocation = () => {
   useEffect(() => {
     void loadLocation();
   }, []);
   return useSyncExternalStore(subscribeLocation, getLocation);
-}
+};
 
 interface SectionDef {
   id: string;
@@ -70,7 +70,7 @@ interface SectionDef {
   available: boolean;
 }
 
-function Row({
+const Row = ({
   icon,
   label,
   desc,
@@ -80,7 +80,7 @@ function Row({
   label: string;
   desc?: string;
   children?: React.ReactNode;
-}) {
+}) => {
   return (
     <div className="lrow">
       <span className="icobox">
@@ -93,11 +93,11 @@ function Row({
       {children}
     </div>
   );
-}
+};
 
 const chevron = <Icon name="chevron-right" size={16} className="text-t4 flex-none" />;
 
-export default function Settings() {
+const Settings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const settings = useSettings();
@@ -180,23 +180,23 @@ export default function Settings() {
   const currentSectionId = searchParams.get('section') || 'account';
   const currentSection = activeSections.find((s) => s.id === currentSectionId) || activeSections[0];
 
-  function setSection(id: string) {
+  const setSection = (id: string) => {
     setSearchParams({ section: id });
-  }
+  };
 
-  async function handleResendVerification() {
+  const handleResendVerification = async () => {
     try {
       await resendVerification();
       showToast({ title: 'Verification email sent', description: `Check ${user?.email}`, icon: 'check' });
     } catch (err) {
       showToast({ title: 'Could not send the email', description: err instanceof Error ? err.message : undefined });
     }
-  }
+  };
 
-  async function handleSignOut() {
+  const handleSignOut = async () => {
     await signOut();
     showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' });
-  }
+  };
 
   const totalLocalBytes = local.folders.reduce((n, f) => n + f.bytes, 0);
   const totalLocalTracks = local.folders.filter((f) => f.included).reduce((n, f) => n + f.trackCount, 0);
@@ -291,7 +291,7 @@ export default function Settings() {
     </div>
   );
 
-  async function changeLocation() {
+  const changeLocation = async () => {
     try {
       if (await chooseLocation())
         showToast({
@@ -307,7 +307,7 @@ export default function Settings() {
         icon: 'info',
       });
     }
-  }
+  };
 
   const doneCount = downloadItems.filter((d) => d.status === 'done').length;
   const canChangeLocation = CAPS.offlineDownloads || canPickWebFolder;
@@ -634,7 +634,8 @@ export default function Settings() {
       </div>
     </div>
   );
-}
+};
+export default Settings;
 
 // ---- About: version, and on the web the app builds the admin page uploaded ----
 
@@ -656,16 +657,16 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 /** The platform the browser runs on, so its builds come first. */
-function currentPlatform(): ReleasePlatform | null {
+const currentPlatform = (): ReleasePlatform | null => {
   const ua = navigator.userAgent;
   if (/Android/i.test(ua)) return 'android';
   if (/Windows/i.test(ua)) return 'windows';
   if (/Linux|X11/i.test(ua) && !/CrOS/i.test(ua)) return 'linux';
   return null;
-}
+};
 
 /** 1.10.0 > 1.9.2, and 1.0.0 > 1.0.0-dev (a tagged build comes before its release). */
-function compareVersions(a: string, b: string): number {
+const compareVersions = (a: string, b: string): number => {
   const [coreA, tagA = ''] = a.split(/-(.*)/);
   const [coreB, tagB = ''] = b.split(/-(.*)/);
   const pa = coreA.split('.').map(Number);
@@ -678,12 +679,12 @@ function compareVersions(a: string, b: string): number {
   if (!tagA) return 1;
   if (!tagB) return -1;
   return tagA.localeCompare(tagB, 'en', { numeric: true });
-}
+};
 
 // Only the web build offers the downloads: the installed apps already are one.
 const OFFERS_DOWNLOADS = CLIENT === 'web';
 
-function AboutSection() {
+const AboutSection = () => {
   const [releases, setReleases] = useState<AppRelease[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
@@ -782,4 +783,4 @@ function AboutSection() {
       )}
     </div>
   );
-}
+};

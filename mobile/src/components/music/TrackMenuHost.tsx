@@ -17,7 +17,7 @@ import { useModeStore } from '../../store/mode';
 import { confirmRemoveDownloads } from '../../lib/confirmRemoveDownloads';
 import type { Track } from '../../data/types';
 
-function MenuItem({
+const MenuItem = ({
   icon,
   label,
   onPress,
@@ -25,7 +25,7 @@ function MenuItem({
   icon: React.ComponentProps<typeof Icon>['name'];
   label: string;
   onPress: () => void;
-}) {
+}) => {
   return (
     <Button variant="ghost" className="justify-start px-2 py-3" onPress={onPress} accessibilityLabel={label}>
       <View className="mr-3 w-[18px] items-center">
@@ -34,9 +34,9 @@ function MenuItem({
       <Text className="text-t1 text-tm">{label}</Text>
     </Button>
   );
-}
+};
 
-function PlaylistPicker({ track }: { track: Track }) {
+const PlaylistPicker = ({ track }: { track: Track }) => {
   const close = useTrackMenuStore((s) => s.close);
   const playlists = useLibraryStore((s) => s.playlists);
   const [newName, setNewName] = React.useState('');
@@ -110,9 +110,9 @@ function PlaylistPicker({ track }: { track: Track }) {
       {note && <Text className="text-red text-bs">{note}</Text>}
     </View>
   );
-}
+};
 
-function Menu({ track }: { track: Track }) {
+const Menu = ({ track }: { track: Track }) => {
   const { close, open, extraAction } = useTrackMenuStore();
   const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
   const download = useDownloadsStore((s) => s.items[track.id]);
@@ -173,10 +173,10 @@ function Menu({ track }: { track: Track }) {
       {extraAction && <MenuItem icon="more" label={extraAction.label} onPress={run(extraAction.onPress)} />}
     </View>
   );
-}
+};
 
 /** The one long-press sheet for songs; open it with useTrackMenuStore().open(track). */
-export function TrackMenuHost() {
+export const TrackMenuHost = () => {
   const current = useTrackMenuStore((s) => s.track);
   const view = useTrackMenuStore((s) => s.view);
   const close = useTrackMenuStore((s) => s.close);
@@ -205,4 +205,4 @@ export function TrackMenuHost() {
       )}
     </Sheet>
   );
-}
+};

@@ -415,18 +415,18 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
 });
 
 /** The file to play for a track, when it has been downloaded and is still there. */
-export function localUriFor(trackId: string): string | null {
+export const localUriFor = (trackId: string): string | null => {
   const item = useDownloadsStore.getState().items[trackId];
   return item?.status === 'done' && item.uri && !item.missing ? item.uri : null;
-}
+};
 
 /** 0..1, or null while the size is unknown. */
-export function downloadProgress(item: DownloadItem): number | null {
+export const downloadProgress = (item: DownloadItem): number | null => {
   return item.totalBytes > 0 ? Math.min(1, item.receivedBytes / item.totalBytes) : null;
-}
+};
 
 /** A playable Track for a download (Downloads screen, offline Home / Library). */
-export function downloadTrack(item: DownloadItem): Track {
+export const downloadTrack = (item: DownloadItem): Track => {
   return {
     id: item.id,
     title: item.title,
@@ -443,12 +443,12 @@ export function downloadTrack(item: DownloadItem): Track {
     addedAt: item.addedAt,
     thumbnail: item.thumbnail,
   };
-}
+};
 
 /** Finished downloads that are still on the phone, newest first. */
-export function downloadedTracks(items: Record<string, DownloadItem>): Track[] {
+export const downloadedTracks = (items: Record<string, DownloadItem>): Track[] => {
   return Object.values(items)
     .filter((i) => i.status === 'done' && !i.missing)
     .sort((a, b) => (b.completedAt ?? b.addedAt) - (a.completedAt ?? a.addedAt))
     .map(downloadTrack);
-}
+};

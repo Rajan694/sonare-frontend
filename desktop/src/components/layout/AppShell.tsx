@@ -23,9 +23,9 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { closeQueue, toggleQueue, toggleSidebar } from '../../store/uiSlice';
 import { cn } from '../../lib/cn';
 
-function isTyping(el: EventTarget | null) {
+const isTyping = (el: EventTarget | null) => {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-}
+};
 
 /**
  * The page this transition wrapper was created for. A plain <Outlet /> always renders the
@@ -33,13 +33,13 @@ function isTyping(el: EventTarget | null) {
  * exit finishes) would switch to the new page and mount it, and then the entering wrapper
  * mounts it a second time: the next page flashes, then loads again.
  */
-function FrozenOutlet() {
+const FrozenOutlet = () => {
   const outlet = useOutlet();
   const [page] = useState(outlet);
   return page;
-}
+};
 
-export default function AppShell() {
+const AppShell = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const toasts = useToasts();
@@ -60,7 +60,7 @@ export default function AppShell() {
 
   // FLOWS §3: Ctrl Q toggles the queue, Esc leaves the full-screen player / closes queue.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
         e.preventDefault();
         dispatch(toggleQueue());
@@ -77,7 +77,7 @@ export default function AppShell() {
           else navigate('/home');
         }
       }
-    }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [location.pathname, navigate, queueOpen, dispatch, sidebarShown]);
@@ -246,4 +246,5 @@ export default function AppShell() {
       {toastContainer}
     </div>
   );
-}
+};
+export default AppShell;

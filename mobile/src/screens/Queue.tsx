@@ -24,7 +24,7 @@ import { cn } from '../lib/cn';
 import type { Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 
-export function QueueScreen() {
+export const QueueScreen = () => {
   const navigation = useNavigation<any>();
   const mode = useModeStore((state) => state.mode);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
@@ -251,12 +251,12 @@ export function QueueScreen() {
       </View>
     </Screen>
   );
-}
+};
 
 const ROW_HEIGHT = 60;
 
 /** A queued song: tap to play it, × to drop it, drag the handle to move it up or down. */
-function QueueRow({
+const QueueRow = ({
   track,
   onPress,
   onRemove,
@@ -266,7 +266,7 @@ function QueueRow({
   onPress: () => void;
   onRemove: () => void;
   onMove: (by: number) => void;
-}) {
+}) => {
   const dragY = useSharedValue(0);
   // The end event carries no translation, so the last update's is kept here.
   const lastY = useRef(0);
@@ -333,4 +333,4 @@ function QueueRow({
       </Pressable>
     </Animated.View>
   );
-}
+};

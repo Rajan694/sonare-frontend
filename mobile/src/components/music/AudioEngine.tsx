@@ -33,11 +33,11 @@ let nextToken = 0;
 const current = () => usePlayerStore.getState().currentTrack;
 
 /** Downloaded songs play from the phone, online or not; everything else streams. */
-async function streamUrl(track: Track): Promise<string> {
+const streamUrl = async (track: Track): Promise<string> => {
   return localUriFor(track.id) ?? absoluteUrl((await api.stream(track.id)).url)!;
-}
+};
 
-function loadOptions(track: Track, url: string): LoadOptions {
+const loadOptions = (track: Track, url: string): LoadOptions => {
   return {
     id: track.id,
     url,
@@ -46,14 +46,14 @@ function loadOptions(track: Track, url: string): LoadOptions {
     album: track.album ?? undefined,
     artworkUrl: artworkUrl(track, 640),
   };
-}
+};
 
 /**
  * Hands the native player the track after the current one, so it can start it gapless or
  * crossfade into it. Only needed while one of those is on; otherwise the next track loads
  * when this one ends, as before.
  */
-async function prepareNext() {
+const prepareNext = async () => {
   const token = ++nextToken;
   const next = usePlayerStore.getState().upcomingTrack();
   const wanted =
@@ -75,10 +75,10 @@ async function prepareNext() {
   } catch {
     // No stream for it yet: it loads normally once the current track ends.
   }
-}
+};
 
 /** Sends the Audio screen's settings to the native player. */
-function pushAudioSettings() {
+const pushAudioSettings = () => {
   const audio = useAudioStore.getState();
   const settings = useSettingsStore.getState();
   SonarePlayer.setAudioEffects({
@@ -90,10 +90,10 @@ function pushAudioSettings() {
   });
   SonarePlayer.setSpeed(audio.speed);
   SonarePlayer.setTransitions({ crossfadeMs: audio.crossfade ? CROSSFADE_MS : 0, gapless: settings.gapless });
-}
+};
 
 /** The native player already plays `id` (it moved on by itself): take it over without reloading. */
-function adopt(id: string) {
+const adopt = (id: string) => {
   advancedTo = null;
   ++loadToken; // a load still in flight for an older track must not replace this one
   loadedId = id;
@@ -101,9 +101,9 @@ function adopt(id: string) {
   endedHandled = false;
   nextSent = undefined;
   prepareNext();
-}
+};
 
-async function loadCurrent() {
+const loadCurrent = async () => {
   const token = ++loadToken;
   loadedId = null;
   listen = null;
@@ -141,7 +141,7 @@ async function loadCurrent() {
   } catch (e: any) {
     if (token === loadToken) usePlayerStore.getState().setError(e?.message || 'Could not load this track');
   }
-}
+};
 
 /**
  * Wires the player store to the native player, once. This deliberately avoids React
@@ -149,7 +149,7 @@ async function loadCurrent() {
  * scheduler runs on, so "next" from the lock screen would wait until the app reopened.
  * A store subscription and native events run straight away.
  */
-function startAudio() {
+const startAudio = () => {
   if (started) return;
   started = true;
 
@@ -253,10 +253,10 @@ function startAudio() {
       SonarePlayer.seekTo(state.seekRequest.ms);
     }
   });
-}
+};
 
 /** Mount once near the root; starts the audio wiring. Renders nothing. */
-export function AudioEngine() {
+export const AudioEngine = () => {
   useEffect(startAudio, []);
   return null;
-}
+};

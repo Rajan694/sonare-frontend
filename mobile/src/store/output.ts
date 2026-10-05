@@ -47,14 +47,14 @@ const DETAIL: Record<OutputDevice['type'], string> = {
   bluetooth: 'Bluetooth',
 };
 
-export function outputDetail(device: OutputDevice | null): string {
+export const outputDetail = (device: OutputDevice | null): string => {
   return device ? DETAIL[device.type] : 'Playing on this phone';
-}
+};
 
 let wired = false;
 
 /** Called once by the audio engine: restores the saved pick and follows device changes. */
-export function watchOutput(): void {
+export const watchOutput = (): void => {
   if (wired) return;
   wired = true;
   SonarePlayer.onOutput((current) => {
@@ -71,4 +71,4 @@ export function watchOutput(): void {
     })
     .catch(() => {})
     .finally(() => useOutputStore.getState().refresh());
-}
+};

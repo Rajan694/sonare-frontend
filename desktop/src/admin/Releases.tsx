@@ -30,21 +30,21 @@ const DEFAULT_ACCEPTS: Record<ReleasePlatform, string[]> = {
  * `sonare-1.2.0-linux-x64.tar.gz` → `1.2.0` and `sonare_1.2.0~dev_amd64.deb` → `1.2.0-dev`
  * (../buildFE.sh's names), so the usual case needs no typing.
  */
-function versionFromName(name: string): string {
+const versionFromName = (name: string): string => {
   const m = /(\d+\.\d+(?:\.\d+)?)(?:[-~]((?:dev|alpha|beta|rc)[0-9.]*))?/i.exec(name);
   return m ? (m[2] ? `${m[1]}-${m[2]}` : m[1]) : '';
-}
+};
 
 /** The platform a file is obviously for, to save a click. */
-function platformFromName(name: string): ReleasePlatform | null {
+const platformFromName = (name: string): ReleasePlatform | null => {
   const lower = name.toLowerCase();
   if (lower.endsWith('.apk')) return 'android';
   if (/\.(exe|msi)$/.test(lower) || /win/.test(lower)) return 'windows';
   if (/\.(appimage|deb|rpm|tar\.gz)$/.test(lower) || /linux/.test(lower)) return 'linux';
   return null;
-}
+};
 
-export default function Releases() {
+const Releases = () => {
   const { data, setData, error, loading, reload } = useLoad(() => adminApi.releases(), []);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -61,11 +61,11 @@ export default function Releases() {
     }
   }
 
-  function onUploaded(r: AdminRelease) {
+  const onUploaded = (r: AdminRelease) => {
     setData((d) => d && { ...d, items: [r, ...d.items.filter((x) => x.id !== r.id)] });
-  }
+  };
 
-  async function remove(r: AdminRelease) {
+  const remove = async (r: AdminRelease) => {
     const live = offered.has(r.id) ? ' People will get the previous upload of this type instead, if there is one.' : '';
     if (!window.confirm(`Delete ${r.fileName} (${r.version})?${live}`)) return;
     setActionError(null);
@@ -75,7 +75,7 @@ export default function Releases() {
     } catch (err) {
       setActionError((err as Error).message);
     }
-  }
+  };
 
   return (
     <>
@@ -124,9 +124,10 @@ export default function Releases() {
       </div>
     </>
   );
-}
+};
+export default Releases;
 
-function ReleaseRow({ r, offered, onDelete }: { r: AdminRelease; offered: boolean; onDelete: () => void }) {
+const ReleaseRow = ({ r, offered, onDelete }: { r: AdminRelease; offered: boolean; onDelete: () => void }) => {
   return (
     <li className="flex items-center gap-3 py-3 border-b border-ln last:border-0">
       <span className="badge bg-s3 text-t2 flex-none uppercase">{r.format}</span>
@@ -164,15 +165,15 @@ function ReleaseRow({ r, offered, onDelete }: { r: AdminRelease; offered: boolea
       </button>
     </li>
   );
-}
+};
 
-function UploadForm({
+const UploadForm = ({
   accepts,
   onUploaded,
 }: {
   accepts: Record<ReleasePlatform, string[]>;
   onUploaded: (r: AdminRelease) => void;
-}) {
+}) => {
   const [platform, setPlatform] = useState<ReleasePlatform>('android');
   const [file, setFile] = useState<File | null>(null);
   const [version, setVersion] = useState('');
@@ -188,7 +189,7 @@ function UploadForm({
   const uploading = progress !== null;
   const wrongType = file && !types.some((ext) => file.name.toLowerCase().endsWith(ext.toLowerCase()));
 
-  function pick(f: File | null) {
+  const pick = (f: File | null) => {
     setFile(f);
     setError(null);
     setDone(null);
@@ -197,9 +198,9 @@ function UploadForm({
     if (guess) setPlatform(guess);
     const v = versionFromName(f.name);
     if (v) setVersion(v);
-  }
+  };
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file || wrongType || !version.trim()) return;
     const controller = new AbortController();
@@ -224,7 +225,7 @@ function UploadForm({
       setProgress(null);
       abortRef.current = null;
     }
-  }
+  };
 
   return (
     <Panel title="Upload a build" subtitle="Uploading the same version and file type again replaces it.">
@@ -328,4 +329,4 @@ function UploadForm({
       </form>
     </Panel>
   );
-}
+};

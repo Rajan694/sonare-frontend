@@ -83,13 +83,13 @@ if (!native) {
 }
 const emitter = native ? new NativeEventEmitter(NativeModules.SonarePlayer) : null;
 
-function on<T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } {
+const on = <T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } => {
   return (
     emitter?.addListener(`SonarePlayer.${event}`, (...args) => handler(args[0] as T)) ?? {
       remove: () => {},
     }
   );
-}
+};
 
 export const SonarePlayer = {
   load: (options: LoadOptions) => native?.load(options) ?? Promise.resolve(),

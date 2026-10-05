@@ -25,7 +25,7 @@ const NAV = [
   { to: '/admin/account', label: 'Account', icon: KeyRound },
 ];
 
-export default function AdminApp() {
+const AdminApp = () => {
   const [signedIn, setSignedIn] = useState(isSignedIn());
   const [account, setAccount] = useState<AdminAccount | null>(null);
 
@@ -69,9 +69,10 @@ export default function AdminApp() {
       )}
     </div>
   );
-}
+};
+export default AdminApp;
 
-function Shell({ account }: { account: AdminAccount | null }) {
+const Shell = ({ account }: { account: AdminAccount | null }) => {
   const link = ({ isActive }: { isActive: boolean }) =>
     cn('sitem hover:bg-s2 hover:text-t1 flex-none', isActive && 'bg-s3 text-t1');
 
@@ -119,15 +120,15 @@ function Shell({ account }: { account: AdminAccount | null }) {
       </main>
     </div>
   );
-}
+};
 
-function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
+const SignIn = ({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
@@ -139,7 +140,7 @@ function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -179,4 +180,4 @@ function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
       </form>
     </div>
   );
-}
+};

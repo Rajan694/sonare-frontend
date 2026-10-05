@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function PageHeader({
+export const PageHeader = ({
   title,
   subtitle,
   children,
@@ -8,7 +8,7 @@ export function PageHeader({
   title: string;
   subtitle?: string;
   children?: React.ReactNode;
-}) {
+}) => {
   return (
     <header className="flex flex-wrap items-end justify-between gap-4 mb-6">
       <div className="min-w-0">
@@ -18,4 +18,4 @@ export function PageHeader({
       {children && <div className="flex flex-wrap items-center gap-3">{children}</div>}
     </header>
   );
-}
+};

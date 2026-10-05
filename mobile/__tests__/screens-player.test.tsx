@@ -38,7 +38,7 @@ const next1 = makeTrack({ title: 'Next one' });
 const next2 = makeTrack({ title: 'Next two', source: 'local' });
 
 /** Press a button in the last Alert.alert call. */
-async function pressAlertButton(text: string) {
+const pressAlertButton = async (text: string) => {
   const calls = (Alert.alert as jest.Mock).mock.calls;
   const buttons = calls[calls.length - 1][2] as {
     text: string;
@@ -47,7 +47,7 @@ async function pressAlertButton(text: string) {
   await act(async () => {
     await buttons.find((b) => b.text === text)!.onPress?.();
   });
-}
+};
 
 // Settings tests swap in a mock `update`; every test starts from the real store.
 const initialSettings = useSettingsStore.getState();

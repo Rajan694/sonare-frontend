@@ -22,7 +22,7 @@ interface SliderProps {
   resetValue?: number;
 }
 
-export function Slider({
+export const Slider = ({
   value,
   min = 0,
   max = 100,
@@ -37,7 +37,7 @@ export function Slider({
   onChange,
   onCommit,
   resetValue,
-}: SliderProps) {
+}: SliderProps) => {
   const railRef = useRef<HTMLSpanElement>(null);
   const [dragging, setDragging] = useState(false);
   const interactive = !!onChange && !disabled;
@@ -46,31 +46,31 @@ export function Slider({
   const snap = (v: number) => clamp(Math.round((v - min) / step) * step + min);
   const pct = ((clamp(value) - min) / (max - min)) * 100;
 
-  function valueAt(e: React.PointerEvent) {
+  const valueAt = (e: React.PointerEvent) => {
     const rect = railRef.current!.getBoundingClientRect();
     const ratio = vertical ? 1 - (e.clientY - rect.top) / rect.height : (e.clientX - rect.left) / rect.width;
     return snap(min + Math.max(0, Math.min(1, ratio)) * (max - min));
-  }
+  };
 
-  function onPointerDown(e: React.PointerEvent<HTMLSpanElement>) {
+  const onPointerDown = (e: React.PointerEvent<HTMLSpanElement>) => {
     if (!interactive || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setDragging(true);
     onChange!(valueAt(e));
-  }
+  };
 
-  function onPointerMove(e: React.PointerEvent<HTMLSpanElement>) {
+  const onPointerMove = (e: React.PointerEvent<HTMLSpanElement>) => {
     if (!dragging) return;
     onChange!(valueAt(e));
-  }
+  };
 
-  function onPointerUp(e: React.PointerEvent<HTMLSpanElement>) {
+  const onPointerUp = (e: React.PointerEvent<HTMLSpanElement>) => {
     if (!dragging) return;
     setDragging(false);
     onCommit?.(valueAt(e));
-  }
+  };
 
-  function onKeyDown(e: React.KeyboardEvent) {
+  const onKeyDown = (e: React.KeyboardEvent) => {
     if (!interactive) return;
     const big = (max - min) / 10;
     const delta = {
@@ -89,13 +89,13 @@ export function Slider({
     e.preventDefault();
     onChange!(next);
     onCommit?.(next);
-  }
+  };
 
-  function onDoubleClick() {
+  const onDoubleClick = () => {
     if (!interactive || resetValue === undefined) return;
     onChange!(resetValue);
     onCommit?.(resetValue);
-  }
+  };
 
   const fillStart = bipolar ? Math.min(50, pct) : 0;
   const fillEnd = bipolar ? Math.max(50, pct) : pct;
@@ -154,4 +154,4 @@ export function Slider({
       </span>
     </span>
   );
-}
+};

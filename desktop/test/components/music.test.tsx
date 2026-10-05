@@ -239,14 +239,14 @@ const rightClick = () =>
   }) as unknown as React.MouseEvent;
 
 describe('track menu', () => {
-  function open(
+  const open = (
     opts: {
       tracks?: (typeof track)[];
       player?: ReturnType<typeof makePlayer>;
       route?: string;
       mode?: 'online' | 'offline';
     } = {},
-  ) {
+  ) => {
     const utils = renderWithProviders(
       <>
         {(opts.tracks ?? [track]).map((t, i) => (
@@ -258,7 +258,7 @@ describe('track menu', () => {
     );
     fireEvent.click(screen.getAllByRole('button', { name: 'More options' })[0]);
     return { ...utils, menu: () => screen.getByRole('menu') };
-  }
+  };
 
   it('WEB-MUSIC-011 play next and add to queue go to the player and close the menu', async () => {
     const player = makePlayer();

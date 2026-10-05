@@ -32,7 +32,7 @@ export const genreQuery = (g: Genre) => g.query || g.name;
 const KEYS = Object.keys(artGradients);
 
 /** A browse category: the generated artwork gradient fills the whole card (genres have no art). */
-export function GenreCard({ genre, index, onPress }: { genre: Genre; index: number; onPress: () => void }) {
+export const GenreCard = ({ genre, index, onPress }: { genre: Genre; index: number; onPress: () => void }) => {
   const stops = artGradients[KEYS[index % KEYS.length]];
   const id = `genre-${genre.id}`;
   // A percentage-sized Svg only paints its first measured width, so it gets the card's real size.
@@ -62,4 +62,4 @@ export function GenreCard({ genre, index, onPress }: { genre: Genre; index: numb
       </Text>
     </Pressable>
   );
-}
+};

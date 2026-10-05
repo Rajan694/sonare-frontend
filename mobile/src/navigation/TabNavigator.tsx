@@ -27,7 +27,7 @@ const Stack = createNativeStackNavigator<Record<string, object | undefined>, und
  * M13, M15, M16). Now Playing, Lyrics, Queue, sign-in and the mode switch cover
  * everything from the root stack instead (M09-M12, M14).
  */
-function tabStack(rootName: string, Root: React.ComponentType<any>) {
+const tabStack = (rootName: string, Root: React.ComponentType<any>) => {
   return function TabStack() {
     return (
       <Stack.Navigator id={undefined} screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
@@ -42,14 +42,14 @@ function tabStack(rootName: string, Root: React.ComponentType<any>) {
       </Stack.Navigator>
     );
   };
-}
+};
 
 const HomeStack = tabStack('HomeRoot', HomeScreen);
 const LibraryStack = tabStack('LibraryRoot', LibraryScreen);
 const PlaylistsStack = tabStack('PlaylistsRoot', PlaylistsScreen);
 const SearchStack = tabStack('SearchRoot', SearchScreen);
 
-export function TabNavigator() {
+export const TabNavigator = () => {
   const toastVisible = useModeStore((state) => state.toastVisible);
   const hideToast = useModeStore((state) => state.hideToast);
   // Clear the Android gesture bar / iOS home indicator; a fixed height alone puts labels under it.
@@ -128,4 +128,4 @@ export function TabNavigator() {
       <MiniPlayer />
     </View>
   );
-}
+};

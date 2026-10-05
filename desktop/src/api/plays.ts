@@ -5,11 +5,11 @@ import { requestSync } from './sync';
  * Split a namespaced id (contract 8.1) into the TrackRef shape from 8.3. The backend
  * stores the bare id without its `yt:` / `local:` prefix, so strip it here.
  */
-function trackRef(trackId: string): { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string } {
+const trackRef = (trackId: string): { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string } => {
   if (trackId.startsWith('local:')) return { kind: 'local', fingerprint: trackId.slice('local:'.length) };
   if (trackId.startsWith('yt:')) return { kind: 'server', id: trackId.slice('yt:'.length) };
   return { kind: 'server', id: trackId };
-}
+};
 
 /**
  * Play counting.
@@ -25,13 +25,13 @@ const PLAY_THRESHOLD_MS = 30_000;
 /** Tracks already counted for the current playback session, keyed by track id + start time. */
 const counted = new Set<string>();
 
-function key(trackId: string, startedAt: number): string {
+const key = (trackId: string, startedAt: number): string => {
   return `${trackId}@${startedAt}`;
-}
+};
 
-export function resetPlay(trackId: string, startedAt: number): void {
+export const resetPlay = (trackId: string, startedAt: number): void => {
   counted.delete(key(trackId, startedAt));
-}
+};
 
 /**
  * Every counted play lands in this on-device queue first, online or not; api/sync.ts
@@ -42,44 +42,44 @@ export function resetPlay(trackId: string, startedAt: number): void {
 export type PendingPlay = { trackRef: ReturnType<typeof trackRef>; at: number; ms: number; userId?: string };
 const PENDING_KEY = 'sonare_pending_plays';
 
-function readPending(): PendingPlay[] {
+const readPending = (): PendingPlay[] => {
   try {
     return JSON.parse(localStorage.getItem(PENDING_KEY) ?? '[]') as PendingPlay[];
   } catch {
     return [];
   }
-}
+};
 
-function writePending(plays: PendingPlay[]) {
+const writePending = (plays: PendingPlay[]) => {
   try {
     localStorage.setItem(PENDING_KEY, JSON.stringify(plays));
   } catch {
     // Storage unavailable: offline plays are lost rather than blocking playback.
   }
-}
+};
 
-function playKey(p: PendingPlay): string {
+const playKey = (p: PendingPlay): string => {
   const ref = p.trackRef.kind === 'local' ? p.trackRef.fingerprint : p.trackRef.id;
   return `${p.userId ?? ''}|${p.trackRef.kind}|${ref}|${p.at}`;
-}
+};
 
 /** Plays waiting to upload for this account (queues from before the userId tag count too). */
-export function pendingPlaysFor(userId: string): PendingPlay[] {
+export const pendingPlaysFor = (userId: string): PendingPlay[] => {
   return readPending().filter((p) => !p.userId || p.userId === userId);
-}
+};
 
 /** Drop plays the server has stored. Anything queued while the upload ran stays. */
-export function removePendingPlays(done: PendingPlay[]): void {
+export const removePendingPlays = (done: PendingPlay[]): void => {
   if (!done.length) return;
   const gone = new Set(done.map(playKey));
   writePending(readPending().filter((p) => !gone.has(playKey(p))));
-}
+};
 
 /**
  * Call on each position update. Records the play the first time the threshold is met
  * for this listen; repeated calls afterwards are no-ops.
  */
-export function maybeRecordPlay(trackId: string, startedAt: number, positionMs: number, durationMs: number): void {
+export const maybeRecordPlay = (trackId: string, startedAt: number, positionMs: number, durationMs: number): void => {
   if (!trackId || positionMs <= 0) return;
   // History belongs to an account; guests just listen.
   if (!isAuthenticated()) return;
@@ -100,4 +100,4 @@ export function maybeRecordPlay(trackId: string, startedAt: number, positionMs: 
   writePending([...readPending(), play]);
   // Uploads straight away when online; in Offline Mode it waits for the switch back.
   requestSync();
-}
+};

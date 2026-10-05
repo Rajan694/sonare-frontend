@@ -233,13 +233,13 @@ describe('Lib Layer', () => {
     });
 
     // The send budget, the repeat throttle and the "installed" flag are module state.
-    function freshModule(): typeof import('../src/lib/errorReporting') {
+    const freshModule = (): typeof import('../src/lib/errorReporting') => {
       let mod: any;
       jest.isolateModules(() => {
         mod = require('../src/lib/errorReporting');
       });
       return mod;
-    }
+    };
 
     it('MOB-LIB-012 reportError posts the error with its kind, fatality and platform', () => {
       const { reportError: report } = freshModule();

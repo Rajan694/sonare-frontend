@@ -13,24 +13,24 @@ let toasts: ToastItem[] = [];
 let nextId = 1;
 const listeners = new Set<() => void>();
 
-function emit() {
+const emit = () => {
   for (const l of listeners) l();
-}
+};
 
-export function dismissToast(id: number): void {
+export const dismissToast = (id: number): void => {
   toasts = toasts.filter((t) => t.id !== id);
   emit();
-}
+};
 
-export function showToast(toast: Omit<ToastItem, 'id'>, durationMs = 3200): void {
+export const showToast = (toast: Omit<ToastItem, 'id'>, durationMs = 3200): void => {
   const id = nextId++;
   // Keep the stack short; the newest message is the one that matters.
   toasts = [...toasts.slice(-2), { ...toast, id }];
   emit();
   setTimeout(() => dismissToast(id), durationMs);
-}
+};
 
-export function useToasts(): ToastItem[] {
+export const useToasts = (): ToastItem[] => {
   return useSyncExternalStore(
     (fn) => {
       listeners.add(fn);
@@ -38,4 +38,4 @@ export function useToasts(): ToastItem[] {
     },
     () => toasts,
   );
-}
+};

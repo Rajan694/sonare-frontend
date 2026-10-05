@@ -5,7 +5,7 @@ interface EqualizerBarsProps {
   playing?: boolean;
 }
 
-export default function EqualizerBars({ playing = true }: EqualizerBarsProps) {
+const EqualizerBars = ({ playing = true }: EqualizerBarsProps) => {
   const reduceMotion = useReducedMotion();
 
   const bars = useMemo(
@@ -46,4 +46,5 @@ export default function EqualizerBars({ playing = true }: EqualizerBarsProps) {
       ))}
     </span>
   );
-}
+};
+export default EqualizerBars;

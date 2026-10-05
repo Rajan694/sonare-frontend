@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn';
 
-export function Panel({
+export const Panel = ({
   title,
   subtitle,
   action,
@@ -13,7 +13,7 @@ export function Panel({
   action?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
-}) {
+}) => {
   return (
     <section className={cn('bg-s1 border border-ln rounded-lg p-5 min-w-0', className)}>
       {(title || action) && (
@@ -28,4 +28,4 @@ export function Panel({
       {children}
     </section>
   );
-}
+};

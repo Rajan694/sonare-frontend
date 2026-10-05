@@ -93,11 +93,11 @@ describe('connectivity check', () => {
 });
 
 describe('error reporting', () => {
-  async function fresh() {
+  const fresh = async () => {
     vi.resetModules();
     return import('../../src/lib/errorReporting');
-  }
-  function reports() {
+  };
+  const reports = () => {
     const bodies: any[] = [];
     server.use(
       http.post(`${API}/client-errors`, async ({ request }) => {
@@ -106,7 +106,7 @@ describe('error reporting', () => {
       }),
     );
     return bodies;
-  }
+  };
 
   it('WEB-LIB-009 sends an error with its type, stack and page', async () => {
     const bodies = reports();

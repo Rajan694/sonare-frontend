@@ -32,11 +32,11 @@ const LIBRARY_ITEMS = [
   { to: '/library?view=favourites', icon: 'heart' as const, label: 'Favourites' },
 ] as const;
 
-function playlistIcon(kind: Playlist['kind']) {
+const playlistIcon = (kind: Playlist['kind']) => {
   if (kind === 'local') return { icon: 'smartphone' as const, cls: 'text-gold' };
   if (kind === 'synced') return { icon: 'sync' as const, cls: 'text-blue' };
   return { icon: 'cloud' as const, cls: 'text-acc' };
-}
+};
 
 const artVariants = ['a1', 'a5', 'a3', 'a6', 'a2', 'a4'] as const;
 
@@ -54,7 +54,7 @@ const PINNED = [
   },
 ] as const;
 
-export default function Sidebar() {
+const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { mode } = useModeStore();
@@ -73,10 +73,10 @@ export default function Sidebar() {
 
   const playlists: Playlist[] = playlistsData?.items || [];
 
-  function isActive(to: string) {
+  const isActive = (to: string) => {
     if (to === '/playlists') return location.pathname.startsWith('/playlist');
     return location.pathname === to || (to !== '/home' && to !== '/library' && location.pathname.startsWith(to + '/'));
-  }
+  };
 
   const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist);
 
@@ -114,7 +114,7 @@ export default function Sidebar() {
       </div>
 
       {/* Nav, library links and playlists scroll as one, so a short window still reaches
-          every playlist instead of squeezing that list to a sliver. */}
+      every playlist instead of squeezing that list to a sliver. */}
       <div className="flex flex-col grow min-h-0 overflow-y-auto overflow-x-hidden">
         <div className="flex flex-col flex-none py-3 px-2.5 gap-0.5">
           {NAV_ITEMS.map((item) => (
@@ -299,4 +299,5 @@ export default function Sidebar() {
       </div>
     </aside>
   );
-}
+};
+export default Sidebar;

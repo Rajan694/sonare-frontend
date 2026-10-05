@@ -17,7 +17,7 @@ import { Card } from '../components/ui/Card';
 import { staggerContainer } from '../lib/motion';
 import type { Track, Album } from '../types';
 
-export default function Artist() {
+const Artist = () => {
   const { id } = useParams();
   const { mode } = useModeStore();
   const { currentTrack, playTrack } = usePlayerStore();
@@ -223,4 +223,5 @@ export default function Artist() {
       </div>
     </div>
   );
-}
+};
+export default Artist;

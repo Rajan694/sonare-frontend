@@ -1,11 +1,11 @@
-export function formatDuration(ms: number): string {
+export const formatDuration = (ms: number): string => {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
+};
 
-export function generatePeaks(trackId: string, count: number): number[] {
+export const generatePeaks = (trackId: string, count: number): number[] => {
   const seed = trackId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   const peaks: number[] = [];
 
@@ -16,10 +16,10 @@ export function generatePeaks(trackId: string, count: number): number[] {
   }
 
   return peaks;
-}
+};
 
 /** "1 song", "12 songs". */
-export function songCount(n: number | null | undefined): string {
+export const songCount = (n: number | null | undefined): string => {
   const count = n ?? 0;
   return `${count} ${count === 1 ? 'song' : 'songs'}`;
-}
+};

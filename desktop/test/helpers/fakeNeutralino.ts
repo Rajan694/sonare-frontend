@@ -43,11 +43,11 @@ export const commands = state.commands as { ran: string[]; answer: null | ((cmd:
 
 const clock = state.clock as { now: number };
 
-function notFound(path: string) {
+const notFound = (path: string) => {
   return Object.assign(new Error(`NE_FS_NOPATHE: ${path}`), { code: 'NE_FS_NOPATHE' });
-}
+};
 
-export function writeFile(path: string, bytes: Uint8Array | string) {
+export const writeFile = (path: string, bytes: Uint8Array | string) => {
   const data = typeof bytes === 'string' ? new TextEncoder().encode(bytes) : bytes;
   const prev = files.get(path);
   files.set(path, { bytes: data, modifiedAt: ++clock.now, createdAt: prev?.createdAt ?? clock.now });
@@ -56,9 +56,9 @@ export function writeFile(path: string, bytes: Uint8Array | string) {
     dirs.add(dir);
     dir = dir.slice(0, dir.lastIndexOf('/'));
   }
-}
+};
 
-export function resetFs() {
+export const resetFs = () => {
   files.clear();
   dirs.clear();
   store.clear();
@@ -68,7 +68,7 @@ export function resetFs() {
   commands.answer = null;
   dialog.folder = '/home/me/Picked';
   for (const fn of Object.values(lib.filesystem)) vi.mocked(fn).mockClear();
-}
+};
 
 export const lib = {
   filesystem: {

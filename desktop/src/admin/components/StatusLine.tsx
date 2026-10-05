@@ -1,7 +1,7 @@
 import { CheckCircle2, XCircle } from 'lucide-react';
 import { cn } from '../../lib/cn';
 
-export function StatusLine({ ok, label, detail }: { ok: boolean; label: string; detail?: string }) {
+export const StatusLine = ({ ok, label, detail }: { ok: boolean; label: string; detail?: string }) => {
   const Glyph = ok ? CheckCircle2 : XCircle;
   return (
     <div className="flex items-center gap-2 min-w-0">
@@ -11,4 +11,4 @@ export function StatusLine({ ok, label, detail }: { ok: boolean; label: string; 
       {detail && <span className="text-mono-s text-t3 truncate">{detail}</span>}
     </div>
   );
-}
+};

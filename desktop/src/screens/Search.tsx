@@ -32,7 +32,7 @@ const CHIPS: { id: ChipFilter; label: string }[] = [
   { id: 'playlists', label: 'Playlists' },
 ];
 
-export default function Search() {
+const Search = () => {
   const { mode, setMode } = useModeStore();
   const { currentTrack, playTrack } = usePlayerStore();
   const dispatch = useAppDispatch();
@@ -53,7 +53,7 @@ export default function Search() {
   const { data: addToPlaylist } = usePlaylist(addTo ?? undefined);
   const [added, setAdded] = useState<Set<string>>(new Set());
 
-  async function addTrack(track: Track) {
+  const addTrack = async (track: Track) => {
     if (!addTo) return;
     setAdded((prev) => new Set(prev).add(track.id));
     try {
@@ -67,7 +67,7 @@ export default function Search() {
       });
       showToast({ title: 'Could not add to playlist', description: track.title, icon: 'info' });
     }
-  }
+  };
 
   const isOnline = mode === 'online';
   const hasQuery = query.trim().length > 0;
@@ -453,4 +453,5 @@ export default function Search() {
       </div>
     </div>
   );
-}
+};
+export default Search;

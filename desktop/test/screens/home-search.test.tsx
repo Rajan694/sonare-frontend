@@ -134,11 +134,11 @@ describe('home', () => {
 });
 
 describe('search', () => {
-  function search(query = '', route = '/search', player = makePlayer()) {
+  const search = (query = '', route = '/search', player = makePlayer()) => {
     const store = makeStore();
     if (query) store.dispatch(setQuery(query));
     return { ...renderWithProviders(<Search />, { route, store, player }), store };
-  }
+  };
   const results = [
     makeTrack({ id: 'yt:s1', title: 'Paranoid Android', artist: 'Radiohead', album: 'OK Computer' }),
     makeTrack({ id: 'yt:s2', title: 'Android Dreams', artist: 'Someone' }),

@@ -30,14 +30,14 @@ const DETAIL: [RegExp, string][] = [
   [/^\/playlist\//, 'Playlist'],
 ];
 
-function BackButton() {
+const BackButton = () => {
   const navigate = useNavigate();
   // A direct visit has no in-app history to go back to.
   const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/home'));
   return <IconButton icon="arrow-left" label="Back" size={40} onClick={back} className="-ml-2 text-t1" />;
-}
+};
 
-function ModeChip() {
+const ModeChip = () => {
   const { mode } = useModeStore();
   const offline = mode === 'offline';
   return (
@@ -51,9 +51,9 @@ function ModeChip() {
       {offline ? 'OFFLINE' : 'ONLINE'}
     </span>
   );
-}
+};
 
-function HomeHeader() {
+const HomeHeader = () => {
   const navigate = useNavigate();
   const { mode, setMode } = useModeStore();
   const { user } = useAuth();
@@ -114,9 +114,9 @@ function HomeHeader() {
       </div>
     </header>
   );
-}
+};
 
-export default function PhoneTopbar() {
+const PhoneTopbar = () => {
   const { pathname } = useLocation();
   const { mode } = useModeStore();
 
@@ -160,4 +160,5 @@ export default function PhoneTopbar() {
   }
 
   return null;
-}
+};
+export default PhoneTopbar;

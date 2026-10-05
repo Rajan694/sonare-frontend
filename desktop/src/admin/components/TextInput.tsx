@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '../../lib/cn';
 
-export function TextInput({
+export const TextInput = ({
   label,
   hint,
   className,
@@ -9,7 +9,7 @@ export function TextInput({
 }: React.InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   hint?: React.ReactNode;
-}) {
+}) => {
   const id = React.useId();
   return (
     <div className={cn('flex flex-col gap-1.5 min-w-0', className)}>
@@ -24,4 +24,4 @@ export function TextInput({
       {hint && <div className="text-label-m text-t3">{hint}</div>}
     </div>
   );
-}
+};

@@ -1,13 +1,13 @@
 import { fmtInt, fmtPct } from '../format';
 
 /** Horizontal share bars for a short ranked list, one hue. */
-export function ShareBars({
+export const ShareBars = ({
   rows,
   format = fmtInt,
 }: {
   rows: { key: string; label: string; value: number; detail?: string }[];
   format?: (n: number) => string;
-}) {
+}) => {
   const max = Math.max(1, ...rows.map((r) => r.value));
   const total = rows.reduce((s, r) => s + r.value, 0);
   return (
@@ -28,4 +28,4 @@ export function ShareBars({
       ))}
     </ul>
   );
-}
+};

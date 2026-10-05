@@ -56,7 +56,7 @@ const devices = [
   { kind: 'audioinput', deviceId: 'mic', label: 'Microphone' },
 ];
 
-function supportSinkId(list: { kind: string; deviceId: string; label: string }[] = devices) {
+const supportSinkId = (list: { kind: string; deviceId: string; label: string }[] = devices) => {
   vi.stubGlobal('AudioContext', FakeContext);
   Object.defineProperty(HTMLMediaElement.prototype, 'setSinkId', {
     configurable: true,
@@ -72,16 +72,16 @@ function supportSinkId(list: { kind: string; deviceId: string; label: string }[]
       removeEventListener: vi.fn(),
     },
   });
-}
+};
 
-async function fresh() {
+const fresh = async () => {
   vi.resetModules();
   const output = await import('../../src/audio/output');
   const dsp = await import('../../src/audio/dsp');
   const prefs = await import('../../src/storage/devicePrefs');
   const picker = await import('../../src/components/music/OutputPicker');
   return { ...output, dsp, prefs, picker };
-}
+};
 
 afterEach(() => {
   // Unmount while navigator.mediaDevices is still there: the pickers unsubscribe from it.

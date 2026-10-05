@@ -33,13 +33,17 @@ interface MenuTarget {
 let target: MenuTarget | null = null;
 const listeners = new Set<() => void>();
 
-function set(next: MenuTarget | null) {
+const set = (next: MenuTarget | null) => {
   target = next;
   for (const l of listeners) l();
-}
+};
 
 /** Open at the pointer (right-click) or under the clicked button. */
-export function openTrackMenu(tracks: Track | Track[], e: React.MouseEvent, playlist?: MenuTarget['playlist']): void {
+export const openTrackMenu = (
+  tracks: Track | Track[],
+  e: React.MouseEvent,
+  playlist?: MenuTarget['playlist'],
+): void => {
   e.preventDefault();
   e.stopPropagation();
   const list = Array.isArray(tracks) ? tracks : [tracks];
@@ -50,18 +54,18 @@ export function openTrackMenu(tracks: Track | Track[], e: React.MouseEvent, play
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     set({ tracks: list, playlist, x: r.right, y: r.bottom + 4 });
   }
-}
+};
 
 /** A playlist whose tracks aren't loaded (sidebar, playlist cards): only playlist actions. */
-export function openPlaylistMenu(playlist: { id: string; name: string }, e: React.MouseEvent): void {
+export const openPlaylistMenu = (playlist: { id: string; name: string }, e: React.MouseEvent): void => {
   openTrackMenu([], e, playlist);
-}
+};
 
-export function closeTrackMenu(): void {
+export const closeTrackMenu = (): void => {
   set(null);
-}
+};
 
-export default function TrackMenu() {
+const TrackMenu = () => {
   const current = useSyncExternalStore(
     (fn) => {
       listeners.add(fn);
@@ -77,9 +81,10 @@ export default function TrackMenu() {
 
   if (!current) return null;
   return <OpenMenu key={`${current.x},${current.y}`} target={current} />;
-}
+};
+export default TrackMenu;
 
-function OpenMenu({ target }: { target: MenuTarget }) {
+const OpenMenu = ({ target }: { target: MenuTarget }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { playNext, enqueue } = usePlayerStore();
@@ -105,12 +110,12 @@ function OpenMenu({ target }: { target: MenuTarget }) {
   }, [target.x, target.y, picking]);
 
   useEffect(() => {
-    function onPointerDown(e: PointerEvent) {
+    const onPointerDown = (e: PointerEvent) => {
       if (!ref.current?.contains(e.target as Node)) closeTrackMenu();
-    }
-    function onKey(e: KeyboardEvent) {
+    };
+    const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') closeTrackMenu();
-    }
+    };
     window.addEventListener('pointerdown', onPointerDown, true);
     window.addEventListener('keydown', onKey);
     window.addEventListener('blur', closeTrackMenu);
@@ -121,25 +126,25 @@ function OpenMenu({ target }: { target: MenuTarget }) {
     };
   }, []);
 
-  function run(fn: () => void) {
+  const run = (fn: () => void) => {
     return () => {
       fn();
       closeTrackMenu();
     };
-  }
+  };
 
-  async function addToPlaylist(id: string, name: string) {
+  const addToPlaylist = async (id: string, name: string) => {
     closeTrackMenu();
     await addTracksWithToast({ id, name }, tracks);
-  }
+  };
 
-  async function addToNewPlaylist() {
+  const addToNewPlaylist = async () => {
     closeTrackMenu();
     const created = await createPlaylistWithPrompt({ initialValue: single ? single.title : 'New playlist' });
     if (created) await addTracksWithToast(created, tracks);
-  }
+  };
 
-  async function deletePlaylist(p: { id: string; name: string }) {
+  const deletePlaylist = async (p: { id: string; name: string }) => {
     closeTrackMenu();
     const ok = await confirmDialog({
       title: 'Delete playlist?',
@@ -157,7 +162,7 @@ function OpenMenu({ target }: { target: MenuTarget }) {
     } catch {
       showToast({ title: 'Could not delete playlist', description: p.name, icon: 'info' });
     }
-  }
+  };
 
   const ownPlaylists = playlists?.items ?? [];
 
@@ -253,4 +258,4 @@ function OpenMenu({ target }: { target: MenuTarget }) {
       </Menu>
     </div>
   );
-}
+};

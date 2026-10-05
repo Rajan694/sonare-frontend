@@ -39,7 +39,7 @@ export const OUTPUT_ICON: Record<OutputDevice['type'], IconName> = {
 
 const AUTOMATIC = -1;
 
-function OutputSheet({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) {
+const OutputSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
   const devices = useOutputStore((s) => s.devices);
   const current = useOutputStore((s) => s.current);
   const preferredId = useOutputStore((s) => s.preferredId);
@@ -67,9 +67,9 @@ function OutputSheet({ visible, onClose, gold }: { visible: boolean; onClose: ()
       ]}
     />
   );
-}
+};
 
-function SleepSheet({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) {
+const SleepSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
   const timer = useSleepTimerStore((s) => s.timer);
   const value = timer.kind === 'off' ? 'off' : timer.kind === 'endOfTrack' ? 'end' : `m${timer.minutes}`;
   return (
@@ -93,9 +93,9 @@ function SleepSheet({ visible, onClose, gold }: { visible: boolean; onClose: () 
       ]}
     />
   );
-}
+};
 
-function LyricsSheet({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) {
+const LyricsSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
   const script = useDevicePrefsStore((s) => s.lyricsScript);
   return (
     <OptionSheet
@@ -109,9 +109,9 @@ function LyricsSheet({ visible, onClose, gold }: { visible: boolean; onClose: ()
       options={LYRICS_SCRIPTS.map((s) => ({ value: s.value, label: s.label }))}
     />
   );
-}
+};
 
-function ServerSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+const ServerSheet = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const [text, setText] = useState(customServerOrigin() ?? '');
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -170,9 +170,9 @@ function ServerSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
       </View>
     </Sheet>
   );
-}
+};
 
-export function PlayerSheetsHost() {
+export const PlayerSheetsHost = () => {
   const open = usePlayerSheets((s) => s.open);
   const close = usePlayerSheets((s) => s.close);
   const gold = useModeStore((s) => s.mode) === 'offline';
@@ -184,4 +184,4 @@ export function PlayerSheetsHost() {
       <ServerSheet visible={open === 'server'} onClose={close} />
     </>
   );
-}
+};

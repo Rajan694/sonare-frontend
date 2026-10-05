@@ -7,13 +7,7 @@ import { PageHeader } from './components/PageHeader';
 import { Panel } from './components/Panel';
 import { TextInput } from './components/TextInput';
 
-export default function Account({
-  account,
-  onChange,
-}: {
-  account: AdminAccount | null;
-  onChange: (a: AdminAccount) => void;
-}) {
+const Account = ({ account, onChange }: { account: AdminAccount | null; onChange: (a: AdminAccount) => void }) => {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -24,7 +18,7 @@ export default function Account({
   const mismatch = confirm !== '' && confirm !== next;
   const tooShort = next !== '' && next.length < 8;
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mismatch || tooShort || !current || !next) return;
     setSaving(true);
@@ -41,7 +35,7 @@ export default function Account({
     } finally {
       setSaving(false);
     }
-  }
+  };
 
   return (
     <>
@@ -112,4 +106,5 @@ export default function Account({
       </div>
     </>
   );
-}
+};
+export default Account;

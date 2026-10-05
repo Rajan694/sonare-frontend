@@ -78,10 +78,10 @@ vi.mock('../../src/components/layout/AppShell', async () => {
 
 import App from '../../src/App';
 
-function playback(patch: Partial<PlaybackStatus>) {
+const playback = (patch: Partial<PlaybackStatus>) => {
   Object.assign(h.status, patch);
   act(() => h.playbackListeners.forEach((fn) => fn({ ...h.status })));
-}
+};
 
 const tracks = Array.from({ length: 20 }, (_, i) =>
   makeTrack({ id: `yt:t${i}`, title: `Song ${i}`, durationMs: 200_000 }),

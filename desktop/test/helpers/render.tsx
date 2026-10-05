@@ -13,17 +13,17 @@ import { setPlaybackPosition } from '../../src/store/playbackPosition';
 import { DialogHost } from '../../src/components/ui/Dialog';
 import type { Mode, PlayerState, Track } from '../../src/types';
 
-export function makeStore() {
+export const makeStore = () => {
   return configureStore({ reducer: { search, ui } });
-}
+};
 
 /**
  * A PlayerStore whose actions are all spies, so tests can assert what a control asked for.
  * `positionMs` goes to the playback-position store, which is not part of the PlayerStore.
  */
-export function makePlayer(
+export const makePlayer = (
   over: Partial<PlayerStore> & { queue?: Track[]; index?: number; positionMs?: number } = {},
-): PlayerStore {
+): PlayerStore => {
   const { queue, index, state, positionMs = 0, ...rest } = over;
   setPlaybackPosition(positionMs);
   const s: PlayerState = {
@@ -59,17 +59,17 @@ export function makePlayer(
     clearUpcoming: vi.fn(),
     ...rest,
   };
-}
+};
 
 /** Shows the router location, so tests can assert where a click navigated. */
-function LocationProbe() {
+const LocationProbe = () => {
   const loc = useLocation();
   return (
     <span data-testid="location" hidden>
       {loc.pathname + loc.search}
     </span>
   );
-}
+};
 
 export interface ProviderOptions {
   /** Initial URL, or a location with router state (e.g. what the account gate passes). */
@@ -82,7 +82,7 @@ export interface ProviderOptions {
   store?: ReturnType<typeof makeStore>;
 }
 
-export function renderWithProviders(
+export const renderWithProviders = (
   ui: React.ReactElement,
   {
     route = '/',
@@ -93,7 +93,7 @@ export function renderWithProviders(
     store = makeStore(),
     ...rest
   }: ProviderOptions & RenderOptions = {},
-) {
+) => {
   const user = userEvent.setup();
   const utils = render(
     <Provider store={store}>
@@ -118,4 +118,4 @@ export function renderWithProviders(
   );
   const location = () => utils.getByTestId('location').textContent;
   return { ...utils, user, player, store, setMode, location };
-}
+};

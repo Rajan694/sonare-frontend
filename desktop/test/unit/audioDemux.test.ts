@@ -5,26 +5,26 @@ import { cat, id3Frame, id3Tag, latin1, le32, MP3_FRAME_LEN, mp3Frames } from '.
 const toBuf = (b: Uint8Array) => b.slice().buffer;
 
 // ---- Ogg: pages with a segment table; packets may continue across pages ----
-function oggPage(serial: number, segments: number[], body: Uint8Array) {
+const oggPage = (serial: number, segments: number[], body: Uint8Array) => {
   const header = new Uint8Array(27);
   header.set(latin1('OggS'));
   header.set(le32(serial), 14);
   header[26] = segments.length;
   return cat(header, Uint8Array.from(segments), body);
-}
-function opusHead(channels = 2) {
+};
+const opusHead = (channels = 2) => {
   return cat(latin1('OpusHead'), [1, channels, 0x38, 0x01], le32(48_000), [0, 0, 0]);
-}
+};
 /** An Opus packet whose TOC byte says 20 ms, one frame. */
 const opus20ms = (len: number, fill = 7) => Uint8Array.from({ length: len }, (_, i) => (i === 0 ? 0x08 : fill));
 
 // ---- WebM: EBML elements with 1- or 2-byte sizes ----
-function ebml(id: number[], ...body: (Uint8Array | number[])[]) {
+const ebml = (id: number[], ...body: (Uint8Array | number[])[]) => {
   const b = cat(...body);
   const size = b.length < 127 ? [0x80 | b.length] : [0x40 | (b.length >> 8), b.length & 0xff];
   return cat(id, size, b);
-}
-function webm(opusPackets: Uint8Array[], { laced = false, codec = 'A_OPUS' } = {}) {
+};
+const webm = (opusPackets: Uint8Array[], { laced = false, codec = 'A_OPUS' } = {}) => {
   const track = ebml([0xae], ebml([0xd7], [1]), ebml([0x86], latin1(codec)), ebml([0x63, 0xa2], opusHead(1)));
   const blocks = opusPackets.map((p, i) => ebml([0xa3], [0x81, 0, i, laced ? 0x82 : 0x80], p));
   const cluster = ebml([0x1f, 0x43, 0xb6, 0x75], ...blocks);
@@ -34,7 +34,7 @@ function webm(opusPackets: Uint8Array[], { laced = false, codec = 'A_OPUS' } = {
     ebml([0x16, 0x54, 0xae, 0x6b], track),
     cluster,
   );
-}
+};
 
 describe('MP3', () => {
   it('WEB-DEMUX-001 splits frames after the ID3 tag, with exact start times and duration', () => {

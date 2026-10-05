@@ -14,7 +14,7 @@ import Animated, { FadeIn, FadeOut, Layout, ReduceMotion, SlideInDown } from 're
 import Icon, { type IconName } from '../components/ui/Icon';
 
 /** A line of the "stays / hidden" list (design M14): tinted icon box, text, ✓ or ×. */
-function Item({ icon, label, kept }: { icon: IconName; label: string; kept: boolean }) {
+const Item = ({ icon, label, kept }: { icon: IconName; label: string; kept: boolean }) => {
   return (
     <View className="flex-row items-center gap-3 py-1.5">
       <View className={`w-[26px] h-[26px] rounded-[6px] items-center justify-center ${kept ? 'bg-goldbg' : 'bg-s3'}`}>
@@ -24,9 +24,9 @@ function Item({ icon, label, kept }: { icon: IconName; label: string; kept: bool
       <Icon name={kept ? 'check' : 'close'} size={14} color={kept ? '#FFC24D' : '#5A5A66'} />
     </View>
   );
-}
+};
 
-export function ModeSwitchScreen() {
+export const ModeSwitchScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
@@ -152,4 +152,4 @@ export function ModeSwitchScreen() {
       </Animated.View>
     </View>
   );
-}
+};

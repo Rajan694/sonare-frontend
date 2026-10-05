@@ -40,12 +40,12 @@ import './sonare.css';
 
 type Playback = Omit<player.PlaybackStatus, 'positionMs'>;
 
-function withoutPosition(s: player.PlaybackStatus): Playback {
+const withoutPosition = (s: player.PlaybackStatus): Playback => {
   const { trackId, playing, loading, durationMs, muxed, error, volume } = s;
   return { trackId, playing, loading, durationMs, muxed, error, volume };
-}
+};
 
-function samePlayback(a: Playback, b: player.PlaybackStatus): boolean {
+const samePlayback = (a: Playback, b: player.PlaybackStatus): boolean => {
   return (
     a.trackId === b.trackId &&
     a.playing === b.playing &&
@@ -55,9 +55,9 @@ function samePlayback(a: Playback, b: player.PlaybackStatus): boolean {
     a.error === b.error &&
     a.volume === b.volume
   );
-}
+};
 
-export default function App() {
+const App = () => {
   const [mode, setModeRaw] = useState<Mode>('online');
   const effectiveMode: Mode = CAPS.offlineMode ? mode : 'online';
   const { stayOffline } = useSettings();
@@ -171,27 +171,27 @@ export default function App() {
     });
   }, []);
 
-  function patchPlayerState(patch: Partial<PlayerState>) {
+  const patchPlayerState = (patch: Partial<PlayerState>) => {
     setPlayerState((prev) => ({ ...prev, ...patch }));
-  }
+  };
 
   // Shuffle keeps the queue order intact and walks a separate randomised order, so
   // turning it off returns you to the real running order rather than a scrambled queue.
-  function buildShuffleOrder(length: number, startIndex: number): number[] {
+  const buildShuffleOrder = (length: number, startIndex: number): number[] => {
     const rest = Array.from({ length }, (_, i) => i).filter((i) => i !== startIndex);
     for (let i = rest.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [rest[i], rest[j]] = [rest[j], rest[i]];
     }
     return [startIndex, ...rest];
-  }
+  };
 
   /** Offline, only tracks on this device (local files or downloads) can play. */
-  function playable(t: Track) {
+  const playable = (t: Track) => {
     return modeRef.current === 'online' || !!localLibrary.localIdFor(t.id);
-  }
+  };
 
-  function stepQueue(prev: PlayerState, delta: 1 | -1): PlayerState {
+  const stepQueue = (prev: PlayerState, delta: 1 | -1): PlayerState => {
     // Walk past anything that cannot play right now, at most once round the queue.
     let next = stepOnce(prev, delta);
     for (let guard = 0; guard < prev.queue.length && next !== prev && !playable(next.queue[next.index]); guard++) {
@@ -200,9 +200,9 @@ export default function App() {
       next = after;
     }
     return next !== prev && playable(next.queue[next.index]) ? next : prev;
-  }
+  };
 
-  function stepOnce(prev: PlayerState, delta: 1 | -1): PlayerState {
+  const stepOnce = (prev: PlayerState, delta: 1 | -1): PlayerState => {
     if (prev.queue.length === 0) return prev;
     if (prev.shuffle && shuffleOrder.current.length === prev.queue.length) {
       const pos = shuffleOrder.current.indexOf(prev.index);
@@ -221,56 +221,56 @@ export default function App() {
       return { ...prev, index: 0 };
     }
     return { ...prev, index: nextIndex };
-  }
+  };
 
-  function next() {
+  const next = () => {
     setPlayerState((prev) => stepQueue(prev, 1));
-  }
+  };
 
-  function toggleShuffle() {
+  const toggleShuffle = () => {
     setPlayerState((prev) => {
       const shuffle = !prev.shuffle;
       shuffleOrder.current = shuffle ? buildShuffleOrder(prev.queue.length, prev.index) : [];
       return { ...prev, shuffle };
     });
-  }
+  };
 
-  function cycleRepeat() {
+  const cycleRepeat = () => {
     setPlayerState((prev) => {
       const order: PlayerState['repeat'][] = ['off', 'all', 'one'];
       const repeat = order[(order.indexOf(prev.repeat) + 1) % order.length];
       return { ...prev, repeat };
     });
-  }
+  };
 
-  function seekRatio(ratio: number) {
+  const seekRatio = (ratio: number) => {
     const total = playback.durationMs || currentTrack?.durationMs || 0;
     if (total > 0) player.seek(Math.max(0, Math.min(1, ratio)) * total);
-  }
+  };
 
-  function skipToPrevious() {
+  const skipToPrevious = () => {
     setPlayerState((prev) => stepQueue(prev, -1));
-  }
+  };
 
-  function previous() {
+  const previous = () => {
     // Match the usual player convention: restart the track unless we are near its start.
     if (player.getStatus().positionMs > 3000) {
       player.seek(0);
       return;
     }
     skipToPrevious();
-  }
+  };
 
   /** Queue edits move the playing index along with the current track, and reshuffle. */
-  function editQueue(edit: (queue: Track[], index: number) => { queue: Track[]; index: number }) {
+  const editQueue = (edit: (queue: Track[], index: number) => { queue: Track[]; index: number }) => {
     setPlayerState((prev) => {
       const { queue, index } = edit(prev.queue, prev.index);
       if (prev.shuffle) shuffleOrder.current = buildShuffleOrder(queue.length, index);
       return { ...prev, queue, index };
     });
-  }
+  };
 
-  function playNext(track: Track) {
+  const playNext = (track: Track) => {
     editQueue((queue, index) => {
       if (queue.length === 0) return { queue: [track], index: 0 };
       const current = queue[index];
@@ -280,9 +280,9 @@ export default function App() {
       return { queue: [...rest.slice(0, at + 1), track, ...rest.slice(at + 1)], index: at };
     });
     showToast({ title: 'Playing next', description: track.title, icon: 'list' });
-  }
+  };
 
-  function enqueue(tracks: Track[]) {
+  const enqueue = (tracks: Track[]) => {
     editQueue((queue, index) => {
       const known = new Set(queue.map((t) => t.id));
       return { queue: [...queue, ...tracks.filter((t) => !known.has(t.id))], index };
@@ -292,18 +292,18 @@ export default function App() {
       description: tracks.length === 1 ? tracks[0].title : `${tracks.length} songs`,
       icon: 'list',
     });
-  }
+  };
 
-  function removeFromQueue(i: number) {
+  const removeFromQueue = (i: number) => {
     editQueue((queue, index) => {
       const next = queue.filter((_, j) => j !== i);
       // Removing the playing track hands over to whatever now sits at its position.
       const newIndex = i < index ? index - 1 : Math.min(index, Math.max(0, next.length - 1));
       return { queue: next, index: newIndex };
     });
-  }
+  };
 
-  function moveInQueue(from: number, to: number) {
+  const moveInQueue = (from: number, to: number) => {
     editQueue((queue, index) => {
       if (from === to || from < 0 || to < 0 || from >= queue.length || to >= queue.length) return { queue, index };
       const current = queue[index];
@@ -312,13 +312,13 @@ export default function App() {
       next.splice(to, 0, moved);
       return { queue: next, index: next.indexOf(current) };
     });
-  }
+  };
 
-  function clearUpcoming() {
+  const clearUpcoming = () => {
     editQueue((queue, index) => ({ queue: queue.slice(0, index + 1), index }));
-  }
+  };
 
-  function playTrack(track: Track, newQueue?: Track[]) {
+  const playTrack = (track: Track, newQueue?: Track[]) => {
     if (newQueue) {
       const idx = Math.max(
         0,
@@ -339,7 +339,7 @@ export default function App() {
         return { ...prev, queue, index: 0 };
       });
     }
-  }
+  };
 
   // The handlers above are recreated on every render; consumers get stable wrappers that
   // call the latest ones, so the context value changes only when its data does.
@@ -430,4 +430,5 @@ export default function App() {
       </PlayerContext.Provider>
     </ModeContext.Provider>
   );
-}
+};
+export default App;

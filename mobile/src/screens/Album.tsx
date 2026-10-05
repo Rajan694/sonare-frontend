@@ -19,7 +19,7 @@ import { useAsync } from '../data/hooks';
 import { songCount } from '../lib/format';
 import Icon from '../components/ui/Icon';
 
-export function AlbumScreen() {
+export const AlbumScreen = () => {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
   const playTrack = usePlayerStore((state) => state.playTrack);
@@ -191,4 +191,4 @@ export function AlbumScreen() {
       />
     </Screen>
   );
-}
+};

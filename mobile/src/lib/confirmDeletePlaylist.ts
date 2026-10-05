@@ -5,7 +5,7 @@ import { useLibraryStore } from '../store/library';
  * Asks first, then deletes one of the user's playlists. Resolves true once it is gone;
  * a failure is reported here, so callers only decide where to go next.
  */
-export function confirmDeletePlaylist(playlist: { id: string; name?: string }): Promise<boolean> {
+export const confirmDeletePlaylist = (playlist: { id: string; name?: string }): Promise<boolean> => {
   return new Promise((resolve) => {
     Alert.alert(
       'Delete playlist?',
@@ -29,4 +29,4 @@ export function confirmDeletePlaylist(playlist: { id: string; name?: string }): 
       { cancelable: true, onDismiss: () => resolve(false) },
     );
   });
-}
+};

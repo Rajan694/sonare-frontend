@@ -27,13 +27,13 @@ import { confirmRemoveDownloads } from '../lib/confirmRemoveDownloads';
  * the file has moved (or can't be deleted), it is only taken off this list.
  */
 
-function formatBytes(bytes: number): string {
+const formatBytes = (bytes: number): string => {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
   if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
   return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
-}
+};
 
-function statusLine(d: DownloadItem): string {
+const statusLine = (d: DownloadItem): string => {
   const pct = downloadProgress(d);
   const size =
     d.totalBytes > 0
@@ -53,9 +53,9 @@ function statusLine(d: DownloadItem): string {
     default:
       return '';
   }
-}
+};
 
-function fileLine(d: DownloadItem): string {
+const fileLine = (d: DownloadItem): string => {
   return [
     d.codec && d.bitrateKbps ? `${d.codec} ${d.bitrateKbps} kbps` : d.codec,
     d.totalBytes ? formatBytes(d.totalBytes) : null,
@@ -63,9 +63,9 @@ function fileLine(d: DownloadItem): string {
   ]
     .filter(Boolean)
     .join(' · ');
-}
+};
 
-function Row({
+const Row = ({
   d,
   children,
   sub,
@@ -77,7 +77,7 @@ function Row({
   sub: React.ReactNode;
   subClass?: string;
   onPress?: () => void;
-}) {
+}) => {
   return (
     <Pressable onPress={onPress} disabled={!onPress} className="flex-row items-center gap-3 px-3 py-2.5">
       <Artwork uri={artworkUrl({ thumbnail: d.thumbnail ?? `/api/v1/tracks/${d.id}/artwork` }, 64)} size={44} />
@@ -101,9 +101,9 @@ function Row({
       <View className="flex-row items-center gap-1">{children}</View>
     </Pressable>
   );
-}
+};
 
-export function DownloadsScreen() {
+export const DownloadsScreen = () => {
   const navigation = useNavigation<any>();
   const items = useDownloadsStore((s) => s.items);
   const location = useDownloadsStore((s) => s.location);
@@ -305,4 +305,4 @@ export function DownloadsScreen() {
       </ScrollView>
     </Screen>
   );
-}
+};

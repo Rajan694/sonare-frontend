@@ -10,7 +10,7 @@ let backendProc: ChildProcess;
 let viteProc: ChildProcess;
 
 // The backend's .env.test (sonare_test database, Redis db15), never the real .env.
-function testEnv(beDir: string): Record<string, string> {
+const testEnv = (beDir: string): Record<string, string> => {
   const file = path.join(beDir, '.env.test');
   if (!fs.existsSync(file)) {
     throw new Error('Copy sonare-backend/.env.test.example to .env.test before running e2e');
@@ -24,9 +24,9 @@ function testEnv(beDir: string): Record<string, string> {
     throw new Error('sonare-backend/.env.test must point DATABASE_URL at sonare_test');
   }
   return { ...env, PORT: '3099' };
-}
+};
 
-export default async function globalSetup() {
+const globalSetup = async () => {
   const root = path.resolve(__dirname, '../../..');
   const beDir = path.join(root, 'sonare-backend');
   const feDir = path.join(root, 'sonare-frontend/desktop');
@@ -73,4 +73,6 @@ export default async function globalSetup() {
     attempts++;
   }
   console.log('[E2E Setup] Servers initialized.');
-}
+};
+
+export default globalSetup;

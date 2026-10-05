@@ -346,7 +346,7 @@ describe('artist', () => {
   const openArtist = (player = makePlayer()) =>
     renderWithProviders(<Artist />, { route: '/artist/yt:rh', path: '/artist/:id', player });
 
-  function artistServer(over: Partial<typeof artist> = {}) {
+  const artistServer = (over: Partial<typeof artist> = {}) => {
     server.use(
       http.get(`${API}/artists/:id`, () => HttpResponse.json({ ...artist, ...over })),
       http.get(`${API}/artists/:id/top-tracks`, () => HttpResponse.json(page(top))),
@@ -354,7 +354,7 @@ describe('artist', () => {
         HttpResponse.json(page([makeAlbum({ id: 'yt:kida', title: 'Kid A', year: 2000 })])),
       ),
     );
-  }
+  };
 
   it('WEB-ARTIST-001 shows listeners and albums, the top five songs and the discography', async () => {
     artistServer();

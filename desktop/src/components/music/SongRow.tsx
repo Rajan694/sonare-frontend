@@ -30,7 +30,7 @@ interface SongRowProps {
   hideAlbum?: boolean;
 }
 
-export function SongTableHeader({ children, className }: { children?: React.ReactNode; className?: string }) {
+export const SongTableHeader = ({ children, className }: { children?: React.ReactNode; className?: string }) => {
   return (
     <div
       className={cn(
@@ -57,9 +57,9 @@ export function SongTableHeader({ children, className }: { children?: React.Reac
       )}
     </div>
   );
-}
+};
 
-export default function SongRow({
+const SongRow = ({
   track,
   index,
   isActive,
@@ -69,7 +69,7 @@ export default function SongRow({
   onAdd,
   added,
   hideAlbum,
-}: SongRowProps) {
+}: SongRowProps) => {
   const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite);
   const { isPlaying } = usePlayerStore();
   const { downloads } = useLocalLibrary();
@@ -136,7 +136,7 @@ export default function SongRow({
       </div>
 
       {/* Album column: visible only at >= 720px. YouTube songs rarely name their album, so
-          the artist stands in rather than a bare dash. */}
+      the artist stands in rather than a bare dash. */}
       <div className={cn('hidden @[720px]:block text-body-m text-t2 truncate', hideAlbum && 'invisible')}>
         {track.album || track.artist}
       </div>
@@ -230,4 +230,5 @@ export default function SongRow({
       </div>
     </motion.div>
   );
-}
+};
+export default SongRow;

@@ -73,7 +73,7 @@ interface LibraryIndex {
 }
 
 /** Parse LRC text: `[mm:ss.xx]` stamps (several per line allowed) and an optional `[offset:±ms]` tag. */
-export function parseLrc(text: string): { lines: { atMs: number; text: string }[]; offsetMs: number } {
+export const parseLrc = (text: string): { lines: { atMs: number; text: string }[]; offsetMs: number } => {
   const lines: { atMs: number; text: string }[] = [];
   let offsetMs = 0;
   for (const raw of text.split(/\r?\n/)) {
@@ -92,7 +92,7 @@ export function parseLrc(text: string): { lines: { atMs: number; text: string }[
     }
   }
   return { lines: lines.sort((a, b) => a.atMs - b.atMs), offsetMs };
-}
+};
 
 export interface LocalSnapshot {
   ready: boolean;
@@ -115,7 +115,7 @@ let snapshot: LocalSnapshot = {
 const listeners = new Set<() => void>();
 let loadPromise: Promise<void> | null = null;
 
-function hash(s: string): string {
+const hash = (s: string): string => {
   // cyrb53 — stable, fast, and plenty for de-duplicating file paths.
   let h1 = 0xdeadbeef;
   let h2 = 0x41c6ce57;
@@ -127,9 +127,9 @@ function hash(s: string): string {
   h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
   h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
   return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
-}
+};
 
-function toTrack(e: LocalEntry): Track {
+const toTrack = (e: LocalEntry): Track => {
   return {
     id: e.id,
     // Tidy on display too, so entries indexed before a cleanup rule existed benefit.
@@ -149,9 +149,9 @@ function toTrack(e: LocalEntry): Track {
     addedAt: e.addedAt,
     thumbnail: e.thumbnail,
   };
-}
+};
 
-function rebuild(patch: Partial<LocalSnapshot> = {}) {
+const rebuild = (patch: Partial<LocalSnapshot> = {}) => {
   const included = new Set(index.folders.filter((f) => f.included).map((f) => f.id));
   const seen = new Set<string>();
   const tracks: Track[] = [];
@@ -168,17 +168,17 @@ function rebuild(patch: Partial<LocalSnapshot> = {}) {
   });
   snapshot = { ...snapshot, ready: true, folders, tracks, downloads, ...patch };
   for (const l of listeners) l();
-}
+};
 
-async function persist() {
+const persist = async () => {
   try {
     await storage.setData(STORAGE_KEY, JSON.stringify(index));
   } catch {
     // Storage denied: the library still works for this session.
   }
-}
+};
 
-function load(): Promise<void> {
+const load = (): Promise<void> => {
   if (!CAPS.localLibrary) return Promise.resolve();
   loadPromise ??= (async () => {
     try {
@@ -191,18 +191,18 @@ function load(): Promise<void> {
     rebuild();
   })();
   return loadPromise;
-}
+};
 
-function rangeReader(path: string, fileSize: number) {
+const rangeReader = (path: string, fileSize: number) => {
   return async (pos: number, size: number) => {
     const start = Math.max(0, Math.min(pos, fileSize));
     const len = Math.max(0, Math.min(size, fileSize - start));
     if (len === 0) return new Uint8Array(0);
     return new Uint8Array(await filesystem.readBinaryFile(path, { pos: start, size: len }));
   };
-}
+};
 
-async function indexFile(path: string, folderId: string, previous?: LocalEntry): Promise<LocalEntry | null> {
+const indexFile = async (path: string, folderId: string, previous?: LocalEntry): Promise<LocalEntry | null> => {
   const stats = await filesystem.getStats(path);
   if (previous && previous.size === stats.size && previous.mtime === stats.modifiedAt) return previous;
   const tags = await readTags(path, stats.size, rangeReader(path, stats.size));
@@ -225,9 +225,9 @@ async function indexFile(path: string, folderId: string, previous?: LocalEntry):
     serverId: previous?.serverId,
     thumbnail: previous?.thumbnail,
   };
-}
+};
 
-async function scanFolder(folder: Folder, onFile: () => void, files: string[]) {
+const scanFolder = async (folder: Folder, onFile: () => void, files: string[]) => {
   const previous = new Map(index.entries.filter((e) => e.folderId === folder.id).map((e) => [e.path, e]));
   const next: LocalEntry[] = [];
   // A few reads in flight keeps the scan quick without flooding the native bridge.
@@ -251,15 +251,15 @@ async function scanFolder(folder: Folder, onFile: () => void, files: string[]) {
     entries: [...index.entries.filter((e) => e.folderId !== folder.id), ...next],
     folders: index.folders.map((f) => (f.id === folder.id ? { ...f, lastScanAt: Date.now() } : f)),
   };
-}
+};
 
-async function listAudioFiles(dir: string): Promise<string[]> {
+const listAudioFiles = async (dir: string): Promise<string[]> => {
   const entries = await filesystem.readDirectory(dir, { recursive: true });
   return entries.filter((e) => e.type === 'FILE' && AUDIO_EXT.test(e.entry)).map((e) => e.path);
-}
+};
 
 /** Downloaded files that are still on disk; the downloads folder "scans" by checking these. */
-async function existingDownloadFiles(): Promise<string[]> {
+const existingDownloadFiles = async (): Promise<string[]> => {
   const paths = index.entries.filter((e) => e.folderId === DOWNLOADS_FOLDER_ID).map((e) => e.path);
   const present = await Promise.all(
     paths.map((p) =>
@@ -270,10 +270,10 @@ async function existingDownloadFiles(): Promise<string[]> {
     ),
   );
   return paths.filter((_, i) => present[i]);
-}
+};
 
 /** The downloads folder entry, pointed at the current download location. */
-function ensureDownloadsFolder(path: string): Folder {
+const ensureDownloadsFolder = (path: string): Folder => {
   const existing = index.folders.find((f) => f.id === DOWNLOADS_FOLDER_ID);
   if (existing) {
     if (existing.path !== path)
@@ -291,7 +291,7 @@ function ensureDownloadsFolder(path: string): Folder {
   };
   index = { ...index, folders: [...index.folders, folder] };
   return folder;
-}
+};
 
 /** A finished download, as the download manager reports it. */
 export interface DownloadedFile {
@@ -566,38 +566,38 @@ export const localLibrary = {
   },
 };
 
-export async function showPathInFolder(path: string): Promise<void> {
+export const showPathInFolder = async (path: string): Promise<void> => {
   await os.open(`file://${path.slice(0, path.lastIndexOf('/'))}`);
-}
+};
 
 /**
  * Server lists (recently played, most played, favourites) carry local files only as a
  * fingerprint with placeholder metadata ("Local Track"). Swap in this device's copy, and
  * drop the ones it does not have — on web, or when the file was removed.
  */
-export function resolveLocalRefs(tracks: Track[], local: LocalSnapshot): Track[] {
+export const resolveLocalRefs = (tracks: Track[], local: LocalSnapshot): Track[] => {
   const byId = new Map(local.tracks.map((t) => [t.id, t]));
   return tracks.flatMap((t) => (t.source !== 'local' ? [t] : byId.has(t.id) ? [byId.get(t.id)!] : []));
-}
+};
 
-function subscribe(fn: () => void) {
+const subscribe = (fn: () => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
-}
+};
 
-export function getLocalSnapshot(): LocalSnapshot {
+export const getLocalSnapshot = (): LocalSnapshot => {
   return snapshot;
-}
+};
 
 /** Where a track plays from here: its own file (a local file or a finished download) or the server. */
-export function playsFrom(track: { id: string; source: string }, local: LocalSnapshot): 'local' | 'server' {
+export const playsFrom = (track: { id: string; source: string }, local: LocalSnapshot): 'local' | 'server' => {
   return track.source === 'local' || local.downloads.has(track.id) ? 'local' : 'server';
-}
+};
 
 /** Live view of the local library; loads the stored index on first use. */
-export function useLocalLibrary(): LocalSnapshot {
+export const useLocalLibrary = (): LocalSnapshot => {
   useEffect(() => {
     void load();
   }, []);
   return useSyncExternalStore(subscribe, getLocalSnapshot);
-}
+};

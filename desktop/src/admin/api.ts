@@ -17,22 +17,22 @@ export class AdminApiError extends Error {
   }
 }
 
-function readToken(): string | null {
+const readToken = (): string | null => {
   try {
     return sessionStorage.getItem(TOKEN_KEY);
   } catch {
     return null;
   }
-}
+};
 
 let token: string | null = readToken();
 const sessionListeners = new Set<(signedIn: boolean) => void>();
 
-export function isSignedIn(): boolean {
+export const isSignedIn = (): boolean => {
   return !!token;
-}
+};
 
-function setToken(next: string | null) {
+const setToken = (next: string | null) => {
   token = next;
   try {
     if (next) sessionStorage.setItem(TOKEN_KEY, next);
@@ -41,30 +41,30 @@ function setToken(next: string | null) {
     // Private mode: the session lasts until the page reloads.
   }
   sessionListeners.forEach((fn) => fn(!!next));
-}
+};
 
-export function onSessionChange(fn: (signedIn: boolean) => void): () => void {
+export const onSessionChange = (fn: (signedIn: boolean) => void): (() => void) => {
   sessionListeners.add(fn);
   return () => {
     sessionListeners.delete(fn);
   };
-}
+};
 
-export function signOut() {
+export const signOut = () => {
   setToken(null);
-}
+};
 
 /** The viewer's time zone, so daily and hourly buckets line up with their clock. */
 const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
 
-async function call<T>(
+const call = async <T>(
   path: string,
   {
     method = 'GET',
     body,
     params,
   }: { method?: string; body?: unknown; params?: Record<string, string | number | undefined> } = {},
-): Promise<T> {
+): Promise<T> => {
   const url = new URL(`${API_BASE}/admin${path}`);
   for (const [k, v] of Object.entries(params ?? {})) {
     if (v !== undefined && v !== '') url.searchParams.set(k, String(v));
@@ -87,7 +87,7 @@ async function call<T>(
     throw new AdminApiError(data?.error?.message ?? `Request failed (${res.status})`, res.status, data?.error?.code);
   }
   return data as T;
-}
+};
 
 // ---- Types (mirror sonare-backend/src/routes/admin.routes.ts) ----
 
@@ -199,11 +199,11 @@ export interface ReleaseUpload {
  * The file goes up as the raw request body. XHR rather than fetch, because fetch can't
  * report upload progress and an installer takes a while.
  */
-function uploadRelease(
+const uploadRelease = (
   { platform, version, notes, file }: ReleaseUpload,
   onProgress: (fraction: number) => void,
   signal?: AbortSignal,
-): Promise<AdminRelease> {
+): Promise<AdminRelease> => {
   const url = new URL(`${API_BASE}/admin/releases`);
   url.searchParams.set('platform', platform);
   url.searchParams.set('version', version);
@@ -235,7 +235,7 @@ function uploadRelease(
     signal?.addEventListener('abort', () => xhr.abort());
     xhr.send(file);
   });
-}
+};
 
 // ---- Calls ----
 

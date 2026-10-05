@@ -1,4 +1,4 @@
-export function hasInternet(timeoutMs = 4000): Promise<boolean> {
+export const hasInternet = (timeoutMs = 4000): Promise<boolean> => {
   // If navigator.onLine is false, we can return false immediately (desktop only)
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     return Promise.resolve(false);
@@ -31,4 +31,4 @@ export function hasInternet(timeoutMs = 4000): Promise<boolean> {
       clearTimeout(timeoutId);
       return false;
     });
-}
+};

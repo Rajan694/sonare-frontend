@@ -12,7 +12,7 @@ interface GuestPromptProps {
 }
 
 /** Stands in for account-only content (library, playlists) while listening as a guest. */
-export function GuestPrompt({ icon, title, body }: GuestPromptProps) {
+export const GuestPrompt = ({ icon, title, body }: GuestPromptProps) => {
   const navigation = useNavigation<any>();
   return (
     <View className="px-8 py-16 items-center">
@@ -31,4 +31,4 @@ export function GuestPrompt({ icon, title, body }: GuestPromptProps) {
       </View>
     </View>
   );
-}
+};

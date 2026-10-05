@@ -68,7 +68,7 @@ export interface DownloadTarget {
 const DB_NAME = 'sonare-downloads';
 let dbPromise: Promise<IDBDatabase> | null = null;
 
-function db(): Promise<IDBDatabase> {
+const db = (): Promise<IDBDatabase> => {
   dbPromise ??= new Promise((resolve, reject) => {
     // v2 added `files`: finished browser-target downloads, kept for "Save again".
     const req = indexedDB.open(DB_NAME, 2);
@@ -81,20 +81,20 @@ function db(): Promise<IDBDatabase> {
     req.onerror = () => reject(req.error);
   });
   return dbPromise;
-}
+};
 
-async function idb<T>(
+const idb = async <T>(
   store: 'parts' | 'handles' | 'files',
   mode: IDBTransactionMode,
   op: (s: IDBObjectStore) => IDBRequest,
-): Promise<T> {
+): Promise<T> => {
   const conn = await db();
   return new Promise<T>((resolve, reject) => {
     const req = op(conn.transaction(store, mode).objectStore(store));
     req.onsuccess = () => resolve(req.result as T);
     req.onerror = () => reject(req.error);
   });
-}
+};
 
 // ─── File System Access API bits missing from lib.dom ─────────────────────────────────
 
@@ -108,10 +108,10 @@ interface FsaFile extends FileSystemFileHandle {
 }
 type DirectoryPicker = (o?: { id?: string; mode?: 'readwrite'; startIn?: string }) => Promise<FsaDirectory>;
 
-function directoryPicker(): DirectoryPicker | null {
+const directoryPicker = (): DirectoryPicker | null => {
   const picker = (window as unknown as { showDirectoryPicker?: DirectoryPicker }).showDirectoryPicker;
   return typeof picker === 'function' ? picker.bind(window) : null;
-}
+};
 
 /** Chromium browsers can save into a folder the user picks; others use the Downloads folder. */
 export const canPickWebFolder = !CAPS.offlineDownloads && typeof window !== 'undefined' && directoryPicker() !== null;
@@ -123,21 +123,21 @@ const WEB_FOLDER_KEY = 'location';
 /** Web: set once the user has picked a folder or settled for browser downloads, so we ask only once. */
 const WEB_CHOICE_KEY = 'sonare_download_location_chosen';
 
-function webChoiceMade(): boolean {
+const webChoiceMade = (): boolean => {
   try {
     return !!localStorage.getItem(WEB_CHOICE_KEY);
   } catch {
     return true; // No storage: don't ask on every download.
   }
-}
+};
 
-function rememberWebChoice(kind: 'folder' | 'browser') {
+const rememberWebChoice = (kind: 'folder' | 'browser') => {
   try {
     localStorage.setItem(WEB_CHOICE_KEY, kind);
   } catch {
     // Private mode: we'll ask again next time.
   }
-}
+};
 
 const listeners = new Set<() => void>();
 let location: DownloadLocation = CAPS.offlineDownloads
@@ -146,16 +146,16 @@ let location: DownloadLocation = CAPS.offlineDownloads
 let webFolder: FsaDirectory | null = null;
 let locationLoaded: Promise<void> | null = null;
 
-function setLocation(next: DownloadLocation) {
+const setLocation = (next: DownloadLocation) => {
   location = next;
   for (const l of listeners) l();
-}
+};
 
-export async function defaultNativeDir(): Promise<string> {
+export const defaultNativeDir = async (): Promise<string> => {
   return `${await os.getPath('music')}/Sonare`;
-}
+};
 
-export function loadLocation(): Promise<void> {
+export const loadLocation = (): Promise<void> => {
   locationLoaded ??= (async () => {
     if (CAPS.offlineDownloads) {
       let path = '';
@@ -180,19 +180,19 @@ export function loadLocation(): Promise<void> {
     }
   })();
   return locationLoaded;
-}
+};
 
-export function getLocation(): DownloadLocation {
+export const getLocation = (): DownloadLocation => {
   return location;
-}
+};
 
-export function subscribeLocation(fn: () => void): () => void {
+export const subscribeLocation = (fn: () => void): (() => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
-}
+};
 
 /** Ask for a new download folder. Returns false if the user cancelled. */
-export async function chooseLocation(): Promise<boolean> {
+export const chooseLocation = async (): Promise<boolean> => {
   await loadLocation();
   if (CAPS.offlineDownloads) {
     const chosen = await os.showFolderDialog('Choose where downloads are saved', { defaultPath: location.path });
@@ -214,7 +214,7 @@ export async function chooseLocation(): Promise<boolean> {
   rememberWebChoice('folder');
   setLocation({ kind: 'folder', label: handle.name, custom: true });
   return true;
-}
+};
 
 /**
  * Chromium, first download: ask for a folder, since saving through the browser's Downloads
@@ -222,16 +222,16 @@ export async function chooseLocation(): Promise<boolean> {
  * Resolves 'folder' if one was picked, 'browser' if the user said no (we don't ask again),
  * or null when there was nothing to ask.
  */
-export async function askForWebFolderOnce(): Promise<'folder' | 'browser' | null> {
+export const askForWebFolderOnce = async (): Promise<'folder' | 'browser' | null> => {
   await loadLocation();
   if (!canPickWebFolder || location.kind !== 'browser' || webChoiceMade()) return null;
   if (await chooseLocation()) return 'folder';
   rememberWebChoice('browser');
   return 'browser';
-}
+};
 
 /** Back to the default: <Music>/Sonare on desktop, the browser's Downloads folder on web. */
-export async function resetLocation(): Promise<void> {
+export const resetLocation = async (): Promise<void> => {
   await loadLocation();
   if (CAPS.offlineDownloads) {
     await storage.setData(NATIVE_DIR_KEY, '');
@@ -243,7 +243,7 @@ export async function resetLocation(): Promise<void> {
   await idb('handles', 'readwrite', (s) => s.delete(WEB_FOLDER_KEY)).catch(() => {});
   rememberWebChoice('browser');
   setLocation({ kind: 'browser', label: 'Browser downloads' });
-}
+};
 
 // ─── Targets ──────────────────────────────────────────────────────────────────────────
 
@@ -255,16 +255,16 @@ export interface TargetRef {
   dir?: string;
 }
 
-function partName(id: string): string {
+const partName = (id: string): string => {
   return `.sonare-${id.replace(/[^A-Za-z0-9_-]/g, '_')}.part`;
-}
+};
 
-function splitName(fileName: string): [string, string] {
+const splitName = (fileName: string): [string, string] => {
   const dot = fileName.lastIndexOf('.');
   return dot > 0 ? [fileName.slice(0, dot), fileName.slice(dot)] : [fileName, ''];
-}
+};
 
-export function concat(chunks: Uint8Array[]): Uint8Array {
+export const concat = (chunks: Uint8Array[]): Uint8Array => {
   const out = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
   let at = 0;
   for (const c of chunks) {
@@ -272,9 +272,9 @@ export function concat(chunks: Uint8Array[]): Uint8Array {
     at += c.length;
   }
   return out;
-}
+};
 
-function nativeTarget(dir: string, id: string): DownloadTarget {
+const nativeTarget = (dir: string, id: string): DownloadTarget => {
   const part = `${dir}/${partName(id)}`;
   const exists = (path: string) =>
     filesystem.getStats(path).then(
@@ -319,18 +319,18 @@ function nativeTarget(dir: string, id: string): DownloadTarget {
       await filesystem.remove(path);
     },
   };
-}
+};
 
-async function folderHandleFor(id: string): Promise<FsaDirectory | null> {
+const folderHandleFor = async (id: string): Promise<FsaDirectory | null> => {
   // Each download remembers the folder it started in, so changing the setting later
   // doesn't strand a paused download or make its Delete look in the wrong place.
   const own = await idb<FsaDirectory | undefined>('handles', 'readonly', (s) => s.get(`item:${id}`)).catch(
     () => undefined,
   );
   return own ?? webFolder;
-}
+};
 
-function folderTarget(id: string): DownloadTarget {
+const folderTarget = (id: string): DownloadTarget => {
   const withDir = async (interactive: boolean): Promise<FsaDirectory> => {
     const dir = await folderHandleFor(id);
     if (!dir) throw new Error('Choose a download folder in Settings');
@@ -424,10 +424,10 @@ function folderTarget(id: string): DownloadTarget {
       await idb('handles', 'readwrite', (s) => s.delete(`item:${id}`)).catch(() => {});
     },
   };
-}
+};
 
 /** Hand a file to the browser's Downloads. A same-origin blob: link honours `download`, so it saves instead of playing. */
-function saveThroughBrowser(blob: Blob, fileName: string) {
+const saveThroughBrowser = (blob: Blob, fileName: string) => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -436,9 +436,9 @@ function saveThroughBrowser(blob: Blob, fileName: string) {
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
+};
 
-function browserTarget(id: string): DownloadTarget {
+const browserTarget = (id: string): DownloadTarget => {
   const load = () => idb<Blob[] | undefined>('parts', 'readonly', (s) => s.get(id)).then((p) => p ?? []);
   return {
     kind: 'browser',
@@ -485,10 +485,10 @@ function browserTarget(id: string): DownloadTarget {
       return true;
     },
   };
-}
+};
 
-export function targetFor(ref: TargetRef): DownloadTarget {
+export const targetFor = (ref: TargetRef): DownloadTarget => {
   if (ref.target === 'native') return nativeTarget(ref.dir ?? location.path ?? '', ref.id);
   if (ref.target === 'folder') return folderTarget(ref.id);
   return browserTarget(ref.id);
-}
+};

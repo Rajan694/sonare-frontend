@@ -12,7 +12,7 @@ export interface AsyncState<T> {
   refetch: () => void;
 }
 
-export function useAuth(): { user: User | null; ready: boolean } {
+export const useAuth = (): { user: User | null; ready: boolean } => {
   const [user, setUser] = useState<User | null>(getCurrentUser());
   const [ready, setReady] = useState<boolean>(isAuthReady());
 
@@ -26,13 +26,13 @@ export function useAuth(): { user: User | null; ready: boolean } {
   }, []);
 
   return { user, ready };
-}
+};
 
-export function useAsync<T>(
+export const useAsync = <T>(
   asyncFn: () => Promise<T>,
   deps: any[] = [],
   options: { enabled?: boolean; initialData?: T | null } = {},
-): AsyncState<T> {
+): AsyncState<T> => {
   const { enabled = true, initialData = null } = options;
   const [data, setData] = useState<T | null>(initialData);
   const [loading, setLoading] = useState<boolean>(enabled);
@@ -81,13 +81,13 @@ export function useAsync<T>(
   }, [enabled, trigger, depKey]);
 
   return { data, loading, error, refetch };
-}
+};
 
-export function useAuthAsync<T>(
+export const useAuthAsync = <T>(
   asyncFn: () => Promise<T>,
   deps: any[] = [],
   options: { enabled?: boolean; initialData?: T | null; accountOnly?: boolean } = {},
-): AsyncState<T> {
+): AsyncState<T> => {
   const { user, ready } = useAuth();
   const { enabled = true, initialData = null, accountOnly = false } = options;
 
@@ -96,9 +96,9 @@ export function useAuthAsync<T>(
   const shouldRun = enabled && ready && (!accountOnly || !!user);
 
   return useAsync(asyncFn, [user?.id, ready, ...deps], { enabled: shouldRun, initialData });
-}
+};
 
-export function useDebounce<T>(value: T, delayMs: number = 300): T {
+export const useDebounce = <T>(value: T, delayMs: number = 300): T => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -109,68 +109,68 @@ export function useDebounce<T>(value: T, delayMs: number = 300): T {
     };
   }, [value, delayMs]);
   return debounced;
-}
+};
 
 // Catalog hooks (unauthenticated, immediate)
-export function useTrending(region: string = 'IN', limit: number = 50) {
+export const useTrending = (region: string = 'IN', limit: number = 50) => {
   return useAsync(() => api.getTrending(region, limit), [region, limit]);
-}
+};
 
-export function useSearch(
+export const useSearch = (
   query: string,
   type: 'songs' | 'albums' | 'artists' | 'playlists' | 'all' = 'all',
   cursor?: string,
-) {
+) => {
   const debouncedQuery = useDebounce(query.trim(), 300);
   return useAsync(() => api.search(debouncedQuery, type, cursor), [debouncedQuery, type, cursor], {
     enabled: debouncedQuery.length > 0,
   });
-}
+};
 
-export function useGenres() {
+export const useGenres = () => {
   return useAsync(() => api.getGenres(), []);
-}
+};
 
-export function useAlbum(id: string | undefined) {
+export const useAlbum = (id: string | undefined) => {
   return useAsync(() => (id ? api.getAlbum(id) : Promise.reject(new Error('Missing album id'))), [id], {
     enabled: !!id,
   });
-}
+};
 
-export function useAlbumTracks(id: string | undefined, cursor?: string) {
+export const useAlbumTracks = (id: string | undefined, cursor?: string) => {
   return useAsync(
     () => (id ? api.getAlbumTracks(id, cursor) : Promise.reject(new Error('Missing album id'))),
     [id, cursor],
     { enabled: !!id },
   );
-}
+};
 
-export function useArtist(id: string | undefined) {
+export const useArtist = (id: string | undefined) => {
   return useAsync(() => (id ? api.getArtist(id) : Promise.reject(new Error('Missing artist id'))), [id], {
     enabled: !!id,
   });
-}
+};
 
-export function useArtistTopTracks(id: string | undefined, limit: number = 20) {
+export const useArtistTopTracks = (id: string | undefined, limit: number = 20) => {
   return useAsync(
     () => (id ? api.getArtistTopTracks(id, limit) : Promise.reject(new Error('Missing artist id'))),
     [id, limit],
     { enabled: !!id },
   );
-}
+};
 
-export function useArtistAlbums(id: string | undefined, cursor?: string) {
+export const useArtistAlbums = (id: string | undefined, cursor?: string) => {
   return useAsync(
     () => (id ? api.getArtistAlbums(id, cursor) : Promise.reject(new Error('Missing artist id'))),
     [id, cursor],
     { enabled: !!id },
   );
-}
+};
 
 /** The user's own playlists (contract §8.1 `sonare:` ids) live under /me, not the public catalog. */
 const isOwnPlaylist = (id: string) => id.startsWith('sonare:');
 
-export function usePlaylist(id: string | undefined) {
+export const usePlaylist = (id: string | undefined) => {
   return useAuthAsync(
     () =>
       !id
@@ -181,9 +181,9 @@ export function usePlaylist(id: string | undefined) {
     [id],
     { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) },
   );
-}
+};
 
-export function usePlaylistTracks(id: string | undefined, cursor?: string) {
+export const usePlaylistTracks = (id: string | undefined, cursor?: string) => {
   return useAuthAsync(
     () =>
       !id
@@ -194,54 +194,54 @@ export function usePlaylistTracks(id: string | undefined, cursor?: string) {
     [id, cursor],
     { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) },
   );
-}
+};
 
 // User /me hooks (wait for auth settlement and react to login)
-export function useLibraryTracks(params?: {
+export const useLibraryTracks = (params?: {
   sort?: 'addedAt' | 'playCount' | 'title';
   order?: 'asc' | 'desc';
   source?: 'all' | 'server';
   cursor?: string;
-}) {
+}) => {
   return useAuthAsync(
     () => api.getLibraryTracks(params),
     [params?.sort, params?.order, params?.source, params?.cursor],
     { accountOnly: true },
   );
-}
+};
 
-export function useLibraryAlbums(cursor?: string) {
+export const useLibraryAlbums = (cursor?: string) => {
   return useAuthAsync(() => api.getLibraryAlbums(cursor), [cursor], { accountOnly: true });
-}
+};
 
-export function useLibraryArtists(cursor?: string) {
+export const useLibraryArtists = (cursor?: string) => {
   return useAuthAsync(() => api.getLibraryArtists(cursor), [cursor], { accountOnly: true });
-}
+};
 
-export function useFavourites(cursor?: string) {
+export const useFavourites = (cursor?: string) => {
   const result = useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor], { accountOnly: true });
   const { refetch } = result;
   // A heart toggled anywhere (player, another list) changes this list.
   useEffect(() => onFavouritesSaved(refetch), [refetch]);
   return result;
-}
+};
 
-export function useRecentlyPlayed(limit: number = 20) {
+export const useRecentlyPlayed = (limit: number = 20) => {
   return useAuthAsync(() => api.getRecentlyPlayed(limit), [limit], { accountOnly: true });
-}
+};
 
-export function useMostPlayed(params?: { limit?: number; window?: '30d' }) {
+export const useMostPlayed = (params?: { limit?: number; window?: '30d' }) => {
   return useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], { accountOnly: true });
-}
+};
 
 const PLAYLISTS_CHANGED = 'sonare:playlists-changed';
 
 /** Tell every mounted playlist list (sidebar, pickers) to refetch. */
-export function notifyPlaylistsChanged(): void {
+export const notifyPlaylistsChanged = (): void => {
   window.dispatchEvent(new Event(PLAYLISTS_CHANGED));
-}
+};
 
-export function useMyPlaylists() {
+export const useMyPlaylists = () => {
   const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true });
   const { refetch } = result;
   useEffect(() => {
@@ -249,9 +249,9 @@ export function useMyPlaylists() {
     return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch);
   }, [refetch]);
   return result;
-}
+};
 
-export function useLyrics(trackId: string | undefined, prefer: 'synced' | 'plain' = 'synced') {
+export const useLyrics = (trackId: string | undefined, prefer: 'synced' | 'plain' = 'synced') => {
   const { lyricsScript } = useDevicePrefs();
   return useAsync(
     () => (trackId ? api.getLyrics(trackId, prefer, lyricsScript) : Promise.reject(new Error('Missing track id'))),
@@ -259,12 +259,12 @@ export function useLyrics(trackId: string | undefined, prefer: 'synced' | 'plain
     // Local files are unknown to the server; their lyrics come from the editor only.
     { enabled: !!trackId && !trackId.startsWith('local:') },
   );
-}
+};
 
-export function usePeaks(trackId: string | undefined, bars: number = 150) {
+export const usePeaks = (trackId: string | undefined, bars: number = 150) => {
   return useAsync(
     () => (trackId ? api.getTrackPeaks(trackId, bars) : Promise.reject(new Error('Missing track id'))),
     [trackId, bars],
     { enabled: !!trackId && !trackId.startsWith('local:') },
   );
-}
+};

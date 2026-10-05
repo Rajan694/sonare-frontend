@@ -37,7 +37,7 @@ interface SelectProps<T extends string | number> {
  * styled and looks out of place on Linux). The list is portalled so rounded, clipped
  * cards don't cut it off. Arrow keys, Home / End, Enter and Escape work as in a listbox.
  */
-export function Select<T extends string | number>({
+export const Select = <T extends string | number>({
   value,
   options,
   onChange,
@@ -49,7 +49,7 @@ export function Select<T extends string | number>({
   renderTrigger,
   tip,
   onOpen,
-}: SelectProps<T>) {
+}: SelectProps<T>) => {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [pos, setPos] = useState<{ left?: number; right?: number; top: number; minWidth: number } | null>(null);
@@ -58,7 +58,7 @@ export function Select<T extends string | number>({
   const listId = useId();
   const selected = options.find((o) => o.value === value);
 
-  function place() {
+  const place = () => {
     const r = triggerRef.current?.getBoundingClientRect();
     if (!r) return;
     const rowHeight = options.some((o) => o.detail) ? 48 : 36;
@@ -71,9 +71,9 @@ export function Select<T extends string | number>({
         ? { right: window.innerWidth - r.right, top, minWidth: r.width }
         : { left: Math.min(r.left, window.innerWidth - 8 - Math.max(r.width, 180)), top, minWidth: r.width },
     );
-  }
+  };
 
-  function openList() {
+  const openList = () => {
     onOpen?.();
     place();
     setActive(
@@ -83,19 +83,19 @@ export function Select<T extends string | number>({
       ),
     );
     setOpen(true);
-  }
+  };
 
-  function close(focusTrigger = true) {
+  const close = (focusTrigger = true) => {
     setOpen(false);
     if (focusTrigger) triggerRef.current?.focus();
-  }
+  };
 
-  function choose(i: number) {
+  const choose = (i: number) => {
     const option = options[i];
     if (!option) return;
     if (option.value !== value) onChange(option.value);
     close();
-  }
+  };
 
   useLayoutEffect(() => {
     if (open) listRef.current?.focus();
@@ -103,10 +103,10 @@ export function Select<T extends string | number>({
 
   useEffect(() => {
     if (!open) return;
-    function onPointerDown(e: PointerEvent) {
+    const onPointerDown = (e: PointerEvent) => {
       const t = e.target as Node;
       if (!listRef.current?.contains(t) && !triggerRef.current?.contains(t)) close(false);
-    }
+    };
     // The list is fixed-positioned: anything that moves the trigger closes it.
     const onMove = () => close(false);
     window.addEventListener('pointerdown', onPointerDown, true);
@@ -121,14 +121,14 @@ export function Select<T extends string | number>({
     };
   }, [open]);
 
-  function onTriggerKey(e: React.KeyboardEvent) {
+  const onTriggerKey = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       openList();
     }
-  }
+  };
 
-  function onListKey(e: React.KeyboardEvent) {
+  const onListKey = (e: React.KeyboardEvent) => {
     // Keeps Space / arrows from reaching the player shortcuts while the list is open.
     e.stopPropagation();
     if (e.key === 'Escape' || e.key === 'Tab') {
@@ -150,7 +150,7 @@ export function Select<T extends string | number>({
       e.preventDefault();
       choose(active);
     }
-  }
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -251,4 +251,4 @@ export function Select<T extends string | number>({
       )}
     </>
   );
-}
+};

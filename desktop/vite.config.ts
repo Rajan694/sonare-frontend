@@ -14,7 +14,7 @@ import tailwindcss from '@tailwindcss/vite';
  * `./runFE.sh linux` doesn't go through `neu run`: it picks the Neutralino port itself and
  * passes it as SONARE_NL_PORT, leaving .tmp/auth_info.json to a `web` run alongside it.
  */
-function neutralinoGlobalsPort(): Plugin {
+const neutralinoGlobalsPort = (): Plugin => {
   const authInfo = fileURLToPath(new URL('./.tmp/auth_info.json', import.meta.url));
   const fixedPort = process.env.SONARE_NL_PORT;
   return {
@@ -29,7 +29,7 @@ function neutralinoGlobalsPort(): Plugin {
       }
     },
   };
-}
+};
 
 // `./runFE.sh web` serves on 5183: `neu run` waits for exactly that port
 // (cli.frontendLibrary.devUrl), so it must not silently shift. `./runFE.sh linux` passes
@@ -44,7 +44,7 @@ const port = Number(process.env.SONARE_VITE_PORT) || 5183;
  * Set it in the shell (`SONARE_ENV=prod npm run build`, the web server's build) or in .env;
  * ../buildFE.sh passes its dev|prod argument.
  */
-function apiEnvironment(mode: string): Record<string, string> {
+const apiEnvironment = (mode: string): Record<string, string> => {
   const env = loadEnv(mode, process.cwd(), '');
   const target = env.SONARE_ENV || 'dev';
   if (target !== 'dev' && target !== 'prod') {
@@ -60,7 +60,7 @@ function apiEnvironment(mode: string): Record<string, string> {
     'import.meta.env.VITE_DEV_EMAIL': JSON.stringify(''),
     'import.meta.env.VITE_DEV_PASSWORD': JSON.stringify(''),
   };
-}
+};
 
 // Neutralino serves the built app from `documentRoot` and bundles `cli.resourcesPath`,
 // both of which point at /resources/ - so that is where Vite builds to. Everything in

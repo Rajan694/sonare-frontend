@@ -3,7 +3,7 @@ import type { Album, Artist, Page, Playlist, Track, User } from '../../src/types
 let seq = 0;
 const next = () => ++seq;
 
-export function makeTrack(over: Partial<Track> = {}): Track {
+export const makeTrack = (over: Partial<Track> = {}): Track => {
   const n = next();
   return {
     id: `yt:track${n}`,
@@ -19,9 +19,9 @@ export function makeTrack(over: Partial<Track> = {}): Track {
     addedAt: 1_700_000_000_000,
     ...over,
   };
-}
+};
 
-export function makeAlbum(over: Partial<Album> = {}): Album {
+export const makeAlbum = (over: Partial<Album> = {}): Album => {
   const n = next();
   return {
     id: `yt:album${n}`,
@@ -35,9 +35,9 @@ export function makeAlbum(over: Partial<Album> = {}): Album {
     downloaded: false,
     ...over,
   };
-}
+};
 
-export function makeArtist(over: Partial<Artist> = {}): Artist {
+export const makeArtist = (over: Partial<Artist> = {}): Artist => {
   const n = next();
   return {
     id: `yt:artist${n}`,
@@ -47,9 +47,9 @@ export function makeArtist(over: Partial<Artist> = {}): Artist {
     following: false,
     ...over,
   };
-}
+};
 
-export function makePlaylist(over: Partial<Playlist> = {}): Playlist {
+export const makePlaylist = (over: Partial<Playlist> = {}): Playlist => {
   const n = next();
   return {
     id: `sonare:pl${n}`,
@@ -60,7 +60,7 @@ export function makePlaylist(over: Partial<Playlist> = {}): Playlist {
     updatedAt: 1_700_000_000_000,
     ...over,
   };
-}
+};
 
 export const testUser: User = { id: 'u-test', email: 'listener@sonare.test', displayName: 'Test Listener' };
 

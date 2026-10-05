@@ -21,7 +21,7 @@ import { cn } from '../lib/cn';
 import * as player from '../audio/player';
 import { playsFrom, useLocalLibrary } from '../storage/local';
 
-export default function NowPlaying() {
+const NowPlaying = () => {
   const navigate = useNavigate();
   // Leave full screen: back where the user came from, or Home on a direct visit.
   const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/home'));
@@ -389,4 +389,5 @@ export default function NowPlaying() {
       <div className="h-4 flex-none" />
     </div>
   );
-}
+};
+export default NowPlaying;

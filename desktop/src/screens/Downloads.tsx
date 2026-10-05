@@ -21,14 +21,14 @@ import { confirmDialog } from '../store/dialogs';
  * if the file has moved (or the browser saved it), it's only taken off this list.
  */
 
-function sizeLine(d: DownloadItem): string {
+const sizeLine = (d: DownloadItem): string => {
   const pct = downloadProgress(d);
   if (d.totalBytes > 0)
     return `${formatBytes(d.receivedBytes)} of ${formatBytes(d.totalBytes)} · ${Math.round((pct ?? 0) * 100)}%`;
   return d.receivedBytes > 0 ? formatBytes(d.receivedBytes) : '';
-}
+};
 
-function statusLine(d: DownloadItem): string {
+const statusLine = (d: DownloadItem): string => {
   const size = sizeLine(d);
   switch (d.status) {
     case 'queued':
@@ -42,18 +42,18 @@ function statusLine(d: DownloadItem): string {
     default:
       return '';
   }
-}
+};
 
-function fileLine(d: DownloadItem): string {
+const fileLine = (d: DownloadItem): string => {
   const parts = [
     d.codec && d.bitrateKbps ? `${d.codec} ${d.bitrateKbps} kbps` : d.codec,
     d.totalBytes ? formatBytes(d.totalBytes) : null,
     d.completedAt ? new Date(d.completedAt).toLocaleDateString() : null,
   ];
   return parts.filter(Boolean).join(' · ');
-}
+};
 
-async function confirmDelete(items: DownloadItem[]) {
+const confirmDelete = async (items: DownloadItem[]) => {
   const done = items.filter((d) => d.status === 'done');
   const what = items.length === 1 ? `"${items[0].title}"` : `${items.length} downloads`;
   const note =
@@ -86,9 +86,9 @@ async function confirmDelete(items: DownloadItem[]) {
       description: `${kept} files had moved or couldn't be deleted, so they were only removed from the list`,
       icon: 'info',
     });
-}
+};
 
-async function saveAgain(d: DownloadItem) {
+const saveAgain = async (d: DownloadItem) => {
   if (!(await downloads.saveAgain(d.id))) {
     showToast({
       title: "Couldn't save it again",
@@ -96,9 +96,9 @@ async function saveAgain(d: DownloadItem) {
       icon: 'info',
     });
   }
-}
+};
 
-function Row({
+const Row = ({
   d,
   index,
   children,
@@ -110,7 +110,7 @@ function Row({
   children: React.ReactNode;
   sub: React.ReactNode;
   subClass?: string;
-}) {
+}) => {
   return (
     <div className="flex items-center gap-3 px-3 @[480px]:px-4 py-2.5 min-h-[62px] hover:bg-s2/50 transition-colors">
       <Artwork
@@ -128,9 +128,9 @@ function Row({
       <div className="flex items-center gap-1 flex-none">{children}</div>
     </div>
   );
-}
+};
 
-export default function Downloads() {
+const Downloads = () => {
   const { ready, items } = useDownloads();
   const local = useLocalLibrary();
   const { playTrack, currentTrack } = usePlayerStore();
@@ -150,11 +150,11 @@ export default function Downloads() {
   const missing = (d: DownloadItem) => CAPS.offlineDownloads && local.ready && !local.downloads.has(d.id);
   const playable = (d: DownloadItem) => mode === 'online' || !missing(d);
 
-  function play(d: DownloadItem) {
+  const play = (d: DownloadItem) => {
     const queue = done.filter(playable).map(downloads.toTrack);
     const track = queue.find((t) => t.id === d.id);
     if (track) playTrack(track, queue);
-  }
+  };
 
   const where = location.kind === 'browser' ? "your browser's Downloads folder" : location.label;
 
@@ -346,4 +346,5 @@ export default function Downloads() {
       )}
     </div>
   );
-}
+};
+export default Downloads;

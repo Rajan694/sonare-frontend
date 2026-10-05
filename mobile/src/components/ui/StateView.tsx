@@ -12,7 +12,7 @@ interface StateViewProps {
 }
 
 /** The loading / error / empty placeholder shared by every data-backed list. */
-export function StateView({ loading, error, onRetry, empty }: StateViewProps) {
+export const StateView = ({ loading, error, onRetry, empty }: StateViewProps) => {
   if (loading) {
     return (
       <View className="py-12 items-center">
@@ -49,4 +49,4 @@ export function StateView({ loading, error, onRetry, empty }: StateViewProps) {
     );
   }
   return null;
-}
+};

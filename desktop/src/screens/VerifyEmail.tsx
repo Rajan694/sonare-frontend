@@ -6,7 +6,7 @@ import { verifyEmail } from '../api/auth';
 type Status = 'checking' | 'verified' | 'failed';
 
 /** Opened from the emailed verification link: /verify-email?token=… */
-export default function VerifyEmail() {
+const VerifyEmail = () => {
   const navigate = useNavigate();
   const token = useSearchParams()[0].get('token') ?? '';
   const [status, setStatus] = useState<Status>(token ? 'checking' : 'failed');
@@ -46,4 +46,5 @@ export default function VerifyEmail() {
       </div>
     </div>
   );
-}
+};
+export default VerifyEmail;

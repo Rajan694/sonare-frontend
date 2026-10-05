@@ -67,7 +67,7 @@ useMockServer(noReleases);
 const sent = (rec: ReturnType<typeof recordRequests>) => rec.paths().filter((p) => p !== 'GET /releases');
 
 const MB = 1_000_000;
-function item(over: Partial<DownloadItem>): DownloadItem {
+const item = (over: Partial<DownloadItem>): DownloadItem => {
   return {
     id: 'yt:x',
     title: 'Song',
@@ -85,7 +85,7 @@ function item(over: Partial<DownloadItem>): DownloadItem {
     addedAt: 1,
     ...over,
   };
-}
+};
 
 beforeEach(() => {
   h.state.items = [];
@@ -108,12 +108,12 @@ afterEach(() => {
  * Settings renders two layouts and CSS container queries show one: a stacked list on phones
  * and a section sidebar on wider screens. Tests look inside one of them.
  */
-function openSettings(route = '/settings') {
+const openSettings = (route = '/settings') => {
   const utils = renderWithProviders(<Settings />, { route });
   const root = utils.container.firstElementChild!;
   const [phone, wide] = [root.children[0] as HTMLElement, root.children[1] as HTMLElement];
   return { ...utils, w: within(wide), phone: within(phone) };
-}
+};
 
 describe('settings', () => {
   it('WEB-SETTINGS-001 a guest is offered to create an account or sign in', async () => {

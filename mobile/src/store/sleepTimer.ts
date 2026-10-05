@@ -35,28 +35,28 @@ export const useSleepTimerStore = create<SleepTimerStore>((set, get) => ({
 }));
 
 /** "Off", "Ends in 23 min", "End of track". */
-export function sleepTimerLabel(timer: SleepTimer, now = Date.now()): string {
+export const sleepTimerLabel = (timer: SleepTimer, now = Date.now()): string => {
   if (timer.kind === 'off') return 'Off';
   if (timer.kind === 'endOfTrack') return 'At the end of this track';
   const left = Math.max(1, Math.ceil((timer.endsAt - now) / 60_000));
   return `Stops in ${left} min`;
-}
+};
 
 /**
  * The current track played to its end: true when "End of track" means stop here (the timer
  * is then done). Without gapless the player holds one item, so it reports ended rather than
  * pausing, and the queue would otherwise move on.
  */
-export function sleepAtTrackEnd(): boolean {
+export const sleepAtTrackEnd = (): boolean => {
   if (useSleepTimerStore.getState().timer.kind !== 'endOfTrack') return false;
   useSleepTimerStore.getState().set(null);
   return true;
-}
+};
 
 let wired = false;
 
 /** Called once by the audio engine: the native timer firing, and the track it was waiting for ending. */
-export function watchSleepTimer(): void {
+export const watchSleepTimer = (): void => {
   if (wired) return;
   wired = true;
   SonarePlayer.onSleep(() => {
@@ -70,4 +70,4 @@ export function watchSleepTimer(): void {
     const atEnd = state.durationMs > 0 && state.positionMs >= state.durationMs - 2000;
     if (atEnd) useSleepTimerStore.getState().set(null);
   });
-}
+};

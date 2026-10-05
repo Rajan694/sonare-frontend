@@ -50,7 +50,7 @@ const DEFAULTS: AudioState = {
 const clampDb = (db: number) => Math.max(-EQ_MAX_DB, Math.min(EQ_MAX_DB, Math.round(db * 2) / 2));
 const clampPercent = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
 
-function sanitize(s: Record<string, unknown>): Partial<AudioState> {
+const sanitize = (s: Record<string, unknown>): Partial<AudioState> => {
   return {
     ...(typeof s.enabled === 'boolean' && { enabled: s.enabled }),
     ...(Array.isArray(s.customGains) &&
@@ -61,22 +61,22 @@ function sanitize(s: Record<string, unknown>): Partial<AudioState> {
     ...(typeof s.speed === 'number' && (SPEEDS as readonly number[]).includes(s.speed) && { speed: s.speed }),
     ...(typeof s.crossfade === 'boolean' && { crossfade: s.crossfade }),
   };
-}
+};
 
-function save(s: AudioState) {
+const save = (s: AudioState) => {
   const { enabled, customGains, bassBoost, virtualizer, speed, crossfade } = s;
   AsyncStorage.setItem(
     STORAGE_KEY,
     JSON.stringify({ enabled, customGains, bassBoost, virtualizer, speed, crossfade }),
   ).catch(() => {});
-}
+};
 
 /** The band gains in effect: the chosen preset's, or the hand-made ones. */
-export function currentGains(preset: string = useSettingsStore.getState().eqPreset): number[] {
+export const currentGains = (preset: string = useSettingsStore.getState().eqPreset): number[] => {
   return preset === CUSTOM_PRESET
     ? useAudioStore.getState().customGains
     : (EQ_PRESET_GAINS[preset] ?? EQ_PRESET_GAINS.Flat);
-}
+};
 
 export const useAudioStore = create<AudioStore>((set, get) => ({
   ...DEFAULTS,

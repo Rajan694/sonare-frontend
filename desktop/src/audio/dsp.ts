@@ -50,7 +50,7 @@ const DEFAULT_STATE: DspState = {
   speed: 1,
 };
 
-function loadState(): DspState {
+const loadState = (): DspState => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
@@ -60,7 +60,7 @@ function loadState(): DspState {
   } catch {
     return DEFAULT_STATE;
   }
-}
+};
 
 let state = loadState();
 const listeners = new Set<() => void>();
@@ -82,15 +82,15 @@ interface Graph {
 let graph: Graph | null = null;
 let element: HTMLAudioElement | null = null;
 
-function persist() {
+const persist = () => {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     // Storage unavailable — settings still apply for this session.
   }
-}
+};
 
-function apply() {
+const apply = () => {
   if (element) {
     element.defaultPlaybackRate = state.speed;
     element.playbackRate = state.speed;
@@ -115,22 +115,22 @@ function apply() {
   const norm = getSettings().normalization;
   graph.comp.threshold.setTargetAtTime(norm ? -24 : 0, t, 0.02);
   graph.comp.ratio.setTargetAtTime(norm ? 4 : 1, t, 0.02);
-}
+};
 
-function emit() {
+const emit = () => {
   persist();
   apply();
   for (const l of listeners) l();
-}
+};
 
 /** Remember the element so playback-rate settings apply before the graph exists. */
-export function bindElement(a: HTMLAudioElement): void {
+export const bindElement = (a: HTMLAudioElement): void => {
   element = a;
   apply();
-}
+};
 
 /** Route the element through the DSP graph. Safe to call on every play. */
-export async function ensureGraph(): Promise<void> {
+export const ensureGraph = async (): Promise<void> => {
   if (!element) return;
   if (graph) {
     if (graph.ctx.state === 'suspended') await graph.ctx.resume();
@@ -195,7 +195,7 @@ export async function ensureGraph(): Promise<void> {
     // Web Audio unavailable: playback continues unprocessed.
     graph = null;
   }
-}
+};
 
 // ---- Output device (browsers / WebView2 with setSinkId) ----
 
@@ -203,16 +203,16 @@ type SinkTarget = { setSinkId?: (id: string) => Promise<void> };
 let sinkId = '';
 
 /** Whether this browser can route audio to a chosen output device. */
-export function canSetSinkId(): boolean {
+export const canSetSinkId = (): boolean => {
   return (
     typeof AudioContext !== 'undefined' &&
     'setSinkId' in AudioContext.prototype &&
     typeof HTMLMediaElement !== 'undefined' &&
     'setSinkId' in HTMLMediaElement.prototype
   );
-}
+};
 
-async function applySink(): Promise<boolean> {
+const applySink = async (): Promise<boolean> => {
   try {
     // With the graph built, the element's sound leaves through the context.
     const target = (graph?.ctx ?? element) as SinkTarget | null;
@@ -222,57 +222,57 @@ async function applySink(): Promise<boolean> {
   } catch {
     return false;
   }
-}
+};
 
 /** Route playback to an output device ('' = system default); kept for a graph built later. */
-export async function setSinkId(id: string): Promise<boolean> {
+export const setSinkId = async (id: string): Promise<boolean> => {
   sinkId = id;
   return applySink();
-}
+};
 
 /** The graph's context and input node, building the graph if needed; null without Web Audio. */
-export async function graphInput(): Promise<{ ctx: AudioContext; input: AudioNode } | null> {
+export const graphInput = async (): Promise<{ ctx: AudioContext; input: AudioNode } | null> => {
   await ensureGraph();
   return graph && { ctx: graph.ctx, input: graph.input };
-}
+};
 
-export function getDsp(): DspState {
+export const getDsp = (): DspState => {
   return state;
-}
+};
 
-export function subscribeDsp(fn: () => void): () => void {
+export const subscribeDsp = (fn: () => void): (() => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
-}
+};
 
-export function useDsp(): DspState {
+export const useDsp = (): DspState => {
   return useSyncExternalStore(subscribeDsp, getDsp);
-}
+};
 
-export function setDsp(patch: Partial<DspState>): void {
+export const setDsp = (patch: Partial<DspState>): void => {
   state = { ...state, ...patch };
   emit();
-}
+};
 
-export function setBandGain(index: number, db: number): void {
+export const setBandGain = (index: number, db: number): void => {
   const gains = [...state.gains];
   gains[index] = Math.max(EQ_MIN_DB, Math.min(EQ_MAX_DB, db));
   state = { ...state, gains, preset: CUSTOM_PRESET };
   emit();
-}
+};
 
-export function applyPreset(name: string): void {
+export const applyPreset = (name: string): void => {
   const gains = EQ_PRESETS[name];
   if (!gains) return;
   state = { ...state, preset: name, gains: [...gains] };
   emit();
   updateSettings({ eqPreset: name });
-}
+};
 
 /** Commit the current curve to the account once a fader is released. */
-export function commitPreset(): void {
+export const commitPreset = (): void => {
   updateSettings({ eqPreset: state.preset });
-}
+};
 
 // Server settings arrive after sign-in; adopt the saved preset unless the user has a
 // custom curve locally (the server only stores the preset name).
