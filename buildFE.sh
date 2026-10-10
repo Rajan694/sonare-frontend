@@ -21,7 +21,7 @@ usage() {
     echo "            Android is a release build against the production API either way."
     echo ""
     echo "Platforms (one or more):"
-    echo "  android   Release APK"
+    echo "  android   Release APKs: arm64 (phones - the one to upload) and x86_64 (the emulator)"
     echo "  linux     Linux x64 packages: .tar.gz, .deb, and .AppImage when appimagetool is installed"
     echo "  windows   Windows x64 .exe (one file, the app's resources embedded)"
     echo "  web       The web app as a .tar.gz, for a web server"
@@ -202,9 +202,11 @@ build_desktop() {
     cd "$STAGE/desktop"
     # The installed app can't write next to its binary (/opt is root's), so packaged builds
     # keep their storage and logs in the user's data directory.
+    # Source maps (most of resources/) would be embedded in the binary for nothing.
     node -e '
         const c = require("./neutralino.config.json");
         c.dataLocation = "system";
+        c.cli.frontendLibrary.buildCommand = "npm run build -- --sourcemap false";
         require("fs").writeFileSync("neutralino.config.json", JSON.stringify(c, null, 2));
     '
     # `neu build` runs `npm run build` first (cli.frontendLibrary), which reads SONARE_ENV.
@@ -366,9 +368,12 @@ check_signing() {
     exit 1
 }
 
+# The emulator APK, built for testing on a PC and never uploaded.
+EMULATOR_APK=""
+
 build_android() {
     echo ""
-    echo "=== Building the Android release APK ==="
+    echo "=== Building the Android release APKs ==="
     if [ "$ENV" = "dev" ]; then
         echo "Note: dev doesn't apply to Android. A release APK always uses the production API"
         echo "      (mobile/src/data/config.ts); people can point it elsewhere in Settings → Server address."
@@ -378,9 +383,14 @@ build_android() {
     load_jdk
     cd "$MOBILE/android"
     ./gradlew assembleRelease
-    local name="sonare-$(android_version)-android.apk"
-    cp app/build/outputs/apk/release/app-release.apk "$OUT/$name"
-    BUILT+=("$name")
+    # One APK per CPU (splits in app/build.gradle): arm64-v8a for phones, x86_64 for the emulator.
+    local apks="app/build/outputs/apk/release" version
+    version="$(android_version)"
+    cp "$apks/app-arm64-v8a-release.apk" "$OUT/sonare-$version-android-arm64.apk"
+    BUILT+=("sonare-$version-android-arm64.apk")
+    EMULATOR_APK="sonare-$version-android-x86_64-emulator.apk"
+    cp "$apks/app-x86_64-release.apk" "$OUT/$EMULATOR_APK"
+    BUILT+=("$EMULATOR_APK")
 }
 
 # ---- run -------------------------------------------------------------------------------
@@ -416,4 +426,7 @@ if [ "$ENV" = "dev" ] && { has_target linux || has_target windows || has_target 
 else
     echo ""
     echo "Upload them on the admin page: /admin/releases."
+fi
+if [ -n "$EMULATOR_APK" ]; then
+    echo "$EMULATOR_APK is for the emulator on this PC (adb install) - don't upload it."
 fi

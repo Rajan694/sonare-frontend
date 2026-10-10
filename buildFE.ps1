@@ -21,7 +21,7 @@ function Show-Usage {
     Write-Host "            Android is a release build against the production API either way."
     Write-Host ""
     Write-Host "Platforms (one or more):"
-    Write-Host "  android   Release APK"
+    Write-Host "  android   Release APKs: arm64 (phones - the one to upload) and x86_64 (the emulator)"
     Write-Host "  linux     Linux x64 packages: .tar.gz, .deb, and .AppImage when appimagetool is installed"
     Write-Host "            (on Windows only the .tar.gz)"
     Write-Host "  windows   Windows x64 .exe (one file, the app's resources embedded)"
@@ -234,7 +234,8 @@ function Build-Desktop {
     Set-Location (Join-Path $script:Stage 'desktop')
     # The installed app can't write next to its binary (/opt is root's), so packaged builds
     # keep their storage and logs in the user's data directory.
-    Invoke-Checked node -e "const c = require('./neutralino.config.json'); c.dataLocation = 'system'; require('fs').writeFileSync('neutralino.config.json', JSON.stringify(c, null, 2));"
+    # Source maps (most of resources/) would be embedded in the binary for nothing.
+    Invoke-Checked node -e "const c = require('./neutralino.config.json'); c.dataLocation = 'system'; c.cli.frontendLibrary.buildCommand = 'npm run build -- --sourcemap false'; require('fs').writeFileSync('neutralino.config.json', JSON.stringify(c, null, 2));"
     # `neu build` runs `npm run build` first (cli.frontendLibrary), which reads SONARE_ENV.
     $env:SONARE_ENV = $BuildEnv
     try { Invoke-Checked npx neu build --release --embed-resources } finally { Remove-Item Env:SONARE_ENV }
@@ -466,9 +467,12 @@ function Assert-Signing {
     exit 1
 }
 
+# The emulator APK, built for testing on a PC and never uploaded.
+$script:EmulatorApk = ''
+
 function Build-Android {
     Write-Host ""
-    Write-Host "=== Building the Android release APK ==="
+    Write-Host "=== Building the Android release APKs ==="
     if ($BuildEnv -eq 'dev') {
         Write-Host "Note: dev doesn't apply to Android. A release APK always uses the production API"
         Write-Host "      (mobile/src/data/config.ts); people can point it elsewhere in Settings -> Server address."
@@ -478,9 +482,15 @@ function Build-Android {
     Import-Jdk
     Set-Location (Join-Path $Mobile 'android')
     if ($OnWindows) { Invoke-Checked ./gradlew.bat assembleRelease } else { Invoke-Checked ./gradlew assembleRelease }
-    $name = "sonare-$(Get-AndroidVersion)-android.apk"
-    Copy-Item 'app/build/outputs/apk/release/app-release.apk' (Join-Path $Out $name) -Force
+    # One APK per CPU (splits in app/build.gradle): arm64-v8a for phones, x86_64 for the emulator.
+    $apks = 'app/build/outputs/apk/release'
+    $version = Get-AndroidVersion
+    $name = "sonare-$version-android-arm64.apk"
+    Copy-Item (Join-Path $apks 'app-arm64-v8a-release.apk') (Join-Path $Out $name) -Force
     $Built.Add($name)
+    $script:EmulatorApk = "sonare-$version-android-x86_64-emulator.apk"
+    Copy-Item (Join-Path $apks 'app-x86_64-release.apk') (Join-Path $Out $script:EmulatorApk) -Force
+    $Built.Add($script:EmulatorApk)
 }
 
 function Format-Size($Bytes) {
@@ -539,5 +549,8 @@ if ($BuildEnv -eq 'dev' -and ((Test-Target linux) -or (Test-Target windows) -or 
     Write-Host "uploading them on the admin page's Releases tab."
 } else {
     Write-Host "Upload them on the admin page: /admin/releases."
+}
+if ($script:EmulatorApk) {
+    Write-Host "$($script:EmulatorApk) is for the emulator on this PC (adb install) - don't upload it."
 }
 exit 0
