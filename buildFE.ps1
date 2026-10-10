@@ -18,7 +18,8 @@ function Show-Usage {
     Write-Host "Environment (first):"
     Write-Host "  dev       Desktop and web builds use VITE_API_BASE (desktop/.env); files get '-dev'"
     Write-Host "  prod      Desktop and web builds use VITE_API_BASE_PROD - the ones to upload"
-    Write-Host "            Android is a release build against the production API either way."
+    Write-Host "            Android is a release build against the production API either way; a dev"
+    Write-Host "            APK also allows plain http, for a server on the LAN (Settings -> Server address)."
     Write-Host ""
     Write-Host "Platforms (one or more):"
     Write-Host "  android   Release APKs: arm64 (phones - the one to upload) and x86_64 (the emulator)"
@@ -473,18 +474,20 @@ $script:EmulatorApk = ''
 function Build-Android {
     Write-Host ""
     Write-Host "=== Building the Android release APKs ==="
+    $flags = @()
     if ($BuildEnv -eq 'dev') {
-        Write-Host "Note: dev doesn't apply to Android. A release APK always uses the production API"
-        Write-Host "      (mobile/src/data/config.ts); people can point it elsewhere in Settings -> Server address."
+        Write-Host "Note: the dev APK still starts on the production API (mobile/src/data/config.ts), but"
+        Write-Host "      allows plain http: point it at this computer in Settings -> Server address."
+        $flags += '-PsonareDev'
     }
     Assert-Signing
     Import-AndroidSdk
     Import-Jdk
     Set-Location (Join-Path $Mobile 'android')
-    if ($OnWindows) { Invoke-Checked ./gradlew.bat assembleRelease } else { Invoke-Checked ./gradlew assembleRelease }
+    if ($OnWindows) { Invoke-Checked ./gradlew.bat assembleRelease @flags } else { Invoke-Checked ./gradlew assembleRelease @flags }
     # One APK per CPU (splits in app/build.gradle): arm64-v8a for phones, x86_64 for the emulator.
     $apks = 'app/build/outputs/apk/release'
-    $version = Get-AndroidVersion
+    $version = "$(Get-AndroidVersion)$(Get-Suffix)"
     $name = "sonare-$version-android-arm64.apk"
     Copy-Item (Join-Path $apks 'app-arm64-v8a-release.apk') (Join-Path $Out $name) -Force
     $Built.Add($name)
@@ -544,8 +547,8 @@ if ($Changed.Count -gt 0) {
     foreach ($f in $Changed) { Write-Host "  $($f.Substring($ScriptDir.Length + 1) -replace '\\', '/')" }
 }
 Write-Host ""
-if ($BuildEnv -eq 'dev' -and ((Test-Target linux) -or (Test-Target windows) -or (Test-Target web))) {
-    Write-Host "These desktop/web builds use the dev API (VITE_API_BASE). Build with prod before"
+if ($BuildEnv -eq 'dev') {
+    Write-Host "These are dev builds (desktop/web use VITE_API_BASE, Android allows http). Build with prod before"
     Write-Host "uploading them on the admin page's Releases tab."
 } else {
     Write-Host "Upload them on the admin page: /admin/releases."

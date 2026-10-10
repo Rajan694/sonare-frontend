@@ -11,8 +11,15 @@ import { useModeStore } from '../../store/mode';
 import { useOutputStore, outputDetail } from '../../store/output';
 import { SLEEP_MINUTES, useSleepTimerStore } from '../../store/sleepTimer';
 import { LYRICS_SCRIPTS, useDevicePrefsStore } from '../../store/devicePrefs';
-import { DEFAULT_API_ORIGIN, customServerOrigin, normalizeServerOrigin, setServerOrigin } from '../../data/config';
+import {
+  ALLOWS_HTTP,
+  DEFAULT_API_ORIGIN,
+  customServerOrigin,
+  normalizeServerOrigin,
+  setServerOrigin,
+} from '../../data/config';
 import type { OutputDevice } from '../../native/SonarePlayer';
+import { isDevApk } from '../../native/SonareBuild';
 
 /**
  * Sheets opened from Now Playing and Settings: audio output, sleep timer, lyrics language
@@ -123,7 +130,7 @@ const ServerSheet = ({ visible, onClose }: { visible: boolean; onClose: () => vo
   const save = async (value: string = text) => {
     const origin = normalizeServerOrigin(value);
     if (!origin) return setError('Enter an address like 192.168.1.20:3010');
-    if (!__DEV__ && !origin.startsWith('https://')) return setError('Release builds only connect over HTTPS');
+    if (!ALLOWS_HTTP && !origin.startsWith('https://')) return setError('Release builds only connect over HTTPS');
     await setServerOrigin(origin === DEFAULT_API_ORIGIN ? null : origin);
     onClose();
   };
@@ -141,11 +148,12 @@ const ServerSheet = ({ visible, onClose }: { visible: boolean; onClose: () => vo
           <Text className="text-bs text-t3">
             The Sonare backend this phone talks to. Default: {DEFAULT_API_ORIGIN}
             {__DEV__ ? ' (forwarded over USB by adb reverse). On Wi-Fi, use the computer’s LAN address.' : ''}
+            {isDevApk ? '. For a computer on Wi-Fi, use its LAN address.' : ''}
           </Text>
         </View>
         <Field
           icon={<Icon name="server" size={18} color="#7E7E8C" />}
-          placeholder={__DEV__ ? '192.168.1.20:3010' : 'https://api.example.com'}
+          placeholder={ALLOWS_HTTP ? '192.168.1.20:3010' : 'https://api.example.com'}
           value={text}
           onChangeText={(t) => {
             setText(t);

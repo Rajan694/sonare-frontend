@@ -179,19 +179,20 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/offline.test.tsx`
 
-| ID        | Use case                                                                                |
-| :-------- | :-------------------------------------------------------------------------------------- |
-| `DSK-026` | with no internet the app starts in Offline Mode and says why                            |
-| `DSK-027` | with internet it stays online and syncs                                                 |
-| `DSK-028` | "stay offline" survives a restart; going online clears it                               |
-| `DSK-029` | offline, the queue skips songs that are not on this device                              |
-| `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                |
-| `DSK-031` | settings on the desktop include the connection mode and the library sections            |
-| `DSK-053` | About in the desktop app shows the version but no downloads (those are on the web only) |
-| `DSK-032` | with no folders it invites the user to add one, using the folder picker                 |
-| `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work             |
-| `DSK-034` | a failed scan is reported instead of breaking the page                                  |
-| `DSK-035` | the downloads folder cannot be removed from the list                                    |
+| ID        | Use case                                                                                      |
+| :-------- | :-------------------------------------------------------------------------------------------- |
+| `DSK-026` | with no internet the app starts in Offline Mode and says why                                  |
+| `DSK-027` | with internet it stays online and syncs                                                       |
+| `DSK-028` | "stay offline" survives a restart; going online clears it                                     |
+| `DSK-029` | offline, the queue skips songs that are not on this device                                    |
+| `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                      |
+| `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
+| `DSK-053` | About in the desktop app shows the version but no downloads (those are on the web only)       |
+| `DSK-054` | the server address can point the desktop app at another backend, which restarts it signed out |
+| `DSK-032` | with no folders it invites the user to add one, using the folder picker                       |
+| `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work                   |
+| `DSK-034` | a failed scan is reported instead of breaking the page                                        |
+| `DSK-035` | the downloads folder cannot be removed from the list                                          |
 
 ## `test/desktop/player.test.ts`
 
@@ -539,23 +540,23 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/lib.test.ts`
 
-| ID            | Use case                                                                           |
-| :------------ | :--------------------------------------------------------------------------------- |
-| `WEB-LIB-001` | the web build has no local library, offline mode or native EQ, and includes admin  |
-| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour |
-| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                             |
-| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                     |
-| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                          |
-| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing              |
-| `WEB-LIB-007` | is online when either probe answers                                                |
-| `WEB-LIB-008` | is offline when both probes fail or time out                                       |
-| `WEB-LIB-009` | sends an error with its type, stack and page                                       |
-| `WEB-LIB-010` | turns strings and objects into readable messages                                   |
-| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                          |
-| `WEB-LIB-012` | sends nothing while offline                                                        |
-| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page            |
-| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads       |
-| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                            |
+| ID            | Use case                                                                                          |
+| :------------ | :------------------------------------------------------------------------------------------------ |
+| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ or server address, and includes admin |
+| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour                |
+| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                            |
+| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                    |
+| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                         |
+| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                             |
+| `WEB-LIB-007` | is online when either probe answers                                                               |
+| `WEB-LIB-008` | is offline when both probes fail or time out                                                      |
+| `WEB-LIB-009` | sends an error with its type, stack and page                                                      |
+| `WEB-LIB-010` | turns strings and objects into readable messages                                                  |
+| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                         |
+| `WEB-LIB-012` | sends nothing while offline                                                                       |
+| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                           |
+| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                      |
+| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                           |
 
 ## `test/unit/player.test.ts`
 

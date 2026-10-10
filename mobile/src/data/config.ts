@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { isDevApk } from '../native/SonareBuild';
 
 /**
  * Where the Sonare API is.
@@ -16,6 +17,8 @@ const DEV_API_ORIGIN = 'http://localhost:3010';
 // Production API; the domain is not registered yet.
 const PROD_API_ORIGIN = 'https://api.sonare.dev';
 export const DEFAULT_API_ORIGIN = __DEV__ ? DEV_API_ORIGIN : PROD_API_ORIGIN;
+/** Plain http is for development: debug builds and dev APKs (`./buildFE.sh dev android`). */
+export const ALLOWS_HTTP = __DEV__ || isDevApk;
 
 const STORAGE_KEY = 'sonare.serverOrigin';
 let origin = DEFAULT_API_ORIGIN;

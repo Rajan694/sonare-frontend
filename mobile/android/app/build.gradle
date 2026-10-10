@@ -66,6 +66,13 @@ def enableProguardInReleaseBuilds = true
 def isReleaseBuild = gradle.startParameter.taskNames.any { it.toLowerCase().contains("release") }
 
 /**
+ * `./buildFE.sh dev android` passes -PsonareDev: that release build may also use plain http, so
+ * it can be pointed at a computer on the LAN (Settings → Server address). Prod is https only.
+ * Android's network security config can't allow an IP range, so dev allows http to any host.
+ */
+def sonareDev = project.hasProperty('sonareDev')
+
+/**
  * The preferred build flavor of JavaScriptCore (JSC)
  *
  * For example, to use the international variant, you can use:
@@ -90,6 +97,8 @@ android {
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
         versionName "1.0.1"
+        // Read by JS through com.mobile.buildinfo.SonareBuildModule.
+        buildConfigField "boolean", "SONARE_DEV", sonareDev.toString()
     }
     signingConfigs {
         debug {
@@ -136,6 +145,14 @@ android {
         jniLibs {
             useLegacyPackaging true
         }
+    }
+}
+
+// The React Native plugin sets usesCleartextTraffic in finalizeDsl, after the buildTypes above,
+// so a dev build's http allowance goes on the variant, which comes later still.
+androidComponents {
+    onVariants(selector().withBuildType("release")) { variant ->
+        if (sonareDev) variant.manifestPlaceholders.put("usesCleartextTraffic", "true")
     }
 }
 

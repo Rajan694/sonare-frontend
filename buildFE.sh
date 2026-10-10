@@ -18,7 +18,8 @@ usage() {
     echo "Environment (first):"
     echo "  dev       Desktop and web builds use VITE_API_BASE (desktop/.env); files get '-dev'"
     echo "  prod      Desktop and web builds use VITE_API_BASE_PROD - the ones to upload"
-    echo "            Android is a release build against the production API either way."
+    echo "            Android is a release build against the production API either way; a dev"
+    echo "            APK also allows plain http, for a server on the LAN (Settings → Server address)."
     echo ""
     echo "Platforms (one or more):"
     echo "  android   Release APKs: arm64 (phones - the one to upload) and x86_64 (the emulator)"
@@ -374,18 +375,20 @@ EMULATOR_APK=""
 build_android() {
     echo ""
     echo "=== Building the Android release APKs ==="
+    local flags=()
     if [ "$ENV" = "dev" ]; then
-        echo "Note: dev doesn't apply to Android. A release APK always uses the production API"
-        echo "      (mobile/src/data/config.ts); people can point it elsewhere in Settings → Server address."
+        echo "Note: the dev APK still starts on the production API (mobile/src/data/config.ts), but"
+        echo "      allows plain http: point it at this computer in Settings → Server address."
+        flags+=(-PsonareDev)
     fi
     check_signing
     load_android_sdk
     load_jdk
     cd "$MOBILE/android"
-    ./gradlew assembleRelease
+    ./gradlew assembleRelease "${flags[@]}"
     # One APK per CPU (splits in app/build.gradle): arm64-v8a for phones, x86_64 for the emulator.
     local apks="app/build/outputs/apk/release" version
-    version="$(android_version)"
+    version="$(android_version)$(suffix)"
     cp "$apks/app-arm64-v8a-release.apk" "$OUT/sonare-$version-android-arm64.apk"
     BUILT+=("sonare-$version-android-arm64.apk")
     EMULATOR_APK="sonare-$version-android-x86_64-emulator.apk"
@@ -419,9 +422,9 @@ if [ ${#CHANGED[@]} -gt 0 ]; then
     echo "Version changed in (commit these):"
     printf '  %s\n' "${CHANGED[@]#"$SCRIPT_DIR/"}"
 fi
-if [ "$ENV" = "dev" ] && { has_target linux || has_target windows || has_target web; }; then
+if [ "$ENV" = "dev" ]; then
     echo ""
-    echo "These desktop/web builds use the dev API (VITE_API_BASE). Build with prod before"
+    echo "These are dev builds (desktop/web use VITE_API_BASE, Android allows http). Build with prod before"
     echo "uploading them on the admin page's Releases tab."
 else
     echo ""

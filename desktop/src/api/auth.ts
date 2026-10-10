@@ -1,5 +1,6 @@
 import type { User } from '../types';
 import { CLIENT } from '../lib/caps';
+import { API_BASE } from './server';
 
 // Signed out is guest mode: catalog and playback work, saving needs an account (accountGate.ts).
 // In dev, VITE_DEV_EMAIL / VITE_DEV_PASSWORD sign in automatically — until someone signs out.
@@ -10,7 +11,7 @@ const USER_KEY = 'sonare_user';
 /** Set by an explicit sign-out so dev auto-login doesn't sign straight back in on reload. */
 const SIGNED_OUT_KEY = 'sonare_signed_out';
 
-export const API_BASE = import.meta.env.VITE_API_BASE || 'http://127.0.0.1:3010/api/v1';
+export { API_BASE };
 const JSON_HEADERS = { 'Content-Type': 'application/json', 'X-Sonare-Client': CLIENT };
 
 let currentAccessToken: string | null = localStorage.getItem(ACCESS_TOKEN_KEY);

@@ -148,7 +148,7 @@ export const lib = {
       store.set(key, value);
     }),
   },
-  app: { exit: vi.fn() },
+  app: { exit: vi.fn(), restartProcess: vi.fn(async () => {}) },
   events: { on: vi.fn() },
   init: vi.fn(),
 };
