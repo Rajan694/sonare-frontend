@@ -294,6 +294,7 @@ navigation mock live in `test-utils/`.
 | `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                 |
 | `MOB-AUD-007`          | with the sleep timer on "End of track", a track that ends stops there instead of playing the next |
 | `MOB-AUD-008`          | a stream url refused mid-song is swapped for a fresh one once, resuming where it stopped          |
+| `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                    |
 | `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                   |
 
 ## `__tests__/playback-extras.test.ts`
@@ -366,3 +367,12 @@ navigation mock live in `test-utils/`.
 | `MOB-YT-020` | a refused download url gets a fresh session before the download starts again             |
 | `MOB-YT-021` | xhrFetch answers like fetch (status, headers, url, body) without waiting on timers       |
 | `MOB-YT-022` | saving a song, adding it to a playlist or following its artist sends what the app knows  |
+
+## `__tests__/waveforms.test.tsx`
+
+| ID             | Use case                                                                            |
+| :------------- | :---------------------------------------------------------------------------------- |
+| `MOB-WAVE-001` | only songs whose backend waveform is a placeholder are filled in                    |
+| `MOB-WAVE-002` | the screen shows the placeholder dimmed, with heard bars real, at its own bar count |
+| `MOB-WAVE-003` | a whole song heard is uploaded once, signed in, and drawn without dimming           |
+| `MOB-WAVE-004` | a guest keeps the waveform on the phone; it is uploaded on a later play, signed in  |

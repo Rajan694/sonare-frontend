@@ -109,7 +109,7 @@ export const recordPeak = (heard: HeardPeaks, durationMs: number, fromMs: number
   return changed;
 };
 
-export const heardCount = (heard: HeardPeaks): number => heard.reduce((n, v) => n + (v === null ? 0 : 1), 0);
+export const heardCount = (heard: HeardPeaks): number => heard.reduce<number>((n, v) => n + (v === null ? 0 : 1), 0);
 
 /** The waveform to upload: every bar heard, scaled so the loudest is 1. Null until complete (or silent). */
 export const finishedPeaks = (heard: HeardPeaks): number[] | null => {

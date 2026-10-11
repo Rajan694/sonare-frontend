@@ -21,6 +21,7 @@ import { useAsync } from '../data/hooks';
 import Icon from '../components/ui/Icon';
 import { cn } from '../lib/cn';
 import { useDevicePrefsStore } from '../store/devicePrefs';
+import { useWaveform } from '../store/waveforms';
 
 const stamp = (ms: number) => {
   return `${Math.floor(ms / 60000)}:${(Math.floor(ms / 1000) % 60).toString().padStart(2, '0')}`;
@@ -42,6 +43,7 @@ export const LyricsScreen = () => {
   const [view, setView] = useState<'synced' | 'plain'>('synced');
 
   const lyricsScript = useDevicePrefsStore((state) => state.lyricsScript);
+  const wave = useWaveform(currentTrack, 76);
   const lyrics = useAsync(
     () => api.lyrics(currentTrack!.id, lyricsScript, currentTrack!),
     [currentTrack?.id, lyricsScript],
@@ -216,6 +218,8 @@ export const LyricsScreen = () => {
       >
         <Waveform
           trackId={currentTrack.id}
+          peaks={wave?.peaks}
+          real={wave?.real}
           size="sm"
           progress={durationMs ? Math.min(1, positionMs / durationMs) : 0}
           mode={isGold ? 'offline' : 'online'}

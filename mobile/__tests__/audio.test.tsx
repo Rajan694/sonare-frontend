@@ -145,6 +145,29 @@ describe('AudioEngine and the native player', () => {
     refresh.mockRestore();
   });
 
+  it('MOB-AUD-009 each progress level covers the stretch since the last event; a seek is skipped', async () => {
+    const waves = require('../src/store/waveforms');
+    const note = jest.spyOn(waves, 'noteLevel').mockImplementation(() => {});
+    await playFrom(a, [a, b]);
+    const progress = (positionMs: number, level: number) =>
+      act(() =>
+        mockEventEmitter.emit('SonarePlayer.progress', { positionMs, durationMs: 200_000, bufferedMs: 0, level }),
+      );
+
+    progress(1000, 0.2);
+    progress(1500, 0.4);
+    progress(2000, 0.3);
+    // A jump forward (seek): that level holds audio from before it.
+    progress(60_000, 0.9);
+    progress(60_500, 0.5);
+    expect(note.mock.calls).toEqual([
+      [a.id, 200_000, 1000, 1500, 0.4],
+      [a.id, 200_000, 1500, 2000, 0.3],
+      [a.id, 200_000, 60_000, 60_500, 0.5],
+    ]);
+    note.mockRestore();
+  });
+
   it('MOB-AUDIO-RESUME-001 a restored queue loads paused, at the saved position; the next load starts at 0', async () => {
     act(() =>
       usePlayerStore.getState().restore({

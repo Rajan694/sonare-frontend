@@ -10,9 +10,7 @@ import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { useTrackMenuStore } from '../store/trackMenu';
-import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
-import { useAsync } from '../data/hooks';
 import { requireAccount } from '../data/accountGate';
 import { useNavigation } from '@react-navigation/native';
 import { formatDuration } from '../lib/format';
@@ -24,6 +22,7 @@ import { springs } from '../lib/motion';
 import Icon from '../components/ui/Icon';
 import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
+import { useWaveform } from '../store/waveforms';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
 import { OUTPUT_ICON, usePlayerSheets } from '../components/music/PlayerSheets';
 import { outputDetail, useOutputStore } from '../store/output';
@@ -58,9 +57,7 @@ export const NowPlayingScreen = () => {
       currentTrack?.source === 'local' ||
       (!!currentTrack && state.items[currentTrack.id]?.status === 'done' && !state.items[currentTrack.id]?.missing),
   );
-  const peaks = useAsync(() => api.peaks(currentTrack!.id, 76), [currentTrack?.id], {
-    enabled: currentTrack?.source === 'server',
-  });
+  const wave = useWaveform(currentTrack, 76);
   const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
   const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
 
@@ -259,7 +256,8 @@ export const NowPlayingScreen = () => {
                 trackId={currentTrack.id}
                 progress={progress}
                 mode={isGold ? 'offline' : 'online'}
-                peaks={peaks.data?.peaks}
+                peaks={wave?.peaks}
+                real={wave?.real}
                 onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
               />
             </View>

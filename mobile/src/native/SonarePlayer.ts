@@ -33,6 +33,8 @@ export interface ProgressEvent {
   positionMs: number;
   durationMs: number;
   bufferedMs: number;
+  /** The loudest sample (0..1) decoded since the last event; the waveform is drawn from it. */
+  level?: number;
 }
 
 export interface PlayerErrorEvent {

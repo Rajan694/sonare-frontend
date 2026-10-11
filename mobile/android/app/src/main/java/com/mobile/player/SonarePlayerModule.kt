@@ -22,12 +22,13 @@ import com.facebook.react.bridge.WritableMap
 import com.google.common.util.concurrent.ListenableFuture
 import com.mobile.player.dsp.AudioEffects
 import com.mobile.player.dsp.DspSettings
+import com.mobile.player.dsp.LevelMeter
 
 /**
  * JS face of [SonarePlaybackService]. Talks to the service through a MediaController, which
  * also starts it, so playback outlives the activity. Emits:
  *  - `SonarePlayer.state`    { playWhenReady, isPlaying, buffering, ended, mediaId }
- *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs } every 500ms while playing
+ *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs, level } every 500ms while playing
  *  - `SonarePlayer.error`    { message, code, mediaId, positionMs }
  *  - `SonarePlayer.remote`   { command: "next" | "previous" } from notification / lock screen
  *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
@@ -156,6 +157,8 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         putDouble("positionMs", player.currentPosition.toDouble())
         putDouble("durationMs", duration.toDouble())
         putDouble("bufferedMs", player.bufferedPosition.toDouble())
+        // The loudest sample decoded since the last event, for the waveform.
+        putDouble("level", LevelMeter.take().toDouble())
       },
     )
   }

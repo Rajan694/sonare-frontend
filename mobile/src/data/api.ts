@@ -198,10 +198,14 @@ export const api = {
       () => request(`/tracks/${enc(id)}/stream`, { params: { quality, format } }),
       id,
     ),
+  /** `placeholder`: nobody has uploaded this song's waveform yet; these bars are made up. */
   peaks: (id: string, bars: number) =>
-    request<{ peaks: number[] }>(`/tracks/${enc(id)}/peaks`, {
+    request<{ peaks: number[]; placeholder?: boolean }>(`/tracks/${enc(id)}/peaks`, {
       params: { bars },
     }),
+  /** The waveform heard on this phone (150 bars, 0..1); the first upload for a song wins. */
+  putPeaks: (id: string, peaks: number[]) =>
+    request<{ stored: boolean }>(`/tracks/${enc(id)}/peaks`, { method: 'PUT', body: { peaks } }),
   /**
    * `script` other than 'original' asks for the version in that script when LRCLIB has one.
    * `track` names the song for the lookup when the backend has never seen it (found in-app).
