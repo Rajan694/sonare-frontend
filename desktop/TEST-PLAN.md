@@ -714,3 +714,44 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-OUTPUT-005` | a remembered device that is gone reads as the system default                               |
 | `WEB-OUTPUT-006` | the Now Playing card opens the same list and switches the device                           |
 | `WEB-OUTPUT-007` | before a media permission the blank placeholder output is the default, not a second device |
+
+## `test/unit/sharedCatalog/catalog.test.ts`
+
+| ID            | Use case                                                                                           |
+| :------------ | :------------------------------------------------------------------------------------------------- |
+| `WEB-CAT-001` | encodeCursor encodes a string to base64url with L. prefix, and returns undefined for empty input   |
+| `WEB-CAT-002` | decodeCursor decodes an L. prefixed base64url cursor including UTF-8 characters                    |
+| `WEB-CAT-003` | decodeCursor throws CatalogInputError when L. prefix is missing or cursor is malformed             |
+| `WEB-CAT-004` | idHelpers extracts YouTube ID and strips yt: prefix, rejecting invalid prefixes                    |
+| `WEB-CAT-005` | idHelpers parses channel and playlist IDs from URLs and constructs prefix identifiers              |
+| `WEB-CAT-006` | directImageUrl returns raw direct image url and strips backend proxy prefix if present             |
+| `WEB-CAT-007` | trackThumbUrl produces canonical YouTube thumbnail URL from video ID                               |
+| `WEB-CAT-008` | sizedImageUrl resizes image URLs and skips signed URLs with rs query parameter                     |
+| `WEB-CAT-009` | cleanTitle strips video badges, audio indicators, and extraneous whitespace                        |
+| `WEB-CAT-010` | cleanArtist strips Topic suffix and trims uploader name                                            |
+| `WEB-CAT-011` | normalizeStreamToTrack maps Piped Streams object to Sonare Track with direct image URLs and codecs |
+| `WEB-CAT-012` | normalizeStreamItemToTrack converts search stream item to Track                                    |
+| `WEB-CAT-013` | normalizeStreamItemToArtist converts channel item to Artist                                        |
+| `WEB-CAT-014` | normalizeStreamItemToAlbum converts playlist item to Album                                         |
+| `WEB-CAT-015` | normalizeChannelToArtist converts Channel to Artist and assigns artwork route                      |
+| `WEB-CAT-016` | normalizePlaylistToAlbum extracts release year from description and determines uploader            |
+| `WEB-CAT-017` | selectBestAudioStream picks highest bitrate stream for high quality                                |
+| `WEB-CAT-018` | selectBestAudioStream picks medium bitrate stream for medium and auto quality                      |
+| `WEB-CAT-019` | selectBestAudioStream filters by format when specified                                             |
+| `WEB-CAT-020` | selectBestAudioStream falls back to videoStreams when audioStreams is empty                        |
+| `WEB-CAT-021` | toStreamInfo maps Piped stream to Sonare StreamInfo with bitrate in kbps                           |
+| `WEB-CAT-022` | suggestions returns query suggestions and validates non-empty query                                |
+| `WEB-CAT-023` | search queries specific type and encodes pagination cursor                                         |
+| `WEB-CAT-024` | search aggregates songs, albums, artists, and playlists when type is all                           |
+| `WEB-CAT-025` | search throws CatalogInputError on invalid query or invalid type                                   |
+| `WEB-CAT-026` | trending filters out non-music streams and returns normalized tracks                               |
+| `WEB-CAT-027` | trending falls back to music search when raw trending has fewer items than limit                   |
+| `WEB-CAT-028` | trending rethrows source error when both trending and search fail                                  |
+| `WEB-CAT-029` | album fetches playlist and returns normalized album                                                |
+| `WEB-CAT-030` | albumTracks supports pagination via cursor                                                         |
+| `WEB-CAT-031` | artist returns artist metadata with following set to false                                         |
+| `WEB-CAT-032` | artistTopTracks falls back to search when artist channel has no related streams                    |
+| `WEB-CAT-033` | artistAlbums fetches from channel tab or falls back to search                                      |
+| `WEB-CAT-034` | playlist and playlistTracks return metadata and tracks                                             |
+| `WEB-CAT-035` | track resolves best audio stream codec and bitrate, and stream returns StreamInfo                  |
+| `WEB-CAT-036` | stream throws SourceError when no audio or video streams are available                             |
