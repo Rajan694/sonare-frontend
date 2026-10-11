@@ -449,6 +449,16 @@ class MockXMLHttpRequest {
 }
 global.XMLHttpRequest = MockXMLHttpRequest;
 
+// Unit tests talk to a mocked backend. In-app YouTube is off unless a test turns it on, and
+// youtubei.js never reaches youtube.com (a session fails to start, so calls fall back).
+jest.mock('youtubei.js/react-native', () => ({
+  Innertube: { create: jest.fn(() => Promise.reject(new Error('No YouTube in unit tests'))) },
+  Log: { setLevel: jest.fn(), Level: { ERROR: 1 } },
+}));
+beforeEach(() => {
+  require('./src/youtube/appConfig').resetAppConfigForTesting({ inAppYoutube: false });
+});
+
 module.exports = {
   mockSonarePlayerNative,
   mockSonareDownloadsNative,

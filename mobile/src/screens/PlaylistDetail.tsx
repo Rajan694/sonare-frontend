@@ -76,7 +76,12 @@ export const PlaylistDetailScreen = () => {
 
   return (
     <Screen scrollable={false}>
-      <Ambient uri={tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 64) : undefined} />
+      <Ambient
+        uri={
+          artworkUrl(info, 64) ??
+          (tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 64) : undefined)
+        }
+      />
       <Header
         title={<Text className="text-ll font-medium text-t2">Playlist</Text>}
         left={
@@ -106,7 +111,10 @@ export const PlaylistDetailScreen = () => {
           <View>
             <View className="flex-row items-start px-5 pt-2 pb-4 gap-4">
               <Artwork
-                uri={tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 300) : undefined}
+                uri={
+                  artworkUrl(info, 300) ??
+                  (tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 300) : undefined)
+                }
                 size={132}
                 rings
                 className="rounded-lg shadow-e4 flex-none"

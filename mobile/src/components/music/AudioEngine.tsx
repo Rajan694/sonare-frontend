@@ -9,6 +9,7 @@ import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
 import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
+import { refreshInAppSession } from '../../youtube/inApp';
 import { sleepAtTrackEnd, watchSleepTimer } from '../../store/sleepTimer';
 import { watchOutput } from '../../store/output';
 import { watchPlayerPersistence } from '../../store/playerPersist';
@@ -29,6 +30,8 @@ let advancedTo: string | null = null;
 /** The next track the native player holds; undefined when it holds nothing we know of. */
 let nextSent: string | null | undefined;
 let nextToken = 0;
+/** The track whose refused stream url was already swapped for a fresh one; once per track. */
+let refreshedFor: string | null = null;
 
 const current = () => usePlayerStore.getState().currentTrack;
 
@@ -192,7 +195,28 @@ const startAudio = () => {
     }
   });
 
-  SonarePlayer.onError((e) => usePlayerStore.getState().setError(e.message || 'Playback failed'));
+  SonarePlayer.onError((e) => {
+    const track = current();
+    // A YouTube url that stops working mid-song (403): get a fresh one and carry on from there.
+    if (
+      e.code === 'ERROR_CODE_IO_BAD_HTTP_STATUS' &&
+      track &&
+      e.mediaId === track.id &&
+      refreshedFor !== track.id &&
+      !localUriFor(track.id)
+    ) {
+      refreshedFor = track.id;
+      refreshInAppSession()
+        .catch(() => {})
+        .then(() => {
+          if (current()?.id !== track.id) return;
+          usePlayerStore.setState({ startAtMs: e.positionMs || null });
+          loadCurrent();
+        });
+      return;
+    }
+    usePlayerStore.getState().setError(e.message || 'Playback failed');
+  });
 
   SonarePlayer.onRemote((e) => {
     const player = usePlayerStore.getState();
@@ -239,6 +263,7 @@ const startAudio = () => {
   // Store -> native.
   usePlayerStore.subscribe((state, prev) => {
     if (state.currentTrack?.id !== prev.currentTrack?.id) {
+      refreshedFor = null;
       if (state.currentTrack && state.currentTrack.id === advancedTo) adopt(state.currentTrack.id);
       else loadCurrent(); // the new load carries play state and starts from 0
       return;

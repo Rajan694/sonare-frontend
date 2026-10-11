@@ -293,6 +293,7 @@ navigation mock live in `test-utils/`.
 | `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                  |
 | `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                 |
 | `MOB-AUD-007`          | with the sleep timer on "End of track", a track that ends stops there instead of playing the next |
+| `MOB-AUD-008`          | a stream url refused mid-song is swapped for a fresh one once, resuming where it stopped          |
 | `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                   |
 
 ## `__tests__/playback-extras.test.ts`
@@ -338,3 +339,29 @@ navigation mock live in `test-utils/`.
 | `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                            |
 | `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                             |
 | `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                                   |
+
+## `__tests__/youtube.test.ts`
+
+| ID           | Use case                                                                                 |
+| :----------- | :--------------------------------------------------------------------------------------- |
+| `MOB-YT-001` | in-app YouTube follows the admin switch                                                  |
+| `MOB-YT-002` | the last app config is loaded from the phone; unreadable data keeps the defaults         |
+| `MOB-YT-003` | app config is fetched from /api/v1/app-config; an older backend (404) keeps what we have |
+| `MOB-YT-004` | config changes reach subscribers; polling starts and stops                               |
+| `MOB-YT-005` | search asks the in-app catalog first and falls back to the backend on an error           |
+| `MOB-YT-006` | an `L.` cursor pages in-app; any other cursor pages on the backend                       |
+| `MOB-YT-007` | trending comes from the in-app catalog, else the backend                                 |
+| `MOB-YT-008` | artist top tracks and albums come from the in-app catalog, else the backend              |
+| `MOB-YT-009` | album and album tracks come from the in-app catalog; `L.` cursors stay in-app            |
+| `MOB-YT-010` | an in-app artist page says whether you follow the artist, without asking the backend     |
+| `MOB-YT-011` | YouTube playlists and their tracks come from the in-app catalog                          |
+| `MOB-YT-012` | stream urls come from the in-app catalog (googlevideo), else the backend's relay         |
+| `MOB-YT-013` | a fallback warns at most once a minute per call                                          |
+| `MOB-YT-014` | artwork: YouTube image urls are sized directly, backend artwork gets `size=`             |
+| `MOB-YT-015` | a new client order from the admin rebuilds the catalog on the same session               |
+| `MOB-YT-016` | a session that fails to start is tried again on the next call                            |
+| `MOB-YT-017` | refreshing starts a new YouTube session for the next stream lookup                       |
+| `MOB-YT-018` | lyrics requests name the song (title, artist, length)                                    |
+| `MOB-YT-019` | only artists you follow count as followed, with or without the `yt:` prefix              |
+| `MOB-YT-020` | a refused download url gets a fresh session before the download starts again             |
+| `MOB-YT-021` | xhrFetch answers like fetch (status, headers, url, body) without waiting on timers       |

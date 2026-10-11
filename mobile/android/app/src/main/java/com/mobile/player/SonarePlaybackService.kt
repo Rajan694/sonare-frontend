@@ -9,6 +9,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
+import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.mobile.MainActivity
@@ -30,7 +31,22 @@ class SonarePlaybackService : MediaSessionService() {
     super.onCreate()
     // Artwork urls on our API redirect from http to https (i.ytimg.com); allow that hop.
     val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
-    val dataSource = DefaultDataSource.Factory(this, http)
+    // googlevideo sends a request without a Range header at ~35 KB/s; any Range gets full speed.
+    // Media3 only sets one when it seeks, so add it to reads from the start.
+    val resolvingHttp = ResolvingDataSource.Factory(http) { dataSpec ->
+      val host = dataSpec.uri.host
+      if (host != null && host.endsWith(".googlevideo.com") && dataSpec.position == 0L) {
+        val headers = dataSpec.httpRequestHeaders.toMutableMap()
+        val hasRange = headers.keys.any { it.equals("Range", ignoreCase = true) }
+        if (!hasRange) {
+          headers["Range"] = "bytes=0-"
+        }
+        dataSpec.buildUpon().setHttpRequestHeaders(headers).build()
+      } else {
+        dataSpec
+      }
+    }
+    val dataSource = DefaultDataSource.Factory(this, resolvingHttp)
 
     val engine = PlaybackEngine(this, dataSource)
     this.engine = engine

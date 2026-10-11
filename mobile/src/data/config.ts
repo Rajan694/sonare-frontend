@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { isDevApk } from '../native/SonareBuild';
+import { directImageUrl, sizedImageUrl } from '../../../shared/catalog/images';
 
 /**
  * Where the Sonare API is.
@@ -85,6 +86,11 @@ type ArtSize = 64 | 140 | 300 | 640;
 /** Absolute artwork url for anything with a `thumbnail`, at the nearest server size. */
 export const artworkUrl = (item?: { thumbnail?: string } | null, size: ArtSize = 140): string | undefined => {
   const url = absoluteUrl(item?.thumbnail);
-  if (!url || !url.includes('/artwork') || url.includes('size=')) return url;
+  if (!url) return undefined;
+  const direct = directImageUrl(url);
+  if (direct && /^https?:\/\//i.test(direct) && !direct.includes('/artwork')) {
+    return sizedImageUrl(direct, size);
+  }
+  if (!url.includes('/artwork') || url.includes('size=')) return url;
   return `${url}${url.includes('?') ? '&' : '?'}size=${size}`;
 };

@@ -42,9 +42,13 @@ export const LyricsScreen = () => {
   const [view, setView] = useState<'synced' | 'plain'>('synced');
 
   const lyricsScript = useDevicePrefsStore((state) => state.lyricsScript);
-  const lyrics = useAsync(() => api.lyrics(currentTrack!.id, lyricsScript), [currentTrack?.id, lyricsScript], {
-    enabled: currentTrack?.source === 'server',
-  });
+  const lyrics = useAsync(
+    () => api.lyrics(currentTrack!.id, lyricsScript, currentTrack!),
+    [currentTrack?.id, lyricsScript],
+    {
+      enabled: currentTrack?.source === 'server',
+    },
+  );
   const data = lyrics.data;
   const lines = data?.lines ?? [];
   const hasSynced = !!data?.synced && lines.length > 0;

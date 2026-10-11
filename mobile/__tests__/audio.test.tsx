@@ -124,6 +124,27 @@ describe('AudioEngine and the native player', () => {
     expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
   });
 
+  it('MOB-AUD-008 a stream url refused mid-song is swapped for a fresh one once, resuming where it stopped', async () => {
+    const inApp = require('../src/youtube/inApp');
+    const refresh = jest.spyOn(inApp, 'refreshInAppSession').mockResolvedValue(undefined);
+    await playFrom(a, [a, b]);
+    native.load.mockClear();
+
+    const refused = { message: 'ERROR_CODE_IO_BAD_HTTP_STATUS: 403', code: 'ERROR_CODE_IO_BAD_HTTP_STATUS' };
+    act(() => mockEventEmitter.emit('SonarePlayer.error', { ...refused, mediaId: a.id, positionMs: 42_000 }));
+    await waitFor(() =>
+      expect(native.load).toHaveBeenCalledWith(expect.objectContaining({ id: a.id, startMs: 42_000 })),
+    );
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(usePlayerStore.getState().error).toBeFalsy();
+
+    // Refused again: that is shown instead of looping.
+    act(() => mockEventEmitter.emit('SonarePlayer.error', { ...refused, mediaId: a.id, positionMs: 43_000 }));
+    expect(usePlayerStore.getState().error).toContain('403');
+    expect(refresh).toHaveBeenCalledTimes(1);
+    refresh.mockRestore();
+  });
+
   it('MOB-AUDIO-RESUME-001 a restored queue loads paused, at the saved position; the next load starts at 0', async () => {
     act(() =>
       usePlayerStore.getState().restore({

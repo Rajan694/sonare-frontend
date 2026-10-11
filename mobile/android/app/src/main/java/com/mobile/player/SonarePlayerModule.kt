@@ -28,7 +28,7 @@ import com.mobile.player.dsp.DspSettings
  * also starts it, so playback outlives the activity. Emits:
  *  - `SonarePlayer.state`    { playWhenReady, isPlaying, buffering, ended, mediaId }
  *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs } every 500ms while playing
- *  - `SonarePlayer.error`    { message }
+ *  - `SonarePlayer.error`    { message, code, mediaId, positionMs }
  *  - `SonarePlayer.remote`   { command: "next" | "previous" } from notification / lock screen
  *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
  *                            (gapless or crossfade), sent before the state change it causes
@@ -106,7 +106,17 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
       }
 
       override fun onPlayerError(error: PlaybackException) {
-        emit(EVENT_ERROR, Arguments.createMap().apply { putString("message", "${error.errorCodeName}: ${error.message}") })
+        val player = controller
+        emit(
+          EVENT_ERROR,
+          Arguments.createMap().apply {
+            putString("message", "${error.errorCodeName}: ${error.message}")
+            // ERROR_CODE_IO_BAD_HTTP_STATUS on a YouTube url: JS fetches a fresh one and resumes.
+            putString("code", error.errorCodeName)
+            putString("mediaId", player?.currentMediaItem?.mediaId)
+            putDouble("positionMs", (player?.currentPosition ?: 0L).toDouble())
+          },
+        )
       }
     }
 
