@@ -22,11 +22,17 @@ function Show-Usage {
     Write-Host "                    already taken - the port is baked into the debug"
     Write-Host "                    APK, so it must be set here rather than by starting"
     Write-Host "                    Metro separately."
+    Write-Host "  --emulator[=<avd>] Install on the emulator even when a phone is plugged in."
+    Write-Host "                    Boots <avd> (default: the first one) if none is running."
+    Write-Host "  --device <serial> Install on this adb serial (see 'adb devices')."
+    Write-Host "                    Without either, ANDROID_SERIAL is used if set, otherwise"
+    Write-Host "                    every attached device gets the app."
     Write-Host ""
     Write-Host "Examples:"
     Write-Host "  .\runFE.ps1 linux"
     Write-Host "  .\runFE.ps1 mobile"
     Write-Host "  .\runFE.ps1 mobile --port 8090"
+    Write-Host "  .\runFE.ps1 mobile --emulator"
     exit 1
 }
 
@@ -178,6 +184,10 @@ function Start-WindowBuild {
     }
 }
 
+$Device = ''
+$UseEmulator = $false
+$EmulatorAvd = ''
+
 function Read-MobileArgs($List) {
     $port = ''
     for ($i = 0; $i -lt $List.Count; $i++) {
@@ -187,6 +197,16 @@ function Read-MobileArgs($List) {
             $port = "$($List[$i])"
         } elseif ($a -like '--port=*') {
             $port = $a.Substring('--port='.Length)
+        } elseif ($a -eq '--emulator') {
+            $script:UseEmulator = $true
+        } elseif ($a -like '--emulator=*') {
+            $script:UseEmulator = $true
+            $script:EmulatorAvd = $a.Substring('--emulator='.Length)
+        } elseif ($a -eq '--device') {
+            $i++
+            $script:Device = "$($List[$i])"
+        } elseif ($a -like '--device=*') {
+            $script:Device = $a.Substring('--device='.Length)
         } else {
             Write-Host "Error: Unknown option '$a' for target 'mobile'"
             Show-Usage
@@ -196,7 +216,46 @@ function Read-MobileArgs($List) {
         Write-Host "Error: --port expects a number, got '$port'"
         exit 1
     }
+    if ($script:UseEmulator -and $script:Device) {
+        Write-Host "Error: pass --emulator or --device, not both"
+        exit 1
+    }
     $port
+}
+
+function Get-RunningEmulator {
+    foreach ($line in (adb devices)) {
+        $cols = "$line" -split '\s+'
+        if ($cols[0] -like 'emulator-*' -and $cols[1] -eq 'device') { return $cols[0] }
+    }
+    ''
+}
+
+# Returns a booted emulator's serial, starting one if none is up. It is left running when
+# this script exits, so the next run doesn't wait for a cold boot.
+function Select-Emulator {
+    $serial = Get-RunningEmulator
+    if ($serial) { return $serial }
+
+    $avd = if ($EmulatorAvd) { $EmulatorAvd } else { emulator -list-avds 2>$null | Select-Object -First 1 }
+    if (-not $avd) {
+        Write-Host "Error: no emulator is running and there is no AVD to start - create one in Android Studio."
+        exit 1
+    }
+    Write-Host "Starting the $avd emulator..."
+    if ($OnWindows) {
+        Start-Process -FilePath emulator -ArgumentList '-avd', $avd -WindowStyle Minimized | Out-Null
+    } else {
+        Start-Process -FilePath emulator -ArgumentList '-avd', $avd | Out-Null
+    }
+
+    for ($i = 0; $i -lt 90; $i++) {
+        $serial = Get-RunningEmulator
+        if ($serial -and "$(adb -s $serial shell getprop sys.boot_completed 2>$null)".Trim() -eq '1') { return $serial }
+        Start-Sleep -Seconds 2
+    }
+    Write-Host "Error: the $avd emulator did not finish booting."
+    exit 1
 }
 
 # `neu run`/`neu build` drive Vite themselves via cli.frontendLibrary in
@@ -229,6 +288,17 @@ switch ($Target) {
         Assert-Node
         Import-AndroidSdk
         Set-Location (Join-Path $ScriptDir 'mobile')
+
+        if ($UseEmulator) { $Device = Select-Emulator }
+        if (-not $Device) { $Device = "$env:ANDROID_SERIAL" }
+        $deviceArgs = @()
+        if ($Device) {
+            # adb honours ANDROID_SERIAL, which covers the reverse/shell calls below;
+            # run-android only looks at --device.
+            $env:ANDROID_SERIAL = $Device
+            $deviceArgs = @('--device', $Device)
+            Write-Host "Using device $Device."
+        }
 
         $port = if ($metroPort) { $metroPort } else { '8081' }
         $statusUrl = "http://127.0.0.1:$port/status"
@@ -292,7 +362,7 @@ switch ($Target) {
             # Native code (Reanimated, Worklets, Screens, SVG...) is C++ compiled once per ABI.
             # gradle.properties lists all four for release builds; a dev run only needs the
             # attached device's, which cuts the native build to a quarter.
-            npx react-native run-android --no-packager --port $port --active-arch-only
+            npx react-native run-android --no-packager --port $port --active-arch-only @deviceArgs
 
             if (-not $metroHostSet -and (Set-AppMetroHost $port)) {
                 adb shell am force-stop $MobileAppId

@@ -17,11 +17,17 @@ usage() {
     echo "                    already taken - the port is baked into the debug"
     echo "                    APK, so it must be set here rather than by starting"
     echo "                    Metro separately."
+    echo "  --emulator[=<avd>] Install on the emulator even when a phone is plugged in."
+    echo "                    Boots <avd> (default: the first one) if none is running."
+    echo "  --device <serial> Install on this adb serial (see 'adb devices')."
+    echo "                    Without either, ANDROID_SERIAL is used if set, otherwise"
+    echo "                    every attached device gets the app."
     echo ""
     echo "Examples:"
     echo "  ./runFE.sh linux"
     echo "  ./runFE.sh mobile"
     echo "  ./runFE.sh mobile --port 8090"
+    echo "  ./runFE.sh mobile --emulator"
     exit 1
 }
 
@@ -62,6 +68,9 @@ load_android_sdk() {
 }
 
 METRO_PORT=""
+DEVICE=""
+USE_EMULATOR=0
+EMULATOR_AVD=""
 MOBILE_APP_ID="com.mobile"
 # The Sonare backend (sonare-backend runBE.sh); debug builds reach it at localhost:3010.
 BACKEND_PORT=3010
@@ -149,6 +158,23 @@ parse_mobile_args() {
                 METRO_PORT="${1#*=}"
                 shift
                 ;;
+            --emulator)
+                USE_EMULATOR=1
+                shift
+                ;;
+            --emulator=*)
+                USE_EMULATOR=1
+                EMULATOR_AVD="${1#*=}"
+                shift
+                ;;
+            --device)
+                DEVICE="$2"
+                shift 2
+                ;;
+            --device=*)
+                DEVICE="${1#*=}"
+                shift
+                ;;
             *)
                 echo "Error: Unknown option '$1' for target 'mobile'"
                 usage
@@ -160,6 +186,41 @@ parse_mobile_args() {
         echo "Error: --port expects a number, got '$METRO_PORT'"
         exit 1
     fi
+    if [ "$USE_EMULATOR" = 1 ] && [ -n "$DEVICE" ]; then
+        echo "Error: pass --emulator or --device, not both"
+        exit 1
+    fi
+}
+
+running_emulator() {
+    adb devices | awk '$1 ~ /^emulator-/ && $2 == "device" { print $1; exit }'
+}
+
+# Sets DEVICE to a booted emulator's serial, starting one if none is up. setsid keeps the
+# emulator running after this script exits, so the next run doesn't wait for a cold boot.
+pick_emulator() {
+    local avd
+    DEVICE="$(running_emulator)"
+    [ -n "$DEVICE" ] && return
+
+    avd="${EMULATOR_AVD:-$(emulator -list-avds 2>/dev/null | head -1)}"
+    if [ -z "$avd" ]; then
+        echo "Error: no emulator is running and there is no AVD to start - create one in Android Studio."
+        exit 1
+    fi
+    echo "Starting the $avd emulator..."
+    setsid emulator -avd "$avd" >/dev/null 2>&1 < /dev/null &
+
+    for _ in $(seq 1 90); do
+        DEVICE="$(running_emulator)"
+        if [ -n "$DEVICE" ] && \
+           [ "$(adb -s "$DEVICE" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = 1 ]; then
+            return
+        fi
+        sleep 2
+    done
+    echo "Error: the $avd emulator did not finish booting."
+    exit 1
 }
 
 # `neu run`/`neu build` drive Vite themselves via cli.frontendLibrary in
@@ -188,6 +249,17 @@ case "$TARGET" in
         nvm use 22 2>/dev/null
         load_android_sdk
         cd "$SCRIPT_DIR/mobile"
+
+        [ "$USE_EMULATOR" = 1 ] && pick_emulator
+        DEVICE="${DEVICE:-$ANDROID_SERIAL}"
+        DEVICE_ARGS=()
+        if [ -n "$DEVICE" ]; then
+            # adb honours ANDROID_SERIAL, which covers the reverse/shell calls below;
+            # run-android only looks at --device.
+            export ANDROID_SERIAL="$DEVICE"
+            DEVICE_ARGS=(--device "$DEVICE")
+            echo "Using device $DEVICE."
+        fi
 
         PORT="${METRO_PORT:-8081}"
         STATUS_URL="http://127.0.0.1:$PORT/status"
@@ -247,7 +319,7 @@ case "$TARGET" in
         # Native code (Reanimated, Worklets, Screens, SVG...) is C++ compiled once per ABI.
         # gradle.properties lists all four for release builds; a dev run only needs the
         # attached device's, which cuts the native build to a quarter.
-        npx react-native run-android --no-packager --port "$PORT" --active-arch-only
+        npx react-native run-android --no-packager --port "$PORT" --active-arch-only "${DEVICE_ARGS[@]}"
 
         if [ "$METRO_HOST_SET" = 0 ] && point_app_at_local_metro "$PORT"; then
             adb shell am force-stop "$MOBILE_APP_ID"
