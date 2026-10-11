@@ -32,6 +32,7 @@ class FakeContext {
     Object.assign(new FakeNode(), { frequency: new FakeParam(), Q: new FakeParam(), gain: new FakeParam() });
   createGain = () => Object.assign(new FakeNode(), { gain: new FakeParam() });
   createChannelSplitter = () => new FakeNode();
+  createAnalyser = () => Object.assign(new FakeNode(), { fftSize: 2048 });
   createChannelMerger = () => new FakeNode();
   createDynamicsCompressor = () =>
     Object.assign(new FakeNode(), {

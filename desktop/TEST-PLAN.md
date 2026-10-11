@@ -501,6 +501,17 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through            |
 | `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                              |
 | `WEB-DSP-015` | a suspended context is resumed on the next play                                 |
+| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                       |
+
+## `test/unit/waveform.test.tsx`
+
+| ID             | Use case                                                                                |
+| :------------- | :-------------------------------------------------------------------------------------- |
+| `WEB-WAVE-001` | a placeholder is drawn dimmed, and bars turn real as the song plays past them           |
+| `WEB-WAVE-002` | once every bar is heard the waveform is uploaded, once, and drawn without dimming       |
+| `WEB-WAVE-003` | a guest keeps the full waveform; it is uploaded the next time the song shows, signed in |
+| `WEB-WAVE-004` | a real waveform from the backend is drawn as it is, and nothing is sampled              |
+| `WEB-WAVE-005` | device files keep their own waveform and never ask the backend                          |
 
 ## `test/unit/favourites.test.tsx`
 
@@ -789,6 +800,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-061` | placeholderPeaks produces deterministic waveform matching pinned literal array for yt:NJAv_7lHUIU                 |
 | `WEB-CAT-062` | resamplePeaks downsamples with max-pooling when shrinking                                                         |
 | `WEB-CAT-063` | resamplePeaks upsamples with linear interpolation when growing and handles edge cases                             |
+| `WEB-CAT-081` | recordPeak fills the bars a stretch of the song touches, keeping each bar's loudest level                         |
+| `WEB-CAT-082` | a waveform is finished only when every bar is heard, scaled so the loudest is 1                                   |
+| `WEB-CAT-083` | mergeHeardPeaks draws heard bars scaled to the loudest, the placeholder elsewhere                                 |
 | `WEB-CAT-064` | playlist maps playlist details and video items to Piped Playlist shape                                            |
 | `WEB-CAT-065` | playlist strips VL prefix from playlist ID                                                                        |
 | `WEB-CAT-066` | playlistNextPage fetches continuation items and returns nextpage cursor                                           |

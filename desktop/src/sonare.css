@@ -644,6 +644,10 @@ svg.ic {
   background: var(--t1);
   width: 3px;
 }
+/* a placeholder bar: the real level shows once the song has played past it */
+.wave i.ph {
+  opacity: 0.45;
+}
 .wave-sm {
   height: 20px;
   gap: 2px;

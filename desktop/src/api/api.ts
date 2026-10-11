@@ -315,9 +315,18 @@ export const api = {
     );
   },
 
+  /** `placeholder`: nobody has uploaded this song's waveform yet; these bars are made up. */
   getTrackPeaks(id: string, bars: number = 150) {
-    return request<{ peaks: number[] }>(`/tracks/${encodeURIComponent(id)}/peaks`, {
+    return request<{ peaks: number[]; placeholder?: boolean }>(`/tracks/${encodeURIComponent(id)}/peaks`, {
       params: { bars },
+    });
+  },
+
+  /** The waveform heard on this device (150 bars, 0..1); the first upload for a song wins. */
+  putTrackPeaks(id: string, peaks: number[]) {
+    return request<{ stored: boolean }>(`/tracks/${encodeURIComponent(id)}/peaks`, {
+      method: 'PUT',
+      body: JSON.stringify({ peaks }),
     });
   },
 

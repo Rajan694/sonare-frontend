@@ -61,6 +61,11 @@ class FakeContext {
   createChannelSplitter() {
     return new Node();
   }
+  analyser?: Node & { fftSize: number };
+  createAnalyser() {
+    this.analyser = Object.assign(new Node(), { fftSize: 2048 });
+    return this.analyser;
+  }
   createChannelMerger() {
     return new Node();
   }
@@ -199,6 +204,21 @@ describe('audio graph', () => {
     // Building twice reuses the same graph.
     await d.ensureGraph();
     expect(contexts).toHaveLength(1);
+  });
+
+  it('WEB-DSP-016 the waveform level meter hears every source before the EQ', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    expect(d.levelMeter()).toBeNull();
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const ctx = contexts[0];
+    const graph = await d.graphInput();
+    const input = graph!.input as unknown as Node;
+    // Decoded tracks join at the same input as the element, which feeds both the meter and the EQ.
+    expect(input.connections).toEqual([ctx.analyser, ctx.biquads[0]]);
+    expect(d.levelMeter()).toBe(ctx.analyser);
+    expect(ctx.analyser!.fftSize).toBe(8192);
   });
 
   it('WEB-DSP-011 turning the EQ off flattens every stage without tearing the graph down', async () => {

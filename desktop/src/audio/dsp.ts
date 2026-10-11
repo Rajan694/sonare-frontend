@@ -69,6 +69,8 @@ interface Graph {
   ctx: AudioContext;
   /** Where sources join the chain: the element's source node, and decoded tracks (player.ts). */
   input: AudioNode;
+  /** Reads the level of what plays, before the EQ, for the waveform (audio/waveform.ts). */
+  level: AnalyserNode;
   bands: BiquadFilterNode[];
   bass: BiquadFilterNode;
   // Output L = ll·L + rl·R, output R = rr·R + lr·L.
@@ -168,7 +170,14 @@ export const ensureGraph = async (): Promise<void> => {
     comp.attack.value = 0.01;
     comp.release.value = 0.25;
 
-    let node: AudioNode = source;
+    // Every source joins here; the analyser hears the song as it is, whatever the EQ does.
+    const input = ctx.createGain();
+    const level = ctx.createAnalyser();
+    level.fftSize = 8192;
+    input.connect(level);
+    source.connect(input);
+
+    let node: AudioNode = input;
     for (const f of bands) {
       node.connect(f);
       node = f;
@@ -187,7 +196,7 @@ export const ensureGraph = async (): Promise<void> => {
     merge.connect(comp);
     comp.connect(ctx.destination);
 
-    graph = { ctx, input: bands[0], bands, bass, ll, rl, lr, rr, comp };
+    graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp };
     apply();
     if (sinkId) await applySink();
     if (ctx.state === 'suspended') await ctx.resume();
@@ -235,6 +244,9 @@ export const graphInput = async (): Promise<{ ctx: AudioContext; input: AudioNod
   await ensureGraph();
   return graph && { ctx: graph.ctx, input: graph.input };
 };
+
+/** The pre-EQ level meter, once the graph exists. */
+export const levelMeter = (): AnalyserNode | null => graph?.level ?? null;
 
 export const getDsp = (): DspState => {
   return state;

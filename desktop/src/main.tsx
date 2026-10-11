@@ -8,6 +8,7 @@ import { CAPS } from './lib/caps';
 import { installErrorReporting } from './lib/errorReporting';
 import { initNeutralino } from './neutralino';
 import { startAppConfigSync } from './api/api';
+import { startWaveformTap } from './audio/waveform';
 import { store } from './store';
 import './styles.css';
 
@@ -18,6 +19,9 @@ installErrorReporting();
 // The desktop window fetches YouTube itself; the admin page can switch that off or change the
 // YouTube client it uses (GET /app-config).
 if (CAPS.localLibrary) startAppConfigSync();
+
+// Songs nobody has uploaded a waveform for get theirs filled in as they play (audio/waveform.ts).
+startWaveformTap();
 
 // /admin is the web build's admin page: its own bundle, loaded only when asked for, and never
 // in the Linux window (where the music app's routes send /admin back home).

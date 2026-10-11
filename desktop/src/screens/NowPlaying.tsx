@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
 import { usePlaybackPosition } from '../store/playbackPosition';
-import { usePeaks } from '../api/hooks';
+import { useWaveform } from '../audio/waveform';
 import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Waveform from '../components/music/Waveform';
@@ -48,9 +48,8 @@ const NowPlaying = () => {
   const isOffline = mode === 'offline';
   const local = useLocalLibrary();
 
-  const { data: peaksData } = usePeaks(currentTrack?.id);
+  const { peaks, real: realPeaks } = useWaveform(currentTrack);
   const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack);
-  const peaks = currentTrack?.peaks || peaksData?.peaks;
 
   if (!currentTrack) {
     return (
@@ -232,6 +231,7 @@ const NowPlaying = () => {
           <div className="flex flex-col gap-2 w-full">
             <Waveform
               peaks={peaks}
+              real={realPeaks}
               barCount={150}
               positionRatio={positionRatio}
               durationMs={durationMs}
