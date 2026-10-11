@@ -343,7 +343,13 @@ export const api = {
   },
 
   // Lyrics
-  getLyrics(id: string, prefer: 'synced' | 'plain' = 'synced', script: LyricsScript = 'original') {
+  /** `track` names the song for the lookup when the backend has never seen it (found in-app). */
+  getLyrics(
+    id: string,
+    prefer: 'synced' | 'plain' = 'synced',
+    script: LyricsScript = 'original',
+    track?: Pick<Track, 'title' | 'artist' | 'durationMs'>,
+  ) {
     return request<{
       synced: boolean;
       provider: string;
@@ -351,7 +357,12 @@ export const api = {
       lines: { atMs: number; text: string }[];
       plain?: string;
     }>(`/tracks/${encodeURIComponent(id)}/lyrics`, {
-      params: script === 'original' ? { prefer } : { prefer, script },
+      params: {
+        prefer,
+        ...(script !== 'original' && { script }),
+        ...(track?.title && track.artist && { title: track.title, artist: track.artist }),
+        ...(track?.durationMs && { durationMs: track.durationMs }),
+      },
     });
   },
 

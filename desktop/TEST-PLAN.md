@@ -536,7 +536,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOOK-014` | useMyPlaylists refetches when playlists change anywhere in the app  |
 | `WEB-HOOK-015` | the favourites list refetches after a heart is saved elsewhere      |
 | `WEB-HOOK-016` | lyrics for a local file are never requested from the server         |
-| `WEB-HOOK-017` | lyrics errors surface as the hook error                             |
+| `WEB-HOOK-017` | lyrics requests name the song; errors surface as the hook error     |
 
 ## `test/unit/lib.test.ts`
 

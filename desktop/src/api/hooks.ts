@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { api } from './api';
 import { onFavouritesSaved } from './favourites';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
-import type { User } from '../types';
+import type { Track, User } from '../types';
 import { useDevicePrefs } from '../storage/devicePrefs';
 
 export interface AsyncState<T> {
@@ -251,10 +251,15 @@ export const useMyPlaylists = () => {
   return result;
 };
 
-export const useLyrics = (trackId: string | undefined, prefer: 'synced' | 'plain' = 'synced') => {
+export const useLyrics = (
+  track: Pick<Track, 'id' | 'title' | 'artist' | 'durationMs'> | null | undefined,
+  prefer: 'synced' | 'plain' = 'synced',
+) => {
   const { lyricsScript } = useDevicePrefs();
+  const trackId = track?.id;
   return useAsync(
-    () => (trackId ? api.getLyrics(trackId, prefer, lyricsScript) : Promise.reject(new Error('Missing track id'))),
+    () =>
+      track ? api.getLyrics(track.id, prefer, lyricsScript, track) : Promise.reject(new Error('Missing track id')),
     [trackId, prefer, lyricsScript],
     // Local files are unknown to the server; their lyrics come from the editor only.
     { enabled: !!trackId && !trackId.startsWith('local:') },

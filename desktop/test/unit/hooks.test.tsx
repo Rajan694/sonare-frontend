@@ -187,18 +187,26 @@ describe('account data', () => {
 
   it('WEB-HOOK-016 lyrics for a local file are never requested from the server', async () => {
     const rec = recordRequests();
-    const local = renderHook(() => useLyrics('local:abc'));
+    const local = renderHook(() => useLyrics({ id: 'local:abc', title: 'Mine', artist: 'Me', durationMs: null }));
     await new Promise((r) => setTimeout(r, 30));
     rec.stop();
     expect(rec.seen).toHaveLength(0);
     expect(local.result.current.loading).toBe(false);
   });
 
-  it('WEB-HOOK-017 lyrics errors surface as the hook error', async () => {
+  it('WEB-HOOK-017 lyrics requests name the song; errors surface as the hook error', async () => {
+    let asked: URLSearchParams | null = null;
     server.use(
-      http.get(`${API}/tracks/:id/lyrics`, () => apiError(404, 'LYRICS_NOT_FOUND', 'No lyrics for this song')),
+      http.get(`${API}/tracks/:id/lyrics`, ({ request }) => {
+        asked = new URL(request.url).searchParams;
+        return apiError(404, 'LYRICS_NOT_FOUND', 'No lyrics for this song');
+      }),
     );
-    const { result } = renderHook(() => useLyrics('yt:t1'));
+    const { result } = renderHook(() =>
+      useLyrics({ id: 'yt:t1', title: 'Song A', artist: 'Band B', durationMs: 201_000 }),
+    );
     await waitFor(() => expect(result.current.error?.message).toBe('No lyrics for this song'));
+    // The backend may never have seen a song found in-app: it looks the lyrics up by these.
+    expect(Object.fromEntries(asked!)).toMatchObject({ title: 'Song A', artist: 'Band B', durationMs: '201000' });
   });
 });
