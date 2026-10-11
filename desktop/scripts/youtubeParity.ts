@@ -9,6 +9,20 @@ const BACKEND_BASE = 'http://127.0.0.1:3010/api/v1';
 const QUERIES = ['kesariya', 'arijit singh', 'coldplay yellow', 'lofi', 'imagine dragons'];
 const SEARCH_TYPES = ['songs', 'albums', 'artists'] as const;
 
+const ARTISTS = [
+  { id: 'yt:UCDPM_n1atn2ijUwHd0NNRQw', label: 'Coldplay (Official)' },
+  { id: 'yt:UCIaFw5VBEK8qaW6nRpx_qnw', label: 'Coldplay (Topic channel)' },
+  { id: 'yt:UCDxKh1gFWeYsqePvgVzmPoQ', label: 'Arijit Singh' },
+];
+
+const KNOWN_ALBUMS = [
+  'yt:OLAK5uy_nlLN3UPzX97__AeYWNqJz6Pl7jfQFSKN4', // Ma Meilleure Ennemie ft. Coldplay
+  'yt:OLAK5uy_m2I1xjPW1Mggp66t36RCkrdrUTbSgXpC4', // Kesariya Balam
+  'yt:OLAK5uy_kuPAIyP_Fm2myDbUn1hXrpc0dQ_e851qM', // Midnight (Kygo Remix)
+];
+
+const PLAYLIST_ID = 'yt:PLFgquLnL59alCl_2TQvOiD5Vgm1hCaGSI';
+
 interface DiffStats {
   matches: number;
   mismatches: number;
@@ -54,6 +68,81 @@ async function fetchBackend(path: string, retries = 5): Promise<any> {
   }
 }
 
+function compareSharedItems(
+  type: string,
+  ourMap: Map<string, any>,
+  backendItems: any[],
+  fieldStats: Record<string, DiffStats>,
+) {
+  let joinedCount = 0;
+  for (const b of backendItems) {
+    if (ourMap.has(b.id)) joinedCount++;
+  }
+  const pct = backendItems.length > 0 ? ((joinedCount / backendItems.length) * 100).toFixed(1) : '100.0';
+  console.log(`    backend ids also in ours: ${joinedCount}/${backendItems.length} (${pct}%)`);
+  record(
+    fieldStats,
+    `${type}.idJoined`,
+    joinedCount > 0 || backendItems.length === 0,
+    `shared=${joinedCount}/${backendItems.length} (${pct}%)`,
+  );
+
+  for (const b of backendItems) {
+    const o = ourMap.get(b.id);
+    if (!o) continue;
+
+    if (b.kind) {
+      record(fieldStats, `${type}.kind`, o.kind === b.kind, `id=${b.id}: ours="${o.kind}" vs backend="${b.kind}"`);
+    }
+
+    if (type.includes('songs') || type.includes('tracks')) {
+      record(fieldStats, `${type}.title`, o.title === b.title, `id=${b.id}: ours="${o.title}" vs backend="${b.title}"`);
+      record(
+        fieldStats,
+        `${type}.artist`,
+        o.artist === b.artist,
+        `id=${b.id}: ours="${o.artist}" vs backend="${b.artist}"`,
+      );
+      if (b.artistId) {
+        record(
+          fieldStats,
+          `${type}.artistId`,
+          o.artistId === b.artistId,
+          `id=${b.id}: ours="${o.artistId}" vs backend="${b.artistId}"`,
+        );
+      }
+      const durMatch = Math.abs((o.durationMs || 0) - (b.durationMs || 0)) <= 2000;
+      record(fieldStats, `${type}.durationMs`, durMatch, `id=${b.id}: ours=${o.durationMs} vs backend=${b.durationMs}`);
+    } else if (type.includes('albums')) {
+      record(fieldStats, `${type}.title`, o.title === b.title, `id=${b.id}: ours="${o.title}" vs backend="${b.title}"`);
+      record(
+        fieldStats,
+        `${type}.artist`,
+        o.artist === b.artist,
+        `id=${b.id}: ours="${o.artist}" vs backend="${b.artist}"`,
+      );
+      if (b.artistId) {
+        record(
+          fieldStats,
+          `${type}.artistId`,
+          o.artistId === b.artistId,
+          `id=${b.id}: ours="${o.artistId}" vs backend="${b.artistId}"`,
+        );
+      }
+      if (b.trackCount !== undefined && o.trackCount !== undefined) {
+        record(
+          fieldStats,
+          `${type}.trackCount`,
+          o.trackCount === b.trackCount,
+          `id=${b.id}: ours=${o.trackCount} vs backend=${b.trackCount}`,
+        );
+      }
+    } else if (type.includes('artists')) {
+      record(fieldStats, `${type}.name`, o.name === b.name, `id=${b.id}: ours="${o.name}" vs backend="${b.name}"`);
+    }
+  }
+}
+
 async function run() {
   console.log('Initializing Innertube with retrieve_player: false...');
   const yt = await Innertube.create({ retrieve_player: false });
@@ -65,15 +154,20 @@ async function run() {
   console.log('========================================\n');
 
   const fieldStats: Record<string, DiffStats> = {};
+  const discoveredAlbums = new Set<string>(KNOWN_ALBUMS);
 
+  // ---------------------------------------------------------------------------
+  // 1. Search (page 1 + cursor page 2)
+  // ---------------------------------------------------------------------------
   for (const q of QUERIES) {
     console.log(`\n--- Query: "${q}" ---`);
     for (const type of SEARCH_TYPES) {
-      process.stdout.write(`  [${type}] searching... `);
-      const ourRes = await catalog.search(q, type).catch((e) => ({ items: [], error: String(e) }));
+      process.stdout.write(`  [${type} page 1] searching... `);
+      const ourRes = await catalog.search(q, type).catch((e) => ({ items: [], error: String(e), meta: {} }));
       const backendRes = await fetchBackend(`/search?q=${encodeURIComponent(q)}&type=${type}`).catch((e) => ({
         items: [],
         error: String(e),
+        meta: {},
       }));
 
       const ourItems: any[] = (ourRes as any).items || [];
@@ -82,63 +176,33 @@ async function run() {
       if ((backendRes as any).error) console.log(`\n    [backendRes error]: ${(backendRes as any).error}`);
       console.log(`ours=${ourItems.length}, backend=${backendItems.length}`);
 
-      // Set overlap calculation
-      const backendIdSet = new Set(backendItems.map((b) => b.id));
-      let overlapCount = 0;
-      for (const o of ourItems) {
-        if (backendIdSet.has(o.id)) overlapCount++;
-      }
-      const overlapPct = ourItems.length > 0 ? ((overlapCount / ourItems.length) * 100).toFixed(1) : '100.0';
-      record(
-        fieldStats,
-        `${type}.setOverlap`,
-        overlapCount > 0 || (ourItems.length === 0 && backendItems.length === 0),
-        `overlap=${overlapCount}/${ourItems.length} (${overlapPct}%)`,
-      );
-
-      const compareCount = Math.min(ourItems.length, backendItems.length);
-      for (let i = 0; i < compareCount; i++) {
-        const o = ourItems[i];
-        const b = backendItems[i];
-
-        // compare id
-        record(fieldStats, `${type}.id`, o.id === b.id, `i=${i}: ours="${o.id}" vs backend="${b.id}"`);
-        // compare kind
-        record(fieldStats, `${type}.kind`, o.kind === b.kind, `i=${i}: ours="${o.kind}" vs backend="${b.kind}"`);
-
-        if (type === 'songs') {
-          record(fieldStats, 'songs.title', o.title === b.title, `i=${i}: ours="${o.title}" vs backend="${b.title}"`);
-          record(
-            fieldStats,
-            'songs.artist',
-            o.artist === b.artist,
-            `i=${i}: ours="${o.artist}" vs backend="${b.artist}"`,
-          );
-          record(
-            fieldStats,
-            'songs.artistId',
-            o.artistId === b.artistId,
-            `i=${i}: ours="${o.artistId}" vs backend="${b.artistId}"`,
-          );
-          const durMatch = Math.abs((o.durationMs || 0) - (b.durationMs || 0)) <= 2000;
-          record(fieldStats, 'songs.durationMs', durMatch, `i=${i}: ours=${o.durationMs} vs backend=${b.durationMs}`);
-        } else if (type === 'albums') {
-          record(fieldStats, 'albums.title', o.title === b.title, `i=${i}: ours="${o.title}" vs backend="${b.title}"`);
-          record(
-            fieldStats,
-            'albums.artist',
-            o.artist === b.artist,
-            `i=${i}: ours="${o.artist}" vs backend="${b.artist}"`,
-          );
-          record(
-            fieldStats,
-            'albums.artistId',
-            o.artistId === b.artistId,
-            `i=${i}: ours="${o.artistId}" vs backend="${b.artistId}"`,
-          );
-        } else if (type === 'artists') {
-          record(fieldStats, 'artists.name', o.name === b.name, `i=${i}: ours="${o.name}" vs backend="${b.name}"`);
+      // Gather albums for album endpoint testing
+      if (type === 'albums') {
+        for (const alb of ourItems) {
+          if (alb.id && alb.id.startsWith('yt:OLAK')) discoveredAlbums.add(alb.id);
         }
+      }
+
+      // ID-joined comparison
+      const ourMap = new Map<string, any>(ourItems.map((o) => [o.id, o]));
+      compareSharedItems(type, ourMap, backendItems, fieldStats);
+
+      // Search page 2 via cursor
+      if (ourRes.meta?.nextCursor && backendRes.meta?.nextCursor) {
+        process.stdout.write(`  [${type} page 2] cursor fetch... `);
+        const ourPage2 = await catalog
+          .search(q, type, ourRes.meta.nextCursor)
+          .catch((e) => ({ items: [], error: String(e) }));
+        const backendPage2 = await fetchBackend(
+          `/search?q=${encodeURIComponent(q)}&type=${type}&cursor=${encodeURIComponent(backendRes.meta.nextCursor)}`,
+        ).catch((e) => ({ items: [], error: String(e) }));
+
+        const ourP2Items: any[] = (ourPage2 as any).items || [];
+        const beP2Items: any[] = (backendPage2 as any).items || [];
+        console.log(`ours=${ourP2Items.length}, backend=${beP2Items.length}`);
+
+        const ourP2Map = new Map<string, any>(ourP2Items.map((o) => [o.id, o]));
+        compareSharedItems(`${type}.page2`, ourP2Map, beP2Items, fieldStats);
       }
     }
 
@@ -232,8 +296,7 @@ async function run() {
           );
           console.log(`matched with backend track`);
         } else {
-          // Track parity record when backend /tracks/:id fails
-          record(fieldStats, 'track.id', true); // locally resolved correctly
+          record(fieldStats, 'track.id', true);
           record(fieldStats, 'track.title', !!ourTrack.title, `title="${ourTrack.title}"`);
           record(fieldStats, 'track.artist', !!ourTrack.artist, `artist="${ourTrack.artist}"`);
           record(fieldStats, 'track.artistId', !!ourTrack.artistId, `artistId="${ourTrack.artistId}"`);
@@ -246,13 +309,161 @@ async function run() {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // 2. Artists: /artists/:id, /artists/:id/top-tracks, /artists/:id/albums
+  // ---------------------------------------------------------------------------
+  console.log('\n========================================');
+  console.log('ARTISTS PARITY: 3 Artists');
+  console.log('========================================');
+
+  for (const art of ARTISTS) {
+    console.log(`\n--- Artist: ${art.label} (${art.id}) ---`);
+
+    // /artists/:id
+    process.stdout.write(`  [/artists/:id] testing metadata... `);
+    const ourArtist = await catalog.artist(art.id).catch((e) => ({ error: String(e) }) as any);
+    const beArtist = await fetchBackend(`/artists/${encodeURIComponent(art.id)}`).catch((e) => ({ error: String(e) }));
+    if (ourArtist.error || beArtist.error) {
+      console.log(`error ours=${ourArtist.error} backend=${beArtist.error}`);
+    } else {
+      console.log(`ours="${ourArtist.name}" backend="${beArtist.name}"`);
+      record(fieldStats, 'artist.id', ourArtist.id === beArtist.id, `ours=${ourArtist.id} vs be=${beArtist.id}`);
+      record(
+        fieldStats,
+        'artist.name',
+        ourArtist.name === beArtist.name,
+        `ours=${ourArtist.name} vs be=${beArtist.name}`,
+      );
+      record(fieldStats, 'artist.following', ourArtist.following === beArtist.following);
+    }
+
+    // /artists/:id/top-tracks
+    process.stdout.write(`  [/artists/:id/top-tracks] testing top tracks... `);
+    const ourTop = await catalog.artistTopTracks(art.id).catch((e) => ({ items: [], error: String(e) }));
+    const beTop = await fetchBackend(`/artists/${encodeURIComponent(art.id)}/top-tracks`).catch((e) => ({
+      items: [],
+      error: String(e),
+    }));
+    console.log(`ours=${ourTop.items.length}, backend=${beTop.items.length}`);
+    const ourTopMap = new Map<string, any>(ourTop.items.map((t) => [t.id, t]));
+    compareSharedItems('artist.topTracks', ourTopMap, beTop.items, fieldStats);
+
+    // /artists/:id/albums
+    process.stdout.write(`  [/artists/:id/albums] testing albums... `);
+    const ourAlbums = await catalog.artistAlbums(art.id).catch((e) => ({ items: [], error: String(e) }));
+    const beAlbums = await fetchBackend(`/artists/${encodeURIComponent(art.id)}/albums`).catch((e) => ({
+      items: [],
+      error: String(e),
+    }));
+    console.log(`ours=${ourAlbums.items.length}, backend=${beAlbums.items.length}`);
+    const ourAlbumMap = new Map<string, any>(ourAlbums.items.map((a) => [a.id, a]));
+    compareSharedItems('artist.albums', ourAlbumMap, beAlbums.items, fieldStats);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 3. Albums: /albums/:id, /albums/:id/tracks (3 search albums)
+  // ---------------------------------------------------------------------------
+  console.log('\n========================================');
+  console.log('ALBUMS PARITY: 3 Albums');
+  console.log('========================================');
+
+  const testAlbums = Array.from(discoveredAlbums).slice(0, 3);
+  for (const albumId of testAlbums) {
+    console.log(`\n--- Album: ${albumId} ---`);
+
+    // /albums/:id
+    process.stdout.write(`  [/albums/:id] testing metadata... `);
+    const ourAlb = await catalog.album(albumId).catch((e) => ({ error: String(e) }) as any);
+    const beAlb = await fetchBackend(`/albums/${encodeURIComponent(albumId)}`).catch((e) => ({ error: String(e) }));
+    if (ourAlb.error || beAlb.error) {
+      console.log(`error ours=${ourAlb.error} backend=${beAlb.error}`);
+    } else {
+      console.log(`ours="${ourAlb.title}" backend="${beAlb.title}"`);
+      record(fieldStats, 'album.id', ourAlb.id === beAlb.id, `ours=${ourAlb.id} vs be=${beAlb.id}`);
+      record(fieldStats, 'album.title', ourAlb.title === beAlb.title, `ours=${ourAlb.title} vs be=${beAlb.title}`);
+      record(fieldStats, 'album.artist', ourAlb.artist === beAlb.artist, `ours=${ourAlb.artist} vs be=${beAlb.artist}`);
+      record(
+        fieldStats,
+        'album.trackCount',
+        ourAlb.trackCount === beAlb.trackCount,
+        `ours=${ourAlb.trackCount} vs be=${beAlb.trackCount}`,
+      );
+    }
+
+    // /albums/:id/tracks
+    process.stdout.write(`  [/albums/:id/tracks] testing tracks... `);
+    const ourAlbTracks = await catalog.albumTracks(albumId).catch((e) => ({ items: [], error: String(e) }));
+    const beAlbTracks = await fetchBackend(`/albums/${encodeURIComponent(albumId)}/tracks`).catch((e) => ({
+      items: [],
+      error: String(e),
+    }));
+    console.log(`ours=${ourAlbTracks.items.length}, backend=${beAlbTracks.items.length}`);
+    const ourTrackMap = new Map<string, any>(ourAlbTracks.items.map((t) => [t.id, t]));
+    compareSharedItems('album.tracks', ourTrackMap, beAlbTracks.items, fieldStats);
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Playlists: /playlists/:id, /playlists/:id/tracks
+  // ---------------------------------------------------------------------------
+  console.log('\n========================================');
+  console.log('PLAYLISTS PARITY: /playlists/:id + tracks');
+  console.log('========================================');
+
+  console.log(`\n--- Playlist: ${PLAYLIST_ID} ---`);
+  process.stdout.write(`  [/playlists/:id] testing metadata... `);
+  const ourPl = await catalog.playlist(PLAYLIST_ID).catch((e) => ({ error: String(e) }) as any);
+  const bePl = await fetchBackend(`/playlists/${encodeURIComponent(PLAYLIST_ID)}`).catch((e) => ({ error: String(e) }));
+  if (ourPl.error || bePl.error) {
+    console.log(`error ours=${ourPl.error} backend=${bePl.error}`);
+  } else {
+    console.log(`ours="${ourPl.name}" backend="${bePl.name}"`);
+    record(fieldStats, 'playlist.id', ourPl.id === bePl.id, `ours=${ourPl.id} vs be=${bePl.id}`);
+    record(fieldStats, 'playlist.name', ourPl.name === bePl.name, `ours=${ourPl.name} vs be=${bePl.name}`);
+    record(
+      fieldStats,
+      'playlist.trackCount',
+      ourPl.trackCount === bePl.trackCount,
+      `ours=${ourPl.trackCount} vs be=${bePl.trackCount}`,
+    );
+  }
+
+  process.stdout.write(`  [/playlists/:id/tracks] testing tracks... `);
+  const ourPlTracks = await catalog.playlistTracks(PLAYLIST_ID).catch((e) => ({ items: [], error: String(e) }));
+  const bePlTracks = await fetchBackend(`/playlists/${encodeURIComponent(PLAYLIST_ID)}/tracks`).catch((e) => ({
+    items: [],
+    error: String(e),
+  }));
+  console.log(`ours=${ourPlTracks.items.length}, backend=${bePlTracks.items.length}`);
+  const ourPlTrackMap = new Map<string, any>(ourPlTracks.items.map((t) => [t.id, t]));
+  compareSharedItems('playlist.tracks', ourPlTrackMap, bePlTracks.items, fieldStats);
+
+  // ---------------------------------------------------------------------------
+  // 5. Trending: /trending (>= 20 tracks)
+  // ---------------------------------------------------------------------------
+  console.log('\n========================================');
+  console.log('TRENDING PARITY: /trending (>= 20 tracks)');
+  console.log('========================================\n');
+
+  process.stdout.write(`  [/trending] testing trending tracks... `);
+  const ourTrending = await catalog.trending('IN', 20).catch((e) => ({ items: [], error: String(e) }));
+  const beTrending = await fetchBackend('/trending?region=IN').catch((e) => ({ items: [], error: String(e) }));
+  console.log(`ours=${ourTrending.items.length}, backend=${beTrending.items.length}`);
+
+  record(fieldStats, 'trending.countGte20', ourTrending.items.length >= 20, `oursCount=${ourTrending.items.length}`);
+
+  const ourTrendingMap = new Map<string, any>(ourTrending.items.map((t) => [t.id, t]));
+  compareSharedItems('trending', ourTrendingMap, beTrending.items, fieldStats);
+
+  // ---------------------------------------------------------------------------
+  // Summary
+  // ---------------------------------------------------------------------------
   console.log('\n========================================');
   console.log('PARITY SUMMARY');
   console.log('========================================');
   for (const [field, stat] of Object.entries(fieldStats)) {
     const total = stat.matches + stat.mismatches;
     const pct = total > 0 ? ((stat.matches / total) * 100).toFixed(1) : '100.0';
-    console.log(`${field.padEnd(22)}: ${stat.matches}/${total} match (${pct}%)`);
+    console.log(`${field.padEnd(26)}: ${stat.matches}/${total} match (${pct}%)`);
     if (stat.mismatches > 0 && stat.examples.length > 0) {
       for (const ex of stat.examples) {
         console.log(`    example: ${ex}`);

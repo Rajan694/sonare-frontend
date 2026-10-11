@@ -70,6 +70,10 @@ function fakeInnertube(
     getBasicInfo?: (id: string, o?: { client?: string }) => Promise<YTBasicInfoResult>;
     search?: (q: string, o: { type: string }) => Promise<YTMusicSearchResult>;
     getSearchSuggestions?: (q: string) => Promise<YTSuggestionsSection[]>;
+    getPlaylist?: (id: string) => Promise<any>;
+    getChannel?: (id: string) => Promise<any>;
+    getTrending?: () => Promise<any>;
+    actions?: InnertubeLike['actions'];
   } = {},
 ): InnertubeLike {
   return {
@@ -78,6 +82,10 @@ function fakeInnertube(
       search: (opts.search ?? (async () => ({ contents: [] }))) as InnertubeLike['music']['search'],
       getSearchSuggestions: opts.getSearchSuggestions ?? (async () => []),
     },
+    ...(opts.getPlaylist ? { getPlaylist: opts.getPlaylist } : {}),
+    ...(opts.getChannel ? { getChannel: opts.getChannel } : {}),
+    ...(opts.getTrending ? { getTrending: opts.getTrending } : {}),
+    ...(opts.actions ? { actions: opts.actions } : {}),
   };
 }
 
@@ -281,7 +289,7 @@ describe('youtubeiSource', () => {
     expect(s.duration).toBe(259);
   });
 
-  it('WEB-CAT-046: search songs joins multiple artist names with comma', async () => {
+  it('WEB-CAT-046: search songs uses first artist name matching backend', async () => {
     const yt = fakeInnertube({
       search: async () => ({
         contents: [
@@ -304,7 +312,7 @@ describe('youtubeiSource', () => {
     });
     const src = createYoutubeiSource(yt);
     const page = await src.search('duet', 'music_songs');
-    expect(page.items[0].uploaderName).toBe('Artist One, Artist Two');
+    expect(page.items[0].uploaderName).toBe('Artist One');
     // uploaderUrl should be the first artist with a channel_id
     expect(page.items[0].uploaderUrl).toBe('/channel/UCone');
   });
@@ -639,5 +647,389 @@ describe('youtubeiSource', () => {
     expect(s.audioStreams).toHaveLength(1);
     expect(s.videoStreams).toHaveLength(1);
     expect(s.videoStreams[0].itag).toBe(18);
+  });
+
+  // == playlist ==
+
+  it('WEB-CAT-064: playlist maps playlist details and video items to Piped Playlist shape', async () => {
+    const yt = fakeInnertube({
+      getPlaylist: async () => ({
+        info: {
+          title: 'Album - Moon Music',
+          description: 'Moon Music Description',
+          total_items: 2,
+          author: {
+            name: 'Coldplay',
+            id: 'UCDPM_123',
+            thumbnails: [{ url: 'https://author.jpg', width: 300, height: 300 }],
+          },
+          thumbnails: [{ url: 'https://cover.jpg', width: 500, height: 500 }],
+        },
+        videos: [
+          {
+            id: 'vid1',
+            title: 'feelslikeimfallinginlove',
+            author: { name: 'Coldplay', channel_id: 'UCDPM_123' },
+            duration: { seconds: 236 },
+            thumbnails: [{ url: 'https://thumb1.jpg', width: 120, height: 90 }],
+          },
+        ],
+        memo: new Map([
+          [
+            'ContinuationItem',
+            [
+              {
+                type: 'ContinuationItem',
+                endpoint: { payload: { token: 'playlist_cont_token' } },
+              },
+            ],
+          ],
+        ]),
+      }),
+    });
+    const src = createYoutubeiSource(yt);
+    const pl = await src.playlist('OLAK5uy_123');
+    expect(pl.name).toBe('Album - Moon Music');
+    expect(pl.description).toBe('Moon Music Description');
+    expect(pl.uploader).toBe('Coldplay');
+    expect(pl.uploaderUrl).toBe('/channel/UCDPM_123');
+    expect(pl.uploaderAvatar).toBe('https://author.jpg');
+    expect(pl.thumbnailUrl).toBe('https://cover.jpg');
+    expect(pl.videos).toBe(2);
+    expect(pl.relatedStreams).toHaveLength(1);
+    expect(pl.relatedStreams[0].url).toBe('/watch?v=vid1');
+    expect(pl.relatedStreams[0].title).toBe('feelslikeimfallinginlove');
+    expect(pl.relatedStreams[0].duration).toBe(236);
+    expect(pl.nextpage).toBe(JSON.stringify({ token: 'playlist_cont_token', playlistId: 'OLAK5uy_123' }));
+  });
+
+  it('WEB-CAT-065: playlist strips VL prefix from playlist ID', async () => {
+    let requestedId = '';
+    const yt = fakeInnertube({
+      getPlaylist: async (id) => {
+        requestedId = id;
+        return {
+          info: { title: 'Test Playlist', total_items: 0 },
+          videos: [],
+        };
+      },
+    });
+    const src = createYoutubeiSource(yt);
+    await src.playlist('VLOLAK5uy_abc');
+    expect(requestedId).toBe('OLAK5uy_abc');
+  });
+
+  // == playlistNextPage ==
+
+  it('WEB-CAT-066: playlistNextPage fetches continuation items and returns nextpage cursor', async () => {
+    const continuationMap = new Map();
+    continuationMap.set('LockupView', [
+      {
+        type: 'LockupView',
+        content_id: 'vid2',
+        metadata: {
+          title: { text: 'We Pray' },
+          metadata: {
+            metadata_rows: [
+              {
+                metadata_parts: [
+                  {
+                    text: {
+                      runs: [{ text: 'Coldplay', endpoint: { payload: { browseId: 'UCDPM_123' } } }],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        },
+        duration: 233,
+        content_image: {
+          image: [{ url: 'https://thumb2.jpg', width: 640, height: 360 }],
+        },
+      },
+    ]);
+    continuationMap.set('ContinuationItemView', [
+      {
+        type: 'ContinuationItemView',
+        endpoint: { payload: { token: 'tok_page3' } },
+      },
+    ]);
+
+    const yt = fakeInnertube({
+      actions: {
+        execute: async () => ({
+          on_response_received_actions_memo: continuationMap,
+        }),
+      },
+    });
+    const src = createYoutubeiSource(yt);
+    const res = await src.playlistNextPage('OLAK5uy_123', JSON.stringify({ token: 'tok_page2' }));
+    expect(res.relatedStreams).toHaveLength(1);
+    expect(res.relatedStreams[0].url).toBe('/watch?v=vid2');
+    expect(res.relatedStreams[0].title).toBe('We Pray');
+    expect(res.relatedStreams[0].uploaderName).toBe('Coldplay');
+    expect(res.relatedStreams[0].uploaderUrl).toBe('/channel/UCDPM_123');
+    expect(res.relatedStreams[0].duration).toBe(233);
+    expect(res.nextpage).toBe(JSON.stringify({ token: 'tok_page3', playlistId: 'OLAK5uy_123' }));
+  });
+
+  it('WEB-CAT-067: playlistNextPage handles last page with null nextpage', async () => {
+    const emptyMemo = new Map();
+    emptyMemo.set('LockupView', [
+      {
+        type: 'LockupView',
+        content_id: 'vid3',
+        metadata: { title: { text: 'Last Song' } },
+      },
+    ]);
+
+    const yt = fakeInnertube({
+      actions: {
+        execute: async () => ({
+          on_response_received_actions_memo: emptyMemo,
+        }),
+      },
+    });
+    const src = createYoutubeiSource(yt);
+    const res = await src.playlistNextPage('OLAK5uy_123', 'raw_token_xyz');
+    expect(res.relatedStreams).toHaveLength(1);
+    expect(res.nextpage).toBeNull();
+  });
+
+  // == channel ==
+
+  it('WEB-CAT-068: channel maps channel metadata, tabs, and relatedStreams', async () => {
+    const tabsMap = new Map();
+    tabsMap.set('Tab', [
+      {
+        type: 'Tab',
+        title: 'Releases',
+        endpoint: {
+          metadata: { url: '/channel/UCDPM_123/releases' },
+          payload: { browseId: 'UCDPM_123', params: 'params_releases_123' },
+        },
+      },
+    ]);
+
+    const yt = fakeInnertube({
+      getChannel: async () => ({
+        header: {
+          page_title: 'Coldplay',
+          author: {
+            name: 'Coldplay',
+            thumbnails: [{ url: 'https://avatar.jpg', width: 400, height: 400 }],
+          },
+          banner: [{ url: 'https://banner.jpg', width: 1200, height: 300 }],
+          subscribers: '28.7M subscribers',
+        },
+        has_videos: true,
+        videos: [
+          {
+            content_id: 'vid1',
+            metadata: {
+              title: { text: 'Yellow' },
+              metadata: {
+                metadata_rows: [
+                  {
+                    metadata_parts: [
+                      {
+                        text: {
+                          runs: [{ text: 'Coldplay', endpoint: { payload: { browseId: 'UCDPM_123' } } }],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+            },
+            duration: 269,
+            content_image: {
+              image: [{ url: 'https://yellow.jpg', width: 640, height: 360 }],
+            },
+          },
+        ],
+        tabs: ['Home', 'Releases'],
+        page: { contents_memo: tabsMap },
+      }),
+    });
+    const src = createYoutubeiSource(yt);
+    const ch = await src.channel('UCDPM_123');
+    expect(ch.id).toBe('UCDPM_123');
+    expect(ch.name).toBe('Coldplay');
+    expect(ch.avatarUrl).toBe('https://avatar.jpg');
+    expect(ch.bannerUrl).toBe('https://banner.jpg');
+    expect(ch.subscriberCount).toBe(28700000);
+    expect(ch.relatedStreams).toHaveLength(1);
+    expect(ch.relatedStreams[0].title).toBe('Yellow');
+    expect(ch.tabs).toBeDefined();
+    expect(ch.tabs).toHaveLength(1);
+    expect(ch.tabs![0].name).toBe('albums');
+    const parsedData = JSON.parse(ch.tabs![0].data);
+    expect(parsedData.browseId).toBe('UCDPM_123');
+    expect(parsedData.params).toBe('params_releases_123');
+  });
+
+  it('WEB-CAT-069: channel for Topic channel returns empty relatedStreams', async () => {
+    const yt = fakeInnertube({
+      getChannel: async () => ({
+        header: {
+          page_title: 'Coldplay - Topic',
+          author: {
+            name: 'Coldplay - Topic',
+            thumbnails: [{ url: 'https://avatar.jpg', width: 400, height: 400 }],
+          },
+        },
+        has_videos: true,
+        videos: [
+          {
+            content_id: 'vid_topic',
+            title: 'Topic Video',
+          },
+        ],
+      }),
+    });
+    const src = createYoutubeiSource(yt);
+    const ch = await src.channel('UCIaFw5VBEK8qaW6nRpx_qnw');
+    expect(ch.name).toBe('Coldplay - Topic');
+    // Topic channels MUST have empty relatedStreams
+    expect(ch.relatedStreams).toHaveLength(0);
+  });
+
+  it('WEB-CAT-070: channelTabs fetches albums tab and maps OLAK playlists to ChannelTabItem', async () => {
+    const tabMap = new Map();
+    tabMap.set('Playlist', [
+      {
+        type: 'Playlist',
+        id: 'OLAK5uy_nlLN3UPzX97__AeYWNqJz6Pl7jfQFSKN4',
+        title: { text: 'Moon Music' },
+        author: {
+          name: 'Coldplay · Sep 24, 2025',
+          id: 'UCDPM_123',
+        },
+        thumbnail_renderer: {
+          thumbnail: [{ url: 'https://album_cover.jpg', width: 500, height: 500 }],
+        },
+        video_count: '10 videos',
+      },
+    ]);
+    tabMap.set('ContinuationItem', [
+      {
+        type: 'ContinuationItem',
+        endpoint: { payload: { token: 'tab_cont_token' } },
+      },
+    ]);
+
+    const yt = fakeInnertube({
+      actions: {
+        execute: async () => ({
+          contents_memo: tabMap,
+        }),
+      },
+    });
+    const src = createYoutubeiSource(yt);
+    const res = await src.channelTabs(JSON.stringify({ browseId: 'UCDPM_123', params: 'some_params' }));
+    expect(res.content).toHaveLength(1);
+    const item = res.content[0];
+    expect(item.type).toBe('playlist');
+    expect(item.url).toBe('/playlist?list=OLAK5uy_nlLN3UPzX97__AeYWNqJz6Pl7jfQFSKN4');
+    expect(item.playlistId).toBe('OLAK5uy_nlLN3UPzX97__AeYWNqJz6Pl7jfQFSKN4');
+    expect(item.name).toBe('Moon Music');
+    expect(item.uploaderName).toBe('Coldplay');
+    expect(item.uploaderUrl).toBe('/channel/UCDPM_123');
+    expect(item.thumbnail).toBe('https://album_cover.jpg');
+    expect(item.videos).toBe(10);
+    expect(res.nextpage).toBe(JSON.stringify({ token: 'tab_cont_token' }));
+  });
+
+  // == searchNextPage ==
+
+  it('WEB-CAT-071: searchNextPage uses continuation token and returns mapped StreamItems', async () => {
+    let calledPayload: any = null;
+    const yt = fakeInnertube({
+      actions: {
+        execute: async (_endpoint, args) => {
+          calledPayload = args;
+          return {
+            continuation_contents: {
+              contents: [
+                {
+                  id: 'next_vid1',
+                  title: 'Next Page Song',
+                  artists: [{ name: 'Test Artist', channel_id: 'UCtest' }],
+                  duration: { seconds: 195 },
+                  thumbnail: { contents: [{ url: 'https://thumb.jpg', width: 120, height: 120 }] },
+                },
+              ],
+              continuation: 'tok_page3',
+            },
+          };
+        },
+      },
+    });
+    const src = createYoutubeiSource(yt);
+    const res = await src.searchNextPage('query', JSON.stringify({ t: 'tok_page2', f: 'music_songs' }), 'music_songs');
+    expect(calledPayload?.continuation).toBe('tok_page2');
+    expect(calledPayload?.client).toBe('YTMUSIC');
+    expect(res.items).toHaveLength(1);
+    expect(res.items[0].url).toBe('/watch?v=next_vid1');
+    expect(res.items[0].title).toBe('Next Page Song');
+    expect(res.items[0].uploaderName).toBe('Test Artist');
+    expect(res.items[0].uploaderUrl).toBe('/channel/UCtest');
+    expect(res.items[0].duration).toBe(195);
+    expect(res.nextpage).toBe(JSON.stringify({ t: 'tok_page3', f: 'music_songs' }));
+  });
+
+  // == trending ==
+
+  it('WEB-CAT-072: trending delegates to getTrending when available or throws unavailable', async () => {
+    const ytAvailable = fakeInnertube({
+      getTrending: async () => ({
+        videos: [
+          {
+            id: 'trend1',
+            title: 'Trending Hit',
+            author: { name: 'Hit Artist', channel_id: 'UChit' },
+            duration: 215,
+            thumbnails: [{ url: 'https://hit.jpg', width: 480, height: 360 }],
+          },
+        ],
+      }),
+    });
+    const srcAvailable = createYoutubeiSource(ytAvailable);
+    const trendingList = await srcAvailable.trending('US');
+    expect(trendingList).toHaveLength(1);
+    expect(trendingList[0].url).toBe('/watch?v=trend1');
+    expect(trendingList[0].title).toBe('Trending Hit');
+    expect(trendingList[0].uploaderName).toBe('Hit Artist');
+
+    // Without getTrending, throws unavailable
+    const ytUnavailable = fakeInnertube();
+    const srcUnavailable = createYoutubeiSource(ytUnavailable);
+    await expect(srcUnavailable.trending('US')).rejects.toThrow(SourceError);
+    try {
+      await srcUnavailable.trending('US');
+    } catch (e) {
+      expect((e as SourceError).kind).toBe('unavailable');
+    }
+  });
+
+  // == channel prefix ==
+
+  it('WEB-CAT-073: channel strips yt: prefix from artist ID', async () => {
+    let requestedId = '';
+    const yt = fakeInnertube({
+      getChannel: async (id) => {
+        requestedId = id;
+        return {
+          header: { page_title: 'Artist' },
+          metadata: { title: 'Artist' },
+          videos: [],
+        };
+      },
+    });
+    const src = createYoutubeiSource(yt);
+    await src.channel('yt:UCxyz123');
+    expect(requestedId).toBe('UCxyz123');
   });
 });

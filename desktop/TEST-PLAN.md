@@ -787,3 +787,13 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-061` | placeholderPeaks produces deterministic waveform matching pinned literal array for yt:NJAv_7lHUIU |
 | `WEB-CAT-062` | resamplePeaks downsamples with max-pooling when shrinking                                         |
 | `WEB-CAT-063` | resamplePeaks upsamples with linear interpolation when growing and handles edge cases             |
+| `WEB-CAT-064` | playlist maps playlist details and video items to Piped Playlist shape                            |
+| `WEB-CAT-065` | playlist strips VL prefix from playlist ID                                                        |
+| `WEB-CAT-066` | playlistNextPage fetches continuation items and returns nextpage cursor                           |
+| `WEB-CAT-067` | playlistNextPage handles last page with null nextpage                                             |
+| `WEB-CAT-068` | channel maps channel metadata, tabs, and relatedStreams                                           |
+| `WEB-CAT-069` | channel for Topic channel returns empty relatedStreams                                            |
+| `WEB-CAT-070` | channelTabs fetches albums tab and maps OLAK playlists to ChannelTabItem                          |
+| `WEB-CAT-071` | searchNextPage uses continuation token and returns mapped StreamItems                             |
+| `WEB-CAT-072` | trending delegates to getTrending when available or throws unavailable                            |
+| `WEB-CAT-073` | channel strips yt: prefix from artist ID                                                          |

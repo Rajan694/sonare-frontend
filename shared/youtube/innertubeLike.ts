@@ -30,6 +30,14 @@ export interface YTMusicItem {
   thumbnail?: YTMusicThumbnail | null;
   /** Overlay containing a play-button with the OLAK playlist id for album items. */
   overlay?: YTMusicItemOverlay | null;
+  /** Flex columns for music items (contains author / subtitle runs). */
+  flex_columns?: Array<{
+    title?: {
+      text?: string;
+      runs?: Array<{ text?: string; endpoint?: { payload?: { browseId?: string } } }>;
+      toString?: () => string;
+    };
+  }>;
 }
 
 export interface YTMusicThumbnail {
@@ -43,15 +51,17 @@ export interface YTMusicItemOverlay {
         playlistId?: string;
       };
     };
-  };
+  } | null;
+  [key: string]: any;
 }
 
 /** A section inside a music search response or suggestions response. */
 export interface YTMusicSection {
   /** Contents of the section: search result items. */
-  contents?: YTMusicItem[];
+  contents?: any[];
   /** Continuation token for the next page. */
   continuation?: string | null;
+  [key: string]: any;
 }
 
 /** A search suggestion item (SearchSuggestion or MusicResponsiveListItem). */
@@ -62,11 +72,13 @@ export interface YTSuggestionItem {
   title?: string | { text?: string } | null;
   /** Name for artist items. */
   name?: string | { text?: string } | null;
+  [key: string]: any;
 }
 
 /** A suggestions section. */
 export interface YTSuggestionsSection {
-  contents?: YTSuggestionItem[];
+  contents?: any[];
+  [key: string]: any;
 }
 
 /** Basic info about a video. */
@@ -115,7 +127,8 @@ export interface YTBasicInfoResult {
 /** Return value of music.search. */
 export interface YTMusicSearchResult {
   /** Main sections of the search response. */
-  contents?: YTMusicSection[];
+  contents?: any[];
+  [key: string]: any;
 }
 
 /** The music sub-service of Innertube. */
@@ -124,11 +137,84 @@ export interface InnertubeMusicLike {
   getSearchSuggestions(q: string): Promise<YTSuggestionsSection[]>;
 }
 
+/** A video item inside a playlist or channel. */
+export interface YTVideoItem {
+  id?: string;
+  content_id?: string;
+  type?: string;
+  title?: any;
+  metadata?: any;
+  author?: any;
+  duration?: any;
+  thumbnails?: any;
+  content_image?: any;
+  [key: string]: any;
+}
+
+/** Playlist info returned by getPlaylist. */
+export interface YTPlaylistInfo {
+  title?: string;
+  description?: string;
+  author?: any;
+  total_items?: string | number;
+  thumbnails?: YTThumbnail[];
+  [key: string]: any;
+}
+
+/** Return value of getPlaylist. */
+export interface YTPlaylistResult {
+  info?: any;
+  videos?: any[];
+  has_continuation?: boolean;
+  memo?: unknown;
+  page?: {
+    contents_memo?: unknown;
+  };
+  [key: string]: any;
+}
+
+/** Channel header returned by getChannel. */
+export interface YTChannelHeader {
+  type?: string;
+  page_title?: string;
+  author?: any;
+  subscribers?: any;
+  banner?: any;
+  content?: any;
+  [key: string]: any;
+}
+
+/** Return value of getChannel. */
+export interface YTChannelResult {
+  header?: any;
+  metadata?: any;
+  has_videos?: boolean;
+  videos?: any[];
+  tabs?: string[];
+  memo?: unknown;
+  page?: {
+    contents_memo?: unknown;
+  };
+  [key: string]: any;
+}
+
+/** Actions service for calling Innertube endpoints directly. */
+export interface YTActionsLike {
+  execute(
+    endpoint: string,
+    payload: Record<string, unknown>,
+  ): Promise<any>;
+}
+
 /** The minimal Innertube interface used by createYoutubeiSource. */
 export interface InnertubeLike {
   getBasicInfo(
     videoId: string,
     opts?: { client?: string },
   ): Promise<YTBasicInfoResult>;
+  getPlaylist?(id: string): Promise<YTPlaylistResult>;
+  getChannel?(id: string): Promise<YTChannelResult>;
+  getTrending?(): Promise<any>;
+  actions?: YTActionsLike;
   music: InnertubeMusicLike;
 }
