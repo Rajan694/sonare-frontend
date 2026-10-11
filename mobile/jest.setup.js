@@ -16,6 +16,14 @@ const mockSonarePlayerNative = {
   setPauseAtEndOfTrack: jest.fn(),
 };
 
+const mockSonareUpdatesNative = {
+  download: jest.fn().mockResolvedValue(7),
+  status: jest.fn().mockResolvedValue({ state: 'running', bytes: 0, total: 100 }),
+  checksum: jest.fn().mockResolvedValue(''),
+  install: jest.fn().mockResolvedValue('started'),
+  remove: jest.fn().mockResolvedValue(undefined),
+};
+
 const mockSonareDownloadsNative = {
   setActive: jest.fn(),
   start: jest.fn().mockResolvedValue(undefined),
@@ -213,6 +221,8 @@ jest.mock('react-native', () => {
     NativeModules: {
       SonarePlayer: mockSonarePlayerNative,
       SonareDownloads: mockSonareDownloadsNative,
+      SonareUpdates: mockSonareUpdatesNative,
+      SonareBuild: { dev: false, version: '1.0.1' },
       PlatformConstants: {
         getConstants: () => ({ isTesting: true }),
       },
@@ -460,6 +470,7 @@ beforeEach(() => {
 });
 
 module.exports = {
+  mockSonareUpdatesNative,
   mockSonarePlayerNative,
   mockSonareDownloadsNative,
   mockEventEmitter,

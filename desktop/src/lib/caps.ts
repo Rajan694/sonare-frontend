@@ -17,6 +17,8 @@ export const CAPS = {
   admin: !native,
   /** Settings → Server address; the web build talks to the server it is served with. */
   serverAddress: native,
+  /** Settings → About checks for a newer build and downloads it; the web build lists them all. */
+  appUpdates: native,
 } as const;
 
 /** Which app this is, sent as X-Sonare-Client for the admin analytics. */

@@ -36,6 +36,10 @@ import { formatBytes } from '../lib/format';
 import { api, loadErrorMessage } from '../api/api';
 import type { AppRelease, ReleasePlatform } from '../types';
 import { version as APP_VERSION } from '../../neutralino.config.json';
+import { compareVersions } from '../../../shared/releases';
+import { useAppDispatch, useAppSelector } from '../store';
+import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
+import { openUpdate, showUpdateFolder } from '../storage/appUpdate';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
   { id: 'low', label: 'Low (data saver)' },
@@ -719,24 +723,112 @@ const currentPlatform = (): ReleasePlatform | null => {
   return null;
 };
 
-/** 1.10.0 > 1.9.2, and 1.0.0 > 1.0.0-dev (a tagged build comes before its release). */
-const compareVersions = (a: string, b: string): number => {
-  const [coreA, tagA = ''] = a.split(/-(.*)/);
-  const [coreB, tagB = ''] = b.split(/-(.*)/);
-  const pa = coreA.split('.').map(Number);
-  const pb = coreB.split('.').map(Number);
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const diff = (pa[i] || 0) - (pb[i] || 0);
-    if (diff) return diff;
-  }
-  if (tagA === tagB) return 0;
-  if (!tagA) return 1;
-  if (!tagB) return -1;
-  return tagA.localeCompare(tagB, 'en', { numeric: true });
-};
-
 // Only the web build offers the downloads: the installed apps already are one.
 const OFFERS_DOWNLOADS = CLIENT === 'web';
+
+/**
+ * The desktop window's update check: compares this app's version with the builds uploaded on
+ * the admin page and downloads a newer one into the Downloads folder (store/updateSlice.ts).
+ */
+const UpdatesCard = () => {
+  const dispatch = useAppDispatch();
+  const update = useAppSelector((s) => s.update);
+  const { mode } = useModeStore();
+  const online = mode !== 'offline';
+
+  // Look once each time About opens (a finished or running download is kept).
+  useEffect(() => {
+    if (online) void dispatch(checkForUpdates());
+  }, [dispatch, online]);
+
+  const { status, release, progress, path, error } = update;
+  const versionDesc = release
+    ? [`Version ${release.version}`, formatBytes(release.sizeBytes), release.notes].filter(Boolean).join(' · ')
+    : '';
+  const fileKind = release ? (FORMAT_LABELS[release.format] ?? release.format) : '';
+
+  let row: React.ReactNode;
+  if (!online) {
+    row = <Row icon="wifi-off" label="Updates need Online mode" desc="Switch to Online to check for a newer version" />;
+  } else if (status === 'checking' || status === 'idle') {
+    row = <Row icon="loader" label="Checking for updates…" />;
+  } else if (status === 'current') {
+    row = (
+      <Row icon="check" label="Sonare is up to date" desc={`Version ${APP_VERSION} is the newest`}>
+        <Button variant="out" size="sm" onClick={() => void dispatch(checkForUpdates())}>
+          Check again
+        </Button>
+      </Row>
+    );
+  } else if (status === 'available' && release) {
+    row = (
+      <Row icon="download" label={`Sonare ${release.version} is available`} desc={versionDesc}>
+        <Button variant="acc" size="sm" onClick={() => void dispatch(downloadAppUpdate(release))}>
+          Download {fileKind}
+        </Button>
+      </Row>
+    );
+  } else if (status === 'downloading' && release) {
+    row = (
+      <Row
+        icon="loader"
+        label={`Downloading Sonare ${release.version}…`}
+        desc={`${Math.round(progress * 100)}% of ${formatBytes(release.sizeBytes)}`}
+      >
+        <span
+          className="w-24 h-1.5 rounded-full bg-s3 overflow-hidden flex-none"
+          role="progressbar"
+          aria-valuenow={Math.round(progress * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="Download progress"
+        >
+          <span className="block h-full bg-acc" style={{ width: `${progress * 100}%` }} />
+        </span>
+      </Row>
+    );
+  } else if (status === 'downloaded' && release && path) {
+    row = (
+      <Row
+        icon="check"
+        label={`Sonare ${release.version} is downloaded`}
+        desc={`Saved to ${path}. Close Sonare, then install it.`}
+      >
+        <span className="flex items-center gap-2 flex-none">
+          <Button variant="out" size="sm" onClick={() => void showUpdateFolder(path)}>
+            Show in folder
+          </Button>
+          <Button variant="acc" size="sm" onClick={() => void openUpdate(path)}>
+            Open
+          </Button>
+        </span>
+      </Row>
+    );
+  } else {
+    row = (
+      <Row
+        icon="info"
+        label={release ? "Couldn't download the update" : "Couldn't check for updates"}
+        desc={error ?? undefined}
+      >
+        <Button
+          variant="out"
+          size="sm"
+          onClick={() => void dispatch(release ? downloadAppUpdate(release) : checkForUpdates())}
+        >
+          Try again
+        </Button>
+      </Row>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <span className="text-overline text-t3 pl-1">Updates</span>
+      <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">{row}</div>
+    </div>
+  );
+};
 
 const AboutSection = () => {
   const [releases, setReleases] = useState<AppRelease[] | null>(null);
@@ -829,6 +921,7 @@ const AboutSection = () => {
       <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
         <Row icon="info" label="About Sonare" desc={`Version ${APP_VERSION} · Offline-first music player`} />
       </div>
+      {CAPS.appUpdates && <UpdatesCard />}
       {OFFERS_DOWNLOADS && (
         <div className="flex flex-col gap-2">
           <span className="text-overline text-t3 pl-1">Get Sonare</span>

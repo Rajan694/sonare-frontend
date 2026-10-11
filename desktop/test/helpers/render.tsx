@@ -7,6 +7,7 @@ import { Provider } from 'react-redux';
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import search from '../../src/store/searchSlice';
 import ui from '../../src/store/uiSlice';
+import update from '../../src/store/updateSlice';
 import { ModeContext } from '../../src/store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from '../../src/store/playerContext';
 import { setPlaybackPosition } from '../../src/store/playbackPosition';
@@ -14,7 +15,7 @@ import { DialogHost } from '../../src/components/ui/Dialog';
 import type { Mode, PlayerState, Track } from '../../src/types';
 
 export const makeStore = () => {
-  return configureStore({ reducer: { search, ui } });
+  return configureStore({ reducer: { search, ui, update } });
 };
 
 /**

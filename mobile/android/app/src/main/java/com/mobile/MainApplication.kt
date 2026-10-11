@@ -8,6 +8,7 @@ import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.common.assets.ReactFontManager
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.mobile.buildinfo.SonareBuildPackage
+import com.mobile.updates.SonareUpdatesPackage
 import com.mobile.downloads.SonareDownloadsPackage
 import com.mobile.player.SonarePlayerPackage
 
@@ -23,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
           add(SonarePlayerPackage())
           add(SonareDownloadsPackage())
           add(SonareBuildPackage())
+          add(SonareUpdatesPackage())
         },
     )
   }

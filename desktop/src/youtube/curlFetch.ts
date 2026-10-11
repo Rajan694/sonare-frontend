@@ -126,3 +126,56 @@ export const curlFetch = async (input: RequestInfo | URL, init?: RequestInit): P
     }
   }
 };
+
+/** A download the server refused (googlevideo: 403 on a limited url, so get a fresh one and retry), or that stopped short. */
+export class StreamDownloadError extends Error {
+  constructor(
+    message: string,
+    public status: number,
+  ) {
+    super(message);
+    this.name = 'StreamDownloadError';
+  }
+}
+
+/**
+ * Download `url` to `path` with curl (ranged, so googlevideo doesn't throttle it). Gives up if the
+ * transfer stalls (< 4 KB/s for 20 s) instead of hanging the player. Throws StreamDownloadError for
+ * an HTTP error, and when the file doesn't end up `contentLength` bytes long (when that is known).
+ */
+export const curlDownload = async (url: string, path: string, contentLength = 0): Promise<void> => {
+  const dir = await curlTempDir();
+  const id = tempFileId();
+  const cfgPath = `${dir}/dl-${id}.conf`;
+  const hdrPath = `${dir}/dl-${id}.hdr`;
+  try {
+    await filesystem.writeFile(
+      cfgPath,
+      [
+        'silent',
+        'show-error',
+        'location',
+        'connect-timeout = 15',
+        'speed-limit = 4096',
+        'speed-time = 20',
+        'retry = 2',
+        'header = "Range: bytes=0-"',
+        `dump-header = "${escapeCurlConfigValue(hdrPath)}"`,
+        `output = "${escapeCurlConfigValue(path)}"`,
+        `url = "${escapeCurlConfigValue(url)}"`,
+      ].join('\n'),
+    );
+    const run = await os.execCommand(`${curlBinary()} -K "${cfgPath}"`);
+    const { status } = parseDumpedHeaders(await filesystem.readFile(hdrPath).catch(() => ''));
+    if (run.exitCode !== 0) throw new StreamDownloadError(`curl exited ${run.exitCode}: ${run.stdErr.trim()}`, status);
+    if (status !== 200 && status !== 206) throw new StreamDownloadError(`Stream download got HTTP ${status}`, status);
+    if (contentLength > 0) {
+      const { size } = await filesystem.getStats(path);
+      if (size !== contentLength)
+        throw new StreamDownloadError(`Stream download stopped at ${size} of ${contentLength} bytes`, status);
+    }
+  } finally {
+    void filesystem.remove(cfgPath).catch(() => {});
+    void filesystem.remove(hdrPath).catch(() => {});
+  }
+};

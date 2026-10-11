@@ -20,6 +20,7 @@
     "os.open",
     "os.execCommand",
     "os.getPath",
+    "os.getEnv",
     "os.showFolderDialog",
     "storage.setData",
     "storage.getData",

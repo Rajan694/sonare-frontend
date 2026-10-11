@@ -5,7 +5,19 @@ import { isInAppYoutubeEnabled } from '../youtube/appConfig';
 import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
 import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
-import type { Album, AlbumMeta, Artist, Lyrics, Page, Playlist, SearchItem, StreamInfo, Track, User } from './types';
+import type {
+  Album,
+  AlbumMeta,
+  AppRelease,
+  Artist,
+  Lyrics,
+  Page,
+  Playlist,
+  SearchItem,
+  StreamInfo,
+  Track,
+  User,
+} from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -219,6 +231,9 @@ export const api = {
         ...(track?.durationMs && { durationMs: track.durationMs }),
       },
     }),
+  /** App builds uploaded on the admin page: the newest of each platform and format. */
+  releases: () => request<{ items: AppRelease[] }>('/releases'),
+  releaseDownloadUrl: (id: string) => `${apiBase()}/releases/${enc(id)}/download`,
   /** Browse categories; `query` is what opening one searches for. */
   genres: () => request<{ id: string; name: string; query?: string }[]>('/genres'),
   /** Followed artists, then the artists of liked and playlisted songs. */

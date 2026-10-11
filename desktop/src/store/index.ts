@@ -2,6 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import { useDispatch, useSelector } from 'react-redux';
 import search, { initialSearchState, type SearchState, type SearchType } from './searchSlice';
 import ui from './uiSlice';
+import update from './updateSlice';
 
 const SAVED_SEARCH_KEY = 'sonare_search';
 const SIDEBAR_KEY = 'sonare_sidebar_collapsed';
@@ -31,7 +32,7 @@ const savedSidebarCollapsed = (): boolean => {
 };
 
 export const store = configureStore({
-  reducer: { search, ui },
+  reducer: { search, ui, update },
   preloadedState: { search: savedSearch(), ui: { queueOpen: false, sidebarCollapsed: savedSidebarCollapsed() } },
 });
 

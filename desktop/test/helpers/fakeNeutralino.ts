@@ -22,6 +22,7 @@ const state = (g.__sonareFakeFs ??= {
   unreadable: new Set<string>(),
   clock: { now: 1_700_000_000_000 },
   commands: { ran: [] as string[], answer: null as null | ((cmd: string) => ExecResult) },
+  env: {} as Record<string, string>,
 });
 export const files = state.files as Map<string, FakeFile>;
 export const dirs = state.dirs as Set<string>;
@@ -29,6 +30,8 @@ export const store = state.store as Map<string, string>;
 export const dialog = state.dialog as { folder: string | null };
 export const opened = state.opened as string[];
 export const unreadable = state.unreadable as Set<string>;
+/** os.getEnv answers from here (unset names are ''). */
+export const env = state.env as Record<string, string>;
 
 interface ExecResult {
   stdOut?: string;
@@ -66,6 +69,7 @@ export const resetFs = () => {
   unreadable.clear();
   commands.ran.length = 0;
   commands.answer = null;
+  for (const k of Object.keys(env)) delete env[k];
   dialog.folder = '/home/me/Picked';
   for (const fn of Object.values(lib.filesystem)) vi.mocked(fn).mockClear();
   for (const fn of Object.values(lib.os)) vi.mocked(fn).mockClear();
@@ -137,8 +141,10 @@ export const lib = {
       if (name === 'music') return '/home/me/Music';
       if (name === 'temp') return '/tmp';
       if (name === 'cache') return '/home/me/.cache';
+      if (name === 'downloads') return '/home/me/Downloads';
       return '/home/me';
     }),
+    getEnv: vi.fn(async (name: string) => env[name] ?? ''),
     showFolderDialog: vi.fn(async () => dialog.folder),
     open: vi.fn(async (url: string) => {
       opened.push(url);

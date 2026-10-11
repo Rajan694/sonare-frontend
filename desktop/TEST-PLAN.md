@@ -187,7 +187,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-029` | offline, the queue skips songs that are not on this device                                    |
 | `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                      |
 | `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
-| `DSK-053` | About in the desktop app shows the version but no downloads (those are on the web only)       |
+| `DSK-053` | About in the desktop app checks for a newer build instead of listing every download           |
 | `DSK-054` | the server address can point the desktop app at another backend, which restarts it signed out |
 | `DSK-032` | with no folders it invites the user to add one, using the folder picker                       |
 | `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work                   |
@@ -552,23 +552,23 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/lib.test.ts`
 
-| ID            | Use case                                                                                          |
-| :------------ | :------------------------------------------------------------------------------------------------ |
-| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ or server address, and includes admin |
-| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour                |
-| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                            |
-| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                    |
-| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                         |
-| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                             |
-| `WEB-LIB-007` | is online when either probe answers                                                               |
-| `WEB-LIB-008` | is offline when both probes fail or time out                                                      |
-| `WEB-LIB-009` | sends an error with its type, stack and page                                                      |
-| `WEB-LIB-010` | turns strings and objects into readable messages                                                  |
-| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                         |
-| `WEB-LIB-012` | sends nothing while offline                                                                       |
-| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                           |
-| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                      |
-| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                           |
+| ID            | Use case                                                                                                        |
+| :------------ | :-------------------------------------------------------------------------------------------------------------- |
+| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ, server address or update check, and includes admin |
+| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour                              |
+| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                                          |
+| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                                  |
+| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                                       |
+| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                                           |
+| `WEB-LIB-007` | is online when either probe answers                                                                             |
+| `WEB-LIB-008` | is offline when both probes fail or time out                                                                    |
+| `WEB-LIB-009` | sends an error with its type, stack and page                                                                    |
+| `WEB-LIB-010` | turns strings and objects into readable messages                                                                |
+| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                                       |
+| `WEB-LIB-012` | sends nothing while offline                                                                                     |
+| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                                         |
+| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                                    |
+| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                                         |
 
 ## `test/unit/player.test.ts`
 
@@ -820,6 +820,18 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-078` | after a session switch, later calls (search) go through the new session                                           |
 | `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
 | `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
+
+## `test/desktop/appUpdate.test.ts`
+
+| ID        | Use case                                                                                            |
+| :-------- | :-------------------------------------------------------------------------------------------------- |
+| `DSK-068` | versions compare by number, and a -dev build comes before its release                               |
+| `DSK-069` | the update is the newest version above this one, in the way this copy was installed                 |
+| `DSK-070` | the install kind comes first: AppImage, the .deb in /opt/sonare, else the archive; Windows the .exe |
+| `DSK-071` | checkForUpdate compares this app (1.2.0) with the builds uploaded on the admin page                 |
+| `DSK-072` | a download lands in Downloads once its checksum matches, with progress, and can be opened           |
+| `DSK-073` | a download that does not match the uploaded file is thrown away                                     |
+| `DSK-074` | an AppImage is made executable, and odd characters in the name are made safe                        |
 
 ## `test/desktop/inAppYoutube.test.ts`
 
