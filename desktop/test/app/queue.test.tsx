@@ -69,13 +69,13 @@ const ids = () => store().state.queue.map((t) => t.id);
 const current = () => store().currentTrack?.id;
 
 /** Report a playback state from the (mocked) audio engine. */
-function playback(patch: Partial<PlaybackStatus>) {
+const playback = (patch: Partial<PlaybackStatus>) => {
   Object.assign(h.status, patch);
   act(() => h.playbackListeners.forEach((fn) => fn({ ...h.status })));
-}
-function trackEnds() {
+};
+const trackEnds = () => {
   act(() => h.endedListeners.forEach((fn) => fn()));
-}
+};
 const run = (fn: () => void) => act(fn);
 
 const [a, b, c, d] = ['a', 'b', 'c', 'd'].map((id) =>

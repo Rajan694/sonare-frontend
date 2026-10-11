@@ -18,7 +18,7 @@ import { requireAccount } from '../data/accountGate';
 import { useAuthStore } from '../data/auth';
 import Icon from '../components/ui/Icon';
 
-export function ArtistScreen() {
+export const ArtistScreen = () => {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
   const playTrack = usePlayerStore((state) => state.playTrack);
@@ -184,4 +184,4 @@ export function ArtistScreen() {
       />
     </Screen>
   );
-}
+};

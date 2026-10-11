@@ -12,11 +12,11 @@ export interface AsyncState<T> {
  * Run an async loader and track its result. `deps` re-run it; `refetchOnFocus` re-runs it
  * whenever the screen comes back into view (lists the user can change from elsewhere).
  */
-export function useAsync<T>(
+export const useAsync = <T>(
   load: () => Promise<T>,
   deps: unknown[],
   { enabled = true, refetchOnFocus = false }: { enabled?: boolean; refetchOnFocus?: boolean } = {},
-): AsyncState<T> {
+): AsyncState<T> => {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<Error | null>(null);
@@ -56,4 +56,4 @@ export function useAsync<T>(
   );
 
   return { data, loading, error, refetch };
-}
+};

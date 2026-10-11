@@ -18,7 +18,7 @@ interface SegmentedProps {
   className?: string;
 }
 
-export function Segmented({ options, value, onChange, color = 'acc', className }: SegmentedProps) {
+export const Segmented = ({ options, value, onChange, color = 'acc', className }: SegmentedProps) => {
   const activeClass = color === 'acc' ? 'seg-on-cloud' : 'seg-on-dev';
   return (
     <LayoutGroup>
@@ -48,4 +48,4 @@ export function Segmented({ options, value, onChange, color = 'acc', className }
       </span>
     </LayoutGroup>
   );
-}
+};

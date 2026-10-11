@@ -14,24 +14,24 @@ const overrides = new Map<string, boolean>();
 const listeners = new Set<() => void>();
 const savedListeners = new Set<() => void>();
 
-function emit() {
+const emit = () => {
   for (const l of listeners) l();
-}
+};
 
-function subscribe(fn: () => void): () => void {
+const subscribe = (fn: () => void): (() => void) => {
   listeners.add(fn);
   return () => {
     listeners.delete(fn);
   };
-}
+};
 
 /** The effective favourite state: a local toggle wins over whatever the server last returned. */
-export function isFavourite(trackId: string, serverValue: boolean): boolean {
+export const isFavourite = (trackId: string, serverValue: boolean): boolean => {
   const o = overrides.get(trackId);
   return o === undefined ? serverValue : o;
-}
+};
 
-export async function setFavourite(trackId: string, next: boolean): Promise<void> {
+export const setFavourite = async (trackId: string, next: boolean): Promise<void> => {
   const previous = overrides.get(trackId);
   // Optimistic: flip immediately so the heart feels instant.
   overrides.set(trackId, next);
@@ -46,31 +46,31 @@ export async function setFavourite(trackId: string, next: boolean): Promise<void
     emit();
     throw e;
   }
-}
+};
 
 /** Runs `fn` after a heart change reached the server, so lists of favourites can refetch. */
-export function onFavouritesSaved(fn: () => void): () => void {
+export const onFavouritesSaved = (fn: () => void): (() => void) => {
   savedListeners.add(fn);
   return () => {
     savedListeners.delete(fn);
   };
-}
+};
 
 /**
  * For lists that show or hide rows by favourite state: re-renders on every heart toggle
  * and returns the effective-state lookup.
  */
-export function useFavouriteLookup(): typeof isFavourite {
+export const useFavouriteLookup = (): typeof isFavourite => {
   const [, force] = useState(0);
   useEffect(() => subscribe(() => force((n) => n + 1)), []);
   return isFavourite;
-}
+};
 
 /**
  * Binds one track's heart. `serverValue` is the value from the fetched track object;
  * the returned state folds in any local toggle.
  */
-export function useFavourite(trackId: string | undefined, serverValue: boolean | undefined) {
+export const useFavourite = (trackId: string | undefined, serverValue: boolean | undefined) => {
   const [, force] = useState(0);
 
   useEffect(() => subscribe(() => force((n) => n + 1)), []);
@@ -88,4 +88,4 @@ export function useFavourite(trackId: string | undefined, serverValue: boolean |
   }, [trackId, serverValue]);
 
   return { favourite, toggle };
-}
+};

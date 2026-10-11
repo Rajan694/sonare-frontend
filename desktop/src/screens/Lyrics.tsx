@@ -22,15 +22,15 @@ const AUTOSCROLL_KEY = 'sonare_lyrics_autoscroll';
 
 const PROVIDERS: Record<string, string> = { lrclib: 'LRCLIB', tags: 'File tags', user: 'Your edit' };
 
-function readAutoScroll(): boolean {
+const readAutoScroll = (): boolean => {
   try {
     return localStorage.getItem(AUTOSCROLL_KEY) !== 'false';
   } catch {
     return true;
   }
-}
+};
 
-function toLrc(lines: { atMs: number; text: string }[]): string {
+const toLrc = (lines: { atMs: number; text: string }[]): string => {
   return lines
     .map((l) => {
       const m = Math.floor(l.atMs / 60000);
@@ -38,7 +38,7 @@ function toLrc(lines: { atMs: number; text: string }[]): string {
       return `[${String(m).padStart(2, '0')}:${s}]${l.text}`;
     })
     .join('\n');
-}
+};
 
 /**
  * What a guest tried before being sent to sign in. The gate runs its action while this
@@ -48,7 +48,7 @@ function toLrc(lines: { atMs: number; text: string }[]): string {
 type Resume = { kind: 'edit' } | { kind: 'offset'; delta: number };
 let resumeAfterSignIn: Resume | null = null;
 
-export default function Lyrics() {
+const Lyrics = () => {
   const navigate = useNavigate();
   const exit = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/now-playing'));
   const { currentTrack, seek } = usePlayerStore();
@@ -137,7 +137,7 @@ export default function Lyrics() {
       resumeAfterSignIn = resume;
     });
 
-  function changeOffset(delta: number) {
+  const changeOffset = (delta: number) => {
     if (needsAccount) return askToSignIn({ kind: 'offset', delta });
     const next = offsetMs + delta;
     setOffsetMs(next);
@@ -145,31 +145,31 @@ export default function Lyrics() {
     void save.catch(() => {
       showToast({ title: 'Could not save lyric offset', icon: 'info' });
     });
-  }
+  };
 
-  function toggleAutoScroll(on: boolean) {
+  const toggleAutoScroll = (on: boolean) => {
     setAutoScroll(on);
     try {
       localStorage.setItem(AUTOSCROLL_KEY, String(on));
     } catch {
       // Preference just won't persist.
     }
-  }
+  };
 
-  function startEditing() {
+  const startEditing = () => {
     if (needsAccount) return askToSignIn({ kind: 'edit' });
     setDraft(synced ? toLrc(lines) : plainText);
     setEditing(true);
-  }
+  };
 
-  function importFile() {
+  const importFile = () => {
     // A file picker needs a click of its own, so after signing in this opens the editor.
     if (needsAccount) return askToSignIn({ kind: 'edit' });
     fileInput.current?.click();
-  }
+  };
 
   // An imported .lrc (or .txt) opens in the editor, to check before saving.
-  async function onFileChosen(e: React.ChangeEvent<HTMLInputElement>) {
+  const onFileChosen = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
@@ -179,9 +179,9 @@ export default function Lyrics() {
     } catch {
       showToast({ title: 'Could not read that file', icon: 'info' });
     }
-  }
+  };
 
-  async function saveEdit() {
+  const saveEdit = async () => {
     const text = draft.trim();
     const isLrc = /^\[\d{1,2}:\d{2}(\.\d+)?\]/m.test(text);
     try {
@@ -193,7 +193,7 @@ export default function Lyrics() {
     } catch {
       showToast({ title: 'Could not save lyrics', icon: 'info' });
     }
-  }
+  };
 
   resumeRef.current = () => {
     const resume = resumeAfterSignIn;
@@ -460,4 +460,5 @@ export default function Lyrics() {
       </div>
     </div>
   );
-}
+};
+export default Lyrics;

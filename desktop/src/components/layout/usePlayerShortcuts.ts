@@ -12,9 +12,9 @@ const SPACE_CONTROLS =
   'button, summary, [role="button"], [role="switch"], [role="checkbox"], [role="menuitem"], [role="tab"]';
 const ARROW_CONTROLS = '[role="slider"], [role="menu"], [role="tablist"], [role="listbox"], [role="radiogroup"]';
 
-function isTextEntry(el: HTMLElement) {
+const isTextEntry = (el: HTMLElement) => {
   return el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName);
-}
+};
 
 /**
  * Player keys, anywhere in the app:
@@ -26,7 +26,7 @@ function isTextEntry(el: HTMLElement) {
  * presses a button, arrows move a slider) — but a button or slider that was clicked keeps
  * focus afterwards, and that must not swallow the shortcuts, so after a click they win.
  */
-export function usePlayerShortcuts() {
+export const usePlayerShortcuts = () => {
   const store = usePlayerStore();
   // App rebuilds next / skipToPrevious on every render; read the latest without re-binding.
   const latest = useRef(store);
@@ -46,14 +46,14 @@ export function usePlayerShortcuts() {
       focusFromKeyboard = lastInput === 'keyboard';
     };
 
-    function focusKeeps(target: EventTarget | null, key: string): boolean {
+    const focusKeeps = (target: EventTarget | null, key: string): boolean => {
       if (!(target instanceof HTMLElement)) return false;
       if (isTextEntry(target)) return true;
       if (!focusFromKeyboard) return false;
       return key === ' ' ? !!target.closest(SPACE_CONTROLS) : !!target.closest(ARROW_CONTROLS);
-    }
+    };
 
-    function onKeyDown(e: KeyboardEvent) {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Tab') lastInput = 'keyboard';
       if (e.defaultPrevented || e.isComposing || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
       if (![' ', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
@@ -86,7 +86,7 @@ export function usePlayerShortcuts() {
           player.seek(player.getStatus().positionMs + (forward ? SEEK_STEP_MS : -SEEK_STEP_MS));
         }
       }
-    }
+    };
 
     // Capture phase, so this runs before a focused slider or button handles the key itself.
     window.addEventListener('pointerdown', onPointerDown, true);
@@ -98,4 +98,4 @@ export function usePlayerShortcuts() {
       window.removeEventListener('keydown', onKeyDown, true);
     };
   }, []);
-}
+};

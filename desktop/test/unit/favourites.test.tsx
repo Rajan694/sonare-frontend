@@ -19,7 +19,7 @@ useMockServer();
 afterEach(() => clearSession());
 
 /** A server that answers a favourite change only when told to. */
-function gatedServer(status = 200) {
+const gatedServer = (status = 200) => {
   let release!: () => void;
   const gate = new Promise<void>((r) => (release = r));
   server.use(
@@ -29,7 +29,7 @@ function gatedServer(status = 200) {
     }),
   );
   return release;
-}
+};
 
 describe('favourite state', () => {
   it('WEB-FAV-001 the heart flips before the server answers', async () => {
@@ -79,14 +79,14 @@ describe('favourite state', () => {
   });
 });
 
-function Heart({ id, server: serverValue }: { id?: string; server?: boolean }) {
+const Heart = ({ id, server: serverValue }: { id?: string; server?: boolean }) => {
   const { favourite, toggle } = useFavourite(id, serverValue);
   return (
     <button aria-pressed={favourite} onClick={toggle}>
       heart {id}
     </button>
   );
-}
+};
 
 describe('useFavourite', () => {
   it('WEB-FAV-006 every heart for the same song updates together', async () => {

@@ -42,11 +42,11 @@ AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
   reduceMotionEnabled = enabled ?? false;
 });
 
-export function AnimatedView({
+export const AnimatedView = ({
   children,
   delay = 0,
   ...props
-}: React.ComponentProps<typeof MotiView> & { delay?: number }) {
+}: React.ComponentProps<typeof MotiView> & { delay?: number }) => {
   if (reduceMotionEnabled) {
     return <>{children}</>;
   }
@@ -67,13 +67,13 @@ export function AnimatedView({
       {children}
     </MotiView>
   );
-}
+};
 
-export function FadeView({
+export const FadeView = ({
   visible,
   children,
   ...props
-}: React.ComponentProps<typeof MotiView> & { visible: boolean }) {
+}: React.ComponentProps<typeof MotiView> & { visible: boolean }) => {
   if (reduceMotionEnabled) {
     return visible ? <>{children}</> : null;
   }
@@ -87,4 +87,4 @@ export function FadeView({
       {children}
     </MotiView>
   );
-}
+};

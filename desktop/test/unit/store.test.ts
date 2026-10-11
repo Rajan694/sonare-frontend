@@ -105,13 +105,13 @@ describe('ui slice', () => {
 });
 
 describe('app store persistence', () => {
-  async function freshStore() {
+  const freshStore = async () => {
     vi.resetModules();
     const mod = await import('../../src/store/index');
     const slice = await import('../../src/store/searchSlice');
     const ui = await import('../../src/store/uiSlice');
     return { ...mod, ...slice, ...ui };
-  }
+  };
 
   it('WEB-STORE-007 the search survives a reload for this tab only', async () => {
     let s = await freshStore();
@@ -143,10 +143,10 @@ describe('app store persistence', () => {
 });
 
 describe('toasts', () => {
-  async function fresh() {
+  const fresh = async () => {
     vi.resetModules();
     return import('../../src/store/toasts');
-  }
+  };
 
   it('WEB-STORE-010 a toast shows, then dismisses itself after its duration', async () => {
     vi.useFakeTimers();

@@ -24,11 +24,11 @@ import { requireAccount } from '../../api/accountGate';
 import type { Track } from '../../types';
 
 /** Playlists live in the account: a guest signs in first, then the picker opens. */
-export function addCurrentToPlaylist(track: Track): void {
+export const addCurrentToPlaylist = (track: Track): void => {
   requireAccount('Create a free account to make playlists.', () => addToPlaylistDialog([track]));
-}
+};
 
-export default function BottomPlayer() {
+const BottomPlayer = () => {
   const dispatch = useAppDispatch();
   const queueOpen = useAppSelector((s) => s.ui.queueOpen);
   const { mode } = useModeStore();
@@ -209,4 +209,5 @@ export default function BottomPlayer() {
       </div>
     </footer>
   );
-}
+};
+export default BottomPlayer;

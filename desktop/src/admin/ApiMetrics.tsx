@@ -30,13 +30,13 @@ const COLUMNS: { key: SortKey; label: string; numeric: boolean }[] = [
   { key: 'max', label: 'Slowest', numeric: true },
 ];
 
-function statusTone(status: number) {
+const statusTone = (status: number) => {
   if (status >= 500) return 'text-red';
   if (status >= 400) return 'text-gold';
   return 'text-t1';
-}
+};
 
-export default function ApiMetrics() {
+const ApiMetrics = () => {
   const [hours, setHours] = useState('24');
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean }>({ key: 'count', desc: true });
   const { data, error, loading, reload } = useLoad(() => adminApi.requests(Number(hours)), [hours]);
@@ -200,4 +200,5 @@ export default function ApiMetrics() {
       )}
     </>
   );
-}
+};
+export default ApiMetrics;

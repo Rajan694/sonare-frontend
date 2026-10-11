@@ -16,7 +16,7 @@ interface IconButtonProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable) as any;
 
-export function IconButton({
+export const IconButton = ({
   icon,
   onPress,
   accessibilityLabel,
@@ -24,7 +24,7 @@ export function IconButton({
   variant = 'default',
   disabled = false,
   className,
-}: IconButtonProps) {
+}: IconButtonProps) => {
   const scale = useSharedValue(1);
 
   const style = useAnimatedStyle(() => ({
@@ -51,4 +51,4 @@ export function IconButton({
       {icon}
     </AnimatedPressable>
   );
-}
+};

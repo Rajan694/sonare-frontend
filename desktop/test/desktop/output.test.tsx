@@ -53,7 +53,7 @@ const INPUTS = [
   { index: 32, properties: { 'application.process.id': '999', 'application.name': 'Firefox' } },
 ];
 
-function pactlWorks() {
+const pactlWorks = () => {
   commands.answer = (cmd) => {
     if (cmd === 'pactl -f json list sinks') return { stdOut: JSON.stringify(SINKS) };
     if (cmd === 'pactl -f json list sink-inputs') return { stdOut: JSON.stringify(INPUTS) };
@@ -62,15 +62,15 @@ function pactlWorks() {
     if (cmd.startsWith('pactl move-sink-input')) return {};
     return { exitCode: 1 };
   };
-}
+};
 
-async function fresh() {
+const fresh = async () => {
   vi.resetModules();
   const output = await import('../../src/audio/output');
   const prefs = await import('../../src/storage/devicePrefs');
   const picker = await import('../../src/components/music/OutputPicker');
   return { ...output, prefs, picker };
-}
+};
 
 const moves = () => commands.ran.filter((c) => c.startsWith('pactl move-sink-input'));
 

@@ -22,15 +22,18 @@ interface RequestOptions {
   timeoutMs?: number;
 }
 
-function buildUrl(path: string, params?: Params): string {
+const buildUrl = (path: string, params?: Params): string => {
   const query = Object.entries(params ?? {})
     .filter(([, v]) => v !== undefined && v !== null && v !== '')
     .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
     .join('&');
   return `${apiBase()}${path}${query ? `?${query}` : ''}`;
-}
+};
 
-async function request<T>(path: string, { method = 'GET', params, body, timeoutMs }: RequestOptions = {}): Promise<T> {
+const request = async <T>(
+  path: string,
+  { method = 'GET', params, body, timeoutMs }: RequestOptions = {},
+): Promise<T> => {
   const url = buildUrl(path, params);
   const send = (token: string | null) =>
     httpRequest(url, {
@@ -57,7 +60,7 @@ async function request<T>(path: string, { method = 'GET', params, body, timeoutM
     throw new ApiError(json?.error?.message || `Request failed (${res.status})`, res.status, json?.error?.code);
   }
   return json as T;
-}
+};
 
 const enc = encodeURIComponent;
 

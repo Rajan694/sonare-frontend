@@ -47,7 +47,7 @@ const SORTS: { key: SortKey; label: string; desc: boolean }[] = [
   { key: 'durationMs', label: 'Duration', desc: false },
 ];
 
-function sortTracks(list: Track[], key: SortKey, desc: boolean): Track[] {
+const sortTracks = (list: Track[], key: SortKey, desc: boolean): Track[] => {
   const sorted = [...list].sort((a, b) => {
     const x = a[key] ?? '';
     const y = b[key] ?? '';
@@ -56,9 +56,9 @@ function sortTracks(list: Track[], key: SortKey, desc: boolean): Track[] {
       : String(x).localeCompare(String(y), undefined, { sensitivity: 'base' });
   });
   return desc ? sorted.reverse() : sorted;
-}
+};
 
-export default function Library() {
+const Library = () => {
   const { mode } = useModeStore();
   const { currentTrack, playTrack } = usePlayerStore();
   const [params, setParams] = useSearchParams();
@@ -126,12 +126,12 @@ export default function Library() {
   if (sort) tracks = sortTracks(tracks, sort.key, sort.desc);
   const isTrackTab = activeTab === 'Songs' || activeTab === 'Favourites' || activeTab === 'Most played';
 
-  function sortBy(key: SortKey) {
+  const sortBy = (key: SortKey) => {
     const preset = SORTS.find((s) => s.key === key)!;
     setSort((prev) => (prev?.key === key ? { key, desc: !prev.desc } : { key, desc: preset.desc }));
-  }
+  };
 
-  function headerCell(key: SortKey, label: React.ReactNode, className?: string) {
+  const headerCell = (key: SortKey, label: React.ReactNode, className?: string) => {
     const on = sort?.key === key;
     return (
       <button
@@ -147,16 +147,16 @@ export default function Library() {
         {on && <Icon name={sort!.desc ? 'chevron-down' : 'chevron-up'} size={12} />}
       </button>
     );
-  }
+  };
 
-  function groupLocal(key: 'album' | 'artist') {
+  const groupLocal = (key: 'album' | 'artist') => {
     const groups = new Map<string, Track[]>();
     for (const t of local.tracks) {
       const name = (key === 'album' ? t.album : t.artist) || (key === 'album' ? 'Unknown album' : 'Unknown artist');
       groups.set(name, [...(groups.get(name) ?? []), t]);
     }
     return [...groups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-  }
+  };
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
@@ -461,4 +461,5 @@ export default function Library() {
       </AnimatePresence>
     </div>
   );
-}
+};
+export default Library;

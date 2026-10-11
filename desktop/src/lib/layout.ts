@@ -3,7 +3,7 @@ import { isNeutralino } from '../neutralino';
 
 export type Layout = 'desktop' | 'web' | 'tablet' | 'phone';
 
-function getLayout(): Layout {
+const getLayout = (): Layout => {
   // Desktop shell whenever running inside the Neutralino native window
   if (isNeutralino() && typeof window !== 'undefined' && window.NL_MODE === 'window') {
     return 'desktop';
@@ -15,9 +15,9 @@ function getLayout(): Layout {
   if (width >= 1100) return 'web';
   if (width >= 768) return 'tablet';
   return 'phone';
-}
+};
 
-export function useLayout(): Layout {
+export const useLayout = (): Layout => {
   const [layout, setLayout] = useState<Layout>(getLayout);
 
   useEffect(() => {
@@ -47,4 +47,4 @@ export function useLayout(): Layout {
   }, []);
 
   return layout;
-}
+};

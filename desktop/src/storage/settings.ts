@@ -41,13 +41,13 @@ export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = {
 };
 
 /** What the server sent, minus values this build doesn't know (e.g. the retired 'lossless'). */
-function sanitize(s: Partial<UserSettings>): Partial<UserSettings> {
+const sanitize = (s: Partial<UserSettings>): Partial<UserSettings> => {
   const out = { ...s };
   if (!QUALITIES.includes(out.streamQuality as AudioQuality)) delete out.streamQuality;
   if (!QUALITIES.includes(out.downloadQuality as AudioQuality)) delete out.downloadQuality;
   if (out.downloadFormat !== 'opus' && out.downloadFormat !== 'm4a') delete out.downloadFormat;
   return out;
-}
+};
 
 const listeners = new Set<() => void>();
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
@@ -55,20 +55,20 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let unsaved: Partial<UserSettings> = {};
 let loaded = false;
 
-function emit() {
+const emit = () => {
   for (const l of listeners) l();
-}
+};
 
-export function getSettings(): UserSettings {
+export const getSettings = (): UserSettings => {
   return settings;
-}
+};
 
-export function subscribeSettings(fn: () => void): () => void {
+export const subscribeSettings = (fn: () => void): (() => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
-}
+};
 
-export function updateSettings(patch: Partial<UserSettings>): void {
+export const updateSettings = (patch: Partial<UserSettings>): void => {
   settings = { ...settings, ...patch };
   emit();
   clearTimeout(saveTimer);
@@ -82,11 +82,11 @@ export function updateSettings(patch: Partial<UserSettings>): void {
       // Offline — the local value still applies for this session.
     });
   }, 400);
-}
+};
 
 let watchingAuth = false;
 
-export function loadSettings(): void {
+export const loadSettings = (): void => {
   if (!watchingAuth) {
     watchingAuth = true;
     // Signing in (again) brings that account's settings back.
@@ -113,8 +113,8 @@ export function loadSettings(): void {
         loaded = false;
       });
   });
-}
+};
 
-export function useSettings(): UserSettings {
+export const useSettings = (): UserSettings => {
   return useSyncExternalStore(subscribeSettings, getSettings);
-}
+};

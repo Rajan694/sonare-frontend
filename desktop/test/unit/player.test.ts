@@ -14,6 +14,7 @@ interface ScriptedAudio extends HTMLAudioElement {
 
 let created: ScriptedAudio[] = [];
 
+// A plain function, not an arrow: the player calls `new Audio()` on it.
 function scriptedAudio(): ScriptedAudio {
   const el = document.createElement('audio') as ScriptedAudio;
   let paused = true;
@@ -42,12 +43,12 @@ function scriptedAudio(): ScriptedAudio {
 }
 
 /** player.ts owns one element for the app's lifetime; each test loads a fresh module. */
-async function freshPlayer() {
+const freshPlayer = async () => {
   vi.resetModules();
   return import('../../src/audio/player');
-}
+};
 
-function streamEndpoint(over: Record<string, unknown> = {}) {
+const streamEndpoint = (over: Record<string, unknown> = {}) => {
   let n = 0;
   server.use(
     http.get(`${API}/tracks/:id/stream`, ({ params }) =>
@@ -62,7 +63,7 @@ function streamEndpoint(over: Record<string, unknown> = {}) {
       }),
     ),
   );
-}
+};
 
 const audio = () => created[created.length - 1];
 

@@ -44,7 +44,7 @@ const SORTS: { value: Sort; label: string; icon: IconName }[] = [
 
 const LIBRARY_FROM = { kind: 'Library', name: 'Your songs' };
 
-export function LibraryScreen() {
+export const LibraryScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
   // Grid cells get an exact width: flex-1 would stretch the items of a short last row.
   const cell = (columns: number, gap: number) => ({ width: (screenWidth - 24 - gap * (columns - 1)) / columns });
@@ -428,4 +428,4 @@ export function LibraryScreen() {
       />
     </Screen>
   );
-}
+};

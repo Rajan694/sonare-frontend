@@ -1,4 +1,4 @@
-import React, { useEffect, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon, { type IconName } from '../components/ui/Icon';
 import Button from '../components/ui/Button';
@@ -8,7 +8,7 @@ import { Select } from '../components/ui/Select';
 import { OutputCard } from '../components/music/OutputPicker';
 import { outputSupport } from '../audio/output';
 import { LYRICS_SCRIPTS, updateDevicePrefs, useDevicePrefs } from '../storage/devicePrefs';
-import { CAPS } from '../lib/caps';
+import { CAPS, CLIENT } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { useLocalLibrary } from '../storage/local';
 import { showToast } from '../store/toasts';
@@ -23,8 +23,19 @@ import {
 } from '../storage/downloadTargets';
 import { useDownloads } from '../storage/downloads';
 import { useAuth } from '../api/hooks';
-import { resendVerification, signOut } from '../api/auth';
+import { clearSession, resendVerification, signOut } from '../api/auth';
+import {
+  ALLOWS_HTTP,
+  DEFAULT_API_ORIGIN,
+  customServerOrigin,
+  normalizeServerOrigin,
+  switchServer,
+} from '../api/server';
+import { promptDialog } from '../store/dialogs';
 import { formatBytes } from '../lib/format';
+import { api, loadErrorMessage } from '../api/api';
+import type { AppRelease, ReleasePlatform } from '../types';
+import { version as APP_VERSION } from '../../neutralino.config.json';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
   { id: 'low', label: 'Low (data saver)' },
@@ -51,12 +62,12 @@ const DOWNLOAD_FORMATS: { id: DownloadFormat; label: string }[] = [
   { id: 'm4a', label: 'AAC (.m4a)' },
 ];
 
-function useDownloadLocation() {
+const useDownloadLocation = () => {
   useEffect(() => {
     void loadLocation();
   }, []);
   return useSyncExternalStore(subscribeLocation, getLocation);
-}
+};
 
 interface SectionDef {
   id: string;
@@ -67,7 +78,7 @@ interface SectionDef {
   available: boolean;
 }
 
-function Row({
+const Row = ({
   icon,
   label,
   desc,
@@ -77,7 +88,7 @@ function Row({
   label: string;
   desc?: string;
   children?: React.ReactNode;
-}) {
+}) => {
   return (
     <div className="lrow">
       <span className="icobox">
@@ -90,11 +101,11 @@ function Row({
       {children}
     </div>
   );
-}
+};
 
 const chevron = <Icon name="chevron-right" size={16} className="text-t4 flex-none" />;
 
-export default function Settings() {
+const Settings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const settings = useSettings();
@@ -177,23 +188,54 @@ export default function Settings() {
   const currentSectionId = searchParams.get('section') || 'account';
   const currentSection = activeSections.find((s) => s.id === currentSectionId) || activeSections[0];
 
-  function setSection(id: string) {
+  const setSection = (id: string) => {
     setSearchParams({ section: id });
-  }
+  };
 
-  async function handleResendVerification() {
+  const handleResendVerification = async () => {
     try {
       await resendVerification();
       showToast({ title: 'Verification email sent', description: `Check ${user?.email}`, icon: 'check' });
     } catch (err) {
       showToast({ title: 'Could not send the email', description: err instanceof Error ? err.message : undefined });
     }
-  }
+  };
 
-  async function handleSignOut() {
+  const handleSignOut = async () => {
     await signOut();
     showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' });
-  }
+  };
+
+  // Sessions belong to a server, so switching signs out; the app restarts on the new one.
+  const changeServer = async (origin: string | null) => {
+    if ((origin ?? DEFAULT_API_ORIGIN) === (customServerOrigin ?? DEFAULT_API_ORIGIN)) return;
+    clearSession();
+    await switchServer(origin);
+  };
+
+  const handleServerAddress = async () => {
+    const text = await promptDialog({
+      title: 'Server address',
+      description: ALLOWS_HTTP
+        ? `The Sonare backend this app talks to; for a computer on the LAN, use its address. Default: ${DEFAULT_API_ORIGIN}. Changing it signs you out and restarts Sonare.`
+        : `The Sonare backend this app talks to. Default: ${DEFAULT_API_ORIGIN}. Changing it signs you out and restarts Sonare.`,
+      placeholder: ALLOWS_HTTP ? '192.168.1.20:3010' : 'https://api.example.com',
+      initialValue: customServerOrigin ?? '',
+      confirmLabel: 'Save & restart',
+      maxLength: 200,
+    });
+    if (!text) return;
+    const origin = normalizeServerOrigin(text);
+    if (!origin) {
+      showToast({ title: 'Not a server address', description: 'Enter an address like 192.168.1.20:3010' });
+      return;
+    }
+    if (!ALLOWS_HTTP && !origin.startsWith('https://')) {
+      showToast({ title: 'HTTPS only', description: 'This build only connects over HTTPS' });
+      return;
+    }
+    await changeServer(origin);
+  };
 
   const totalLocalBytes = local.folders.reduce((n, f) => n + f.bytes, 0);
   const totalLocalTracks = local.folders.filter((f) => f.included).reduce((n, f) => n + f.trackCount, 0);
@@ -288,7 +330,7 @@ export default function Settings() {
     </div>
   );
 
-  async function changeLocation() {
+  const changeLocation = async () => {
     try {
       if (await chooseLocation())
         showToast({
@@ -304,7 +346,7 @@ export default function Settings() {
         icon: 'info',
       });
     }
-  }
+  };
 
   const doneCount = downloadItems.filter((d) => d.status === 'done').length;
   const canChangeLocation = CAPS.offlineDownloads || canPickWebFolder;
@@ -507,6 +549,21 @@ export default function Settings() {
         </label>
       </div>
 
+      {CAPS.serverAddress && (
+        <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
+          <Row icon="cloud" label="Server address" desc={customServerOrigin ?? `Default · ${DEFAULT_API_ORIGIN}`}>
+            {customServerOrigin && (
+              <Button variant="ghost" size="sm" onClick={() => void changeServer(null)}>
+                Use default
+              </Button>
+            )}
+            <Button variant="out" size="sm" onClick={() => void handleServerAddress()}>
+              Change
+            </Button>
+          </Row>
+        </div>
+      )}
+
       {CAPS.localLibrary && (
         <div className="flex items-center gap-3">
           <Button variant="out" icon="folder" onClick={() => navigate('/folders')}>
@@ -523,11 +580,7 @@ export default function Settings() {
     </div>
   );
 
-  const renderAbout = () => (
-    <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-      <Row icon="info" label="About Sonare" desc="Version 1.0.0 · Offline-first music player" />
-    </div>
-  );
+  const renderAbout = () => <AboutSection />;
 
   const renderSectionContent = (id: string) => {
     switch (id) {
@@ -635,4 +688,153 @@ export default function Settings() {
       </div>
     </div>
   );
-}
+};
+export default Settings;
+
+// ---- About: version, and on the web the app builds the admin page uploaded ----
+
+const PLATFORM_INFO: Record<ReleasePlatform, { label: string; icon: IconName }> = {
+  android: { label: 'Android', icon: 'smartphone' },
+  linux: { label: 'Linux', icon: 'monitor' },
+  windows: { label: 'Windows', icon: 'monitor' },
+};
+
+const FORMAT_LABELS: Record<string, string> = {
+  apk: 'APK',
+  appimage: 'AppImage',
+  deb: '.deb',
+  rpm: '.rpm',
+  'tar.gz': '.tar.gz',
+  zip: '.zip',
+  exe: '.exe',
+  msi: '.msi',
+};
+
+/** The platform the browser runs on, so its builds come first. */
+const currentPlatform = (): ReleasePlatform | null => {
+  const ua = navigator.userAgent;
+  if (/Android/i.test(ua)) return 'android';
+  if (/Windows/i.test(ua)) return 'windows';
+  if (/Linux|X11/i.test(ua) && !/CrOS/i.test(ua)) return 'linux';
+  return null;
+};
+
+/** 1.10.0 > 1.9.2, and 1.0.0 > 1.0.0-dev (a tagged build comes before its release). */
+const compareVersions = (a: string, b: string): number => {
+  const [coreA, tagA = ''] = a.split(/-(.*)/);
+  const [coreB, tagB = ''] = b.split(/-(.*)/);
+  const pa = coreA.split('.').map(Number);
+  const pb = coreB.split('.').map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const diff = (pa[i] || 0) - (pb[i] || 0);
+    if (diff) return diff;
+  }
+  if (tagA === tagB) return 0;
+  if (!tagA) return 1;
+  if (!tagB) return -1;
+  return tagA.localeCompare(tagB, 'en', { numeric: true });
+};
+
+// Only the web build offers the downloads: the installed apps already are one.
+const OFFERS_DOWNLOADS = CLIENT === 'web';
+
+const AboutSection = () => {
+  const [releases, setReleases] = useState<AppRelease[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const { mode } = useModeStore();
+  const here = currentPlatform();
+
+  useEffect(() => {
+    if (!OFFERS_DOWNLOADS || mode === 'offline') return;
+    let live = true;
+    setError(null);
+    api.getReleases().then(
+      (r) => live && setReleases(r.items),
+      (e) => live && setError(loadErrorMessage(e)),
+    );
+    return () => {
+      live = false;
+    };
+  }, [mode, attempt]);
+
+  const platforms = (Object.keys(PLATFORM_INFO) as ReleasePlatform[])
+    .map((p) => ({
+      platform: p,
+      builds: (releases ?? []).filter((r) => r.platform === p).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)),
+    }))
+    .filter((p) => p.builds.length > 0)
+    .sort((a, b) => Number(b.platform === here) - Number(a.platform === here));
+
+  let downloads: React.ReactNode;
+  if (mode === 'offline') {
+    downloads = <Row icon="wifi-off" label="Downloads need Online mode" desc="Switch to Online to see the builds" />;
+  } else if (error) {
+    downloads = (
+      <Row icon="info" label="Couldn't load the downloads" desc={error}>
+        <Button variant="out" size="sm" onClick={() => setAttempt((n) => n + 1)}>
+          Retry
+        </Button>
+      </Row>
+    );
+  } else if (!releases) {
+    downloads = <Row icon="loader" label="Loading downloads…" />;
+  } else if (platforms.length === 0) {
+    downloads = <Row icon="download" label="No downloads yet" desc="Builds for other devices will show up here" />;
+  } else {
+    downloads = platforms.map(({ platform, builds }) => {
+      const info = PLATFORM_INFO[platform];
+      const newest = builds[0];
+      const isHere = platform === here;
+      const newer = isHere && compareVersions(newest.version, APP_VERSION) > 0;
+      const desc = [`Version ${newest.version}`, newer ? 'newer than this app' : null, newest.notes]
+        .filter(Boolean)
+        .join(' · ');
+      return (
+        <div key={platform} className="lrow flex-wrap">
+          <span className="icobox">
+            <Icon name={info.icon} size={18} />
+          </span>
+          <span className="flex flex-col grow min-w-0 gap-0.5">
+            <span className="flex items-center gap-2 text-body-m text-t1 font-medium">
+              {info.label}
+              {isHere && <span className="badge bg-accbg text-acc">This device</span>}
+            </span>
+            <span className="text-body-s text-t3 truncate" title={desc}>
+              {desc}
+            </span>
+          </span>
+          <span className="flex flex-wrap items-center justify-end gap-2 flex-none">
+            {builds.map((r) => (
+              <a
+                key={r.id}
+                href={api.releaseDownloadUrl(r.id)}
+                download={r.fileName}
+                className={`btn btn-sm ${isHere && r === newest ? 'btn-acc' : 'btn-out'}`}
+                title={`${r.fileName} · ${formatBytes(r.sizeBytes)} · version ${r.version}`}
+                aria-label={`Download ${info.label} ${FORMAT_LABELS[r.format] ?? r.format}, ${formatBytes(r.sizeBytes)}`}
+              >
+                <Icon name="download" size={15} />
+                {FORMAT_LABELS[r.format] ?? r.format}
+              </a>
+            ))}
+          </span>
+        </div>
+      );
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
+        <Row icon="info" label="About Sonare" desc={`Version ${APP_VERSION} · Offline-first music player`} />
+      </div>
+      {OFFERS_DOWNLOADS && (
+        <div className="flex flex-col gap-2">
+          <span className="text-overline text-t3 pl-1">Get Sonare</span>
+          <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">{downloads}</div>
+        </div>
+      )}
+    </div>
+  );
+};

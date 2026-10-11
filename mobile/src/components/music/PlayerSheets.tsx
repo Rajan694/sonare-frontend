@@ -11,8 +11,15 @@ import { useModeStore } from '../../store/mode';
 import { useOutputStore, outputDetail } from '../../store/output';
 import { SLEEP_MINUTES, useSleepTimerStore } from '../../store/sleepTimer';
 import { LYRICS_SCRIPTS, useDevicePrefsStore } from '../../store/devicePrefs';
-import { DEFAULT_API_ORIGIN, customServerOrigin, normalizeServerOrigin, setServerOrigin } from '../../data/config';
+import {
+  ALLOWS_HTTP,
+  DEFAULT_API_ORIGIN,
+  customServerOrigin,
+  normalizeServerOrigin,
+  setServerOrigin,
+} from '../../data/config';
 import type { OutputDevice } from '../../native/SonarePlayer';
+import { isDevApk } from '../../native/SonareBuild';
 
 /**
  * Sheets opened from Now Playing and Settings: audio output, sleep timer, lyrics language
@@ -39,7 +46,7 @@ export const OUTPUT_ICON: Record<OutputDevice['type'], IconName> = {
 
 const AUTOMATIC = -1;
 
-function OutputSheet({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) {
+const OutputSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
   const devices = useOutputStore((s) => s.devices);
   const current = useOutputStore((s) => s.current);
   const preferredId = useOutputStore((s) => s.preferredId);
@@ -67,9 +74,9 @@ function OutputSheet({ visible, onClose, gold }: { visible: boolean; onClose: ()
       ]}
     />
   );
-}
+};
 
-function SleepSheet({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) {
+const SleepSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
   const timer = useSleepTimerStore((s) => s.timer);
   const value = timer.kind === 'off' ? 'off' : timer.kind === 'endOfTrack' ? 'end' : `m${timer.minutes}`;
   return (
@@ -93,9 +100,9 @@ function SleepSheet({ visible, onClose, gold }: { visible: boolean; onClose: () 
       ]}
     />
   );
-}
+};
 
-function LyricsSheet({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) {
+const LyricsSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
   const script = useDevicePrefsStore((s) => s.lyricsScript);
   return (
     <OptionSheet
@@ -109,9 +116,9 @@ function LyricsSheet({ visible, onClose, gold }: { visible: boolean; onClose: ()
       options={LYRICS_SCRIPTS.map((s) => ({ value: s.value, label: s.label }))}
     />
   );
-}
+};
 
-function ServerSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+const ServerSheet = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
   const [text, setText] = useState(customServerOrigin() ?? '');
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -123,7 +130,7 @@ function ServerSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
   const save = async (value: string = text) => {
     const origin = normalizeServerOrigin(value);
     if (!origin) return setError('Enter an address like 192.168.1.20:3010');
-    if (!__DEV__ && !origin.startsWith('https://')) return setError('Release builds only connect over HTTPS');
+    if (!ALLOWS_HTTP && !origin.startsWith('https://')) return setError('Release builds only connect over HTTPS');
     await setServerOrigin(origin === DEFAULT_API_ORIGIN ? null : origin);
     onClose();
   };
@@ -141,11 +148,12 @@ function ServerSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
           <Text className="text-bs text-t3">
             The Sonare backend this phone talks to. Default: {DEFAULT_API_ORIGIN}
             {__DEV__ ? ' (forwarded over USB by adb reverse). On Wi-Fi, use the computer’s LAN address.' : ''}
+            {isDevApk ? '. For a computer on Wi-Fi, use its LAN address.' : ''}
           </Text>
         </View>
         <Field
           icon={<Icon name="server" size={18} color="#7E7E8C" />}
-          placeholder={__DEV__ ? '192.168.1.20:3010' : 'https://api.example.com'}
+          placeholder={ALLOWS_HTTP ? '192.168.1.20:3010' : 'https://api.example.com'}
           value={text}
           onChangeText={(t) => {
             setText(t);
@@ -170,9 +178,9 @@ function ServerSheet({ visible, onClose }: { visible: boolean; onClose: () => vo
       </View>
     </Sheet>
   );
-}
+};
 
-export function PlayerSheetsHost() {
+export const PlayerSheetsHost = () => {
   const open = usePlayerSheets((s) => s.open);
   const close = usePlayerSheets((s) => s.close);
   const gold = useModeStore((s) => s.mode) === 'offline';
@@ -184,4 +192,4 @@ export function PlayerSheetsHost() {
       <ServerSheet visible={open === 'server'} onClose={close} />
     </>
   );
-}
+};

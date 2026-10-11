@@ -29,7 +29,7 @@ const song = makeTrack({ title: 'Reckoner', artist: 'Radiohead' });
 const later = makeTrack({ title: 'Later' });
 
 /** A downloads store whose actions are spies. */
-function downloadsWith(items: Record<string, ReturnType<typeof makeDownload>>) {
+const downloadsWith = (items: Record<string, ReturnType<typeof makeDownload>>) => {
   const actions = {
     enqueue: jest.fn(() => 1),
     pause: jest.fn(async () => {}),
@@ -42,7 +42,7 @@ function downloadsWith(items: Record<string, ReturnType<typeof makeDownload>>) {
     ...actions,
   } as never);
   return actions;
-}
+};
 
 beforeEach(() => {
   jest.restoreAllMocks();

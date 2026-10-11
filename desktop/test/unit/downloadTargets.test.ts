@@ -83,7 +83,7 @@ class FakeDir {
 
 let clickedDownloads: string[] = [];
 
-async function fresh(picker?: () => Promise<FakeDir>) {
+const fresh = async (picker?: () => Promise<FakeDir>) => {
   vi.resetModules();
   globalThis.indexedDB = new IDBFactory();
   // fake-indexeddb stores values with Node's structuredClone, which can copy Node's Blob
@@ -91,7 +91,7 @@ async function fresh(picker?: () => Promise<FakeDir>) {
   vi.stubGlobal('Blob', NodeBlob);
   if (picker) vi.stubGlobal('showDirectoryPicker', vi.fn(picker));
   return import('../../src/storage/downloadTargets');
-}
+};
 
 beforeEach(() => {
   clickedDownloads = [];
@@ -202,12 +202,12 @@ describe('browser target (IndexedDB)', () => {
 });
 
 describe('folder target (File System Access)', () => {
-  async function folder(canMove = true) {
+  const folder = async (canMove = true) => {
     const dir = new FakeDir('Music', canMove);
     const t = await fresh(async () => dir);
     await t.chooseLocation();
     return { t, dir, target: t.targetFor({ id: 'yt:f/1', target: 'folder' }) };
-  }
+  };
 
   it('WEB-TGT-010 writes a hidden part file in the folder and resumes from its size', async () => {
     const { dir, target } = await folder();

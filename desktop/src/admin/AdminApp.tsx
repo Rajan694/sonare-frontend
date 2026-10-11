@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
-import { Activity, AlertTriangle, KeyRound, LayoutDashboard, LogOut, SlidersHorizontal } from 'lucide-react';
+import { Activity, AlertTriangle, KeyRound, LayoutDashboard, LogOut, Package } from 'lucide-react';
 import { BrandMark } from '../components/ui/BrandMark';
 import Button from '../components/ui/Button';
 import { cn } from '../lib/cn';
@@ -10,22 +10,22 @@ import { TextInput } from './components/TextInput';
 import Overview from './Overview';
 import ApiMetrics from './ApiMetrics';
 import ErrorLogs from './ErrorLogs';
-import Configuration from './Configuration';
+import Releases from './Releases';
 import Account from './Account';
 import '../sonare.css';
 
 // /admin on the web build (main.tsx never loads this in the Linux window). Not linked from
-// the app; it asks for the admin username and password.
+// the app; it asks for the admin email and password (an admin row in users).
 
 const NAV = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/api', label: 'API', icon: Activity },
   { to: '/admin/errors', label: 'Errors', icon: AlertTriangle },
-  { to: '/admin/config', label: 'Configuration', icon: SlidersHorizontal },
+  { to: '/admin/releases', label: 'Releases', icon: Package },
   { to: '/admin/account', label: 'Account', icon: KeyRound },
 ];
 
-export default function AdminApp() {
+const AdminApp = () => {
   const [signedIn, setSignedIn] = useState(isSignedIn());
   const [account, setAccount] = useState<AdminAccount | null>(null);
 
@@ -58,7 +58,7 @@ export default function AdminApp() {
               <Route index element={<Overview />} />
               <Route path="api" element={<ApiMetrics />} />
               <Route path="errors" element={<ErrorLogs />} />
-              <Route path="config" element={<Configuration />} />
+              <Route path="releases" element={<Releases />} />
               <Route path="account" element={<Account account={account} onChange={setAccount} />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Route>
@@ -69,9 +69,10 @@ export default function AdminApp() {
       )}
     </div>
   );
-}
+};
+export default AdminApp;
 
-function Shell({ account }: { account: AdminAccount | null }) {
+const Shell = ({ account }: { account: AdminAccount | null }) => {
   const link = ({ isActive }: { isActive: boolean }) =>
     cn('sitem hover:bg-s2 hover:text-t1 flex-none', isActive && 'bg-s3 text-t1');
 
@@ -95,7 +96,7 @@ function Shell({ account }: { account: AdminAccount | null }) {
           ))}
         </nav>
         <div className="hidden lg:flex items-center justify-between gap-2 px-5 py-4 border-t border-ln">
-          <span className="text-label-l text-t2 truncate">{account?.username ?? ''}</span>
+          <span className="text-label-l text-t2 truncate">{account?.email ?? ''}</span>
           <button type="button" className="ib ib-32" onClick={signOut} aria-label="Sign out" data-tip="Sign out">
             <LogOut size={16} aria-hidden />
           </button>
@@ -119,27 +120,27 @@ function Shell({ account }: { account: AdminAccount | null }) {
       </main>
     </div>
   );
-}
+};
 
-function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
-  const [username, setUsername] = useState('');
+const SignIn = ({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      onSignedIn(await adminApi.login(username.trim(), password));
+      onSignedIn(await adminApi.login(email.trim(), password));
     } catch (err) {
       setError((err as Error).message);
       setPassword('');
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -155,13 +156,14 @@ function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
           </div>
         </div>
         <TextInput
-          label="Username"
+          label="Email"
+          type="email"
           autoComplete="username"
           autoFocus
           required
           spellCheck={false}
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
         />
         <TextInput
           label="Password"
@@ -172,10 +174,10 @@ function SignIn({ onSignedIn }: { onSignedIn: (a: AdminAccount) => void }) {
           onChange={(e) => setPassword(e.target.value)}
         />
         {error && <Notice>{error}</Notice>}
-        <Button type="submit" variant="acc" size="lg" disabled={busy || !username.trim() || !password}>
+        <Button type="submit" variant="acc" size="lg" disabled={busy || !email.trim() || !password}>
           {busy ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>
     </div>
   );
-}
+};

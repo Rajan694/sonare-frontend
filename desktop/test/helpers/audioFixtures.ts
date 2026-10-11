@@ -18,7 +18,7 @@ export const le32 = (n: number) => [n & 255, (n >>> 8) & 255, (n >>> 16) & 255, 
 export const synchsafe = (n: number) => [(n >> 21) & 127, (n >> 14) & 127, (n >> 7) & 127, n & 127];
 
 /** A reader over an in-memory file that also records how much it was asked for. */
-export function reader(file: Uint8Array) {
+export const reader = (file: Uint8Array) => {
   let bytesRead = 0;
   const read: RangeReader = async (pos, size) => {
     const out = file.slice(Math.max(0, pos), Math.max(0, pos) + size);
@@ -26,10 +26,10 @@ export function reader(file: Uint8Array) {
     return out;
   };
   return { read, bytesRead: () => bytesRead };
-}
+};
 
 /** ID3v2.3 text frame: encoding 0 (latin1), 1 (UTF-16 + BOM) or 3 (UTF-8). */
-export function id3Frame(id: string, text: string, enc: 0 | 1 | 3 = 3) {
+export const id3Frame = (id: string, text: string, enc: 0 | 1 | 3 = 3) => {
   let body: Uint8Array;
   if (enc === 1) {
     const u16 = new Uint8Array(text.length * 2);
@@ -40,28 +40,28 @@ export function id3Frame(id: string, text: string, enc: 0 | 1 | 3 = 3) {
     body = cat([1, 0xff, 0xfe], u16);
   } else body = cat([enc], enc === 0 ? latin1(text) : utf8(text));
   return cat(latin1(id), be32(body.length), [0, 0], body);
-}
+};
 
-export function id3Tag(...frames: Uint8Array[]) {
+export const id3Tag = (...frames: Uint8Array[]) => {
   const body = cat(...frames);
   return cat(latin1('ID3'), [3, 0, 0], synchsafe(body.length), body);
-}
+};
 
 /** MPEG-1 Layer III frame header: 128 kbps, 44.1 kHz, stereo; optional Xing frame count. */
-export function mp3Frame(xingFrames?: number) {
+export const mp3Frame = (xingFrames?: number) => {
   const header = [0xff, 0xfb, 0x90, 0x44];
   const side = new Array(32).fill(0);
   const xing = xingFrames === undefined ? [] : [...latin1('Xing'), ...be32(1), ...be32(xingFrames)];
   return cat(header, side, xing, new Array(64).fill(0));
-}
+};
 
-export function vorbisComments(entries: string[]) {
+export const vorbisComments = (entries: string[]) => {
   const vendor = utf8('libsonare');
   const list = entries.flatMap((e) => [...le32(utf8(e).length), ...utf8(e)]);
   return cat(le32(vendor.length), vendor, le32(entries.length), list);
-}
+};
 
-export function flac(sampleRate: number, totalSamples: number, comments: string[]) {
+export const flac = (sampleRate: number, totalSamples: number, comments: string[]) => {
   const si = new Uint8Array(34);
   si[10] = (sampleRate >> 12) & 255;
   si[11] = (sampleRate >> 4) & 255;
@@ -76,9 +76,9 @@ export function flac(sampleRate: number, totalSamples: number, comments: string[
     [0x84, (vc.length >> 16) & 255, (vc.length >> 8) & 255, vc.length & 255],
     vc,
   );
-}
+};
 
-export function oggOpus(granule: number, comments: string[]) {
+export const oggOpus = (granule: number, comments: string[]) => {
   const g = [...le32(granule % 2 ** 32), ...le32(Math.floor(granule / 2 ** 32))];
   return cat(
     latin1('OggS'),
@@ -90,13 +90,13 @@ export function oggOpus(granule: number, comments: string[]) {
     g,
     new Array(12).fill(0),
   );
-}
+};
 
-export function atom(type: string, ...body: Uint8Array[]) {
+export const atom = (type: string, ...body: Uint8Array[]) => {
   const b = cat(...body);
   return cat(be32(b.length + 8), latin1(type), b);
-}
-export function mp4(timescale: number, duration: number, meta: Record<string, string>) {
+};
+export const mp4 = (timescale: number, duration: number, meta: Record<string, string>) => {
   const mvhd = atom(
     'mvhd',
     Uint8Array.from([0, 0, 0, 0, ...be32(0), ...be32(0), ...be32(timescale), ...be32(duration)]),
@@ -111,12 +111,12 @@ export function mp4(timescale: number, duration: number, meta: Record<string, st
     atom('mdat', new Uint8Array(32)),
     atom('moov', mvhd, udta),
   );
-}
+};
 
 /** Whole MPEG-1 Layer III frames: 128 kbps, 44.1 kHz, 417 bytes and 1152 samples each. */
 export const MP3_FRAME_LEN = Math.floor((144 * 128_000) / 44_100);
 
-export function mp3Frames(n: number, { mono = false } = {}) {
+export const mp3Frames = (n: number, { mono = false } = {}) => {
   const frames: Uint8Array[] = [];
   for (let i = 0; i < n; i++) {
     const f = new Uint8Array(MP3_FRAME_LEN);
@@ -125,4 +125,4 @@ export function mp3Frames(n: number, { mono = false } = {}) {
     frames.push(f);
   }
   return cat(...frames);
-}
+};

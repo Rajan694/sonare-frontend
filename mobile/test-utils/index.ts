@@ -17,7 +17,7 @@ export const nav = {
 };
 export const route: { params: Record<string, unknown> } = { params: {} };
 
-export function navigationMock() {
+export const navigationMock = () => {
   const actual = jest.requireActual('@react-navigation/native');
   const React = require('react');
   return {
@@ -27,11 +27,11 @@ export function navigationMock() {
     // Runs like a screen gaining focus once, on mount.
     useFocusEffect: (cb: () => void) => React.useEffect(() => cb(), [cb]),
   };
-}
+};
 
 let seq = 0;
 
-export function makeTrack(over: Partial<Track> = {}): Track {
+export const makeTrack = (over: Partial<Track> = {}): Track => {
   const n = ++seq;
   return {
     id: `yt:t${n}`,
@@ -47,9 +47,9 @@ export function makeTrack(over: Partial<Track> = {}): Track {
     addedAt: 1_700_000_000_000 + n,
     ...over,
   };
-}
+};
 
-export function makeAlbum(over: Partial<Album> = {}): Album {
+export const makeAlbum = (over: Partial<Album> = {}): Album => {
   const n = ++seq;
   return {
     id: `yt:al${n}`,
@@ -63,9 +63,9 @@ export function makeAlbum(over: Partial<Album> = {}): Album {
     downloaded: false,
     ...over,
   } as Album;
-}
+};
 
-export function makeArtist(over: Partial<Artist> = {}): Artist {
+export const makeArtist = (over: Partial<Artist> = {}): Artist => {
   const n = ++seq;
   return {
     id: `yt:a${n}`,
@@ -75,9 +75,9 @@ export function makeArtist(over: Partial<Artist> = {}): Artist {
     following: false,
     ...over,
   } as Artist;
-}
+};
 
-export function makePlaylist(over: Partial<Playlist> = {}): Playlist {
+export const makePlaylist = (over: Partial<Playlist> = {}): Playlist => {
   const n = ++seq;
   return {
     id: `sonare:p${n}`,
@@ -88,9 +88,9 @@ export function makePlaylist(over: Partial<Playlist> = {}): Playlist {
     updatedAt: 1,
     ...over,
   } as Playlist;
-}
+};
 
-export function makeDownload(track: Track, over: Partial<DownloadItem> = {}): DownloadItem {
+export const makeDownload = (track: Track, over: Partial<DownloadItem> = {}): DownloadItem => {
   return {
     id: track.id,
     title: track.title,
@@ -109,7 +109,7 @@ export function makeDownload(track: Track, over: Partial<DownloadItem> = {}): Do
     completedAt: 2,
     ...over,
   } as DownloadItem;
-}
+};
 
 export const page = <T>(items: T[], total?: number) => ({
   items,

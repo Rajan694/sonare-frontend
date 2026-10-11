@@ -51,12 +51,12 @@ describe('buttons', () => {
 });
 
 /** A slider wired to state, as screens use it. */
-function LiveSlider(
+const LiveSlider = (
   props: Partial<React.ComponentProps<typeof Slider>> & { initial?: number; onCommit?: (v: number) => void },
-) {
+) => {
   const [v, setV] = useState(props.initial ?? 50);
   return <Slider ariaLabel="Volume" {...props} value={v} onChange={setV} />;
-}
+};
 
 describe('slider', () => {
   it('WEB-UI-003 exposes its range and value to assistive tech', () => {
@@ -249,17 +249,17 @@ describe('messages', () => {
 });
 
 describe('tooltips', () => {
-  function over(el: Element, pointerType = 'mouse') {
+  const over = (el: Element, pointerType = 'mouse') => {
     const e = new MouseEvent('pointerover', { bubbles: true });
     Object.defineProperty(e, 'pointerType', { value: pointerType });
     el.dispatchEvent(e);
-  }
-  function out(el: Element) {
+  };
+  const out = (el: Element) => {
     el.dispatchEvent(new MouseEvent('pointerout', { bubbles: true }));
-  }
+  };
   const tipText = () => document.querySelector('.fixed.z-\\[70\\]')?.textContent ?? null;
 
-  function Harness() {
+  const Harness = () => {
     const navigate = useNavigate();
     return (
       <>
@@ -271,7 +271,7 @@ describe('tooltips', () => {
         <button onClick={() => navigate('/other')}>go</button>
       </>
     );
-  }
+  };
   const setup = () => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
     render(

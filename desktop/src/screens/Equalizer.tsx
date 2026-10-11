@@ -24,11 +24,11 @@ import { useSettings, updateSettings } from '../storage/settings';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
-function formatDb(db: number) {
+const formatDb = (db: number) => {
   return `${db > 0 ? '+' : ''}${db % 1 === 0 ? db : db.toFixed(1)}`;
-}
+};
 
-export default function Equalizer() {
+const Equalizer = () => {
   const { mode } = useModeStore();
   const isOffline = mode === 'offline';
   const dsp = useDsp();
@@ -235,4 +235,5 @@ export default function Equalizer() {
       </div>
     </div>
   );
-}
+};
+export default Equalizer;

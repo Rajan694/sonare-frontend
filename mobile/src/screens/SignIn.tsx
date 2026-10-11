@@ -20,7 +20,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  * tries something that saves to their account — then `reason` says why, and what they were
  * doing resumes once they're in (RootNavigator runs it).
  */
-export function SignInScreen() {
+export const SignInScreen = () => {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const params = useRoute<any>().params as { reason?: string; mode?: 'signin' | 'signup' } | undefined;
@@ -214,4 +214,4 @@ export function SignInScreen() {
       </View>
     </ScrollView>
   );
-}
+};

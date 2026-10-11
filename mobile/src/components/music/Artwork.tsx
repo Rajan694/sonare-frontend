@@ -18,7 +18,7 @@ interface ArtworkProps {
   rings?: boolean;
 }
 
-export function Artwork({
+export const Artwork = ({
   uri: primaryUri,
   fallbackUri,
   size,
@@ -26,7 +26,7 @@ export function Artwork({
   className,
   sharedTransitionTag,
   rings,
-}: ArtworkProps) {
+}: ArtworkProps) => {
   const AnimatedImageComponent = Animated.Image as any;
   const AnimatedViewComponent = Animated.View as any;
   const [failed, setFailed] = React.useState<Record<string, true>>({});
@@ -113,13 +113,13 @@ export function Artwork({
       sharedTransitionTag={sharedTransitionTag}
     />
   );
-}
+};
 
 const GENERATED = Object.values(artGradients);
 
 /** One of the design's a1-a12 gradients, chosen by the cover's address so it doesn't change. */
-function generatedArt(seed: string) {
+const generatedArt = (seed: string) => {
   let h = 0;
   for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) | 0;
   return GENERATED[Math.abs(h) % GENERATED.length];
-}
+};

@@ -26,7 +26,7 @@ interface SliderProps {
  * A drag slider. Vertical sliders grow upwards. Screen readers adjust it in `step`s through
  * the increment / decrement actions.
  */
-export function Slider({
+export const Slider = ({
   value,
   min,
   max,
@@ -40,7 +40,7 @@ export function Slider({
   variant = 'default',
   disabled = false,
   className,
-}: SliderProps) {
+}: SliderProps) => {
   const vertical = orientation === 'vertical';
   const [length, setLength] = useState(0);
   // Gesture callbacks read the latest props through this ref.
@@ -125,4 +125,4 @@ export function Slider({
       </View>
     </GestureDetector>
   );
-}
+};

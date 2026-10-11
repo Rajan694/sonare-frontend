@@ -9,7 +9,7 @@ interface FieldProps extends React.ComponentPropsWithRef<'input'> {
   children?: React.ReactNode;
 }
 
-export function Field({ icon, shortcut, square, children, className, ...props }: FieldProps) {
+export const Field = ({ icon, shortcut, square, children, className, ...props }: FieldProps) => {
   return (
     <label className={cn('field', square && 'field-sq', className)}>
       {icon && <Icon name={icon} size={16} className="text-t3 flex-none" />}
@@ -22,4 +22,4 @@ export function Field({ icon, shortcut, square, children, className, ...props }:
       {children}
     </label>
   );
-}
+};

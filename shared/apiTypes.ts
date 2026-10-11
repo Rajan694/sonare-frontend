@@ -118,3 +118,20 @@ export interface StreamInfo {
   muxed?: boolean;
   itag?: number;
 }
+
+export type ReleasePlatform = "android" | "linux" | "windows";
+
+/** An app build offered in Settings → About (GET /releases). */
+export interface AppRelease {
+  id: string;
+  platform: ReleasePlatform;
+  /** apk | appimage | deb | rpm | tar.gz | zip | exe | msi */
+  format: string;
+  version: string;
+  /** What the download is saved as. */
+  fileName: string;
+  sizeBytes: number;
+  sha256: string;
+  notes: string | null;
+  uploadedAt: string;
+}

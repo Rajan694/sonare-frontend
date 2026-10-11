@@ -13,7 +13,7 @@ export interface ChartPoint {
 }
 
 /** Clean 0-based ticks (steps of 1, 2 or 5 x 10^n), about three of them. */
-function niceTicks(max: number): number[] {
+const niceTicks = (max: number): number[] => {
   if (max <= 0) return [0, 1];
   const raw = max / 3;
   const mag = 10 ** Math.floor(Math.log10(raw));
@@ -22,7 +22,7 @@ function niceTicks(max: number): number[] {
   for (let t = 0; t <= max + step * 0.001; t += step) ticks.push(Math.round(t * 1e6) / 1e6);
   if (ticks[ticks.length - 1] < max) ticks.push(ticks[ticks.length - 1] + step);
   return ticks;
-}
+};
 
 const PLOT_H = 150;
 const TOP = 18;
@@ -32,7 +32,7 @@ const BOTTOM = 24;
  * One series as columns: accent fill, 4px rounded tops, hairline grid, the peak labelled.
  * Hover or arrow keys show one column's value; the table button shows them all.
  */
-export function ColumnChart({
+export const ColumnChart = ({
   title,
   subtitle,
   points,
@@ -44,7 +44,7 @@ export function ColumnChart({
   points: ChartPoint[];
   format?: (n: number) => string;
   empty?: string;
-}) {
+}) => {
   const box = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [active, setActive] = useState<number | null>(null);
@@ -198,4 +198,4 @@ export function ColumnChart({
       )}
     </Panel>
   );
-}
+};

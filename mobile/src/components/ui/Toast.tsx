@@ -13,7 +13,7 @@ interface ToastProps {
   mode?: 'online' | 'offline';
 }
 
-export function Toast({ visible, message, subtext, icon, mode = 'online' }: ToastProps) {
+export const Toast = ({ visible, message, subtext, icon, mode = 'online' }: ToastProps) => {
   return (
     <View className="absolute bottom-20 left-0 right-0 items-center pointer-events-none z-50">
       <MotiView
@@ -47,4 +47,4 @@ export function Toast({ visible, message, subtext, icon, mode = 'online' }: Toas
       </MotiView>
     </View>
   );
-}
+};

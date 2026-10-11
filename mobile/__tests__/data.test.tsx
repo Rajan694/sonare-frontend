@@ -626,7 +626,7 @@ describe('Data Layer', () => {
     });
 
     /** Fakes XHR with a fixed response and records every request sent. */
-    function recordXHR(status: number, body: unknown) {
+    const recordXHR = (status: number, body: unknown) => {
       const sent: {
         url: string;
         headers: Record<string, string>;
@@ -654,7 +654,7 @@ describe('Data Layer', () => {
         sent,
         restore: () => ((globalThis as any).XMLHttpRequest = original),
       };
-    }
+    };
 
     it('MOB-DATA-053 requestPasswordReset posts the email; a server error is thrown with its message', async () => {
       const ok = recordXHR(200, { ok: true });

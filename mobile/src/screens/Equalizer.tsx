@@ -28,7 +28,7 @@ const OUTPUT_ICON: Record<OutputDevice['type'], IconName> = {
 };
 
 /** The audio output in use, kept current as headphones and Bluetooth come and go. */
-function useOutputDevice() {
+const useOutputDevice = () => {
   const [device, setDevice] = useState<OutputDevice | null>(null);
   useEffect(() => {
     let live = true;
@@ -42,14 +42,14 @@ function useOutputDevice() {
     };
   }, []);
   return device;
-}
+};
 
 /**
  * The Audio screen. Everything here reaches the native player (AudioEngine sends it): the
  * equalizer, bass boost and virtualizer run in Sonare's own audio processing, speed is
  * time-stretched with the pitch kept, and crossfade / gapless decide how tracks follow.
  */
-export function EqualizerScreen() {
+export const EqualizerScreen = () => {
   const navigation = useNavigation<any>();
   const isGold = useModeStore((state) => state.mode) === 'offline';
   const variant = isGold ? 'gold' : 'default';
@@ -275,4 +275,4 @@ export function EqualizerScreen() {
       </ScrollView>
     </Screen>
   );
-}
+};

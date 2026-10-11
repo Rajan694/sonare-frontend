@@ -10,11 +10,11 @@ interface BadgeProps {
   className?: string;
 }
 
-export function Badge({ variant = 'neutral', icon, children, className }: BadgeProps) {
+export const Badge = ({ variant = 'neutral', icon, children, className }: BadgeProps) => {
   return (
     <span className={cn('badge', `bg-${variant}`, className)}>
       {icon && <Icon name={icon} size={12} />}
       {children}
     </span>
   );
-}
+};

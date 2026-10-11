@@ -36,7 +36,7 @@ if (planIds.size === 0) {
 }
 
 // Find all test files in test/
-function getTestFiles(dir) {
+const getTestFiles = (dir) => {
   let results = [];
   if (!fs.existsSync(dir)) return results;
   const list = fs.readdirSync(dir);
@@ -50,7 +50,7 @@ function getTestFiles(dir) {
     }
   }
   return results;
-}
+};
 
 const testFiles = getTestFiles(path.join(rootDir, 'test'));
 const codeIds = new Set();

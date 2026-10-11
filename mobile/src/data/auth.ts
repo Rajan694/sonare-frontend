@@ -43,7 +43,7 @@ class AuthError extends Error {
   }
 }
 
-async function authRequest<T>(path: string, body: unknown, accessToken?: string | null): Promise<T> {
+const authRequest = async <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> => {
   const { status, json } = await httpRequest(`${apiBase()}/auth/${path}`, {
     method: 'POST',
     headers: {
@@ -54,7 +54,7 @@ async function authRequest<T>(path: string, body: unknown, accessToken?: string 
   });
   if (status < 200 || status >= 300) throw new AuthError(json?.error?.message || `Request failed (${status})`, status);
   return json as T;
-}
+};
 
 let refreshing: Promise<string | null> | null = null;
 

@@ -17,7 +17,7 @@ const SOURCE_NAMES: Record<ErrorSource, string> = {
 };
 const PAGE = 50;
 
-export default function ErrorLogs() {
+const ErrorLogs = () => {
   const [source, setSource] = useState<'all' | ErrorSource>('all');
   const [query, setQuery] = useState('');
   const [q, setQ] = useState('');
@@ -51,7 +51,7 @@ export default function ErrorLogs() {
     })),
   ];
 
-  async function remove(e: ErrorLog) {
+  const remove = async (e: ErrorLog) => {
     setActionError(null);
     try {
       await adminApi.deleteError(e.id);
@@ -60,9 +60,9 @@ export default function ErrorLogs() {
     } catch (err) {
       setActionError((err as Error).message);
     }
-  }
+  };
 
-  async function clearMatching() {
+  const clearMatching = async () => {
     const n = data?.total ?? 0;
     const from = source === 'all' ? '' : ` from ${SOURCE_NAMES[source]}`;
     const matching = q ? ` matching "${q}"` : '';
@@ -75,16 +75,16 @@ export default function ErrorLogs() {
     } catch (err) {
       setActionError((err as Error).message);
     }
-  }
+  };
 
-  async function loadMore() {
+  const loadMore = async () => {
     try {
       const page = await adminApi.errors(filter, items.length, PAGE);
       setMore((m) => [...m, ...page.items]);
     } catch (err) {
       setActionError((err as Error).message);
     }
-  }
+  };
 
   return (
     <>
@@ -151,9 +151,10 @@ export default function ErrorLogs() {
       )}
     </>
   );
-}
+};
+export default ErrorLogs;
 
-function ErrorRow({
+const ErrorRow = ({
   e,
   open,
   onToggle,
@@ -163,7 +164,7 @@ function ErrorRow({
   open: boolean;
   onToggle: () => void;
   onDelete: () => void;
-}) {
+}) => {
   const where = [e.method, e.route].filter(Boolean).join(' ');
   const page = typeof e.context?.page === 'string' ? e.context.page : null;
   const context = Object.entries(e.context ?? {}).filter(([, v]) => v !== null && v !== '');
@@ -247,4 +248,4 @@ function ErrorRow({
       )}
     </li>
   );
-}
+};

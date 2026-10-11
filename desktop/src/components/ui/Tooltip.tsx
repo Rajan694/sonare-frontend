@@ -29,11 +29,11 @@ interface Tip {
   rect: DOMRect;
 }
 
-function tipTarget(node: EventTarget | null): HTMLElement | null {
+const tipTarget = (node: EventTarget | null): HTMLElement | null => {
   return node instanceof Element ? (node.closest('[data-tip]') as HTMLElement | null) : null;
-}
+};
 
-function read(el: HTMLElement): Tip | null {
+const read = (el: HTMLElement): Tip | null => {
   const text = el.dataset.tip?.trim();
   return text
     ? {
@@ -44,9 +44,9 @@ function read(el: HTMLElement): Tip | null {
         rect: el.getBoundingClientRect(),
       }
     : null;
-}
+};
 
-export default function TooltipLayer() {
+const TooltipLayer = () => {
   const [tip, setTip] = useState<Tip | null>(null);
   const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
   const boxRef = useRef<HTMLDivElement>(null);
@@ -66,7 +66,7 @@ export default function TooltipLayer() {
       if (current) setTip(read(current));
     });
 
-    function show(el: HTMLElement) {
+    const show = (el: HTMLElement) => {
       window.clearTimeout(timer);
       pending = null;
       const next = read(el);
@@ -77,10 +77,10 @@ export default function TooltipLayer() {
       setTip(next);
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(follow);
-    }
+    };
 
     // While visible: drop the tooltip if its control goes away, and keep up if it moves.
-    function follow() {
+    const follow = () => {
       if (!current) return;
       if (!current.isConnected) return hide();
       const r = current.getBoundingClientRect();
@@ -90,9 +90,9 @@ export default function TooltipLayer() {
           : t,
       );
       frame = requestAnimationFrame(follow);
-    }
+    };
 
-    function hide() {
+    const hide = () => {
       window.clearTimeout(timer);
       pending = null;
       if (current) hiddenAt = performance.now();
@@ -100,9 +100,9 @@ export default function TooltipLayer() {
       watcher.disconnect();
       cancelAnimationFrame(frame);
       setTip(null);
-    }
+    };
 
-    function onPointerOver(e: PointerEvent) {
+    const onPointerOver = (e: PointerEvent) => {
       if (e.pointerType === 'touch') return;
       const el = tipTarget(e.target);
       if (!el || el === current || el === pending || el === suppressed) return;
@@ -111,36 +111,36 @@ export default function TooltipLayer() {
       if (warm) return show(el);
       pending = el;
       timer = window.setTimeout(() => show(el), SHOW_DELAY_MS);
-    }
+    };
 
-    function onPointerOut(e: PointerEvent) {
+    const onPointerOut = (e: PointerEvent) => {
       const el = tipTarget(e.target);
       if (!el) return;
       // Moving between the control's own children is not leaving it.
       if (e.relatedTarget instanceof Node && el.contains(e.relatedTarget)) return;
       if (el === suppressed) suppressed = null;
       if (el === current || el === pending) hide();
-    }
+    };
 
-    function onPointerDown(e: PointerEvent) {
+    const onPointerDown = (e: PointerEvent) => {
       const el = tipTarget(e.target);
       if (el) suppressed = el;
       hide();
-    }
+    };
 
-    function onFocusIn(e: FocusEvent) {
+    const onFocusIn = (e: FocusEvent) => {
       const el = tipTarget(e.target);
       // Only keyboard focus: a clicked button also takes focus, and that shouldn't pop a tooltip.
       if (el && el === e.target && el.matches(':focus-visible')) show(el);
-    }
+    };
 
-    function onFocusOut(e: FocusEvent) {
+    const onFocusOut = (e: FocusEvent) => {
       if (e.target === current) hide();
-    }
+    };
 
-    function onKeyDown(e: KeyboardEvent) {
+    const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') hide();
-    }
+    };
 
     hideRef.current = hide;
 
@@ -209,4 +209,5 @@ export default function TooltipLayer() {
     </motion.div>,
     document.body,
   );
-}
+};
+export default TooltipLayer;

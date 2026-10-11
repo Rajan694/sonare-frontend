@@ -5,7 +5,7 @@ import { navigationRef } from '../data/accountGate';
  * showing. For screens that sit above the tabs, like Now Playing, whose own navigator
  * doesn't know those routes.
  */
-export function openInCurrentTab(name: string, params?: object) {
+export const openInCurrentTab = (name: string, params?: object) => {
   if (!navigationRef.isReady()) return;
   const tabs = navigationRef.getRootState()?.routes.find((r) => r.name === 'Tabs')?.state;
   const tab = tabs && tabs.index !== undefined ? tabs.routes[tabs.index].name : 'Home';
@@ -13,4 +13,4 @@ export function openInCurrentTab(name: string, params?: object) {
     screen: tab,
     params: { screen: name, params },
   });
-}
+};

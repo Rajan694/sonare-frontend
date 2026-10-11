@@ -163,6 +163,32 @@ describe('switching to Offline Mode', () => {
     await user.click(wide.getByRole('button', { name: 'Offline' }));
     expect(location()).toBe('/mode-switch');
   });
+
+  it('DSK-054 the server address can point the desktop app at another backend, which restarts it signed out', async () => {
+    const { lib } = await import('../helpers/fakeNeutralino');
+    localStorage.setItem('sonare_access_token', 'old-server-token');
+    const { user, container } = renderWithProviders(<Settings />, { route: '/settings?section=connection' });
+    const wide = within(container.firstElementChild!.children[1] as HTMLElement);
+    expect(wide.getByText('Default · http://api.sonare.test')).toBeInTheDocument();
+    await user.click(wide.getByRole('button', { name: 'Change' }));
+    const dialog = await screen.findByRole('dialog');
+    await user.type(within(dialog).getByRole('textbox'), '192.168.1.20:3010/api/v1/');
+    await user.click(within(dialog).getByRole('button', { name: 'Save & restart' }));
+    await waitFor(() => expect(lib.app.restartProcess).toHaveBeenCalled());
+    expect(localStorage.getItem('sonare_server_origin')).toBe('http://192.168.1.20:3010');
+    expect(localStorage.getItem('sonare_access_token')).toBeNull();
+    localStorage.removeItem('sonare_server_origin');
+  });
+
+  it('DSK-053 About in the desktop app shows the version but no downloads (those are on the web only)', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const { container } = renderWithProviders(<Settings />, { route: '/settings?section=about' });
+    const wide = within(container.firstElementChild!.children[1] as HTMLElement);
+    expect(wide.getByText('About Sonare')).toBeInTheDocument();
+    expect(wide.queryByText('Get Sonare')).toBeNull();
+    expect(fetchSpy.mock.calls.some(([url]) => String(url).includes('/releases'))).toBe(false);
+    fetchSpy.mockRestore();
+  });
 });
 
 describe('music folders screen', () => {

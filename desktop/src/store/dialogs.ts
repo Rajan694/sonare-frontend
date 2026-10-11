@@ -34,26 +34,26 @@ let current: OpenDialog | null = null;
 let nextId = 1;
 const listeners = new Set<() => void>();
 
-function set(next: OpenDialog | null) {
+const set = (next: OpenDialog | null) => {
   current = next;
   for (const l of listeners) l();
-}
+};
 
 /** Close whatever is open as cancelled, so its caller doesn't wait forever. */
-function cancelCurrent() {
+const cancelCurrent = () => {
   if (!current) return;
   if (current.kind === 'prompt') current.resolve(null);
   else if (current.kind === 'confirm') current.resolve(false);
   else current.resolve();
-}
+};
 
 /** Closes the open dialog, if any, as cancelled. */
-export function cancelOpenDialog(): void {
+export const cancelOpenDialog = (): void => {
   cancelCurrent();
-}
+};
 
 /** Resolves with the trimmed text, or null when cancelled or left empty. */
-export function promptDialog(options: PromptOptions): Promise<string | null> {
+export const promptDialog = (options: PromptOptions): Promise<string | null> => {
   cancelCurrent();
   return new Promise((resolve) => {
     set({
@@ -67,9 +67,9 @@ export function promptDialog(options: PromptOptions): Promise<string | null> {
       },
     });
   });
-}
+};
 
-export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
+export const confirmDialog = (options: ConfirmOptions): Promise<boolean> => {
   cancelCurrent();
   return new Promise((resolve) => {
     set({
@@ -82,10 +82,10 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
       },
     });
   });
-}
+};
 
 /** The playlist picker on its own (bottom player, Now Playing, after a guest signs in). */
-export function addToPlaylistDialog(tracks: Track[]): Promise<void> {
+export const addToPlaylistDialog = (tracks: Track[]): Promise<void> => {
   cancelCurrent();
   return new Promise((resolve) => {
     set({
@@ -98,9 +98,9 @@ export function addToPlaylistDialog(tracks: Track[]): Promise<void> {
       },
     });
   });
-}
+};
 
-export function useOpenDialog(): OpenDialog | null {
+export const useOpenDialog = (): OpenDialog | null => {
   return useSyncExternalStore(
     (fn) => {
       listeners.add(fn);
@@ -108,4 +108,4 @@ export function useOpenDialog(): OpenDialog | null {
     },
     () => current,
   );
-}
+};

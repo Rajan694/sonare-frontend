@@ -10,7 +10,7 @@ import { Switch } from '../components/ui/Switch';
 import { Segmented } from '../components/ui/Segmented';
 import { fadeRise, transition } from '../lib/motion';
 
-export default function ModeSwitch() {
+const ModeSwitch = () => {
   const navigate = useNavigate();
   const { setMode } = useModeStore();
   const settings = useSettings();
@@ -20,11 +20,11 @@ export default function ModeSwitch() {
   const totalTracks = local.folders.filter((f) => f.included).reduce((n, f) => n + f.trackCount, 0);
   const totalFolders = local.folders.length;
 
-  function confirm() {
+  const confirm = () => {
     updateSettings({ stayOffline: stay });
     setMode('offline');
     navigate('/home', { replace: true });
-  }
+  };
 
   return (
     <div className="@container flex items-center justify-center h-full p-4 @[480px]:p-8 overflow-y-auto">
@@ -128,4 +128,5 @@ export default function ModeSwitch() {
       </motion.div>
     </div>
   );
-}
+};
+export default ModeSwitch;

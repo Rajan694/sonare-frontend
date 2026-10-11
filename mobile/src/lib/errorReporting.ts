@@ -12,7 +12,7 @@ const REPEAT_MS = 60_000;
 let budget = MAX_PER_SESSION;
 const lastSent = new Map<string, number>();
 
-function toError(value: unknown): Error {
+const toError = (value: unknown): Error => {
   if (value instanceof Error) return value;
   if (typeof value === 'string') return new Error(value);
   try {
@@ -20,11 +20,11 @@ function toError(value: unknown): Error {
   } catch {
     return new Error(String(value));
   }
-}
+};
 
 type ErrorKind = 'uncaught' | 'unhandledRejection';
 
-export function reportError(value: unknown, fatal = false, kind: ErrorKind = 'uncaught'): void {
+export const reportError = (value: unknown, fatal = false, kind: ErrorKind = 'uncaught'): void => {
   const err = toError(value);
   // Network failures are routine here (offline mode), not bugs.
   if (/^Network request (failed|timed out)$/.test(err.message)) return;
@@ -53,7 +53,7 @@ export function reportError(value: unknown, fatal = false, kind: ErrorKind = 'un
     }),
     timeoutMs: 10_000,
   }).catch(() => {});
-}
+};
 
 interface ErrorUtilsLike {
   getGlobalHandler(): (error: unknown, isFatal?: boolean) => void;
@@ -77,7 +77,7 @@ interface HermesInternalLike {
  * all. So install a tracker of our own. Setting one replaces React Native's, which is why
  * dev still hands each rejection to its options afterwards.
  */
-function trackRejections(): void {
+const trackRejections = (): void => {
   const hermes = (globalThis as { HermesInternal?: HermesInternalLike }).HermesInternal;
   // hermesEnabled=true (android/gradle.properties); JSC's promise polyfill isn't covered.
   if (!hermes?.hasPromise?.() || !hermes.enablePromiseRejectionTracker) return;
@@ -101,11 +101,11 @@ function trackRejections(): void {
     },
     onHandled: (id, rejection) => devOptions?.onHandled?.(id, rejection),
   });
-}
+};
 
 let installed = false;
 
-export function installErrorReporting(): void {
+export const installErrorReporting = (): void => {
   const errorUtils = (globalThis as { ErrorUtils?: ErrorUtilsLike }).ErrorUtils;
   if (installed || !errorUtils) return;
   installed = true;
@@ -115,4 +115,4 @@ export function installErrorReporting(): void {
     previous(error, isFatal);
   });
   trackRejections();
-}
+};

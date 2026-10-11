@@ -13,7 +13,7 @@ interface TabBarProps {
   activeTab: string;
 }
 
-export function TabBar({ tabs, activeTab }: TabBarProps) {
+export const TabBar = ({ tabs, activeTab }: TabBarProps) => {
   return (
     <View className="flex-row items-stretch h-[64px] bg-[#060607] border-t border-ln">
       {tabs.map((tab) => {
@@ -36,4 +36,4 @@ export function TabBar({ tabs, activeTab }: TabBarProps) {
       })}
     </View>
   );
-}
+};

@@ -16,7 +16,7 @@ interface HeaderProps {
   className?: string;
 }
 
-export function Header({ title, left, right, titleAlign = 'center', className }: HeaderProps) {
+export const Header = ({ title, left, right, titleAlign = 'center', className }: HeaderProps) => {
   const insets = useSafeAreaInsets();
 
   if (title && titleAlign === 'start') {
@@ -63,4 +63,4 @@ export function Header({ title, left, right, titleAlign = 'center', className }:
       <View className="flex-1 flex-row justify-end items-center">{right}</View>
     </View>
   );
-}
+};

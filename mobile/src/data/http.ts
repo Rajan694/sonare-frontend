@@ -21,7 +21,7 @@ export class NetworkError extends Error {
   }
 }
 
-export function httpRequest(
+export const httpRequest = (
   url: string,
   {
     method = 'GET',
@@ -35,7 +35,7 @@ export function httpRequest(
     /** 0 waits forever (the default); without one, a request sent as the network comes back can hang. */
     timeoutMs?: number;
   } = {},
-): Promise<HttpResponse> {
+): Promise<HttpResponse> => {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open(method, url);
@@ -57,4 +57,4 @@ export function httpRequest(
     xhr.ontimeout = () => reject(new NetworkError('Network request timed out'));
     xhr.send(body ?? null);
   });
-}
+};

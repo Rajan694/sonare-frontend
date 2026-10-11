@@ -12,7 +12,7 @@ import type { Track } from '../../data/types';
  * Download every song of an album or playlist. While any are downloading it opens the
  * Downloads screen; once all are on the phone it offers to delete them.
  */
-export function DownloadAllButton({ tracks }: { tracks: Track[] }) {
+export const DownloadAllButton = ({ tracks }: { tracks: Track[] }) => {
   const navigation = useNavigation<any>();
   const online = useModeStore((s) => s.mode) === 'online';
   const items = useDownloadsStore((s) => s.items);
@@ -45,4 +45,4 @@ export function DownloadAllButton({ tracks }: { tracks: Track[] }) {
       accessibilityLabel={all ? 'Delete downloads' : active ? 'Downloading, open Downloads' : 'Download all'}
     />
   );
-}
+};

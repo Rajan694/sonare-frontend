@@ -11,22 +11,22 @@ import { useSyncExternalStore } from 'react';
 let positionMs = 0;
 const listeners = new Set<() => void>();
 
-export function setPlaybackPosition(ms: number): void {
+export const setPlaybackPosition = (ms: number): void => {
   if (ms === positionMs) return;
   positionMs = ms;
   for (const l of listeners) l();
-}
+};
 
-export function getPlaybackPosition(): number {
+export const getPlaybackPosition = (): number => {
   return positionMs;
-}
+};
 
-export function subscribePlaybackPosition(fn: () => void): () => void {
+export const subscribePlaybackPosition = (fn: () => void): (() => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
-}
+};
 
 /** The current playback position in ms; re-renders the caller whenever it moves. */
-export function usePlaybackPosition(): number {
+export const usePlaybackPosition = (): number => {
   return useSyncExternalStore(subscribePlaybackPosition, getPlaybackPosition, getPlaybackPosition);
-}
+};

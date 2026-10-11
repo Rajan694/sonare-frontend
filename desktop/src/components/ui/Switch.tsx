@@ -7,7 +7,7 @@ interface SwitchProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'acc' | 'gold';
 }
 
-export function Switch({ checked, onCheckedChange, variant = 'acc', className, ...props }: SwitchProps) {
+export const Switch = ({ checked, onCheckedChange, variant = 'acc', className, ...props }: SwitchProps) => {
   return (
     <button
       role="switch"
@@ -19,4 +19,4 @@ export function Switch({ checked, onCheckedChange, variant = 'acc', className, .
       <i aria-hidden />
     </button>
   );
-}
+};

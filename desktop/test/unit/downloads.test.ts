@@ -75,18 +75,18 @@ const MB = 1024 * 1024;
 const RELAY = 'http://api.sonare.test/api/v1/stream/:token';
 
 /** Byte-for-byte equality; expect().toEqual on megabytes of Uint8Array is far too slow. */
-function sameBytes(a: Uint8Array | undefined, b: Uint8Array): boolean {
+const sameBytes = (a: Uint8Array | undefined, b: Uint8Array): boolean => {
   return (
     !!a && Buffer.from(a.buffer, a.byteOffset, a.byteLength).equals(Buffer.from(b.buffer, b.byteOffset, b.byteLength))
   );
-}
+};
 
 /** Deterministic audio bytes, so a corrupted or reordered file is detectable. */
-function audioBytes(n: number, seed = 7): Uint8Array {
+const audioBytes = (n: number, seed = 7): Uint8Array => {
   const b = new Uint8Array(n);
   for (let i = 0; i < n; i++) b[i] = (i * 31 + seed) & 0xff;
   return b;
-}
+};
 
 interface RelayOptions {
   /** Answer with this status instead, for the first `times` requests. */
@@ -99,7 +99,7 @@ interface RelayOptions {
   gate?: Promise<void>;
 }
 
-function relay(bytes: Uint8Array, opts: RelayOptions = {}) {
+const relay = (bytes: Uint8Array, opts: RelayOptions = {}) => {
   const ranges: string[] = [];
   let failures = 0;
   server.use(
@@ -125,9 +125,9 @@ function relay(bytes: Uint8Array, opts: RelayOptions = {}) {
     }),
   );
   return ranges;
-}
+};
 
-function streamInfo(over: Record<string, unknown> = {}) {
+const streamInfo = (over: Record<string, unknown> = {}) => {
   const calls: string[] = [];
   server.use(
     http.get(`${API}/tracks/:id/stream`, ({ request, params }) => {
@@ -145,19 +145,19 @@ function streamInfo(over: Record<string, unknown> = {}) {
     }),
   );
   return calls;
-}
+};
 
-async function fresh() {
+const fresh = async () => {
   vi.resetModules();
   const mod = await import('../../src/storage/downloads');
   return mod;
-}
+};
 
 const item = (mod: Awaited<ReturnType<typeof fresh>>, id: string) => mod.getDownloadsSnapshot().byId.get(id);
 
-async function waitForStatus(mod: Awaited<ReturnType<typeof fresh>>, id: string, status: string) {
+const waitForStatus = async (mod: Awaited<ReturnType<typeof fresh>>, id: string, status: string) => {
   await vi.waitFor(() => expect(item(mod, id)?.status).toBe(status), { timeout: 4000 });
-}
+};
 
 beforeEach(() => {
   h.parts.clear();
@@ -516,14 +516,14 @@ describe('interruptions', () => {
 });
 
 describe('managing finished downloads', () => {
-  async function finished(id: string) {
+  const finished = async (id: string) => {
     streamInfo();
     relay(audioBytes(64));
     const dl = await fresh();
     await dl.downloads.enqueue([song({ id })]);
     await waitForStatus(dl, id, 'done');
     return dl;
-  }
+  };
 
   it('WEB-DL-019 deleting a finished download removes its file and the list entry', async () => {
     const dl = await finished('yt:del');

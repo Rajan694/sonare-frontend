@@ -43,6 +43,6 @@ export const useDevicePrefsStore = create<DevicePrefsStore>((set) => ({
   },
 }));
 
-export function lyricsScriptLabel(script: LyricsScript): string {
+export const lyricsScriptLabel = (script: LyricsScript): string => {
   return LYRICS_SCRIPTS.find((s) => s.value === script)?.label ?? 'Original (as released)';
-}
+};

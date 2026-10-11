@@ -20,7 +20,7 @@ const TITLES: Record<Mode, string> = {
  * then `reason` says why, and what they were doing finishes once they're in. Uses the existing
  * surface / field / button primitives only; the design system has no login screen yet.
  */
-export default function SignIn() {
+const SignIn = () => {
   const navigate = useNavigate();
   const state = useLocation().state as { reason?: string; mode?: 'signin' | 'signup' } | null;
   const [mode, setMode] = useState<Mode>(state?.mode === 'signup' ? 'signup' : 'signin');
@@ -40,13 +40,13 @@ export default function SignIn() {
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
 
-  function switchMode(next: Mode) {
+  const switchMode = (next: Mode) => {
     setMode(next);
     setError(null);
     setResetSent(false);
-  }
+  };
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
     setError(null);
@@ -72,7 +72,7 @@ export default function SignIn() {
     } finally {
       setBusy(false);
     }
-  }
+  };
 
   const subtitle =
     mode === 'forgot'
@@ -151,4 +151,5 @@ export default function SignIn() {
       </form>
     </div>
   );
-}
+};
+export default SignIn;

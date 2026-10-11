@@ -6,7 +6,7 @@ import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
  * The design's ambient light behind the player: the cover, shrunk and blurred into soft colour,
  * fading into the black ground before the controls.
  */
-export function Ambient({ uri }: { uri?: string }) {
+export const Ambient = ({ uri }: { uri?: string }) => {
   const { width } = useWindowDimensions();
   if (!uri?.startsWith('http') && !uri?.startsWith('file://')) return null;
   return (
@@ -29,4 +29,4 @@ export function Ambient({ uri }: { uri?: string }) {
       </Svg>
     </View>
   );
-}
+};

@@ -8,26 +8,26 @@ import Icon from '../ui/Icon';
 import type { Track } from '../../types';
 import { confirmDialog } from '../../store/dialogs';
 
-export async function startTrackDownload(track: Track): Promise<void> {
+export const startTrackDownload = async (track: Track): Promise<void> => {
   await downloads.enqueue([track]);
   showToast({ title: 'Added to downloads', description: track.title, icon: 'download', variant: 'gold' });
-}
+};
 
-export async function deleteTrackDownload(track: Track): Promise<void> {
+export const deleteTrackDownload = async (track: Track): Promise<void> => {
   const { fileDeleted, reason } = await downloads.remove(track.id);
   showToast(
     fileDeleted
       ? { title: 'Download deleted', description: track.title, icon: 'trash' }
       : { title: 'Removed from downloads', description: reason, icon: 'info' },
   );
-}
+};
 
 /**
  * One track's download control for the players: Download → progress ring (click pauses)
  * → gold check (click deletes, after asking). Paused or failed shows Resume. Nothing for
  * local files, or for a song with no download while offline.
  */
-export default function TrackDownloadButton({
+const TrackDownloadButton = ({
   track,
   size = 32,
   className,
@@ -35,7 +35,7 @@ export default function TrackDownloadButton({
   track: Track;
   size?: 32 | 40 | 44;
   className?: string;
-}) {
+}) => {
   const download = useDownload(track.id);
   const { mode } = useModeStore();
 
@@ -118,4 +118,5 @@ export default function TrackDownloadButton({
       onClick={() => void startTrackDownload(track)}
     />
   );
-}
+};
+export default TrackDownloadButton;

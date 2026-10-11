@@ -22,7 +22,7 @@ import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
 import type { Playlist } from '../data/types';
 import Icon from '../components/ui/Icon';
 
-export function PlaylistsScreen() {
+export const PlaylistsScreen = () => {
   const navigation = useNavigation<any>();
   const mode = useModeStore((state) => state.mode);
   const playlists = useLibraryStore((state) => state.playlists);
@@ -190,4 +190,4 @@ export function PlaylistsScreen() {
       </Sheet>
     </Screen>
   );
-}
+};

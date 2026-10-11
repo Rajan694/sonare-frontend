@@ -14,7 +14,7 @@ interface TileProps {
   onPlay?: () => void;
 }
 
-export function Tile({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay }: TileProps) {
+export const Tile = ({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay }: TileProps) => {
   const body = (
     <>
       <Artwork src={thumbnail} variant={artVariant} size={44} radius="xs" alt={title} />
@@ -52,4 +52,4 @@ export function Tile({ title, subtitle, artVariant = 'a1', to, thumbnail, onPlay
       )}
     </div>
   );
-}
+};

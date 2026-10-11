@@ -31,7 +31,7 @@ import { useSleepTimerStore } from '../store/sleepTimer';
 
 const SWIPE_THRESHOLD = 50;
 
-export function NowPlayingScreen() {
+export const NowPlayingScreen = () => {
   const mode = useModeStore((state) => state.mode);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -387,4 +387,4 @@ export function NowPlayingScreen() {
       </View>
     </Screen>
   );
-}
+};

@@ -5,15 +5,15 @@ import type { TrayOptions } from '@neutralinojs/lib';
  * True when the page is running inside Neutralino (its server injects the NL_* globals).
  * Plain `npm run dev` in a normal browser has none of them, and the app still renders.
  */
-export function isNeutralino(): boolean {
+export const isNeutralino = (): boolean => {
   return typeof window.NL_PORT !== 'undefined';
-}
+};
 
 /**
  * Tray menus only exist in window mode, and are still broken on macOS.
  * https://github.com/neutralinojs/neutralinojs/issues/615
  */
-function setTray(): void {
+const setTray = (): void => {
   if (window.NL_MODE !== 'window') {
     console.log('INFO: Tray menu is only available in the window mode.');
     return;
@@ -32,9 +32,9 @@ function setTray(): void {
   };
 
   void os.setTray(tray);
-}
+};
 
-function onTrayMenuItemClicked(event: CustomEvent<{ id: string }>): void {
+const onTrayMenuItemClicked = (event: CustomEvent<{ id: string }>): void => {
   switch (event.detail.id) {
     case 'VERSION':
       void os.showMessageBox(
@@ -46,16 +46,16 @@ function onTrayMenuItemClicked(event: CustomEvent<{ id: string }>): void {
       void app.exit();
       break;
   }
-}
+};
 
-function onWindowClose(): void {
+const onWindowClose = (): void => {
   void app.exit();
-}
+};
 
 let initialised = false;
 
 /** Safe to call more than once; React StrictMode double-invokes in dev. */
-export function initNeutralino(): void {
+export const initNeutralino = (): void => {
   if (initialised) {
     return;
   }
@@ -75,4 +75,4 @@ export function initNeutralino(): void {
   void events.on('windowClose', onWindowClose);
 
   setTray();
-}
+};

@@ -18,7 +18,7 @@ interface ButtonProps {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable) as any;
 
-export function Button({
+export const Button = ({
   onPress,
   children,
   icon,
@@ -27,7 +27,7 @@ export function Button({
   size = 'md',
   disabled = false,
   className,
-}: ButtonProps) {
+}: ButtonProps) => {
   const scale = useSharedValue(1);
 
   const style = useAnimatedStyle(() => ({
@@ -77,4 +77,4 @@ export function Button({
       )}
     </AnimatedPressable>
   );
-}
+};

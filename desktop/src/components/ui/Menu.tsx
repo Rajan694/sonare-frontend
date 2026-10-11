@@ -11,7 +11,7 @@ export interface MenuItemProps extends React.ButtonHTMLAttributes<HTMLButtonElem
   children: React.ReactNode;
 }
 
-export function MenuItem({ icon, shortcut, danger, disabled, children, className, ...props }: MenuItemProps) {
+export const MenuItem = ({ icon, shortcut, danger, disabled, children, className, ...props }: MenuItemProps) => {
   return (
     <button
       className={cn(
@@ -28,8 +28,8 @@ export function MenuItem({ icon, shortcut, danger, disabled, children, className
       {shortcut && <span className="kbd">{shortcut}</span>}
     </button>
   );
-}
+};
 
-export function Menu({ children, className }: { children: React.ReactNode; className?: string }) {
+export const Menu = ({ children, className }: { children: React.ReactNode; className?: string }) => {
   return <div className={cn('menu', className)}>{children}</div>;
-}
+};

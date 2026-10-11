@@ -24,7 +24,7 @@ const iconVariants = {
   gold: 'text-gold bg-goldbg',
 };
 
-export function Toast({ show, title, description, icon, variant = 'neutral', onClose }: ToastProps) {
+export const Toast = ({ show, title, description, icon, variant = 'neutral', onClose }: ToastProps) => {
   return (
     <AnimatePresence>
       {show && (
@@ -58,4 +58,4 @@ export function Toast({ show, title, description, icon, variant = 'neutral', onC
       )}
     </AnimatePresence>
   );
-}
+};

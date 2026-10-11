@@ -12,7 +12,7 @@ import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 
 useMockServer();
 
-function ToastTitles() {
+const ToastTitles = () => {
   return (
     <ul aria-label="toasts">
       {useToasts().map((t) => (
@@ -20,7 +20,7 @@ function ToastTitles() {
       ))}
     </ul>
   );
-}
+};
 
 describe('dialogs', () => {
   it('WEB-DIALOG-001 a prompt suggests a name, submits the trimmed text with Enter, and closes', async () => {
@@ -178,7 +178,7 @@ const SPEEDS = [
   { value: 1.5, label: '1.5×' },
 ];
 
-function Controlled({ onChange, onOpen }: { onChange?: (v: number) => void; onOpen?: () => void }) {
+const Controlled = ({ onChange, onOpen }: { onChange?: (v: number) => void; onOpen?: () => void }) => {
   const [value, setValue] = useState(1);
   return (
     <Select
@@ -192,7 +192,7 @@ function Controlled({ onChange, onOpen }: { onChange?: (v: number) => void; onOp
       }}
     />
   );
-}
+};
 
 describe('select', () => {
   it('WEB-SELECT-001 shows the chosen option; the list marks it and picking another changes it', async () => {

@@ -11,17 +11,17 @@ export const server = setupServer();
  * Starts msw for this file. Any request without a handler fails the test, so nothing can
  * leak to a real server and a missing mock is reported instead of silently returning nothing.
  */
-export function useMockServer(...defaults: RequestHandler[]) {
+export const useMockServer = (...defaults: RequestHandler[]) => {
   beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
   afterEach(() => {
     server.resetHandlers(...defaults);
   });
   afterAll(() => server.close());
   if (defaults.length) server.resetHandlers(...defaults);
-}
+};
 
 /** Records every request that reaches msw, for asserting on what the app sent. */
-export function recordRequests() {
+export const recordRequests = () => {
   const seen: Request[] = [];
   const onStart = ({ request }: { request: Request }) => {
     seen.push(request.clone());
@@ -33,7 +33,7 @@ export function recordRequests() {
       seen.map((r) => `${r.method} ${new URL(r.url).pathname.replace('/api/v1', '')}${new URL(r.url).search}`),
     stop: () => server.events.removeListener('request:start', onStart),
   };
-}
+};
 
 export const apiError = (status: number, code: string, message = code) =>
   HttpResponse.json({ error: { code, message } }, { status });

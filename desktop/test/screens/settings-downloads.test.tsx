@@ -7,7 +7,7 @@ import { clearSession, setSession } from '../../src/api/auth';
 import { getSettings, updateSettings } from '../../src/storage/settings';
 import type { DownloadItem } from '../../src/storage/downloads';
 import { makePlayer, renderWithProviders } from '../helpers/render';
-import { API, http, HttpResponse, recordRequests, useMockServer, server } from '../helpers/server';
+import { API, apiError, http, HttpResponse, recordRequests, useMockServer, server } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
 import { answerConfirm, chooseOption, listGone, openOptions } from '../helpers/dialogs';
 import { getDevicePrefs, updateDevicePrefs } from '../../src/storage/devicePrefs';
@@ -61,10 +61,13 @@ vi.mock('../../src/storage/downloadTargets', () => ({
   resetLocation: h.loc.resetLocation,
 }));
 
-useMockServer();
+// Settings → About asks for the app builds on every open.
+const noReleases = http.get(`${API}/releases`, () => HttpResponse.json({ items: [] }));
+useMockServer(noReleases);
+const sent = (rec: ReturnType<typeof recordRequests>) => rec.paths().filter((p) => p !== 'GET /releases');
 
 const MB = 1_000_000;
-function item(over: Partial<DownloadItem>): DownloadItem {
+const item = (over: Partial<DownloadItem>): DownloadItem => {
   return {
     id: 'yt:x',
     title: 'Song',
@@ -82,7 +85,7 @@ function item(over: Partial<DownloadItem>): DownloadItem {
     addedAt: 1,
     ...over,
   };
-}
+};
 
 beforeEach(() => {
   h.state.items = [];
@@ -105,12 +108,12 @@ afterEach(() => {
  * Settings renders two layouts and CSS container queries show one: a stacked list on phones
  * and a section sidebar on wider screens. Tests look inside one of them.
  */
-function openSettings(route = '/settings') {
+const openSettings = (route = '/settings') => {
   const utils = renderWithProviders(<Settings />, { route });
   const root = utils.container.firstElementChild!;
   const [phone, wide] = [root.children[0] as HTMLElement, root.children[1] as HTMLElement];
   return { ...utils, w: within(wide), phone: within(phone) };
-}
+};
 
 describe('settings', () => {
   it('WEB-SETTINGS-001 a guest is offered to create an account or sign in', async () => {
@@ -130,7 +133,7 @@ describe('settings', () => {
     await user.click(w.getByRole('button', { name: 'Sign out' }));
     expect(await w.findByText('Listening as a guest')).toBeInTheDocument();
     rec.stop();
-    expect(rec.paths()).toEqual(['POST /auth/logout']);
+    expect(sent(rec)).toEqual(['POST /auth/logout']);
     expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Signed out' }));
   });
 
@@ -357,11 +360,86 @@ describe('email verification in settings', () => {
       expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Verification email sent' })),
     );
     rec.stop();
-    expect(rec.paths()).toEqual(['POST /auth/resend-verification']);
+    expect(sent(rec)).toEqual(['POST /auth/resend-verification']);
     unmount();
 
     setSession('acc', 'ref', { ...testUser, emailVerified: true });
     const verified = openSettings();
     expect(verified.w.queryByText('Email not verified')).not.toBeInTheDocument();
+  });
+});
+
+describe('about: app downloads', () => {
+  const build = (over: Record<string, unknown>) => ({
+    id: 'r1',
+    platform: 'android',
+    format: 'apk',
+    version: '1.0.0',
+    fileName: 'sonare.apk',
+    sizeBytes: 40 * MB,
+    sha256: 'x',
+    notes: null,
+    uploadedAt: '2026-10-01T10:00:00.000Z',
+    ...over,
+  });
+
+  it('WEB-SETTINGS-012 lists the uploaded builds, this device first, as download links', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (Windows NT 10.0; Win64; x64)');
+    server.use(
+      http.get(`${API}/releases`, () =>
+        HttpResponse.json({
+          items: [
+            build({}),
+            build({ id: 'r2', platform: 'windows', format: 'exe', version: '9.0.0', fileName: 'sonare.exe' }),
+            build({ id: 'r3', platform: 'linux', format: 'deb', fileName: 'sonare.deb', notes: 'Fixes playback' }),
+            build({ id: 'r4', platform: 'linux', format: 'appimage', fileName: 'sonare.AppImage' }),
+          ],
+        }),
+      ),
+    );
+    const { w } = openSettings('/settings?section=about');
+
+    const exe = await w.findByRole('link', { name: /Download Windows \.exe/ });
+    expect(exe).toHaveAttribute('href', `${API}/releases/r2/download`);
+    expect(w.getByText('This device')).toBeInTheDocument();
+    expect(w.getByText(/Version 9\.0\.0 · newer than this app/)).toBeInTheDocument();
+    expect(w.getByText(/Fixes playback/)).toBeInTheDocument();
+    expect(w.getByRole('link', { name: /Download Linux AppImage/ })).toHaveAttribute(
+      'href',
+      `${API}/releases/r4/download`,
+    );
+    expect(w.getByRole('link', { name: /Download Android APK, 40 MB/ })).toBeInTheDocument();
+    // Windows (this device) is listed before the others.
+    const links = w.getAllByRole('link', { name: /^Download / }).map((a) => a.getAttribute('aria-label'));
+    expect(links[0]).toMatch(/^Download Windows/);
+  });
+
+  it('WEB-SETTINGS-014 only a higher version than this app is called newer; a -dev build of it is not', async () => {
+    vi.spyOn(navigator, 'userAgent', 'get').mockReturnValue('Mozilla/5.0 (X11; Linux x86_64)');
+    server.use(
+      http.get(`${API}/releases`, () =>
+        HttpResponse.json({
+          items: [
+            build({ id: 'l1', platform: 'linux', format: 'deb', version: '1.0.0-dev', fileName: 's.deb' }),
+            build({ id: 'w1', platform: 'windows', format: 'exe', version: '1.10.0', fileName: 's.exe' }),
+          ],
+        }),
+      ),
+    );
+    const { w } = openSettings('/settings?section=about');
+    expect(await w.findByText('Version 1.0.0-dev')).toBeInTheDocument();
+    // Windows isn't this device, so it isn't compared at all.
+    expect(w.getByText('Version 1.10.0')).toBeInTheDocument();
+    expect(w.queryByText(/newer than this app/)).toBeNull();
+  });
+
+  it('WEB-SETTINGS-013 says when nothing is uploaded, and offers a retry when the list fails', async () => {
+    server.use(http.get(`${API}/releases`, () => apiError(500, 'INTERNAL_ERROR', 'Internal server error')));
+    const { w, user } = openSettings('/settings?section=about');
+    expect(await w.findByText("Couldn't load the downloads")).toBeInTheDocument();
+
+    server.use(noReleases);
+    await user.click(w.getByRole('button', { name: 'Retry' }));
+    expect(await w.findByText('No downloads yet')).toBeInTheDocument();
   });
 });

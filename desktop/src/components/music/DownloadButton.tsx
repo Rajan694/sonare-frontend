@@ -12,7 +12,7 @@ import { confirmDialog } from '../../store/dialogs';
  * Songs join the download queue (storage/downloads.ts); progress shows here and on the
  * Downloads screen. Hidden while offline - there is nothing to download from.
  */
-export default function DownloadButton({ tracks, offline }: { tracks: Track[]; offline: boolean }) {
+const DownloadButton = ({ tracks, offline }: { tracks: Track[]; offline: boolean }) => {
   const { byId } = useDownloads();
 
   if (!CAPS.downloads) return null;
@@ -24,7 +24,7 @@ export default function DownloadButton({ tracks, offline }: { tracks: Track[]; o
   const active = mine.filter((d) => d?.status === 'queued' || d?.status === 'downloading').length;
   const all = done === server.length;
 
-  async function downloadAll() {
+  const downloadAll = async () => {
     await downloads.enqueue(server);
     const left = server.length - done;
     showToast({
@@ -33,9 +33,9 @@ export default function DownloadButton({ tracks, offline }: { tracks: Track[]; o
       icon: 'download',
       variant: 'gold',
     });
-  }
+  };
 
-  async function removeAll() {
+  const removeAll = async () => {
     const ok = await confirmDialog({
       title: `Delete ${server.length} downloaded songs?`,
       description: 'Sonare removes the files from the folder they were saved to.',
@@ -53,7 +53,7 @@ export default function DownloadButton({ tracks, offline }: { tracks: Track[]; o
           }
         : { title: 'Downloads deleted', icon: 'trash' },
     );
-  }
+  };
 
   if (active > 0) {
     return (
@@ -77,4 +77,5 @@ export default function DownloadButton({ tracks, offline }: { tracks: Track[]; o
       {done > 0 ? `Download ${server.length - done} more` : 'Download'}
     </Button>
   );
-}
+};
+export default DownloadButton;

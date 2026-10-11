@@ -89,14 +89,14 @@ useMockServer();
 
 const MUSIC = '/home/me/Music';
 
-async function launch() {
+const launch = async () => {
   vi.resetModules();
   const player = await import('../../src/audio/player');
   const { localLibrary, getLocalSnapshot } = await import('../../src/storage/local');
   await localLibrary.addFolder(MUSIC);
   const byTitle = (t: string) => getLocalSnapshot().tracks.find((x) => x.title === t)!;
   return { player, localLibrary, getLocalSnapshot, byTitle };
-}
+};
 
 let elements: HTMLAudioElement[] = [];
 

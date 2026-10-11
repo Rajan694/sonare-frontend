@@ -6,9 +6,9 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { setQuery } from '../../store/searchSlice';
 import { cn } from '../../lib/cn';
 
-function isTyping(el: EventTarget | null) {
+const isTyping = (el: EventTarget | null) => {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-}
+};
 
 interface SearchFieldProps {
   shortcut?: string;
@@ -17,12 +17,12 @@ interface SearchFieldProps {
   className?: string;
 }
 
-export default function SearchField({
+const SearchField = ({
   shortcut = '/',
   enableSlashShortcut = true,
   enableCtrlKShortcut = true,
   className,
-}: SearchFieldProps) {
+}: SearchFieldProps) => {
   const searchRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -30,19 +30,19 @@ export default function SearchField({
   const query = useAppSelector((s) => s.search.query);
   const onSearchPage = location.pathname === '/search';
 
-  function handleSearchChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     dispatch(setQuery(v));
     if (v.trim() && !onSearchPage) navigate('/search');
-  }
+  };
 
-  function handleSearchKey(e: React.KeyboardEvent<HTMLInputElement>) {
+  const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !onSearchPage) navigate('/search');
     else if (e.key === 'Escape') e.currentTarget.blur();
-  }
+  };
 
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    const onKey = (e: KeyboardEvent) => {
       if (enableSlashShortcut && e.key === '/' && !isTyping(e.target) && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         searchRef.current?.focus();
@@ -52,7 +52,7 @@ export default function SearchField({
         searchRef.current?.focus();
         searchRef.current?.select();
       }
-    }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [enableSlashShortcut, enableCtrlKShortcut]);
@@ -85,4 +85,5 @@ export default function SearchField({
       )}
     </Field>
   );
-}
+};
+export default SearchField;

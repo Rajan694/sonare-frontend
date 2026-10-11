@@ -6,12 +6,12 @@ import { testUser } from '../helpers/fixtures';
 useMockServer();
 
 /** settings.ts holds module state (current values, pending save); start each test fresh. */
-async function fresh() {
+const fresh = async () => {
   vi.resetModules();
   const auth = await import('../../src/api/auth');
   const settings = await import('../../src/storage/settings');
   return { ...auth, ...settings };
-}
+};
 
 afterEach(() => vi.useRealTimers());
 

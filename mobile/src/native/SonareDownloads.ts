@@ -64,13 +64,13 @@ if (!native) {
 }
 const emitter = native ? new NativeEventEmitter(NativeModules.SonareDownloads) : null;
 
-function on<T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } {
+const on = <T>(event: string, handler: (payload: T) => void): EmitterSubscription | { remove: () => void } => {
   return (
     emitter?.addListener(`SonareDownloads.${event}`, (...args) => handler(args[0] as T)) ?? {
       remove: () => {},
     }
   );
-}
+};
 
 const missing = () =>
   Promise.reject(new Error('Downloads need the Android app rebuilt with the SonareDownloads module'));

@@ -8,7 +8,7 @@ interface EmptyStateProps {
   action?: React.ReactNode;
 }
 
-export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+export const EmptyState = ({ icon, title, description, action }: EmptyStateProps) => {
   return (
     <div className="empty">
       <span className="empty-ic">
@@ -19,4 +19,4 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
       {action && <div className="mt-2">{action}</div>}
     </div>
   );
-}
+};

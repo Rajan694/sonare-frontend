@@ -6,7 +6,7 @@ import { useDownloadsStore, type DownloadItem } from '../store/downloads';
  * unfinished ones with their partial data. A file that moved (or can't be deleted) is only
  * taken off the list, and the user is told so.
  */
-export function confirmRemoveDownloads(items: DownloadItem[]) {
+export const confirmRemoveDownloads = (items: DownloadItem[]) => {
   const done = items.some((d) => d.status === 'done');
   const what = items.length === 1 ? `"${items[0].title}"` : `${items.length} downloads`;
   Alert.alert(`Delete ${what}?`, done ? 'The file is deleted from the folder it was saved to.' : undefined, [
@@ -35,4 +35,4 @@ export function confirmRemoveDownloads(items: DownloadItem[]) {
       },
     },
   ]);
-}
+};

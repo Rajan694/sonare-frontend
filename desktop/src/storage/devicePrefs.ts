@@ -30,7 +30,7 @@ export interface DevicePrefs {
 const KEY = 'sonare_device_prefs';
 const DEFAULTS: DevicePrefs = { lyricsScript: 'original', audioOutputId: '' };
 
-function read(): DevicePrefs {
+const read = (): DevicePrefs => {
   try {
     const raw = localStorage.getItem(KEY);
     const saved = raw ? (JSON.parse(raw) as Partial<DevicePrefs>) : {};
@@ -41,16 +41,16 @@ function read(): DevicePrefs {
   } catch {
     return DEFAULTS;
   }
-}
+};
 
 let prefs = read();
 const listeners = new Set<() => void>();
 
-export function getDevicePrefs(): DevicePrefs {
+export const getDevicePrefs = (): DevicePrefs => {
   return prefs;
-}
+};
 
-export function updateDevicePrefs(patch: Partial<DevicePrefs>): void {
+export const updateDevicePrefs = (patch: Partial<DevicePrefs>): void => {
   prefs = { ...prefs, ...patch };
   try {
     localStorage.setItem(KEY, JSON.stringify(prefs));
@@ -58,9 +58,9 @@ export function updateDevicePrefs(patch: Partial<DevicePrefs>): void {
     // Applies for this session only.
   }
   for (const l of listeners) l();
-}
+};
 
-export function useDevicePrefs(): DevicePrefs {
+export const useDevicePrefs = (): DevicePrefs => {
   return useSyncExternalStore(
     (fn) => {
       listeners.add(fn);
@@ -68,4 +68,4 @@ export function useDevicePrefs(): DevicePrefs {
     },
     () => prefs,
   );
-}
+};

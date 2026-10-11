@@ -35,32 +35,32 @@ let retryDelay = RETRY_FIRST_MS;
 let status: SyncStatus = { pending: 0, syncing: false };
 const listeners = new Set<() => void>();
 
-function setStatus(patch: Partial<SyncStatus>) {
+const setStatus = (patch: Partial<SyncStatus>) => {
   const user = getCurrentUser();
   const next = { ...status, pending: user ? pendingPlaysFor(user.id).length : 0, ...patch };
   if (next.pending === status.pending && next.syncing === status.syncing) return;
   status = next;
   listeners.forEach((fn) => fn());
-}
+};
 
-function networkDown(): boolean {
+const networkDown = (): boolean => {
   return typeof navigator !== 'undefined' && navigator.onLine === false;
-}
+};
 
-function scheduleRetry() {
+const scheduleRetry = () => {
   window.clearTimeout(retryTimer);
   // No network: the `online` event wakes us instead of a timer.
   if (networkDown()) return;
   retryTimer = window.setTimeout(() => requestSync(), retryDelay);
   retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
-}
+};
 
 /** A 4xx other than auth/rate-limit means the server will never take these plays. */
-function rejected(e: unknown): boolean {
+const rejected = (e: unknown): boolean => {
   return e instanceof ApiError && e.status >= 400 && e.status < 500 && ![401, 403, 408, 429].includes(e.status);
-}
+};
 
-async function flush(): Promise<void> {
+const flush = async (): Promise<void> => {
   const user = getCurrentUser();
   if (!onlineMode || !user || networkDown()) return setStatus({});
   const plays = pendingPlaysFor(user.id);
@@ -82,10 +82,10 @@ async function flush(): Promise<void> {
   } finally {
     setStatus({ syncing: false });
   }
-}
+};
 
 /** Upload whatever is waiting, if we can. Safe to call often: runs are serialised. */
-export function requestSync(): void {
+export const requestSync = (): void => {
   if (inFlight) {
     // Plays recorded mid-upload go in one follow-up run.
     rerun = true;
@@ -98,21 +98,21 @@ export function requestSync(): void {
       requestSync();
     }
   });
-}
+};
 
 /** App.tsx reports the effective mode; switching to Online pushes what Offline held. */
-export function setSyncOnline(online: boolean): void {
+export const setSyncOnline = (online: boolean): void => {
   if (online === onlineMode) return;
   onlineMode = online;
   if (!online) return window.clearTimeout(retryTimer);
   refreshAfter = true;
   retryDelay = RETRY_FIRST_MS;
   requestSync();
-}
+};
 
 let started = false;
 /** Wire the triggers once, at launch. */
-export function startBackgroundSync(): void {
+export const startBackgroundSync = (): void => {
   if (started) return;
   started = true;
   window.addEventListener('online', () => {
@@ -126,9 +126,9 @@ export function startBackgroundSync(): void {
     else setStatus({});
   });
   requestSync();
-}
+};
 
-export function useSyncStatus(): SyncStatus {
+export const useSyncStatus = (): SyncStatus => {
   return useSyncExternalStore(
     (fn) => {
       listeners.add(fn);
@@ -136,4 +136,4 @@ export function useSyncStatus(): SyncStatus {
     },
     () => status,
   );
-}
+};

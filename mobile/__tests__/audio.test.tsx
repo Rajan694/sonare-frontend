@@ -34,10 +34,10 @@ beforeEach(() => {
   native.setTransitions.mockClear();
 });
 
-async function playFrom(track: typeof a, queue: (typeof a)[]) {
+const playFrom = async (track: typeof a, queue: (typeof a)[]) => {
   act(() => usePlayerStore.getState().playTrack(track, queue));
   await waitFor(() => expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ id: track.id })));
-}
+};
 
 describe('AudioEngine and the native player', () => {
   it('MOB-AUD-001 sends the Audio screen settings to the native player whenever they change', () => {

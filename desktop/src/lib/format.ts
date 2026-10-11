@@ -1,18 +1,18 @@
-export function formatDuration(ms: number | null | undefined): string {
+export const formatDuration = (ms: number | null | undefined): string => {
   if (ms === undefined || ms === null || isNaN(ms) || ms < 0) return '0:00';
   const totalSecs = Math.floor(ms / 1000);
   const mins = Math.floor(totalSecs / 60);
   const secs = totalSecs % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
+};
 
-export function formatBytes(bytes: number): string {
+export const formatBytes = (bytes: number): string => {
   if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
   if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(0)} MB`;
   return `${(bytes / 1e3).toFixed(0)} KB`;
-}
+};
 
-export function generatePeaks(count: number, seed = 0): number[] {
+export const generatePeaks = (count: number, seed = 0): number[] => {
   const peaks: number[] = [];
   let prev = 12;
   for (let i = 0; i < count; i++) {
@@ -26,4 +26,4 @@ export function generatePeaks(count: number, seed = 0): number[] {
     peaks.push(smoothed);
   }
   return peaks;
-}
+};

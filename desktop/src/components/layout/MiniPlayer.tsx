@@ -12,7 +12,7 @@ import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
 import { playsFrom, useLocalLibrary } from '../../storage/local';
 
-export default function MiniPlayer() {
+const MiniPlayer = () => {
   const navigate = useNavigate();
   const { mode } = useModeStore();
   const { currentTrack, isPlaying, isLoading, durationMs, togglePlay, next } = usePlayerStore();
@@ -81,4 +81,5 @@ export default function MiniPlayer() {
       </div>
     </div>
   );
-}
+};
+export default MiniPlayer;

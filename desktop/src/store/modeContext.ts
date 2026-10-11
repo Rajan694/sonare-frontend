@@ -11,6 +11,6 @@ export const ModeContext = createContext<ModeStore>({
   setMode: () => void 0,
 });
 
-export function useModeStore() {
+export const useModeStore = () => {
   return useContext(ModeContext);
-}
+};

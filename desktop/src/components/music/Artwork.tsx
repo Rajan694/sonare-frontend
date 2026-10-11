@@ -24,16 +24,16 @@ const radiusClass = {
 };
 
 /** Artwork for a track: its own thumbnail, else the server's — local files have none. */
-export function trackArtwork(
+export const trackArtwork = (
   track: { id: string; source: string; thumbnail?: string },
   size?: 64 | 140 | 300 | 640,
-): string | undefined {
+): string | undefined => {
   if (track.thumbnail) return track.thumbnail;
   if (track.source === 'local') return undefined;
   return `/api/v1/tracks/${track.id}/artwork${size ? `?size=${size}` : ''}`;
-}
+};
 
-export function resolveArtworkUrl(url?: string | null, targetSize?: number): string | undefined {
+export const resolveArtworkUrl = (url?: string | null, targetSize?: number): string | undefined => {
   if (!url) return undefined;
   let resolved = url;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
@@ -50,17 +50,9 @@ export function resolveArtworkUrl(url?: string | null, targetSize?: number): str
   }
 
   return resolved;
-}
+};
 
-export default function Artwork({
-  src,
-  alt = '',
-  variant = 'a1',
-  size,
-  radius = 'md',
-  rings = false,
-  className,
-}: ArtworkProps) {
+const Artwork = ({ src, alt = '', variant = 'a1', size, radius = 'md', rings = false, className }: ArtworkProps) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
@@ -93,4 +85,5 @@ export default function Artwork({
       )}
     </span>
   );
-}
+};
+export default Artwork;

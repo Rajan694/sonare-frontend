@@ -30,26 +30,26 @@ type Filter = string;
 const SEARCH_TYPES = ['all', 'songs', 'albums', 'artists', 'playlists'] as const;
 type SearchType = (typeof SEARCH_TYPES)[number];
 
-function toSearchType(filter: Filter): SearchType {
+const toSearchType = (filter: Filter): SearchType => {
   return SEARCH_TYPES.find((t) => t === filter) ?? 'all';
-}
+};
 
-function chunk<T>(list: T[], size: number): T[][] {
+const chunk = <T,>(list: T[], size: number): T[][] => {
   const rows: T[][] = [];
   for (let i = 0; i < list.length; i += size) rows.push(list.slice(i, i + size));
   return rows;
-}
+};
 
-function useDebounced<T>(value: T, ms: number): T {
+const useDebounced = <T,>(value: T, ms: number): T => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
     const t = setTimeout(() => setDebounced(value), ms);
     return () => clearTimeout(t);
   }, [value, ms]);
   return debounced;
-}
+};
 
-export function SearchScreen() {
+export const SearchScreen = () => {
   const navigation = useNavigation<any>();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
@@ -349,4 +349,4 @@ export function SearchScreen() {
       </View>
     </Screen>
   );
-}
+};

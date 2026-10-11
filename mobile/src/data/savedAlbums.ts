@@ -9,7 +9,7 @@ import { useAsync } from './hooks';
  * is in the signed-in user's library, and a toggle that saves or removes it. Guests are
  * sent to sign in first.
  */
-export function useSavedAlbum(id: string, reason: string) {
+export const useSavedAlbum = (id: string, reason: string) => {
   // Saved albums are per account: read them for whoever is signed in.
   const userId = useAuthStore((state) => state.user?.id);
   const saved = useAsync(async () => api.libraryAlbums(), [userId], { enabled: !!userId });
@@ -29,4 +29,4 @@ export function useSavedAlbum(id: string, reason: string) {
     });
 
   return { isSaved, toggle };
-}
+};

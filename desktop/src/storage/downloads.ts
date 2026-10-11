@@ -96,7 +96,7 @@ let finishedInBatch = 0;
 let loadPromise: Promise<void> | null = null;
 let persistTimer: ReturnType<typeof setTimeout> | undefined;
 
-function emit() {
+const emit = () => {
   const sorted = [...items].sort((a, b) => b.addedAt - a.addedAt);
   snapshot = {
     ready: true,
@@ -105,26 +105,26 @@ function emit() {
     activeCount: sorted.filter((i) => i.status === 'queued' || i.status === 'downloading').length,
   };
   for (const l of listeners) l();
-}
+};
 
-async function writeStore(json: string) {
+const writeStore = async (json: string) => {
   if (CAPS.offlineDownloads) await storage.setData(STORAGE_KEY, json);
   else localStorage.setItem(STORAGE_KEY, json);
-}
+};
 
-async function readStore(): Promise<string | null> {
+const readStore = async (): Promise<string | null> => {
   if (CAPS.offlineDownloads) return storage.getData(STORAGE_KEY);
   return localStorage.getItem(STORAGE_KEY);
-}
+};
 
-function persistSoon(immediate = false) {
+const persistSoon = (immediate = false) => {
   clearTimeout(persistTimer);
   const save = () => void writeStore(JSON.stringify(items)).catch(() => {});
   if (immediate) save();
   else persistTimer = setTimeout(save, 1500);
-}
+};
 
-function patch(id: string, change: Partial<DownloadItem>, persistNow = true) {
+const patch = (id: string, change: Partial<DownloadItem>, persistNow = true) => {
   let found = false;
   items = items.map((i) => {
     if (i.id !== id) return i;
@@ -134,13 +134,13 @@ function patch(id: string, change: Partial<DownloadItem>, persistNow = true) {
   if (!found) return;
   emit();
   persistSoon(persistNow);
-}
+};
 
-function get(id: string): DownloadItem | undefined {
+const get = (id: string): DownloadItem | undefined => {
   return items.find((i) => i.id === id);
-}
+};
 
-function load(): Promise<void> {
+const load = (): Promise<void> => {
   loadPromise ??= (async () => {
     await loadLocation();
     try {
@@ -165,10 +165,10 @@ function load(): Promise<void> {
     pump();
   })();
   return loadPromise;
-}
+};
 
 /** Downloads made before this list existed are only in the local library index. */
-async function importLegacyDownloads() {
+const importLegacyDownloads = async () => {
   const known = new Set(items.map((i) => i.id));
   const legacy = (await localLibrary.downloadedEntries()).filter((e) => !known.has(e.serverId));
   if (legacy.length === 0) return;
@@ -199,9 +199,9 @@ async function importLegacyDownloads() {
     })),
   ];
   persistSoon(true);
-}
+};
 
-function pump() {
+const pump = () => {
   for (const item of [...items].sort((a, b) => a.addedAt - b.addedAt)) {
     if (running.size >= MAX_PARALLEL) break;
     if (item.status === 'queued' && !running.has(item.id)) start(item.id);
@@ -216,22 +216,22 @@ function pump() {
       variant: 'gold',
     });
   }
-}
+};
 
-function start(id: string) {
+const start = (id: string) => {
   const abort = new AbortController();
   const done = run(id, abort.signal).finally(() => {
     running.delete(id);
     pump();
   });
   running.set(id, { abort, done });
-}
+};
 
-function absolute(url: string): string {
+const absolute = (url: string): string => {
   return /^https?:\/\//.test(url) ? url : new URL(API_BASE).origin + url;
-}
+};
 
-function safeName(s: string): string {
+const safeName = (s: string): string => {
   return (
     s
       // Control characters are not allowed in file names.
@@ -241,18 +241,18 @@ function safeName(s: string): string {
       .trim()
       .slice(0, 120) || 'track'
   );
-}
+};
 
 /** The server says 0 (or -1, from NewPipe) when YouTube didn't give a size: unknown. */
-function knownSize(n: number | undefined): number {
+const knownSize = (n: number | undefined): number => {
   return n && n > 0 ? n : 0;
-}
+};
 
-function extensionFor(mimeType: string): string {
+const extensionFor = (mimeType: string): string => {
   return /mp4|m4a|aac/i.test(mimeType) ? 'm4a' : 'webm';
-}
+};
 
-function sleep(ms: number, signal: AbortSignal) {
+const sleep = (ms: number, signal: AbortSignal) => {
   return new Promise<void>((resolve) => {
     const t = setTimeout(resolve, ms);
     signal.addEventListener('abort', () => {
@@ -260,7 +260,7 @@ function sleep(ms: number, signal: AbortSignal) {
       resolve();
     });
   });
-}
+};
 
 class HttpStatusError extends Error {
   constructor(public status: number) {
@@ -268,16 +268,16 @@ class HttpStatusError extends Error {
   }
 }
 
-async function resolveStream(item: DownloadItem) {
+const resolveStream = async (item: DownloadItem) => {
   const stream = await api.getTrackStream(item.id, API_QUALITY[item.quality], item.format);
   if (stream.muxed) {
     // The only thing on offer is a video file ~13x the size; not worth saving as "audio".
     throw new Error('Only a video stream is available for this song right now. Try again later.');
   }
   return stream;
-}
+};
 
-async function run(id: string, signal: AbortSignal): Promise<void> {
+const run = async (id: string, signal: AbortSignal): Promise<void> => {
   const initial = get(id);
   if (!initial) return;
   patch(id, { status: 'downloading', error: undefined });
@@ -446,16 +446,16 @@ async function run(id: string, signal: AbortSignal): Promise<void> {
     patch(id, { status: 'failed', error: message });
     showToast({ title: 'Download failed', description: `${get(id)?.title ?? ''}: ${message}`, icon: 'info' });
   }
-}
+};
 
-async function stop(id: string) {
+const stop = async (id: string) => {
   const r = running.get(id);
   if (!r) return;
   r.abort.abort();
   await r.done;
-}
+};
 
-function newItem(track: Track): DownloadItem {
+const newItem = (track: Track): DownloadItem => {
   const { downloadQuality, downloadFormat } = getSettings();
   const location = getLocation();
   return {
@@ -476,7 +476,7 @@ function newItem(track: Track): DownloadItem {
     receivedBytes: 0,
     addedAt: Date.now(),
   };
-}
+};
 
 export interface RemoveResult {
   /** False when the file wasn't at its download location any more (or can't be reached). */
@@ -629,28 +629,28 @@ export const downloads = {
   },
 };
 
-function subscribe(fn: () => void) {
+const subscribe = (fn: () => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
-}
+};
 
-export function getDownloadsSnapshot(): DownloadsSnapshot {
+export const getDownloadsSnapshot = (): DownloadsSnapshot => {
   return snapshot;
-}
+};
 
-export function useDownloads(): DownloadsSnapshot {
+export const useDownloads = (): DownloadsSnapshot => {
   useEffect(() => {
     void load();
   }, []);
   return useSyncExternalStore(subscribe, getDownloadsSnapshot);
-}
+};
 
 /** One track's download, if it has one. Re-renders only when that item changes. */
-export function useDownload(trackId: string): DownloadItem | undefined {
+export const useDownload = (trackId: string): DownloadItem | undefined => {
   return useSyncExternalStore(subscribe, () => snapshot.byId.get(trackId));
-}
+};
 
 /** 0..1, or null when the size isn't known yet. */
-export function downloadProgress(item: DownloadItem): number | null {
+export const downloadProgress = (item: DownloadItem): number | null => {
   return item.totalBytes > 0 ? Math.min(1, item.receivedBytes / item.totalBytes) : null;
-}
+};

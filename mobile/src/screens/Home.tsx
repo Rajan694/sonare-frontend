@@ -26,19 +26,19 @@ import Icon from '../components/ui/Icon';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function greeting(now = new Date()) {
+const greeting = (now = new Date()) => {
   const h = now.getHours();
   const part = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
   return `${DAYS[now.getDay()]} ${part}`;
-}
+};
 
 /** Recently played can include another device's local files; only server tracks play here. */
-function playable(tracks: Track[] | undefined): Track[] {
+const playable = (tracks: Track[] | undefined): Track[] => {
   const seen = new Set<string>();
   return (tracks ?? []).filter((t) => t.source === 'server' && !seen.has(t.id) && seen.add(t.id));
-}
+};
 
-export function HomeScreen() {
+export const HomeScreen = () => {
   const navigation = useNavigation<any>();
   const mode = useModeStore((state) => state.mode);
   const setMode = useModeStore((state) => state.setMode);
@@ -406,4 +406,4 @@ export function HomeScreen() {
       </ScrollView>
     </Screen>
   );
-}
+};

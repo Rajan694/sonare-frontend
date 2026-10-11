@@ -12,7 +12,7 @@ interface EqualizerBarsProps {
 const BASE_HEIGHT = 4;
 const MAX_HEIGHT = 16;
 
-function EqBar({ isPlaying, index, color = '#00E28A' }: { isPlaying: boolean; index: number; color?: string }) {
+const EqBar = ({ isPlaying, index, color = '#00E28A' }: { isPlaying: boolean; index: number; color?: string }) => {
   const height = useSharedValue(BASE_HEIGHT);
 
   useEffect(() => {
@@ -42,9 +42,9 @@ function EqBar({ isPlaying, index, color = '#00E28A' }: { isPlaying: boolean; in
   const Component = Animated.View as any;
 
   return <Component style={[animatedStyle, { backgroundColor: color, width: 3, borderRadius: 999 }]} />;
-}
+};
 
-export function EqualizerBars({ isPlaying, color, className }: EqualizerBarsProps) {
+export const EqualizerBars = ({ isPlaying, color, className }: EqualizerBarsProps) => {
   return (
     <View className={cn('flex-row items-end justify-center gap-1 h-[16px] w-[20px]', className)}>
       {[0, 1, 2].map((i) => (
@@ -52,4 +52,4 @@ export function EqualizerBars({ isPlaying, color, className }: EqualizerBarsProp
       ))}
     </View>
   );
-}
+};

@@ -22,7 +22,7 @@ import Artwork from '../components/music/Artwork';
 import { cn } from '../lib/cn';
 import type { Track } from '../types';
 
-export default function Home() {
+const Home = () => {
   const { mode, setMode } = useModeStore();
   const isOnline = mode === 'online';
   const { currentTrack, playTrack, isPlaying, togglePlay } = usePlayerStore();
@@ -327,19 +327,20 @@ export default function Home() {
       </motion.div>
     </motion.div>
   );
-}
+};
+export default Home;
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /** "Thursday evening", the line above the M01 greeting. */
-function dayPart(now = new Date()) {
+const dayPart = (now = new Date()) => {
   const h = now.getHours();
   const part = h < 5 ? 'night' : h < 12 ? 'morning' : h < 17 ? 'afternoon' : h < 21 ? 'evening' : 'night';
   return `${DAYS[now.getDay()]} ${part}`;
-}
+};
 
 /** Design M01 (online) / M02 (offline) at phone width. */
-function PhoneHome({
+const PhoneHome = ({
   isOnline,
   userName,
   trending,
@@ -361,7 +362,7 @@ function PhoneHome({
   localCount: number;
   onPlay: (track: Track, queue: Track[]) => void;
   retry: React.ReactNode;
-}) {
+}) => {
   const { currentTrack, isPlaying, togglePlay, durationMs } = usePlayerStore();
   const position = usePlaybackPosition();
   const resume = currentTrack ?? recent[0] ?? null;
@@ -502,4 +503,4 @@ function PhoneHome({
       </motion.div>
     </motion.div>
   );
-}
+};

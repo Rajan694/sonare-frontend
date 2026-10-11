@@ -660,7 +660,7 @@ interface IconProps {
   style?: any;
 }
 
-export default function Icon({ name, size = 16, color = '#9A9AA8', strokeWidth = 1.6, style }: IconProps) {
+const Icon = ({ name, size = 16, color = '#9A9AA8', strokeWidth = 1.6, style }: IconProps) => {
   if (name in GLYPHS) {
     const glyph = GLYPHS[name as keyof typeof GLYPHS];
     return (
@@ -683,4 +683,5 @@ export default function Icon({ name, size = 16, color = '#9A9AA8', strokeWidth =
   const Component = LUCIDE[name as keyof typeof LUCIDE];
   if (!Component) return null;
   return <Component testID={`icon-${name}`} size={size} color={color} strokeWidth={strokeWidth} style={style} />;
-}
+};
+export default Icon;

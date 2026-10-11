@@ -10,7 +10,7 @@ interface BadgeProps {
   className?: string;
 }
 
-export function Badge({ label, icon, variant, className }: BadgeProps) {
+export const Badge = ({ label, icon, variant, className }: BadgeProps) => {
   return (
     <View
       className={cn(
@@ -36,4 +36,4 @@ export function Badge({ label, icon, variant, className }: BadgeProps) {
       </Text>
     </View>
   );
-}
+};

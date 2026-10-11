@@ -73,12 +73,12 @@ class FakeContext {
   }
 }
 
-async function fresh() {
+const fresh = async () => {
   vi.resetModules();
   const settings = await import('../../src/storage/settings');
   const dsp = await import('../../src/audio/dsp');
   return { ...settings, ...dsp };
-}
+};
 
 afterEach(() => {
   vi.unstubAllGlobals();

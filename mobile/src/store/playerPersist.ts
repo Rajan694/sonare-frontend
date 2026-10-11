@@ -30,7 +30,7 @@ interface Saved {
 const isTrack = (t: unknown): t is Track =>
   !!t && typeof t === 'object' && typeof (t as Track).id === 'string' && typeof (t as Track).title === 'string';
 
-function toRestored(saved: Partial<Saved>): RestoredPlayer | null {
+const toRestored = (saved: Partial<Saved>): RestoredPlayer | null => {
   const queue = Array.isArray(saved.queue) ? saved.queue.filter(isTrack) : [];
   const currentTrack = queue.find((t) => t.id === saved.currentId);
   if (!currentTrack) return null;
@@ -45,9 +45,9 @@ function toRestored(saved: Partial<Saved>): RestoredPlayer | null {
         ? saved.playingFrom
         : null,
   };
-}
+};
 
-function snapshot(): Saved | null {
+const snapshot = (): Saved | null => {
   const s = usePlayerStore.getState();
   if (!s.currentTrack) return null;
   // Keep the window around the current track when the queue is very long.
@@ -65,13 +65,13 @@ function snapshot(): Saved | null {
     repeat: s.repeat,
     playingFrom: s.playingFrom,
   };
-}
+};
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let serverTimer: ReturnType<typeof setTimeout> | undefined;
 let lastPositionSave = 0;
 
-function saveSoon() {
+const saveSoon = () => {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(() => {
     const saved = snapshot();
@@ -80,9 +80,9 @@ function saveSoon() {
     else AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
     saveToAccountSoon();
   }, SAVE_DELAY_MS);
-}
+};
 
-function saveToAccountSoon() {
+const saveToAccountSoon = () => {
   if (useAuthStore.getState().status !== 'signedIn') return;
   clearTimeout(serverTimer);
   serverTimer = setTimeout(() => {
@@ -102,9 +102,9 @@ function saveToAccountSoon() {
       })
       .catch(() => {});
   }, SERVER_DELAY_MS);
-}
+};
 
-async function restoreFromPhone(): Promise<boolean> {
+const restoreFromPhone = async (): Promise<boolean> => {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     const restored = raw ? toRestored(JSON.parse(raw)) : null;
@@ -114,9 +114,9 @@ async function restoreFromPhone(): Promise<boolean> {
   } catch {
     return false;
   }
-}
+};
 
-async function restoreFromAccount() {
+const restoreFromAccount = async () => {
   if (usePlayerStore.getState().currentTrack) return;
   try {
     const state = await api.playerState();
@@ -139,12 +139,12 @@ async function restoreFromAccount() {
   } catch {
     // Offline or nothing saved.
   }
-}
+};
 
 let wired = false;
 
 /** Called once by the audio engine. */
-export function watchPlayerPersistence(): void {
+export const watchPlayerPersistence = (): void => {
   if (wired) return;
   wired = true;
 
@@ -173,4 +173,4 @@ export function watchPlayerPersistence(): void {
     const positionDue = state.positionMs !== prev.positionMs && Date.now() - lastPositionSave >= POSITION_EVERY_MS;
     if (changed || positionDue) saveSoon();
   });
-}
+};

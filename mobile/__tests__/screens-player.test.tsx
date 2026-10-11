@@ -38,7 +38,7 @@ const next1 = makeTrack({ title: 'Next one' });
 const next2 = makeTrack({ title: 'Next two', source: 'local' });
 
 /** Press a button in the last Alert.alert call. */
-async function pressAlertButton(text: string) {
+const pressAlertButton = async (text: string) => {
   const calls = (Alert.alert as jest.Mock).mock.calls;
   const buttons = calls[calls.length - 1][2] as {
     text: string;
@@ -47,7 +47,7 @@ async function pressAlertButton(text: string) {
   await act(async () => {
     await buttons.find((b) => b.text === text)!.onPress?.();
   });
-}
+};
 
 // Settings tests swap in a mock `update`; every test starts from the real store.
 const initialSettings = useSettingsStore.getState();
@@ -175,7 +175,7 @@ describe('Queue', () => {
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id]);
   });
 
-  it('MOB-Q-005 a queued song moves with its handle (screen readers: increment / decrement)', () => {
+  it('MOB-Q-007 a queued song moves with its handle (screen readers: increment / decrement)', () => {
     const { getByLabelText } = render(<QueueScreen />);
     fireEvent(getByLabelText('Reorder Next one'), 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([song.id, next2.id, next1.id]);

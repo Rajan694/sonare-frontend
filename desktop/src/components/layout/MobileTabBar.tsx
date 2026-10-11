@@ -10,16 +10,16 @@ const MOBILE_TABS = [
   { to: '/search', icon: 'search' as const, label: 'Search' },
 ] as const;
 
-export default function MobileTabBar() {
+const MobileTabBar = () => {
   const location = useLocation();
 
-  function isActive(to: string) {
+  const isActive = (to: string) => {
     if (to === '/home') return location.pathname === '/home';
     if (to === '/library') return location.pathname.startsWith('/library');
     if (to === '/playlists') return location.pathname.startsWith('/playlist');
     if (to === '/search') return location.pathname.startsWith('/search');
     return false;
-  }
+  };
 
   return (
     <nav className="flex items-stretch h-16 bg-[#060607]/95 border-t border-ln flex-none pb-[env(safe-area-inset-bottom)] z-20">
@@ -43,4 +43,5 @@ export default function MobileTabBar() {
       })}
     </nav>
   );
-}
+};
+export default MobileTabBar;

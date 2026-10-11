@@ -16,7 +16,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer } from '../lib/motion';
 import { formatDuration } from '../lib/format';
 
-export default function Album() {
+const Album = () => {
   const { id } = useParams();
   const { mode } = useModeStore();
   const { currentTrack, playTrack } = usePlayerStore();
@@ -202,4 +202,5 @@ export default function Album() {
       </div>
     </div>
   );
-}
+};
+export default Album;

@@ -15,7 +15,7 @@ const GOLD = '#FFC24D';
  * gold check (tap deletes, after asking). Paused or failed shows a gold Download that
  * resumes. Nothing for local files, or offline when the song isn't on the phone.
  */
-export function TrackDownloadButton({ track }: { track: Track }) {
+export const TrackDownloadButton = ({ track }: { track: Track }) => {
   const item = useDownloadsStore((s) => s.items[track.id]);
   const online = useModeStore((s) => s.mode) === 'online';
   if (track.source !== 'server') return null;
@@ -90,4 +90,4 @@ export function TrackDownloadButton({ track }: { track: Track }) {
       accessibilityLabel="Download"
     />
   );
-}
+};

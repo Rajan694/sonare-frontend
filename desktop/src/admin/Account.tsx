@@ -7,13 +7,7 @@ import { PageHeader } from './components/PageHeader';
 import { Panel } from './components/Panel';
 import { TextInput } from './components/TextInput';
 
-export default function Account({
-  account,
-  onChange,
-}: {
-  account: AdminAccount | null;
-  onChange: (a: AdminAccount) => void;
-}) {
+const Account = ({ account, onChange }: { account: AdminAccount | null; onChange: (a: AdminAccount) => void }) => {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -24,7 +18,7 @@ export default function Account({
   const mismatch = confirm !== '' && confirm !== next;
   const tooShort = next !== '' && next.length < 8;
 
-  async function submit(e: React.FormEvent) {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mismatch || tooShort || !current || !next) return;
     setSaving(true);
@@ -41,16 +35,16 @@ export default function Account({
     } finally {
       setSaving(false);
     }
-  }
+  };
 
   return (
     <>
-      <PageHeader title="Account" subtitle="The admin sign-in. It is separate from app accounts." />
+      <PageHeader title="Account" subtitle="The admin sign-in. It can't be used to sign in to the apps." />
       <div className="flex flex-col gap-4 max-w-[576px]">
         <Panel>
           <dl className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 text-body-m">
-            <dt className="text-t3">Username</dt>
-            <dd className="text-t1">{account?.username ?? '…'}</dd>
+            <dt className="text-t3">Email</dt>
+            <dd className="text-t1">{account?.email ?? '…'}</dd>
             <dt className="text-t3">Signed in</dt>
             <dd className="text-t1">{fmtDateTime(account?.lastLoginAt ?? null)}</dd>
             <dt className="text-t3">Password changed</dt>
@@ -65,14 +59,7 @@ export default function Account({
         <Panel title="Change password" subtitle="Every other admin session is signed out; this one stays signed in.">
           <form onSubmit={submit} className="flex flex-col gap-4">
             {/* Lets password managers file the new password under the right account. */}
-            <input
-              type="text"
-              name="username"
-              autoComplete="username"
-              value={account?.username ?? ''}
-              readOnly
-              hidden
-            />
+            <input type="text" name="username" autoComplete="username" value={account?.email ?? ''} readOnly hidden />
             <TextInput
               label="Current password"
               type="password"
@@ -119,4 +106,5 @@ export default function Account({
       </div>
     </>
   );
-}
+};
+export default Account;

@@ -8,7 +8,7 @@ import { useModeStore } from './src/store/mode';
 import { startBackgroundSync } from './src/data/sync';
 import './global.css';
 
-export default function App() {
+const App = () => {
   useEffect(() => {
     startBackgroundSync();
   }, []);
@@ -38,4 +38,5 @@ export default function App() {
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
-}
+};
+export default App;

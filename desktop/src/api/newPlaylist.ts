@@ -5,9 +5,9 @@ import { showToast } from '../store/toasts';
 import type { Playlist, Track } from '../types';
 
 /** Asks for a name in the app's own dialog and creates a synced playlist; null when cancelled or failed. */
-export async function createPlaylistWithPrompt(
+export const createPlaylistWithPrompt = async (
   options: { title?: string; initialValue?: string; confirmLabel?: string } = {},
-): Promise<Playlist | null> {
+): Promise<Playlist | null> => {
   const name = await promptDialog({
     title: options.title ?? 'New playlist',
     label: 'Name',
@@ -16,10 +16,10 @@ export async function createPlaylistWithPrompt(
     confirmLabel: options.confirmLabel ?? 'Create',
   });
   return name ? createPlaylistNamed(name) : null;
-}
+};
 
 /** Creates a synced playlist; null (after a toast) when it failed. */
-export async function createPlaylistNamed(name: string): Promise<Playlist | null> {
+export const createPlaylistNamed = async (name: string): Promise<Playlist | null> => {
   try {
     const created = await api.createPlaylist({ name, kind: 'synced' });
     notifyPlaylistsChanged();
@@ -32,10 +32,10 @@ export async function createPlaylistNamed(name: string): Promise<Playlist | null
     });
     return null;
   }
-}
+};
 
 /** Adds the tracks and says so in a toast; false when it failed. */
-export async function addTracksWithToast(playlist: { id: string; name: string }, tracks: Track[]): Promise<boolean> {
+export const addTracksWithToast = async (playlist: { id: string; name: string }, tracks: Track[]): Promise<boolean> => {
   try {
     await api.addTracksToPlaylist(
       playlist.id,
@@ -53,4 +53,4 @@ export async function addTracksWithToast(playlist: { id: string; name: string },
     showToast({ title: 'Could not add to playlist', icon: 'info' });
     return false;
   }
-}
+};

@@ -11,7 +11,7 @@ import Artwork from '../music/Artwork';
 import { Field } from './Field';
 
 /** Renders the dialog opened with promptDialog / confirmDialog (store/dialogs.ts). */
-export function DialogHost() {
+export const DialogHost = () => {
   const dialog = useOpenDialog();
   return (
     <AnimatePresence>
@@ -47,28 +47,28 @@ export function DialogHost() {
       )}
     </AnimatePresence>
   );
-}
+};
 
-function cancel(dialog: OpenDialog) {
+const cancel = (dialog: OpenDialog) => {
   if (dialog.kind === 'prompt') dialog.resolve(null);
   else if (dialog.kind === 'confirm') dialog.resolve(false);
   else dialog.resolve();
-}
+};
 
-function useEscape(dialog: OpenDialog) {
+const useEscape = (dialog: OpenDialog) => {
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return;
       // Keeps Escape from also reaching the player shortcuts / menus underneath.
       e.stopPropagation();
       cancel(dialog);
-    }
+    };
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [dialog]);
-}
+};
 
-function Heading({ id, title, description }: { id: string; title: string; description?: string }) {
+const Heading = ({ id, title, description }: { id: string; title: string; description?: string }) => {
   return (
     <div className="flex flex-col gap-1.5">
       <h2 id={id} className="text-title-l text-t1 font-semibold m-0">
@@ -77,9 +77,9 @@ function Heading({ id, title, description }: { id: string; title: string; descri
       {description && <p className="text-body-m text-t2 m-0">{description}</p>}
     </div>
   );
-}
+};
 
-function PromptBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'prompt' }> }) {
+const PromptBody = ({ dialog }: { dialog: Extract<OpenDialog, { kind: 'prompt' }> }) => {
   const { options } = dialog;
   const [value, setValue] = useState(options.initialValue ?? '');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -90,10 +90,10 @@ function PromptBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'prompt' }
     inputRef.current?.select();
   }, []);
 
-  function submit(e: React.FormEvent) {
+  const submit = (e: React.FormEvent) => {
     e.preventDefault();
     if (value.trim()) dialog.resolve(value);
-  }
+  };
 
   return (
     <form className="flex flex-col gap-5" onSubmit={submit}>
@@ -120,9 +120,9 @@ function PromptBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'prompt' }
       </div>
     </form>
   );
-}
+};
 
-function ConfirmBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'confirm' }> }) {
+const ConfirmBody = ({ dialog }: { dialog: Extract<OpenDialog, { kind: 'confirm' }> }) => {
   const { options } = dialog;
   const confirmRef = useRef<HTMLButtonElement>(null);
   useEscape(dialog);
@@ -150,9 +150,9 @@ function ConfirmBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'confirm'
       </div>
     </>
   );
-}
+};
 
-function AddToPlaylistBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'addToPlaylist' }> }) {
+const AddToPlaylistBody = ({ dialog }: { dialog: Extract<OpenDialog, { kind: 'addToPlaylist' }> }) => {
   const { tracks } = dialog;
   const { data, loading } = useMyPlaylists();
   const [name, setName] = useState('');
@@ -161,21 +161,21 @@ function AddToPlaylistBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'ad
   const playlists = data?.items ?? [];
   const what = tracks.length === 1 ? tracks[0].title : `${tracks.length} songs`;
 
-  async function addTo(p: { id: string; name: string }) {
+  const addTo = async (p: { id: string; name: string }) => {
     setBusy(true);
     const ok = await addTracksWithToast(p, tracks);
     setBusy(false);
     if (ok) dialog.resolve();
-  }
+  };
 
-  async function createAndAdd(e: React.FormEvent) {
+  const createAndAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
     setBusy(true);
     const created = await createPlaylistNamed(name.trim());
     setBusy(false);
     if (created) await addTo(created);
-  }
+  };
 
   return (
     <>
@@ -228,4 +228,4 @@ function AddToPlaylistBody({ dialog }: { dialog: Extract<OpenDialog, { kind: 'ad
       </div>
     </>
   );
-}
+};

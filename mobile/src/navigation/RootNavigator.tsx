@@ -27,7 +27,7 @@ import { cn } from '../lib/cn';
 
 const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
 
-function ModeToast() {
+const ModeToast = () => {
   const insets = useSafeAreaInsets();
   const mode = useModeStore((state) => state.mode);
   const prevMode = useRef(mode);
@@ -89,14 +89,14 @@ function ModeToast() {
       </Pressable>
     </Animated.View>
   );
-}
+};
 
 /**
  * Signed in: load the user's library, then finish whatever they were doing as a guest when
  * asked to sign in (e.g. the like they tapped). Back to guest: drop the library. Playback
  * carries on either way — guests can listen.
  */
-function useSessionEffects(status: string) {
+const useSessionEffects = (status: string) => {
   useEffect(() => {
     if (status === 'loading') return;
     // Account settings (download quality / format) follow whoever is signed in.
@@ -110,9 +110,9 @@ function useSessionEffects(status: string) {
       useLibraryStore.getState().reset();
     }
   }, [status]);
-}
+};
 
-export function RootNavigator() {
+export const RootNavigator = () => {
   const status = useAuthStore((s) => s.status);
   const hydrate = useAuthStore((s) => s.hydrate);
 
@@ -163,4 +163,4 @@ export function RootNavigator() {
       <PlayerSheetsHost />
     </NavigationContainer>
   );
-}
+};

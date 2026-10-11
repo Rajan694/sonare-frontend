@@ -19,7 +19,7 @@ import { cn } from '../lib/cn';
 import { formatDuration } from '../lib/format';
 import type { Track } from '../types';
 
-export default function PlaylistDetail() {
+const PlaylistDetail = () => {
   const { id: rawId } = useParams();
   const { mode } = useModeStore();
   const isOffline = mode === 'offline';
@@ -52,7 +52,7 @@ export default function PlaylistDetail() {
     }
   };
 
-  async function removeAt(index: number) {
+  const removeAt = async (index: number) => {
     if (!id || !isOwn) return;
     const removed = tracks[index];
     if (!removed) return;
@@ -71,9 +71,9 @@ export default function PlaylistDetail() {
       refetchTracks();
       showToast({ title: 'Could not remove song', icon: 'info' });
     }
-  }
+  };
 
-  async function reorder(from: number, to: number) {
+  const reorder = async (from: number, to: number) => {
     if (!id || !isOwn || from === to) return;
     const nextTracks = [...tracks];
     const [moved] = nextTracks.splice(from, 1);
@@ -87,7 +87,7 @@ export default function PlaylistDetail() {
       refetchTracks();
       showToast({ title: 'Could not reorder songs', icon: 'info' });
     }
-  }
+  };
 
   if (playlistLoading && !playlist) {
     return (
@@ -275,4 +275,5 @@ export default function PlaylistDetail() {
       </div>
     </div>
   );
-}
+};
+export default PlaylistDetail;

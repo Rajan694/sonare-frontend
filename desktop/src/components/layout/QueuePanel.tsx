@@ -21,7 +21,7 @@ interface QueuePanelProps {
   isMobileSheet?: boolean;
 }
 
-export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePanelProps) {
+const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
   const navigate = useNavigate();
   const { mode } = useModeStore();
   const {
@@ -57,11 +57,11 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
   const positionRatio = positionMs / effectiveDurationMs;
   const progressPercent = Math.min(100, Math.max(0, positionRatio * 100));
 
-  function saveAsPlaylist() {
+  const saveAsPlaylist = () => {
     requireAccount('Create a free account to save your queue as a playlist.', saveQueue);
-  }
+  };
 
-  async function saveQueue() {
+  const saveQueue = async () => {
     const name = await promptDialog({
       title: 'Save queue as playlist',
       label: 'Name',
@@ -85,13 +85,13 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
     } finally {
       setSaving(false);
     }
-  }
+  };
 
-  function onDrop(to: number) {
+  const onDrop = (to: number) => {
     if (dragFrom !== null && dragFrom !== to) moveInQueue(dragFrom, to);
     setDragFrom(null);
     setDropAt(null);
-  }
+  };
 
   return (
     <div
@@ -275,4 +275,5 @@ export default function QueuePanel({ onClose, isMobileSheet = false }: QueuePane
       </div>
     </div>
   );
-}
+};
+export default QueuePanel;

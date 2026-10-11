@@ -12,26 +12,26 @@ let navigate: Navigate | null = null;
 let pending: (() => unknown) | null = null;
 
 /** AppShell hands over the router's navigate so non-component code can open /signin. */
-export function bindAccountGateNavigator(fn: Navigate): void {
+export const bindAccountGateNavigator = (fn: Navigate): void => {
   navigate = fn;
-}
+};
 
-export function requireAccount(reason: string, action: () => unknown): void {
+export const requireAccount = (reason: string, action: () => unknown): void => {
   if (isAuthenticated()) {
     action();
     return;
   }
   pending = action;
   navigate?.('/signin', { state: { reason, mode: 'signup' } });
-}
+};
 
 /** What the guest was doing when asked to sign in; taking it clears it. */
-export function takePendingAction(): (() => unknown) | null {
+export const takePendingAction = (): (() => unknown) | null => {
   const action = pending;
   pending = null;
   return action;
-}
+};
 
-export function clearPendingAction(): void {
+export const clearPendingAction = (): void => {
   pending = null;
-}
+};

@@ -26,7 +26,7 @@ const CLIENT_NAMES: Record<string, string> = {
   other: 'Audio, artwork and untagged',
 };
 
-export default function Overview() {
+const Overview = () => {
   const [days, setDays] = useState('14');
   const { data, error, loading, reload } = useLoad(() => adminApi.overview(Number(days)), [days]);
 
@@ -142,4 +142,5 @@ export default function Overview() {
       )}
     </>
   );
-}
+};
+export default Overview;

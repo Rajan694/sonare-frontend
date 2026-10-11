@@ -117,7 +117,7 @@ describe('playlist page', () => {
   ];
   const titles = () => screen.getAllByRole('row').map((r) => within(r).getAllByRole('button')[0].textContent);
 
-  function own(tracks = songs) {
+  const own = (tracks = songs) => {
     setSession('a', 'r', testUser);
     server.use(
       http.get(`${API}/me/playlists/:id`, () =>
@@ -125,7 +125,7 @@ describe('playlist page', () => {
       ),
       http.get(`${API}/me/playlists/:id/tracks`, () => HttpResponse.json(page(tracks))),
     );
-  }
+  };
   const openPlaylist = (id = 'sonare:gym', player = makePlayer()) =>
     renderWithProviders(
       <>

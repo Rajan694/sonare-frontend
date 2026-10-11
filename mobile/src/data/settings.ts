@@ -60,7 +60,7 @@ interface SettingsStore {
   ) => void;
 }
 
-function pick(s: Record<string, unknown>) {
+const pick = (s: Record<string, unknown>) => {
   return {
     ...(QUALITIES.includes(s.downloadQuality as AudioQuality) && {
       downloadQuality: s.downloadQuality as AudioQuality,
@@ -73,15 +73,15 @@ function pick(s: Record<string, unknown>) {
     ...(typeof s.normalization === 'boolean' && { normalization: s.normalization }),
     ...(typeof s.stayOffline === 'boolean' && { stayOffline: s.stayOffline }),
   };
-}
+};
 
 /** What the phone saved: like the account's fields, plus a hand-made (Custom) EQ. */
-function pickStored(s: Record<string, unknown>) {
+const pickStored = (s: Record<string, unknown>) => {
   return { ...pick(s), ...(s.eqPreset === CUSTOM_PRESET && { eqPreset: CUSTOM_PRESET }) };
-}
+};
 
 /** What the phone keeps in AsyncStorage. */
-function stored(s: SettingsStore) {
+const stored = (s: SettingsStore) => {
   return JSON.stringify({
     downloadQuality: s.downloadQuality,
     downloadFormat: s.downloadFormat,
@@ -90,7 +90,7 @@ function stored(s: SettingsStore) {
     normalization: s.normalization,
     stayOffline: s.stayOffline,
   });
-}
+};
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 /** Changed since the last save. Only these are sent: the server keeps what it isn't sent. */

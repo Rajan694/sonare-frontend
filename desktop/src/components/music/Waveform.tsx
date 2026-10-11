@@ -20,7 +20,7 @@ interface WaveformProps {
   onSeek?: (ratio: number) => void;
 }
 
-export default function Waveform({
+const Waveform = ({
   peaks,
   barCount = 150,
   positionRatio = 0,
@@ -28,7 +28,7 @@ export default function Waveform({
   offline = false,
   className,
   onSeek,
-}: WaveformProps) {
+}: WaveformProps) => {
   const ref = useRef<HTMLSpanElement>(null);
   // Bars are sized to fill the rail: availableWidth / count. A rail too narrow for barCount
   // bars of MIN_BAR_PX draws fewer, so they never spill over whatever sits next to it (the
@@ -71,38 +71,38 @@ export default function Waveform({
   const shownRatio = scrubRatio ?? positionRatio;
   const playheadIdx = Math.floor(Math.max(0, Math.min(1, shownRatio)) * count);
 
-  function ratioAt(e: React.PointerEvent) {
+  const ratioAt = (e: React.PointerEvent) => {
     const rect = ref.current!.getBoundingClientRect();
     return Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  }
+  };
 
-  function onPointerDown(e: React.PointerEvent<HTMLSpanElement>) {
+  const onPointerDown = (e: React.PointerEvent<HTMLSpanElement>) => {
     if (!onSeek || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     setScrubRatio(ratioAt(e));
-  }
+  };
 
-  function onPointerMove(e: React.PointerEvent<HTMLSpanElement>) {
+  const onPointerMove = (e: React.PointerEvent<HTMLSpanElement>) => {
     if (!onSeek) return;
     const r = ratioAt(e);
     setHoverRatio(r);
     if (scrubRatio !== null) setScrubRatio(r);
-  }
+  };
 
-  function onPointerUp(e: React.PointerEvent<HTMLSpanElement>) {
+  const onPointerUp = (e: React.PointerEvent<HTMLSpanElement>) => {
     if (scrubRatio === null) return;
     onSeek?.(ratioAt(e));
     setScrubRatio(null);
-  }
+  };
 
-  function onKeyDown(e: React.KeyboardEvent) {
+  const onKeyDown = (e: React.KeyboardEvent) => {
     if (!onSeek || durationMs <= 0) return;
     const stepRatio = 5000 / durationMs;
     if (e.key === 'ArrowRight') onSeek(Math.min(1, positionRatio + stepRatio));
     else if (e.key === 'ArrowLeft') onSeek(Math.max(0, positionRatio - stepRatio));
     else return;
     e.preventDefault();
-  }
+  };
 
   const tipRatio = scrubRatio ?? hoverRatio;
 
@@ -153,4 +153,5 @@ export default function Waveform({
       )}
     </span>
   );
-}
+};
+export default Waveform;

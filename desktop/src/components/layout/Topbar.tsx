@@ -9,19 +9,19 @@ import { useAuth } from '../../api/hooks';
 import type { Mode } from '../../types';
 import SearchField from './SearchField';
 
-export default function Topbar() {
+const Topbar = () => {
   const navigate = useNavigate();
   const { mode, setMode } = useModeStore();
   const { user } = useAuth();
 
-  function handleModeSwitch(target: Mode) {
+  const handleModeSwitch = (target: Mode) => {
     if (target === mode) return;
     if (target === 'offline') {
       navigate('/mode-switch');
     } else {
       setMode('online');
     }
-  }
+  };
 
   return (
     <header className="topbar">
@@ -77,4 +77,5 @@ export default function Topbar() {
       </button>
     </header>
   );
-}
+};
+export default Topbar;

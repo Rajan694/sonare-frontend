@@ -67,10 +67,13 @@ import {
   Bluetooth,
   ListPlus,
   ArrowUpDown,
+  TrendingUp,
+  Monitor,
 } from 'lucide-react';
 
 const ICONS = {
   home: Home,
+  monitor: Monitor,
   search: Search,
   library: Library,
   playlist: ListMusic,
@@ -116,6 +119,7 @@ const ICONS = {
   'layout-grid': LayoutGrid,
   list: List,
   clock: Clock,
+  trending: TrendingUp,
   star: Star,
   radio: Radio,
   logout: LogOut,
@@ -171,13 +175,7 @@ const SOLID: Partial<Record<IconName, React.ReactNode>> = {
   ),
 };
 
-export default function Icon({
-  name,
-  size = 16,
-  className,
-  strokeWidth = 1.6,
-  'aria-hidden': ariaHidden = true,
-}: IconProps) {
+const Icon = ({ name, size = 16, className, strokeWidth = 1.6, 'aria-hidden': ariaHidden = true }: IconProps) => {
   const solid = SOLID[name];
   if (solid) {
     return (
@@ -198,4 +196,5 @@ export default function Icon({
   return (
     <Component size={size} className={cn('flex-none', className)} aria-hidden={ariaHidden} strokeWidth={strokeWidth} />
   );
-}
+};
+export default Icon;

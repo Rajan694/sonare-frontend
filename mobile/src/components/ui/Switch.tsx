@@ -10,13 +10,13 @@ interface SwitchProps {
   disabled?: boolean;
 }
 
-export function Switch({
+export const Switch = ({
   value,
   onValueChange,
   accessibilityLabel,
   variant = 'default',
   disabled = false,
-}: SwitchProps) {
+}: SwitchProps) => {
   return (
     <Pressable
       onPress={() => !disabled && onValueChange(!value)}
@@ -35,4 +35,4 @@ export function Switch({
       <View className={cn('w-[22px] h-[22px] rounded-full bg-white', value ? 'ml-auto' : 'mr-auto')} />
     </Pressable>
   );
-}
+};

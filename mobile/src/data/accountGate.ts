@@ -11,23 +11,23 @@ let pending: (() => unknown) | null = null;
  * straight away when signed in; otherwise opens sign-in with `reason` and runs `action`
  * once the user has signed in or created an account (see RootNavigator).
  */
-export function requireAccount(reason: string, action: () => unknown): void {
+export const requireAccount = (reason: string, action: () => unknown): void => {
   if (useAuthStore.getState().status === 'signedIn') {
     action();
     return;
   }
   pending = action;
   if (navigationRef.isReady()) navigationRef.navigate('SignIn', { reason });
-}
+};
 
 /** The action a guest was attempting when asked to sign in; taking it clears it. */
-export function takePendingAction(): (() => unknown) | null {
+export const takePendingAction = (): (() => unknown) | null => {
   const action = pending;
   pending = null;
   return action;
-}
+};
 
 /** The guest backed out of signing in: forget what they were doing. */
-export function clearPendingAction(): void {
+export const clearPendingAction = (): void => {
   pending = null;
-}
+};

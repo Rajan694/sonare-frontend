@@ -24,7 +24,7 @@ let worker: Worker | null = null;
 let nextId = 0;
 const handlers = new Map<number, (e: StreamDecoderEvent) => void>();
 
-function decoderWorker(): Worker {
+const decoderWorker = (): Worker => {
   if (worker) return worker;
   worker = new Worker(new URL('./streamDecoder.worker.ts', import.meta.url), { type: 'module' });
   worker.onmessage = (e: MessageEvent<StreamDecoderEvent>) => {
@@ -32,23 +32,23 @@ function decoderWorker(): Worker {
     handlers.get(key)?.(e.data);
   };
   return worker;
-}
+};
 
-function send(request: StreamDecoderRequest, transfer: Transferable[] = []) {
+const send = (request: StreamDecoderRequest, transfer: Transferable[] = []) => {
   decoderWorker().postMessage(request, transfer);
-}
+};
 
-function decoderConfig(media: DemuxedAudio): AudioDecoderConfig {
+const decoderConfig = (media: DemuxedAudio): AudioDecoderConfig => {
   return {
     codec: media.codec,
     sampleRate: media.sampleRate,
     numberOfChannels: media.channels,
     ...(media.description ? { description: media.description } : {}),
   };
-}
+};
 
 /** Whether the worker can decode this file (WebCodecs, and this codec, in this WebKit). */
-export function canStream(media: DemuxedAudio): Promise<boolean> {
+export const canStream = (media: DemuxedAudio): Promise<boolean> => {
   if (typeof Worker === 'undefined' || typeof AudioDecoder === 'undefined') return Promise.resolve(false);
   const probe = ++nextId;
   return new Promise((resolve) => {
@@ -63,7 +63,7 @@ export function canStream(media: DemuxedAudio): Promise<boolean> {
       resolve(false);
     }
   });
-}
+};
 
 /** One continuous run of decoding and scheduling, from a start position. */
 class Run {

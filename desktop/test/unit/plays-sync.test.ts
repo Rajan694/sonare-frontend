@@ -5,19 +5,19 @@ import { testUser } from '../helpers/fixtures';
 useMockServer();
 
 /** plays.ts, sync.ts and auth.ts all keep module state; every test gets its own copies. */
-async function fresh(signedIn = true) {
+const fresh = async (signedIn = true) => {
   vi.resetModules();
   const auth = await import('../../src/api/auth');
   const plays = await import('../../src/api/plays');
   const sync = await import('../../src/api/sync');
   if (signedIn) auth.setSession('acc', 'ref', testUser);
   return { ...auth, ...plays, ...sync };
-}
+};
 
 const pending = () => JSON.parse(localStorage.getItem('sonare_pending_plays') ?? '[]');
 
 /** A /me/sync handler that records bodies and answers with `respond`. */
-function syncEndpoint(respond: () => Response = () => HttpResponse.json({ ok: true })) {
+const syncEndpoint = (respond: () => Response = () => HttpResponse.json({ ok: true })) => {
   const bodies: any[] = [];
   server.use(
     http.post(`${API}/me/sync`, async ({ request }) => {
@@ -26,7 +26,7 @@ function syncEndpoint(respond: () => Response = () => HttpResponse.json({ ok: tr
     }),
   );
   return bodies;
-}
+};
 
 afterEach(() => {
   vi.useRealTimers();

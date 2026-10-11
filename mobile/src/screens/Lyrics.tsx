@@ -22,11 +22,11 @@ import Icon from '../components/ui/Icon';
 import { cn } from '../lib/cn';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 
-function stamp(ms: number) {
+const stamp = (ms: number) => {
   return `${Math.floor(ms / 60000)}:${(Math.floor(ms / 1000) % 60).toString().padStart(2, '0')}`;
-}
+};
 
-export function LyricsScreen() {
+export const LyricsScreen = () => {
   const navigation = useNavigation<any>();
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const positionMs = usePlayerStore((state) => state.positionMs);
@@ -251,4 +251,4 @@ export function LyricsScreen() {
       </View>
     </Screen>
   );
-}
+};

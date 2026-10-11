@@ -13,7 +13,7 @@ interface SheetProps {
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SPRING_CONFIG = springs.sheet;
 
-export function Sheet({ visible, onClose, children }: SheetProps) {
+export const Sheet = ({ visible, onClose, children }: SheetProps) => {
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
 
@@ -92,4 +92,4 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
       </GestureHandlerRootView>
     </Modal>
   );
-}
+};

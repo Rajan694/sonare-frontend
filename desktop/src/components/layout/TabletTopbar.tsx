@@ -9,19 +9,19 @@ import SearchField from './SearchField';
 import { useAuth } from '../../api/hooks';
 import type { Mode } from '../../types';
 
-export default function TabletTopbar() {
+const TabletTopbar = () => {
   const navigate = useNavigate();
   const { mode, setMode } = useModeStore();
   const { user } = useAuth();
 
-  function handleModeSwitch(target: Mode) {
+  const handleModeSwitch = (target: Mode) => {
     if (target === mode) return;
     if (target === 'offline') {
       navigate('/mode-switch');
     } else {
       setMode('online');
     }
-  }
+  };
 
   return (
     <header className="flex items-center gap-4 flex-none h-[60px] px-5 border-b border-ln bg-[#060607]/90 z-20">
@@ -66,4 +66,5 @@ export default function TabletTopbar() {
       </div>
     </header>
   );
-}
+};
+export default TabletTopbar;

@@ -19,7 +19,7 @@ import { springs } from '../../lib/motion';
 
 const THRESHOLD = -50;
 
-export function MiniPlayer() {
+export const MiniPlayer = () => {
   const navigation = useNavigation<any>();
   const mode = useModeStore((state) => state.mode);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
@@ -137,4 +137,4 @@ export function MiniPlayer() {
       </AnimatedViewComponent>
     </PanGestureHandler>
   );
-}
+};

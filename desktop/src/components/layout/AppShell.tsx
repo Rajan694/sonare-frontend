@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
@@ -23,11 +23,23 @@ import { useAppDispatch, useAppSelector } from '../../store';
 import { closeQueue, toggleQueue, toggleSidebar } from '../../store/uiSlice';
 import { cn } from '../../lib/cn';
 
-function isTyping(el: EventTarget | null) {
+const isTyping = (el: EventTarget | null) => {
   return el instanceof HTMLElement && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName));
-}
+};
 
-export default function AppShell() {
+/**
+ * The page this transition wrapper was created for. A plain <Outlet /> always renders the
+ * current route, so the wrapper that is fading out (AnimatePresence keeps it mounted until its
+ * exit finishes) would switch to the new page and mount it, and then the entering wrapper
+ * mounts it a second time: the next page flashes, then loads again.
+ */
+const FrozenOutlet = () => {
+  const outlet = useOutlet();
+  const [page] = useState(outlet);
+  return page;
+};
+
+const AppShell = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const toasts = useToasts();
@@ -48,7 +60,7 @@ export default function AppShell() {
 
   // FLOWS §3: Ctrl Q toggles the queue, Esc leaves the full-screen player / closes queue.
   useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+    const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'q') {
         e.preventDefault();
         dispatch(toggleQueue());
@@ -65,7 +77,7 @@ export default function AppShell() {
           else navigate('/home');
         }
       }
-    }
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [location.pathname, navigate, queueOpen, dispatch, sidebarShown]);
@@ -131,7 +143,7 @@ export default function AppShell() {
                     transition={transition.normal}
                     className="flex flex-col grow overflow-auto h-full"
                   >
-                    <Outlet />
+                    <FrozenOutlet />
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -167,7 +179,7 @@ export default function AppShell() {
                   transition={transition.normal}
                   className="flex flex-col grow overflow-auto h-full min-w-0"
                 >
-                  <Outlet />
+                  <FrozenOutlet />
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -201,7 +213,7 @@ export default function AppShell() {
             transition={transition.normal}
             className="flex flex-col grow overflow-auto h-full min-w-0"
           >
-            <Outlet />
+            <FrozenOutlet />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -234,4 +246,5 @@ export default function AppShell() {
       {toastContainer}
     </div>
   );
-}
+};
+export default AppShell;

@@ -21,9 +21,9 @@ const tokens = { accessToken: 'acc', refreshToken: 'ref', user: testUser };
 const email = () => screen.getByRole('textbox', { name: 'Email' });
 const password = () => screen.getByLabelText('Password');
 
-function open(state?: { reason?: string; mode?: 'signin' | 'signup' }) {
+const open = (state?: { reason?: string; mode?: 'signin' | 'signup' }) => {
   return renderWithProviders(<SignIn />, { route: { pathname: '/signin', state } });
-}
+};
 
 describe('sign in screen', () => {
   it('WEB-SIGNIN-001 signs in with trimmed email, welcomes the user and goes home', async () => {

@@ -8,7 +8,7 @@ const SIDEBAR_KEY = 'sonare_sidebar_collapsed';
 const SEARCH_TYPES: SearchType[] = ['songs', 'albums', 'artists', 'playlists'];
 
 /** The query and chip survive a reload (dev-server reloads included); results are refetched. */
-function savedSearch(): SearchState {
+const savedSearch = (): SearchState => {
   try {
     const saved = JSON.parse(sessionStorage.getItem(SAVED_SEARCH_KEY) ?? 'null') as Partial<SearchState> | null;
     return {
@@ -19,16 +19,16 @@ function savedSearch(): SearchState {
   } catch {
     return initialSearchState;
   }
-}
+};
 
 /** Unlike the search, the sidebar choice is a preference and survives restarts. */
-function savedSidebarCollapsed(): boolean {
+const savedSidebarCollapsed = (): boolean => {
   try {
     return localStorage.getItem(SIDEBAR_KEY) === 'true';
   } catch {
     return false;
   }
-}
+};
 
 export const store = configureStore({
   reducer: { search, ui },

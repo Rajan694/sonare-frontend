@@ -27,7 +27,7 @@ export interface DemuxedAudio {
   duration: number;
 }
 
-export function demuxAudio(data: ArrayBuffer, ext: string): DemuxedAudio | null {
+export const demuxAudio = (data: ArrayBuffer, ext: string): DemuxedAudio | null => {
   const bytes = new Uint8Array(data);
   try {
     if (ext === 'mp3') return demuxMp3(bytes);
@@ -37,10 +37,10 @@ export function demuxAudio(data: ArrayBuffer, ext: string): DemuxedAudio | null 
     // Truncated or unusual file: let the element have a go.
   }
   return null;
-}
+};
 
 /** Index of the packet playing at `seconds`. */
-export function packetAt(media: DemuxedAudio, seconds: number): number {
+export const packetAt = (media: DemuxedAudio, seconds: number): number => {
   let lo = 0;
   let hi = media.count - 1;
   while (lo < hi) {
@@ -49,7 +49,7 @@ export function packetAt(media: DemuxedAudio, seconds: number): number {
     else hi = mid - 1;
   }
   return lo;
-}
+};
 
 /** Growable packet table. */
 class Packets {
@@ -108,7 +108,7 @@ interface Mp3Frame {
 }
 
 /** A Layer III frame header at `i`, or null. Free-format bitrates are not supported. */
-function mp3Frame(b: Uint8Array, i: number): Mp3Frame | null {
+const mp3Frame = (b: Uint8Array, i: number): Mp3Frame | null => {
   if (i + 4 > b.length || b[i] !== 0xff || (b[i + 1] & 0xe0) !== 0xe0) return null;
   const version = (b[i + 1] >> 3) & 3;
   const layer = (b[i + 1] >> 1) & 3;
@@ -121,9 +121,9 @@ function mp3Frame(b: Uint8Array, i: number): Mp3Frame | null {
   const padding = (b[i + 2] >> 1) & 1;
   const length = Math.floor(((v1 ? 144 : 72) * bitrate) / sampleRate) + padding;
   return { length, samples: v1 ? 1152 : 576, sampleRate, channels: b[i + 3] >> 6 === 3 ? 1 : 2 };
-}
+};
 
-function demuxMp3(b: Uint8Array): DemuxedAudio | null {
+const demuxMp3 = (b: Uint8Array): DemuxedAudio | null => {
   let i = 0;
   // ID3v2 tags, possibly several.
   while (i + 10 <= b.length && b[i] === 0x49 && b[i + 1] === 0x44 && b[i + 2] === 0x33) {
@@ -152,12 +152,12 @@ function demuxMp3(b: Uint8Array): DemuxedAudio | null {
   }
   if (!first) return null;
   return packets.result({ codec: 'mp3', sampleRate: first.sampleRate, channels: first.channels, bytes: b });
-}
+};
 
 // ---------- Opus ----------
 
 /** Length of an Opus packet in seconds, from its TOC byte (RFC 6716 §3.1). */
-function opusPacketSeconds(p: Uint8Array): number {
+const opusPacketSeconds = (p: Uint8Array): number => {
   if (p.length === 0) return 0;
   const config = p[0] >> 3;
   const frameMs =
@@ -165,15 +165,15 @@ function opusPacketSeconds(p: Uint8Array): number {
   const code = p[0] & 3;
   const frames = code === 0 ? 1 : code === 3 ? (p.length > 1 ? p[1] & 0x3f : 0) : 2;
   return (frames * frameMs) / 1000;
-}
+};
 
-function opusHeadInfo(head: Uint8Array): { channels: number } | null {
+const opusHeadInfo = (head: Uint8Array): { channels: number } | null => {
   const magic = String.fromCharCode(...head.subarray(0, 8));
   if (magic !== 'OpusHead' || head.length < 19) return null;
   return { channels: head[9] };
-}
+};
 
-function demuxOgg(b: Uint8Array): DemuxedAudio | null {
+const demuxOgg = (b: Uint8Array): DemuxedAudio | null => {
   // Packets can continue across pages, so they're copied out into one contiguous buffer.
   const out = new Uint8Array(b.length);
   let outLen = 0;
@@ -229,7 +229,7 @@ function demuxOgg(b: Uint8Array): DemuxedAudio | null {
     description: head,
     bytes: out.subarray(0, outLen),
   });
-}
+};
 
 // ---------- WebM (Matroska) ----------
 
@@ -245,7 +245,7 @@ const EBML_BLOCK_GROUP = 0xa0;
 const EBML_BLOCK = 0xa1;
 
 /** Reads an EBML variable-length integer; `id` keeps the length marker bits. */
-function vint(b: Uint8Array, i: number, id: boolean): { value: number; length: number; unknown: boolean } {
+const vint = (b: Uint8Array, i: number, id: boolean): { value: number; length: number; unknown: boolean } => {
   const first = b[i];
   let length = 1;
   while (length <= 8 && !(first & (0x80 >> (length - 1)))) length++;
@@ -257,9 +257,9 @@ function vint(b: Uint8Array, i: number, id: boolean): { value: number; length: n
     if (b[i + k] !== 0xff) allOnes = false;
   }
   return { value, length, unknown: !id && allOnes };
-}
+};
 
-function demuxWebm(b: Uint8Array): DemuxedAudio | null {
+const demuxWebm = (b: Uint8Array): DemuxedAudio | null => {
   const packets = new Packets();
   let head: Uint8Array | null = null;
   let opusTrack = -1;
@@ -338,4 +338,4 @@ function demuxWebm(b: Uint8Array): DemuxedAudio | null {
     description: head,
     bytes: b,
   });
-}
+};

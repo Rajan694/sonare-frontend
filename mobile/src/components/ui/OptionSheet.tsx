@@ -30,7 +30,7 @@ interface OptionSheetProps<T extends string | number> {
  * A themed pick-one list in a bottom sheet: the app's dropdown (sort order, audio output,
  * sleep timer, lyrics language). Picking an option closes it.
  */
-export function OptionSheet<T extends string | number>({
+export const OptionSheet = <T extends string | number>({
   visible,
   onClose,
   title,
@@ -40,7 +40,7 @@ export function OptionSheet<T extends string | number>({
   onSelect,
   gold,
   footer,
-}: OptionSheetProps<T>) {
+}: OptionSheetProps<T>) => {
   const accent = gold ? '#FFC24D' : '#00E28A';
   return (
     <Sheet visible={visible} onClose={onClose}>
@@ -91,4 +91,4 @@ export function OptionSheet<T extends string | number>({
       </View>
     </Sheet>
   );
-}
+};

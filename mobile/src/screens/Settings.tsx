@@ -22,7 +22,7 @@ import { DEFAULT_API_ORIGIN, customServerOrigin } from '../data/config';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
 
-export function SettingsScreen() {
+export const SettingsScreen = () => {
   const sync = useSyncStatus();
   const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
@@ -427,4 +427,4 @@ export function SettingsScreen() {
       </ScrollView>
     </Screen>
   );
-}
+};

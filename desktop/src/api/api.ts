@@ -1,6 +1,6 @@
 import { API_BASE, getAccessToken, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
-import type { Track, Album, Artist, Playlist, Page, User } from '../types';
+import type { Track, Album, Artist, Playlist, Page, User, AppRelease } from '../types';
 import type { LyricsScript } from '../storage/devicePrefs';
 
 export class ApiError extends Error {
@@ -16,21 +16,21 @@ export class ApiError extends Error {
 }
 
 /** What to tell someone when a section's data did not load. */
-export function loadErrorMessage(err: unknown): string {
+export const loadErrorMessage = (err: unknown): string => {
   if (err instanceof ApiError && err.code === 'UPSTREAM_UNAVAILABLE') {
     return "Sonare's music service isn't responding. Try again in a moment.";
   }
   // fetch rejects with a TypeError when the request never reached the server.
   if (err instanceof TypeError) return "Can't reach the Sonare server.";
   return err instanceof Error ? err.message : 'Something went wrong.';
-}
+};
 
 interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
   skipAuth?: boolean;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+const request = async <T>(path: string, options: RequestOptions = {}): Promise<T> => {
   const { params, skipAuth, ...init } = options;
 
   const url = new URL(path.startsWith('http') ? path : `${API_BASE}${path}`);
@@ -93,9 +93,18 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   return data as T;
-}
+};
 
 export const api = {
+  // App builds for Settings → About
+  getReleases() {
+    return request<{ items: AppRelease[] }>('/releases', { skipAuth: true });
+  },
+
+  releaseDownloadUrl(id: string): string {
+    return `${API_BASE}/releases/${encodeURIComponent(id)}/download`;
+  },
+
   // Catalog
   search(q: string, type: 'songs' | 'albums' | 'artists' | 'playlists' | 'all' = 'all', cursor?: string) {
     return request<Page<Track | Album | Artist | Playlist>>('/search', {
