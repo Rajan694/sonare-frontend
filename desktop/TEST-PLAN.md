@@ -755,3 +755,32 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-034` | playlist and playlistTracks return metadata and tracks                                             |
 | `WEB-CAT-035` | track resolves best audio stream codec and bitrate, and stream returns StreamInfo                  |
 | `WEB-CAT-036` | stream throws SourceError when no audio or video streams are available                             |
+
+## `test/unit/sharedCatalog/youtubeiSource.test.ts`
+
+| ID            | Use case                                                                    |
+| :------------ | :-------------------------------------------------------------------------- |
+| `WEB-CAT-037` | getStream maps VISIONOS response to Piped Streams shape                     |
+| `WEB-CAT-038` | getStream tries clients in order and uses first success                     |
+| `WEB-CAT-039` | getStream skips formats without a url                                       |
+| `WEB-CAT-040` | getStream maps codec and format correctly                                   |
+| `WEB-CAT-041` | getStream throws blocked when all clients return LOGIN_REQUIRED             |
+| `WEB-CAT-042` | getStream throws not_found for ERROR status                                 |
+| `WEB-CAT-043` | getStream throws unavailable on network error                               |
+| `WEB-CAT-044` | getStream contentLength is -1 when unknown                                  |
+| `WEB-CAT-045` | search songs maps to Piped StreamItem with correct url and artist           |
+| `WEB-CAT-046` | search songs joins multiple artist names with comma                         |
+| `WEB-CAT-047` | search albums extracts OLAK playlist id from overlay                        |
+| `WEB-CAT-048` | search albums skips items without OLAK id                                   |
+| `WEB-CAT-049` | search artists maps to channel StreamItem with subscriberCount              |
+| `WEB-CAT-050` | search playlists strips VL prefix from id                                   |
+| `WEB-CAT-051` | search returns nextpage with continuation token and filter                  |
+| `WEB-CAT-052` | search returns null nextpage when no continuation                           |
+| `WEB-CAT-053` | suggestions extracts plain strings from SearchSuggestion items              |
+| `WEB-CAT-054` | suggestions extracts strings from MusicResponsiveListItem in second section |
+| `WEB-CAT-055` | suggestions wraps network error as SourceError unavailable                  |
+| `WEB-CAT-056` | unimplemented methods throw SourceError unavailable                         |
+| `WEB-CAT-057` | getStream selects largest thumbnail by width                                |
+| `WEB-CAT-058` | getStream falls through client with no audio formats to next client         |
+| `WEB-CAT-059` | search wraps network error as SourceError unavailable                       |
+| `WEB-CAT-060` | getStream uses muxed formats in videoStreams when present                   |
