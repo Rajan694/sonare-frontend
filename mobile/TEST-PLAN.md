@@ -365,3 +365,4 @@ navigation mock live in `test-utils/`.
 | `MOB-YT-019` | only artists you follow count as followed, with or without the `yt:` prefix              |
 | `MOB-YT-020` | a refused download url gets a fresh session before the download starts again             |
 | `MOB-YT-021` | xhrFetch answers like fetch (status, headers, url, body) without waiting on timers       |
+| `MOB-YT-022` | saving a song, adding it to a playlist or following its artist sends what the app knows  |

@@ -49,7 +49,7 @@ const Album = () => {
       const next = !favourite;
       setFavourite(next);
       try {
-        await api.setAlbumFavourite(id, next);
+        await api.setAlbumFavourite(id, next, album ?? undefined);
       } catch {
         setFavourite(!next);
       }

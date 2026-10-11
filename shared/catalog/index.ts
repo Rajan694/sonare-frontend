@@ -7,3 +7,4 @@ export * from './streams.js';
 export * from './cursor.js';
 export * from './catalog.js';
 export * from './peaks.js';
+export * from './meta.js';

@@ -133,7 +133,7 @@ describe('dialogs', () => {
     expect(dialog).toHaveTextContent('Reckoner');
     await user.click(await within(dialog).findByRole('button', { name: /Gym/ }));
     await done;
-    expect(added).toEqual({ id: 'sonare:gym', body: { trackIds: ['yt:reck'] } });
+    expect(added).toEqual({ id: 'sonare:gym', body: expect.objectContaining({ trackIds: ['yt:reck'] }) });
     expect(within(screen.getByRole('list', { name: 'toasts' })).getByText('Added to Gym')).toBeInTheDocument();
   });
 

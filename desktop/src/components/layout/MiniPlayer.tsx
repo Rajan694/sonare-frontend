@@ -20,7 +20,7 @@ const MiniPlayer = () => {
 
   const isOffline = mode === 'offline';
   const local = useLocalLibrary();
-  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack);
 
   if (!currentTrack) return null;
 

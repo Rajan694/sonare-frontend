@@ -191,7 +191,7 @@ const startAudio = () => {
     // History belongs to an account; guests just listen.
     if (!listen.counted && e.positionMs >= threshold && useAuthStore.getState().status === 'signedIn') {
       listen.counted = true;
-      queuePlay(listen.trackId, listen.startedAt, e.positionMs);
+      queuePlay(player.currentTrack!, listen.startedAt, e.positionMs);
     }
   });
 

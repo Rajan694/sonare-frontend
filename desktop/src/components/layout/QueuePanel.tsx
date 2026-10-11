@@ -74,7 +74,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
       const playlist = await api.createPlaylist({ name, kind: 'synced' });
       await api.addTracksToPlaylist(
         playlist.id,
-        rows.map((r) => r.track.id),
+        rows.map((r) => r.track),
       );
       notifyPlaylistsChanged();
       showToast({ title: 'Playlist saved', description: name, icon: 'playlist', variant: 'acc' });

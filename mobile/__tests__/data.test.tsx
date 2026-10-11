@@ -8,6 +8,11 @@ import { useAuthStore } from '../src/data/auth';
 import { api, ApiError, isOwnPlaylist } from '../src/data/api';
 import { useSettingsStore, API_QUALITY } from '../src/data/settings';
 import { queuePlay, startBackgroundSync, useSyncStatus, requestSync } from '../src/data/sync';
+import type { Track } from '../src/data/types';
+
+/** Only the id matters to the play queue; without a title a play carries no metadata. */
+const song = (id: string): Track =>
+  ({ id, title: '', artist: '', artistId: '', album: null, albumId: null, durationMs: null }) as Track;
 import { requireAccount, takePendingAction, clearPendingAction, navigationRef } from '../src/data/accountGate';
 import { useAsync } from '../src/data/hooks';
 import { artGradients } from '../src/data/gradients';
@@ -819,7 +824,7 @@ describe('Data Layer', () => {
       expect(created.id).toBe('sonare:1');
       const del = await api.deletePlaylist('sonare:1');
       expect(del.ok).toBe(true);
-      const add = await api.addToPlaylist('sonare:1', ['t1']);
+      const add = await api.addToPlaylist('sonare:1', [song('yt:t1')]);
       expect(add.ok).toBe(true);
       const rem = await api.removeFromPlaylist('sonare:1', 0);
       expect(rem.ok).toBe(true);
@@ -969,7 +974,7 @@ describe('Data Layer', () => {
       useModeStore.setState({ mode: 'online' });
       jest.spyOn(api, 'reportPlays').mockResolvedValue({ ok: true });
 
-      queuePlay('yt:test-track', Date.now(), 45000);
+      queuePlay(song('yt:test-track'), Date.now(), 45000);
       expect(useSyncStatus.getState()).toBeDefined();
       requestSync();
       await waitFor(() => {
@@ -981,8 +986,8 @@ describe('Data Layer', () => {
       useAuthStore.setState({
         user: { id: 'u-37', email: 'x@y.z', displayName: 'X' },
       } as never);
-      queuePlay('local:fingerprint123', 1000, 60000.4);
-      queuePlay('yt:abc', 2000, 45000);
+      queuePlay(song('local:fingerprint123'), 1000, 60000.4);
+      queuePlay(song('yt:abc'), 2000, 45000);
       // They may be uploaded (and cleared) right away, so check what was written to storage.
       await waitFor(() => {
         const writes = (AsyncStorage.setItem as jest.Mock).mock.calls.filter((c) => c[0] === 'sonare.pendingPlays');
@@ -1007,7 +1012,7 @@ describe('Data Layer', () => {
     });
     it('MOB-DATA-038 flush drops confirmed plays after successful reportPlays', async () => {
       jest.spyOn(api, 'reportPlays').mockResolvedValue({ ok: true });
-      queuePlay('yt:track-flush', Date.now(), 30000);
+      queuePlay(song('yt:track-flush'), Date.now(), 30000);
       await waitFor(() => {
         expect(useSyncStatus.getState().syncing).toBe(false);
       });
@@ -1015,13 +1020,13 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-039 flush schedules retry on network error and drops invalid 4xx errors', async () => {
       jest.spyOn(api, 'reportPlays').mockRejectedValueOnce(new ApiError('Not found', 404));
-      queuePlay('yt:track-bad', Date.now(), 30000);
+      queuePlay(song('yt:track-bad'), Date.now(), 30000);
       await waitFor(() => {
         expect(useSyncStatus.getState().syncing).toBe(false);
       });
 
       jest.spyOn(api, 'reportPlays').mockRejectedValueOnce(new Error('Network offline'));
-      queuePlay('yt:track-retry', Date.now(), 30000);
+      queuePlay(song('yt:track-retry'), Date.now(), 30000);
       requestSync();
       await waitFor(() => {
         expect(useSyncStatus.getState().syncing).toBe(false);

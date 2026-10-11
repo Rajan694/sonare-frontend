@@ -143,7 +143,7 @@ const App = () => {
       // Count the play once enough of the track has actually been heard.
       const track = currentTrackRef.current;
       if (track && s.playing) {
-        maybeRecordPlay(track.id, playStartedAt.current, s.positionMs, s.durationMs || track.durationMs || 0);
+        maybeRecordPlay(track, playStartedAt.current, s.positionMs, s.durationMs || track.durationMs || 0);
       }
     });
   }, []);

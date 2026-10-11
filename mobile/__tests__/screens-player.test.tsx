@@ -195,7 +195,7 @@ describe('Queue', () => {
     fireEvent.press(getByText('Save as playlist'));
     expect(await findByText(/Saved as "Queue · /)).toBeTruthy();
     expect(create).toHaveBeenCalledWith(expect.stringMatching(/^Queue · /));
-    expect(add).toHaveBeenCalledWith('sonare:q', [song.id, next1.id, next2.id]);
+    expect(add).toHaveBeenCalledWith('sonare:q', [song, next1, next2]);
   });
 
   it('MOB-Q-005 a failed save says why; shuffle and repeat work from here', async () => {

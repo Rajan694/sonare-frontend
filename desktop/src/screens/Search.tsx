@@ -57,7 +57,7 @@ const Search = () => {
     if (!addTo) return;
     setAdded((prev) => new Set(prev).add(track.id));
     try {
-      await api.addTracksToPlaylist(addTo, [track.id]);
+      await api.addTracksToPlaylist(addTo, [track]);
       notifyPlaylistsChanged();
     } catch {
       setAdded((prev) => {

@@ -114,7 +114,12 @@ describe('starting playback', () => {
   it('WEB-QUEUE-003 counts a play from the live playback position', () => {
     run(() => store().playTrack(a, [a]));
     playback({ playing: true, positionMs: 31_000, durationMs: 200_000 });
-    expect(plays.maybeRecordPlay).toHaveBeenLastCalledWith('yt:a', expect.any(Number), 31_000, 200_000);
+    expect(plays.maybeRecordPlay).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'yt:a' }),
+      expect.any(Number),
+      31_000,
+      200_000,
+    );
     // Paused progress does not count.
     vi.mocked(plays.maybeRecordPlay).mockClear();
     playback({ playing: false, positionMs: 32_000 });

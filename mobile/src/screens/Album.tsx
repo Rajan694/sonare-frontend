@@ -12,6 +12,7 @@ import { Badge } from '../components/ui/Badge';
 import { IconButton } from '../components/ui/IconButton';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
+import { albumMeta } from '../../../shared/catalog/meta';
 import { api } from '../data/api';
 import { useSavedAlbum } from '../data/savedAlbums';
 import { artworkUrl } from '../data/config';
@@ -38,6 +39,7 @@ export const AlbumScreen = () => {
   const { isSaved: favourite, toggle: toggleFavourite } = useSavedAlbum(
     id,
     'Create a free account to save albums you love.',
+    info ? albumMeta(info) : undefined,
   );
 
   const totalDurationMs = tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0);

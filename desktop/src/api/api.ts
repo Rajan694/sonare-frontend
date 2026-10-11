@@ -4,6 +4,7 @@ import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo
 import type { LyricsScript } from '../storage/devicePrefs';
 import { inAppYoutube, isInAppYoutubeAllowed, loadCachedConfig, setAppConfig, type AppConfig } from '../youtube/inApp';
 import { trackThumbUrl } from '../../../shared/catalog/images';
+import { albumMeta, artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
 
 type Catalog = Awaited<ReturnType<typeof inAppYoutube.getCatalog>>;
 
@@ -422,22 +423,27 @@ export const api = {
     return request<Page<Track>>('/me/favourites/tracks', { params: { cursor } });
   },
 
-  setTrackFavourite(id: string, favourite: boolean) {
+  // Saving one sends what the app knows about it (`meta`): the backend may never have seen
+  // an item found in-app.
+  setTrackFavourite(id: string, favourite: boolean, track?: Track) {
     return request<{ ok: boolean }>(`/me/favourites/tracks/${encodeURIComponent(id)}`, {
       method: favourite ? 'PUT' : 'DELETE',
+      ...(favourite && track && { body: JSON.stringify({ meta: trackMeta(track) }) }),
     });
   },
 
-  setAlbumFavourite(id: string, favourite: boolean) {
+  setAlbumFavourite(id: string, favourite: boolean, album?: Album) {
     return request<{ ok: boolean }>(`/me/favourites/albums/${encodeURIComponent(id)}`, {
       method: favourite ? 'PUT' : 'DELETE',
+      ...(favourite && album && { body: JSON.stringify({ meta: albumMeta(album) }) }),
     });
   },
 
-  setArtistFollowing(id: string, following: boolean) {
+  setArtistFollowing(id: string, following: boolean, artist?: Artist) {
     rememberFollow(id, following);
     return request<{ ok: boolean }>(`/me/following/artists/${encodeURIComponent(id)}`, {
       method: following ? 'PUT' : 'DELETE',
+      ...(following && artist && { body: JSON.stringify({ meta: artistMeta(artist) }) }),
     });
   },
 
@@ -486,10 +492,10 @@ export const api = {
     });
   },
 
-  addTracksToPlaylist(id: string, trackIds: string[]) {
+  addTracksToPlaylist(id: string, tracks: Track[]) {
     return request<{ ok: boolean }>(`/me/playlists/${encodeURIComponent(id)}/tracks`, {
       method: 'POST',
-      body: JSON.stringify({ trackIds }),
+      body: JSON.stringify({ trackIds: tracks.map((t) => t.id), metas: trackMetas(tracks) }),
     });
   },
 

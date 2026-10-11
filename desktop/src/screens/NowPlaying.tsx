@@ -49,7 +49,7 @@ const NowPlaying = () => {
   const local = useLocalLibrary();
 
   const { data: peaksData } = usePeaks(currentTrack?.id);
-  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack);
   const peaks = currentTrack?.peaks || peaksData?.peaks;
 
   if (!currentTrack) {

@@ -300,7 +300,7 @@ describe('track menu', () => {
         expect.objectContaining({ title: 'Added to Road trip', description: 'Reckoner' }),
       ),
     );
-    expect(added).toEqual({ id: 'sonare:road', body: { trackIds: ['yt:reck'] } });
+    expect(added).toEqual({ id: 'sonare:road', body: expect.objectContaining({ trackIds: ['yt:reck'] }) });
     expect(screen.queryByRole('menu')).not.toBeInTheDocument();
   });
 

@@ -3,6 +3,7 @@ import { api, ApiError, loadErrorMessage } from '../../src/api/api';
 import { clearSession, getAccessToken, getCurrentUser, setSession } from '../../src/api/auth';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeTrack, page, testUser } from '../helpers/fixtures';
+import type { Track } from '../../src/types';
 
 useMockServer();
 
@@ -86,6 +87,49 @@ describe('api client: request building', () => {
     ]);
   });
 
+  it('WEB-API-020 saving an album or following an artist sends what the app knows about it', async () => {
+    const bodies: Record<string, unknown> = {};
+    server.use(
+      http.put(`${API}/me/*`, async ({ request }) => {
+        bodies[new URL(request.url).pathname] = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    await api.setAlbumFavourite('yt:MPREa1', true, {
+      id: 'yt:MPREa1',
+      title: 'Record',
+      artist: 'Band',
+      artistId: 'yt:UCband',
+      year: 1997,
+      trackCount: 12,
+      genre: null,
+      source: 'server',
+      downloaded: false,
+      thumbnail: 'https://lh3.googleusercontent.com/rec=w544-h544',
+    });
+    await api.setArtistFollowing('yt:UCband', true, {
+      id: 'yt:UCband',
+      name: 'Band',
+      albumCount: 3,
+      localTrackCount: 0,
+      following: false,
+      monthlyListeners: 1000,
+    });
+    expect(bodies).toEqual({
+      '/api/v1/me/favourites/albums/yt%3AMPREa1': {
+        meta: {
+          title: 'Record',
+          artist: 'Band',
+          artistId: 'yt:UCband',
+          year: 1997,
+          trackCount: 12,
+          thumbnail: 'https://lh3.googleusercontent.com/rec=w544-h544',
+        },
+      },
+      '/api/v1/me/following/artists/yt%3AUCband': { meta: { name: 'Band', monthlyListeners: 1000 } },
+    });
+  });
+
   it('WEB-API-007 removes and reorders playlist tracks with the documented verbs and bodies', async () => {
     const calls: { method: string; path: string; body: unknown }[] = [];
     server.use(
@@ -96,11 +140,22 @@ describe('api client: request building', () => {
     );
     await api.removeTracksFromPlaylist('sonare:p1', { index: 2 });
     await api.reorderPlaylistTracks('sonare:p1', { from: 0, to: 3 });
-    await api.addTracksToPlaylist('sonare:p1', ['yt:a', 'yt:b']);
+    await api.addTracksToPlaylist('sonare:p1', [
+      { id: 'yt:a', title: 'A', artist: 'Band', artistId: 'yt:UCband', album: null, albumId: null, durationMs: 1000 },
+      { id: 'local:b', title: 'B', artist: '', artistId: '', album: null, albumId: null, durationMs: null },
+    ] as Track[]);
     expect(calls).toEqual([
       { method: 'DELETE', path: '/api/v1/me/playlists/sonare%3Ap1/tracks', body: { index: 2 } },
       { method: 'PATCH', path: '/api/v1/me/playlists/sonare%3Ap1/tracks/order', body: { from: 0, to: 3 } },
-      { method: 'POST', path: '/api/v1/me/playlists/sonare%3Ap1/tracks', body: { trackIds: ['yt:a', 'yt:b'] } },
+      // Each YouTube song goes with what the app knows about it (the backend may never have seen it).
+      {
+        method: 'POST',
+        path: '/api/v1/me/playlists/sonare%3Ap1/tracks',
+        body: {
+          trackIds: ['yt:a', 'local:b'],
+          metas: { 'yt:a': { title: 'A', artist: 'Band', artistId: 'yt:UCband', durationMs: 1000 } },
+        },
+      },
     ]);
   });
 

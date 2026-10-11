@@ -386,6 +386,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-API-017` | shares one refresh between requests that fail at the same time                   |
 | `WEB-API-018` | does not try to refresh a guest request that gets 401                            |
 | `WEB-API-019` | explains upstream outages, unreachable servers and other failures in plain words |
+| `WEB-API-020` | saving an album or following an artist sends what the app knows about it         |
 
 ## `test/unit/audioDemux.test.ts`
 
@@ -594,6 +595,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PLAY-006` | each account only uploads its own plays (plus untagged older ones)                 |
 | `WEB-PLAY-007` | removing uploaded plays keeps ones recorded meanwhile                              |
 | `WEB-PLAY-008` | unreadable stored plays are treated as none                                        |
+| `WEB-PLAY-009` | a play carries what the app knows about the song, for one the backend never saw    |
 | `WEB-SYNC-001` | a counted play uploads straight away in Online Mode and leaves the queue           |
 | `WEB-SYNC-002` | Offline Mode holds plays, and switching to Online uploads them and refreshes lists |
 | `WEB-SYNC-003` | with the network down nothing is sent; the online event sends it                   |

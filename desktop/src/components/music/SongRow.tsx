@@ -70,7 +70,7 @@ const SongRow = ({
   added,
   hideAlbum,
 }: SongRowProps) => {
-  const { favourite, toggle: toggleFavourite } = useFavourite(track.id, track.favourite);
+  const { favourite, toggle: toggleFavourite } = useFavourite(track);
   const { isPlaying } = usePlayerStore();
   const { downloads } = useLocalLibrary();
   const download = useDownload(track.id);

@@ -15,6 +15,7 @@ import { Ambient } from '../components/music/Ambient';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
+import { playlistMeta } from '../../../shared/catalog/meta';
 import { api, isOwnPlaylist } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
@@ -34,10 +35,13 @@ export const PlaylistDetailScreen = () => {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const shuffle = usePlayerStore((state) => state.shuffle);
   const [menuOpen, setMenuOpen] = useState(false);
-  // YouTube playlists are saved to the library the same way albums are.
-  const { isSaved, toggle: toggleSaved } = useSavedAlbum(id, 'Create a free account to save playlists you love.');
-
   const playlist = useAsync(() => (own ? api.myPlaylist(id) : api.playlist(id)), [id], { refetchOnFocus: own });
+  // YouTube playlists are saved to the library the same way albums are.
+  const { isSaved, toggle: toggleSaved } = useSavedAlbum(
+    id,
+    'Create a free account to save playlists you love.',
+    playlist.data && !own ? playlistMeta(playlist.data) : undefined,
+  );
   const from = playlist.data ? { kind: 'Playlist', name: playlist.data.name } : undefined;
   const tracksQuery = useAsync(() => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)), [id], {
     refetchOnFocus: own,

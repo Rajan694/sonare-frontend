@@ -4,7 +4,8 @@ import { httpRequest } from './http';
 import { isInAppYoutubeEnabled } from '../youtube/appConfig';
 import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
-import type { Album, Artist, Lyrics, Page, Playlist, SearchItem, StreamInfo, Track, User } from './types';
+import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
+import type { Album, AlbumMeta, Artist, Lyrics, Page, Playlist, SearchItem, StreamInfo, Track, User } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -246,21 +247,26 @@ export const api = {
       params: { sort, order: sort === 'title' ? 'asc' : 'desc' },
     }),
   favourites: () => request<Page<Track>>('/me/favourites/tracks'),
-  setFavourite: (trackId: string, favourite: boolean) =>
+  // Saving one sends what the app knows about it (`meta`): the backend may never have seen
+  // an item found in-app.
+  setFavourite: (trackId: string, favourite: boolean, track?: Track) =>
     request<{ ok: boolean }>(`/me/favourites/tracks/${enc(trackId)}`, {
       method: favourite ? 'PUT' : 'DELETE',
+      ...(favourite && track && { body: { meta: trackMeta(track) } }),
     }),
   /** Albums the user has saved (hearted). */
   libraryAlbums: () => request<Page<Album>>('/me/library/albums'),
-  setAlbumFavourite: (albumId: string, favourite: boolean) =>
+  setAlbumFavourite: (albumId: string, favourite: boolean, meta?: AlbumMeta) =>
     request<{ ok: boolean }>(`/me/favourites/albums/${enc(albumId)}`, {
       method: favourite ? 'PUT' : 'DELETE',
+      ...(favourite && meta && { body: { meta } }),
     }),
-  setFollowing: async (artistId: string, following: boolean) => {
+  setFollowing: async (artistId: string, following: boolean, artist?: Artist) => {
     useLibraryStore.getState().setArtistFollowed(artistId, following);
     try {
       return await request<{ ok: boolean }>(`/me/following/artists/${enc(artistId)}`, {
         method: following ? 'PUT' : 'DELETE',
+        ...(following && artist && { body: { meta: artistMeta(artist) } }),
       });
     } catch (e) {
       useLibraryStore.getState().setArtistFollowed(artistId, !following);
@@ -296,10 +302,10 @@ export const api = {
       body: { name, kind: 'synced' },
     }),
   deletePlaylist: (id: string) => request<{ ok: boolean }>(`/me/playlists/${enc(id)}`, { method: 'DELETE' }),
-  addToPlaylist: (id: string, trackIds: string[]) =>
+  addToPlaylist: (id: string, tracks: Track[]) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {
       method: 'POST',
-      body: { trackIds },
+      body: { trackIds: tracks.map((t) => t.id), metas: trackMetas(tracks) },
     }),
   removeFromPlaylist: (id: string, index: number) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {

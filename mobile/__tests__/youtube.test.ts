@@ -541,6 +541,50 @@ describe('In-App YouTube Support', () => {
     fail = true;
     await expect(xhrFetch('https://example.com/x')).rejects.toThrow(TypeError);
   });
+
+  it('MOB-YT-022 saving a song, adding it to a playlist or following its artist sends what the app knows', async () => {
+    const sent: { url: string; body: unknown }[] = [];
+    class RecordingXHR {
+      status = 200;
+      responseText = '{"ok":true}';
+      url = '';
+      onload: (() => void) | null = null;
+      open(_method: string, url: string) {
+        this.url = url;
+      }
+      setRequestHeader() {}
+      send(body?: string) {
+        sent.push({ url: this.url.replace(/^.*\/api\/v1/, ''), body: body ? JSON.parse(body) : undefined });
+        setTimeout(() => this.onload?.(), 0);
+      }
+    }
+    global.XMLHttpRequest = RecordingXHR as any;
+    const found = makeTrack({ id: 'yt:inApp1', title: 'Found', artist: 'Band', artistId: 'yt:UCband' });
+    const songMeta = { title: 'Found', artist: 'Band', artistId: 'yt:UCband', durationMs: 200_000 };
+
+    await api.setFavourite(found.id, true, found);
+    await api.setFavourite(found.id, false, found);
+    await api.addToPlaylist('sonare:p1', [found, makeTrack({ id: 'local:file1' })]);
+    await api.setFollowing('yt:UCband', true, {
+      id: 'yt:UCband',
+      name: 'Band',
+      albumCount: 1,
+      localTrackCount: 0,
+      following: false,
+    });
+
+    expect(sent).toEqual([
+      { url: '/me/favourites/tracks/yt%3AinApp1', body: { meta: songMeta } },
+      // Removing needs nothing.
+      { url: '/me/favourites/tracks/yt%3AinApp1', body: undefined },
+      // Local files are the phone's own business.
+      {
+        url: '/me/playlists/sonare%3Ap1/tracks',
+        body: { trackIds: ['yt:inApp1', 'local:file1'], metas: { 'yt:inApp1': songMeta } },
+      },
+      { url: '/me/following/artists/yt%3AUCband', body: { meta: { name: 'Band', monthlyListeners: null } } },
+    ]);
+  });
 });
 
 /** Let pending promises run until `fn` has been called `times` times. */

@@ -55,7 +55,7 @@ const BottomPlayer = () => {
 
   const { data: peaksData } = usePeaks(currentTrack?.id);
   const peaks = currentTrack?.peaks || peaksData?.peaks;
-  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack);
 
   // Nothing to control until a track is picked: the bar only takes space while it's useful.
   if (!currentTrack) return null;

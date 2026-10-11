@@ -417,7 +417,7 @@ describe('queue panel', () => {
     expect(await screen.findByDisplayValue('My queue')).toBeInTheDocument();
     await answerPrompt(user, 'Sunday');
     await waitFor(() => expect(location()).toBe('/playlist/sonare:sun'));
-    expect(added).toEqual({ trackIds: queue.map((t) => t.id) });
+    expect(added).toMatchObject({ trackIds: queue.map((t) => t.id) });
     expect(onClose).toHaveBeenCalled();
     expect(screen.getByText('Playlist saved')).toBeInTheDocument();
   });

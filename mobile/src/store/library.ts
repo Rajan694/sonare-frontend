@@ -77,7 +77,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     // Optimistic; undone if the server refuses.
     apply(next);
     try {
-      await api.setFavourite(track.id, next);
+      await api.setFavourite(track.id, next, track);
     } catch (e) {
       apply(!next);
       throw e;
@@ -101,7 +101,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   },
 
   addToPlaylist: async (playlistId, track) => {
-    await api.addToPlaylist(playlistId, [track.id]);
+    await api.addToPlaylist(playlistId, [track]);
     await get()
       .reloadPlaylists()
       .catch(() => {});
