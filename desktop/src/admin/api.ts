@@ -182,6 +182,20 @@ export interface AdminRelease extends AppRelease {
   downloads: number;
 }
 
+export interface AdminSettings {
+  pipedApiUrl: {
+    saved: string | null;
+    effective: string;
+    envDefault: string;
+  };
+}
+
+export interface PipedHealthTestResult {
+  ok: boolean;
+  ms: number;
+  error?: string;
+}
+
 export interface ReleaseList {
   items: AdminRelease[];
   /** The file extensions each platform takes. */
@@ -290,6 +304,18 @@ export const adminApi = {
 
   deleteRelease(id: string) {
     return call<void>(`/releases/${id}`, { method: 'DELETE' });
+  },
+
+  getSettings() {
+    return call<AdminSettings>('/settings');
+  },
+
+  saveSettings(pipedApiUrl: string | null) {
+    return call<AdminSettings>('/settings', { method: 'PUT', body: { pipedApiUrl } });
+  },
+
+  testPipedUrl(url: string) {
+    return call<PipedHealthTestResult>('/settings/piped-test', { method: 'POST', body: { url } });
   },
 };
 
