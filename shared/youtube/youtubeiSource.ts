@@ -524,23 +524,48 @@ function classifyError(err: unknown, defaultKind: SourceErrorKind = 'unavailable
 export interface YoutubeiSourceOpts {
   /** Clients to try for getStream, in order. Default: ['VISIONOS']. */
   clients?: string[];
+  /**
+   * HTTP status of a tiny ranged GET on a stream url, made with the app's own transport. Some
+   * YouTube sessions only get "limited" urls (206 for the first ~1 MB, 403 past it), so
+   * getStream checks one url this way before handing it out. Leave it out to skip the check.
+   */
+  probe?: (url: string, contentLength: number) => Promise<number>;
+  /** A fresh Innertube session, used when the current one only gets limited urls. */
+  newSession?: () => Promise<InnertubeLike>;
 }
+
+/** A YouTubeSource that can also be told to start over with a fresh YouTube session. */
+export interface YoutubeiSource extends YouTubeSource {
+  /** Switch to a fresh session (no-op without `newSession`). For urls that 403 after the probe passed. */
+  refresh(): Promise<void>;
+}
+
+/** Sessions tried per getStream before giving up on limited urls. */
+const MAX_SESSIONS = 3;
+
+/** Where the probe reads: past the ~1 MB a limited url still serves, or the last KB of a short file. */
+export const probeRange = (contentLength: number): { start: number; end: number } => {
+  const start = contentLength > 0 ? Math.max(0, Math.min(contentLength - 1024, 1_200_000)) : 1_200_000;
+  return { start, end: start + 1023 };
+};
 
 export function createYoutubeiSource(
   yt: InnertubeLike,
   opts: YoutubeiSourceOpts = {},
-): YouTubeSource {
+): YoutubeiSource {
   const clients = opts.clients ?? ['VISIONOS'];
+  // The session every call goes through; replaced when it only gets limited stream urls.
+  let current = yt;
 
   // ---- getStream -----------------------------------------------------------
-  async function getStream(videoId: string): Promise<Streams> {
+  async function extractStreams(videoId: string): Promise<Streams> {
     let lastError: SourceError | null = null;
     const statuses: Array<{ status?: string; reason?: string }> = [];
 
     for (const client of clients) {
       let info: YTBasicInfoResult;
       try {
-        info = await yt.getBasicInfo(videoId, { client });
+        info = await current.getBasicInfo(videoId, { client });
       } catch (_err) {
         lastError = new SourceError('unavailable', `Network error for client ${client}: ${String(_err)}`);
         continue;
@@ -611,6 +636,40 @@ export function createYoutubeiSource(
     throw lastError ?? new SourceError('unavailable', 'All clients failed');
   }
 
+  /** The highest-bitrate stream with a url: the one getStream probes. */
+  function probeTarget(streams: Streams): PipedStream | undefined {
+    return [...streams.audioStreams, ...streams.videoStreams]
+      .filter((s) => s.url)
+      .sort((a, b) => b.bitrate - a.bitrate)[0];
+  }
+
+  async function getStream(videoId: string): Promise<Streams> {
+    for (let session = 1; ; session++) {
+      const streams = await extractStreams(videoId);
+      const target = opts.probe && probeTarget(streams);
+      if (!opts.probe || !target) return streams;
+
+      let status = 0;
+      try {
+        status = await opts.probe(target.url, target.contentLength);
+      } catch {
+        // Network trouble on the probe: treat this session's urls as unusable.
+      }
+      if (status === 200 || status === 206) return streams;
+
+      if (!opts.newSession || session >= MAX_SESSIONS) {
+        throw status === 403
+          ? new SourceError('blocked', 'YouTube only gave limited stream urls')
+          : new SourceError('unavailable', `Stream check failed (${status || 'network error'})`);
+      }
+      current = await opts.newSession();
+    }
+  }
+
+  async function refresh(): Promise<void> {
+    if (opts.newSession) current = await opts.newSession();
+  }
+
   // ---- search --------------------------------------------------------------
   async function search(q: string, filter?: string): Promise<SearchPage> {
     const type = filterToType[filter ?? ''];
@@ -627,7 +686,7 @@ export function createYoutubeiSource(
     filter: string,
   ): Promise<SearchPage> {
     try {
-      const res = await yt.music.search(q, { type });
+      const res = await current.music.search(q, { type });
       const section = res.contents?.[0];
       const items = (section?.contents ?? []).map((item: any) => mapSearchItem(item, type)).filter(Boolean) as StreamItem[];
       const continuation = section?.continuation ?? null;
@@ -660,7 +719,7 @@ export function createYoutubeiSource(
     nextpage: string,
     filter?: string,
   ): Promise<SearchPage> {
-    if (!yt.actions) {
+    if (!current.actions) {
       throw new SourceError('unavailable', 'Actions service not available on this Innertube instance');
     }
     try {
@@ -676,7 +735,7 @@ export function createYoutubeiSource(
         // raw token
       }
 
-      const res = await yt.actions.execute('/search', {
+      const res = await current.actions.execute('/search', {
         continuation: token,
         client: 'YTMUSIC',
         parse: true,
@@ -705,7 +764,7 @@ export function createYoutubeiSource(
   // ---- suggestions ---------------------------------------------------------
   async function suggestions(query: string): Promise<string[]> {
     try {
-      const sections = await yt.music.getSearchSuggestions(query);
+      const sections = await current.music.getSearchSuggestions(query);
       const out: string[] = [];
       for (const section of sections ?? []) {
         for (const item of (section as { contents?: YTSuggestionItem[] }).contents ?? []) {
@@ -727,9 +786,9 @@ export function createYoutubeiSource(
 
   // ---- trending ------------------------------------------------------------
   async function trending(_region?: string): Promise<StreamItem[]> {
-    if (typeof yt.getTrending === 'function') {
+    if (typeof current.getTrending === 'function') {
       try {
-        const res = await yt.getTrending();
+        const res = await current.getTrending();
         if (Array.isArray(res)) return res;
         if (res?.videos && Array.isArray(res.videos)) {
           return res.videos.map(videoToStreamItem).filter(Boolean) as StreamItem[];
@@ -743,12 +802,12 @@ export function createYoutubeiSource(
 
   // ---- channel -------------------------------------------------------------
   async function channel(id: string): Promise<Channel> {
-    if (typeof yt.getChannel !== 'function') {
+    if (typeof current.getChannel !== 'function') {
       throw new SourceError('unavailable', 'Channel endpoint not available on this Innertube instance');
     }
     try {
       const cleanId = id.startsWith('yt:') ? id.slice(3) : id;
-      const ch = await yt.getChannel(cleanId);
+      const ch = await current.getChannel(cleanId);
 
       // Extract channel name
       const header = ch.header;
@@ -860,7 +919,7 @@ export function createYoutubeiSource(
 
   // ---- channelTabs ---------------------------------------------------------
   async function channelTabs(data: string): Promise<ChannelTabPage> {
-    if (!yt.actions) {
+    if (!current.actions) {
       throw new SourceError('unavailable', 'Actions service not available on this Innertube instance');
     }
     try {
@@ -886,7 +945,7 @@ export function createYoutubeiSource(
         if (payload.params) browseArgs.params = payload.params;
       }
 
-      const res = await yt.actions.execute('/browse', browseArgs);
+      const res = await current.actions.execute('/browse', browseArgs);
       const nodes = getAllNodes(res);
       const content: ChannelTabItem[] = [];
       const seen = new Set<string>();
@@ -913,12 +972,12 @@ export function createYoutubeiSource(
 
   // ---- playlist ------------------------------------------------------------
   async function playlist(id: string): Promise<Playlist> {
-    if (typeof yt.getPlaylist !== 'function') {
+    if (typeof current.getPlaylist !== 'function') {
       throw new SourceError('unavailable', 'Playlist endpoint not available on this Innertube instance');
     }
     try {
       const cleanId = id.startsWith('VL') ? id.slice(2) : id;
-      const res = await yt.getPlaylist(cleanId);
+      const res = await current.getPlaylist(cleanId);
       const info = res.info ?? {};
       const title = info.title ?? '';
       const description = info.description ?? '';
@@ -955,7 +1014,7 @@ export function createYoutubeiSource(
 
   // ---- playlistNextPage ----------------------------------------------------
   async function playlistNextPage(id: string, nextpage: string): Promise<PlaylistPage> {
-    if (!yt.actions) {
+    if (!current.actions) {
       throw new SourceError('unavailable', 'Actions service not available on this Innertube instance');
     }
     try {
@@ -970,7 +1029,7 @@ export function createYoutubeiSource(
         // raw token
       }
 
-      const res = await yt.actions.execute('/browse', { token, parse: true });
+      const res = await current.actions.execute('/browse', { token, parse: true });
       const nodes = getAllNodes(res);
       const streamItems: StreamItem[] = [];
       const seen = new Set<string>();
@@ -1006,6 +1065,7 @@ export function createYoutubeiSource(
 
   return {
     getStream,
+    refresh,
     search,
     searchNextPage,
     suggestions,

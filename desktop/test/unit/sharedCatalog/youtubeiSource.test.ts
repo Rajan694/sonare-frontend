@@ -6,7 +6,7 @@ import type {
   YTMusicSearchResult,
   YTSuggestionsSection,
 } from '../../../../shared/youtube/innertubeLike';
-import { createYoutubeiSource } from '../../../../shared/youtube/youtubeiSource';
+import { createYoutubeiSource, probeRange } from '../../../../shared/youtube/youtubeiSource';
 import { SourceError } from '../../../../shared/catalog/source';
 
 // ---------------------------------------------------------------------------
@@ -1031,5 +1031,104 @@ describe('youtubeiSource', () => {
     const src = createYoutubeiSource(yt);
     await src.channel('yt:UCxyz123');
     expect(requestedId).toBe('UCxyz123');
+  });
+  // == limited stream urls: probe + fresh sessions ==
+
+  /** A session whose stream urls carry `tag`, so a test can tell which session answered. */
+  const taggedSession = (tag: string, calls: string[] = []) =>
+    fakeInnertube({
+      getBasicInfo: async () => {
+        calls.push(tag);
+        const info = fakeBasicInfo();
+        for (const f of info.streaming_data!.adaptive_formats!) f.url = `${f.url}&s=${tag}`;
+        return info;
+      },
+      search: async () => {
+        calls.push(`search:${tag}`);
+        return { contents: [] };
+      },
+    });
+
+  it('WEB-CAT-074: getStream switches to a fresh session when the probe says the urls are limited', async () => {
+    const probed: Array<[string, number]> = [];
+    let sessions = 0;
+    const src = createYoutubeiSource(taggedSession('first'), {
+      probe: async (url, len) => {
+        probed.push([url, len]);
+        return url.includes('s=first') ? 403 : 206;
+      },
+      newSession: async () => taggedSession(`fresh${++sessions}`),
+    });
+    const s = await src.getStream('abc123');
+    expect(sessions).toBe(1);
+    expect(s.audioStreams.every((a) => a.url.includes('s=fresh1'))).toBe(true);
+    // The highest-bitrate audio url is the one checked, with its own length.
+    expect(probed[0]).toEqual(['https://rr1.googlevideo.com/videoplayback?itag=251&s=first', 3433755]);
+  });
+
+  it('WEB-CAT-075: getStream gives up as blocked after three sessions of limited urls', async () => {
+    let sessions = 0;
+    const src = createYoutubeiSource(taggedSession('first'), {
+      probe: async () => 403,
+      newSession: async () => taggedSession(`fresh${++sessions}`),
+    });
+    const err = await src.getStream('abc123').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SourceError);
+    expect((err as SourceError).kind).toBe('blocked');
+    expect(sessions).toBe(2);
+  });
+
+  it('WEB-CAT-076: getStream without a probe returns the first session urls unchecked', async () => {
+    let sessions = 0;
+    const src = createYoutubeiSource(taggedSession('first'), {
+      newSession: async () => taggedSession(`f${++sessions}`),
+    });
+    const s = await src.getStream('abc123');
+    expect(sessions).toBe(0);
+    expect(s.audioStreams[0].url).toContain('s=first');
+  });
+
+  it('WEB-CAT-077: a probe network error moves on to a fresh session', async () => {
+    const src = createYoutubeiSource(taggedSession('first'), {
+      probe: async (url) => {
+        if (url.includes('s=first')) throw new TypeError('network down');
+        return 206;
+      },
+      newSession: async () => taggedSession('second'),
+    });
+    const s = await src.getStream('abc123');
+    expect(s.audioStreams[0].url).toContain('s=second');
+  });
+
+  it('WEB-CAT-078: after a session switch, later calls (search) use the new session', async () => {
+    const calls: string[] = [];
+    const src = createYoutubeiSource(taggedSession('first', calls), {
+      probe: async (url) => (url.includes('s=first') ? 403 : 206),
+      newSession: async () => taggedSession('second', calls),
+    });
+    await src.getStream('abc123');
+    await src.search('kesariya', 'music_songs');
+    expect(calls).toEqual(['first', 'second', 'search:second']);
+  });
+
+  it('WEB-CAT-079: refresh() starts a fresh session, and is a no-op without newSession', async () => {
+    const calls: string[] = [];
+    const withSessions = createYoutubeiSource(taggedSession('first', calls), {
+      newSession: async () => taggedSession('second', calls),
+    });
+    await withSessions.refresh();
+    await withSessions.getStream('abc123');
+    expect(calls).toEqual(['second']);
+
+    const without = createYoutubeiSource(taggedSession('only', calls));
+    await without.refresh();
+    await without.getStream('abc123');
+    expect(calls.at(-1)).toBe('only');
+  });
+
+  it('WEB-CAT-080: probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file', () => {
+    expect(probeRange(4_695_894)).toEqual({ start: 1_200_000, end: 1_201_023 });
+    expect(probeRange(500_000)).toEqual({ start: 498_976, end: 499_999 });
+    expect(probeRange(-1)).toEqual({ start: 1_200_000, end: 1_201_023 });
   });
 });

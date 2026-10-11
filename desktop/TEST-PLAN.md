@@ -758,42 +758,49 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/sharedCatalog/youtubeiSource.test.ts`
 
-| ID            | Use case                                                                                          |
-| :------------ | :------------------------------------------------------------------------------------------------ |
-| `WEB-CAT-037` | getStream maps VISIONOS response to Piped Streams shape                                           |
-| `WEB-CAT-038` | getStream tries clients in order and uses first success                                           |
-| `WEB-CAT-039` | getStream skips formats without a url                                                             |
-| `WEB-CAT-040` | getStream maps codec and format correctly                                                         |
-| `WEB-CAT-041` | getStream throws blocked when all clients return LOGIN_REQUIRED                                   |
-| `WEB-CAT-042` | getStream throws not_found for ERROR status                                                       |
-| `WEB-CAT-043` | getStream throws unavailable on network error                                                     |
-| `WEB-CAT-044` | getStream contentLength is -1 when unknown                                                        |
-| `WEB-CAT-045` | search songs maps to Piped StreamItem with correct url and artist                                 |
-| `WEB-CAT-046` | search songs joins multiple artist names with comma                                               |
-| `WEB-CAT-047` | search albums extracts OLAK playlist id from overlay                                              |
-| `WEB-CAT-048` | search albums skips items without OLAK id                                                         |
-| `WEB-CAT-049` | search artists maps to channel StreamItem with subscriberCount                                    |
-| `WEB-CAT-050` | search playlists strips VL prefix from id                                                         |
-| `WEB-CAT-051` | search returns nextpage with continuation token and filter                                        |
-| `WEB-CAT-052` | search returns null nextpage when no continuation                                                 |
-| `WEB-CAT-053` | suggestions extracts plain strings from SearchSuggestion items                                    |
-| `WEB-CAT-054` | suggestions extracts strings from MusicResponsiveListItem in second section                       |
-| `WEB-CAT-055` | suggestions wraps network error as SourceError unavailable                                        |
-| `WEB-CAT-056` | unimplemented methods throw SourceError unavailable                                               |
-| `WEB-CAT-057` | getStream selects largest thumbnail by width                                                      |
-| `WEB-CAT-058` | getStream falls through client with no audio formats to next client                               |
-| `WEB-CAT-059` | search wraps network error as SourceError unavailable                                             |
-| `WEB-CAT-060` | getStream uses muxed formats in videoStreams when present                                         |
-| `WEB-CAT-061` | placeholderPeaks produces deterministic waveform matching pinned literal array for yt:NJAv_7lHUIU |
-| `WEB-CAT-062` | resamplePeaks downsamples with max-pooling when shrinking                                         |
-| `WEB-CAT-063` | resamplePeaks upsamples with linear interpolation when growing and handles edge cases             |
-| `WEB-CAT-064` | playlist maps playlist details and video items to Piped Playlist shape                            |
-| `WEB-CAT-065` | playlist strips VL prefix from playlist ID                                                        |
-| `WEB-CAT-066` | playlistNextPage fetches continuation items and returns nextpage cursor                           |
-| `WEB-CAT-067` | playlistNextPage handles last page with null nextpage                                             |
-| `WEB-CAT-068` | channel maps channel metadata, tabs, and relatedStreams                                           |
-| `WEB-CAT-069` | channel for Topic channel returns empty relatedStreams                                            |
-| `WEB-CAT-070` | channelTabs fetches albums tab and maps OLAK playlists to ChannelTabItem                          |
-| `WEB-CAT-071` | searchNextPage uses continuation token and returns mapped StreamItems                             |
-| `WEB-CAT-072` | trending delegates to getTrending when available or throws unavailable                            |
-| `WEB-CAT-073` | channel strips yt: prefix from artist ID                                                          |
+| ID            | Use case                                                                                                          |
+| :------------ | :---------------------------------------------------------------------------------------------------------------- |
+| `WEB-CAT-037` | getStream maps VISIONOS response to Piped Streams shape                                                           |
+| `WEB-CAT-038` | getStream tries clients in order and uses first success                                                           |
+| `WEB-CAT-039` | getStream skips formats without a url                                                                             |
+| `WEB-CAT-040` | getStream maps codec and format correctly                                                                         |
+| `WEB-CAT-041` | getStream throws blocked when all clients return LOGIN_REQUIRED                                                   |
+| `WEB-CAT-042` | getStream throws not_found for ERROR status                                                                       |
+| `WEB-CAT-043` | getStream throws unavailable on network error                                                                     |
+| `WEB-CAT-044` | getStream contentLength is -1 when unknown                                                                        |
+| `WEB-CAT-045` | search songs maps to Piped StreamItem with correct url and artist                                                 |
+| `WEB-CAT-046` | search songs joins multiple artist names with comma                                                               |
+| `WEB-CAT-047` | search albums extracts OLAK playlist id from overlay                                                              |
+| `WEB-CAT-048` | search albums skips items without OLAK id                                                                         |
+| `WEB-CAT-049` | search artists maps to channel StreamItem with subscriberCount                                                    |
+| `WEB-CAT-050` | search playlists strips VL prefix from id                                                                         |
+| `WEB-CAT-051` | search returns nextpage with continuation token and filter                                                        |
+| `WEB-CAT-052` | search returns null nextpage when no continuation                                                                 |
+| `WEB-CAT-053` | suggestions extracts plain strings from SearchSuggestion items                                                    |
+| `WEB-CAT-054` | suggestions extracts strings from MusicResponsiveListItem in second section                                       |
+| `WEB-CAT-055` | suggestions wraps network error as SourceError unavailable                                                        |
+| `WEB-CAT-056` | unimplemented methods throw SourceError unavailable                                                               |
+| `WEB-CAT-057` | getStream selects largest thumbnail by width                                                                      |
+| `WEB-CAT-058` | getStream falls through client with no audio formats to next client                                               |
+| `WEB-CAT-059` | search wraps network error as SourceError unavailable                                                             |
+| `WEB-CAT-060` | getStream uses muxed formats in videoStreams when present                                                         |
+| `WEB-CAT-061` | placeholderPeaks produces deterministic waveform matching pinned literal array for yt:NJAv_7lHUIU                 |
+| `WEB-CAT-062` | resamplePeaks downsamples with max-pooling when shrinking                                                         |
+| `WEB-CAT-063` | resamplePeaks upsamples with linear interpolation when growing and handles edge cases                             |
+| `WEB-CAT-064` | playlist maps playlist details and video items to Piped Playlist shape                                            |
+| `WEB-CAT-065` | playlist strips VL prefix from playlist ID                                                                        |
+| `WEB-CAT-066` | playlistNextPage fetches continuation items and returns nextpage cursor                                           |
+| `WEB-CAT-067` | playlistNextPage handles last page with null nextpage                                                             |
+| `WEB-CAT-068` | channel maps channel metadata, tabs, and relatedStreams                                                           |
+| `WEB-CAT-069` | channel for Topic channel returns empty relatedStreams                                                            |
+| `WEB-CAT-070` | channelTabs fetches albums tab and maps OLAK playlists to ChannelTabItem                                          |
+| `WEB-CAT-071` | searchNextPage uses continuation token and returns mapped StreamItems                                             |
+| `WEB-CAT-072` | trending delegates to getTrending when available or throws unavailable                                            |
+| `WEB-CAT-073` | channel strips yt: prefix from artist ID                                                                          |
+| `WEB-CAT-074` | getStream switches to a fresh session when the probe reports limited (403) urls; probes the top-bitrate audio url |
+| `WEB-CAT-075` | getStream gives up as SourceError 'blocked' after three sessions of limited urls                                  |
+| `WEB-CAT-076` | getStream without a probe returns the first session's urls unchecked                                              |
+| `WEB-CAT-077` | a probe network error moves getStream on to a fresh session                                                       |
+| `WEB-CAT-078` | after a session switch, later calls (search) go through the new session                                           |
+| `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
+| `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
