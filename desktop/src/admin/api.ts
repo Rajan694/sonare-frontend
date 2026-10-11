@@ -188,6 +188,22 @@ export interface AdminSettings {
     effective: string;
     envDefault: string;
   };
+  youtubeClients: {
+    saved: string[] | null;
+    effective: string[];
+    default: string[];
+    allowed: string[];
+  };
+  inAppYoutube: {
+    saved: boolean | null;
+    effective: boolean;
+  };
+}
+
+export interface AdminSettingsUpdate {
+  pipedApiUrl?: string | null;
+  youtubeClients?: string[] | null;
+  inAppYoutube?: boolean | null;
 }
 
 export interface PipedHealthTestResult {
@@ -310,8 +326,8 @@ export const adminApi = {
     return call<AdminSettings>('/settings');
   },
 
-  saveSettings(pipedApiUrl: string | null) {
-    return call<AdminSettings>('/settings', { method: 'PUT', body: { pipedApiUrl } });
+  saveSettings(update: AdminSettingsUpdate) {
+    return call<AdminSettings>('/settings', { method: 'PUT', body: update });
   },
 
   testPipedUrl(url: string) {

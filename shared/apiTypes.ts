@@ -135,3 +135,39 @@ export interface AppRelease {
   notes: string | null;
   uploadedAt: string;
 }
+
+/** GET /app-config. */
+export interface AppConfig {
+  inAppYoutube: boolean;
+  youtubeClients: string[];
+  updatedAt: number;
+}
+
+// Catalog metadata for tracks, albums, and artists stored in row metadata or catalog_items table.
+// Used for offline/fallback display when Piped is unreachable.
+
+export interface TrackMeta {
+  title: string;
+  artist: string;
+  artistId: string;
+  album?: string;
+  albumId?: string;
+  durationMs: number | null;
+  thumbnail?: string;
+}
+
+export interface AlbumMeta {
+  title: string;
+  artist: string;
+  artistId: string;
+  year?: number | null;
+  trackCount?: number | null;
+  thumbnail?: string;
+}
+
+export interface ArtistMeta {
+  name: string;
+  thumbnail?: string;
+  monthlyListeners?: number | null;
+}
+
