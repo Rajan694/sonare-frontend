@@ -6,3 +6,4 @@ export * from './normalize.js';
 export * from './streams.js';
 export * from './cursor.js';
 export * from './catalog.js';
+export * from './peaks.js';
