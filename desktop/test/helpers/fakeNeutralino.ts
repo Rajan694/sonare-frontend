@@ -68,6 +68,7 @@ export const resetFs = () => {
   commands.answer = null;
   dialog.folder = '/home/me/Picked';
   for (const fn of Object.values(lib.filesystem)) vi.mocked(fn).mockClear();
+  for (const fn of Object.values(lib.os)) vi.mocked(fn).mockClear();
 };
 
 export const lib = {
@@ -108,6 +109,12 @@ export const lib = {
       if (dirs.has(path)) throw new Error('exists');
       dirs.add(path);
     }),
+    writeFile: vi.fn(async (path: string, data: string) => {
+      writeFile(path, data);
+    }),
+    writeBinaryFile: vi.fn(async (path: string, data: ArrayBuffer) => {
+      writeFile(path, new Uint8Array(data));
+    }),
     appendBinaryFile: vi.fn(async (path: string, data: ArrayBuffer) => {
       const prev = files.get(path)?.bytes ?? new Uint8Array(0);
       const next = new Uint8Array(prev.length + data.byteLength);
@@ -126,7 +133,12 @@ export const lib = {
     }),
   },
   os: {
-    getPath: vi.fn(async (name: string) => (name === 'music' ? '/home/me/Music' : '/home/me')),
+    getPath: vi.fn(async (name: string) => {
+      if (name === 'music') return '/home/me/Music';
+      if (name === 'temp') return '/tmp';
+      if (name === 'cache') return '/home/me/.cache';
+      return '/home/me';
+    }),
     showFolderDialog: vi.fn(async () => dialog.folder),
     open: vi.fn(async (url: string) => {
       opened.push(url);
@@ -137,6 +149,8 @@ export const lib = {
       const r = commands.answer?.(cmd) ?? { exitCode: 127, stdErr: 'command not found' };
       return { pid: 1, stdOut: r.stdOut ?? '', stdErr: r.stdErr ?? '', exitCode: r.exitCode ?? 0 };
     }),
+    spawnProcess: vi.fn(async (_cmd: string, _cwd?: string) => ({ id: 1, pid: 1 })),
+    updateSpawnedProcess: vi.fn(async (_id: number, _event: string, _data?: unknown) => {}),
     showMessageBox: vi.fn(async () => 'OK'),
   },
   storage: {

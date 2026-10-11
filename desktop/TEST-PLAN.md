@@ -804,3 +804,21 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-078` | after a session switch, later calls (search) go through the new session                                           |
 | `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
 | `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
+
+## `test/desktop/inAppYoutube.test.ts`
+
+| ID        | Use case                                                                                                     |
+| :-------- | :----------------------------------------------------------------------------------------------------------- |
+| `DSK-055` | curlFetch writes url, headers, and body to a -K config file with escaping and cleans up temp files           |
+| `DSK-056` | curlFetch parses status code, multi-hop headers, and binary body from curl output                            |
+| `DSK-057` | curlFetch throws on non-zero curl exit code and supports abort signals                                       |
+| `DSK-058` | isInAppYoutubeAllowed returns true only in Neutralino window mode and respects admin kill-switch             |
+| `DSK-059` | loadCachedConfig and setAppConfig sync config with Neutralino storage and re-create catalog on client change |
+| `DSK-060` | streamCache downloads stream via curl with Range: bytes=0- into .part file and renames on success            |
+| `DSK-061` | streamCache deduplicates concurrent in-flight downloads for the same video and itag                          |
+| `DSK-062` | streamCache evicts oldest accessed files when total size exceeds 500 MB limit                                |
+| `DSK-063` | streamCache detects deleted files on disk and removes them from the cached index                             |
+| `DSK-064` | player downloads direct YouTube stream into streamCache and decodes via Web Audio on Linux                   |
+| `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
+| `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |
+| `DSK-067` | api catalog methods query inApp catalog first and fall back to backend endpoints on failure                  |

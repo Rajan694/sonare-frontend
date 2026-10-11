@@ -31,6 +31,8 @@
     "filesystem.appendBinaryFile",
     "filesystem.remove",
     "filesystem.move",
+    "filesystem.writeFile",
+    "filesystem.writeBinaryFile",
     "debug.log"
   ],
   "modes": {

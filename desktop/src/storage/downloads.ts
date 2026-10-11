@@ -4,6 +4,9 @@ import { CAPS } from '../lib/caps';
 import { showToast } from '../store/toasts';
 import { api } from '../api/api';
 import { API_BASE } from '../api/auth';
+import { inAppYoutube } from '../youtube/inApp';
+import { curlFetch } from '../youtube/curlFetch';
+import { isGooglevideo } from '../youtube/streamCache';
 import { localLibrary } from './local';
 import { API_QUALITY, getSettings, type AudioQuality, type DownloadFormat } from './settings';
 import {
@@ -316,7 +319,9 @@ const run = async (id: string, signal: AbortSignal): Promise<void> => {
     while (!signal.aborted && (total === 0 || received < total)) {
       let res: Response;
       try {
-        res = await fetch(url, { headers: { Range: `bytes=${received}-${received + CHUNK - 1}` }, signal });
+        // In-app streams come straight from googlevideo, which the webview can't fetch (no CORS).
+        const fetchFn = isGooglevideo(url) ? curlFetch : fetch;
+        res = await fetchFn(url, { headers: { Range: `bytes=${received}-${received + CHUNK - 1}` }, signal });
         if (res.status === 416) {
           // Asked past the end: the part already holds the whole file.
           const size = res.headers.get('content-range')?.match(/\/(\d+)\s*$/);
@@ -335,6 +340,12 @@ const run = async (id: string, signal: AbortSignal): Promise<void> => {
           // Expired token or a dead YouTube url: get a fresh one for the same file.
           if (++refreshes > MAX_URL_REFRESHES)
             throw new Error('The server keeps refusing this download. Try again later.');
+          // A 403 on an in-app url can mean YouTube gave this session "limited" urls: start a fresh one.
+          if (e.status === 403 && isGooglevideo(url))
+            await inAppYoutube
+              .getSource()
+              .then((src) => src.refresh())
+              .catch(() => {});
           const current = get(id)!;
           stream = await resolveStream(current);
           if (!sameFile(stream, current)) {

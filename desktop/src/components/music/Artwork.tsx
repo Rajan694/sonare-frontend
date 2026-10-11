@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { cn } from '../../lib/cn';
 import { API_BASE } from '../../api/auth';
+import { isInAppYoutubeAllowed } from '../../youtube/inApp';
+import { sizedImageUrl, trackThumbUrl } from '../../../../shared/catalog/images';
 
 type ArtVariant = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10' | 'a11' | 'a12';
 
@@ -30,6 +32,8 @@ export const trackArtwork = (
 ): string | undefined => {
   if (track.thumbnail) return track.thumbnail;
   if (track.source === 'local') return undefined;
+  // In the desktop window, straight from YouTube's image CDN rather than the backend's redirect.
+  if (isInAppYoutubeAllowed() && track.id.startsWith('yt:')) return trackThumbUrl(track.id.slice(3));
   return `/api/v1/tracks/${track.id}/artwork${size ? `?size=${size}` : ''}`;
 };
 
@@ -41,8 +45,12 @@ export const resolveArtworkUrl = (url?: string | null, targetSize?: number): str
     resolved = `${origin}${url.startsWith('/') ? '' : '/'}${url}`;
   }
 
-  if (targetSize && resolved.includes('/artwork')) {
-    const sizeParam = targetSize <= 64 ? 64 : targetSize <= 140 ? 140 : targetSize <= 300 ? 300 : 640;
+  const sizeParam = targetSize && (targetSize <= 64 ? 64 : targetSize <= 140 ? 140 : targetSize <= 300 ? 300 : 640);
+  // In-app items carry YouTube CDN urls, which take their size in the url itself.
+  if (sizeParam && /^https:\/\/[^/]*(ytimg\.com|googleusercontent\.com|ggpht\.com)\//.test(resolved)) {
+    return sizedImageUrl(resolved, sizeParam);
+  }
+  if (sizeParam && resolved.includes('/artwork')) {
     const separator = resolved.includes('?') ? '&' : '?';
     if (!resolved.includes('size=')) {
       resolved = `${resolved}${separator}size=${sizeParam}`;
