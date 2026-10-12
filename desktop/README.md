@@ -34,7 +34,7 @@ Or run `../installFE.sh`, which does all of this. The backend must be running
 
 | Variable            | What it does                                                                                              |
 | ------------------- | --------------------------------------------------------------------------------------------------------- |
-| `VITE_API_BASE`     | API base URL. `http://127.0.0.1:3010/api/v1` in development, `https://api.sonare.dev/api/v1` for releases |
+| `VITE_API_BASE`     | API base URL. `http://127.0.0.1:3010/api/v1` in development, `https://api.sonare.vip/api/v1` for releases |
 | `VITE_DEV_EMAIL`    | Development only: sign in automatically with this account                                                 |
 | `VITE_DEV_PASSWORD` | Its password                                                                                              |
 
@@ -72,7 +72,7 @@ port is strict (5173) and `neu` waits for it.
 
 The desktop window is served by Neutralino on **http://localhost:47823** (`port` in
 `neutralino.config.json`). The port is fixed so the production backend can allow exactly
-that origin: its `CORS_ORIGINS` lists `http://localhost:47823` next to `https://sonare.dev`.
+that origin: its `CORS_ORIGINS` lists `http://localhost:47823` next to `https://sonare.vip`.
 
 - If something else already uses 47823, Neutralino fails to start. Free the port, or start
   the app with another one (`./sonare-desktop-linux_x64 --port=47900`) **and** add that
@@ -85,7 +85,7 @@ that origin: its `CORS_ORIGINS` lists `http://localhost:47823` next to `https://
 - `npx neu build --release` builds the web assets and packages the app as
   `dist/sonare-desktop/sonare-desktop-<platform>`.
 - Release builds talk to `VITE_API_BASE` from `.env` at build time — set it to
-  `https://api.sonare.dev/api/v1`.
+  `https://api.sonare.vip/api/v1`.
 - `enableInspector` is off in `neutralino.config.json`, so release windows have no dev
   tools (`runFE.sh linux` turns it on for development with `--window-enable-inspector`).
 - The window is served on the fixed port 47823 (above).

@@ -15,8 +15,8 @@ import { directImageUrl, sizedImageUrl } from '../../../shared/catalog/images';
  * Settings → Server address (saved on the phone, see setServerOrigin).
  */
 const DEV_API_ORIGIN = 'http://localhost:3010';
-// Production API; the domain is not registered yet.
-const PROD_API_ORIGIN = 'https://api.sonare.dev';
+// Production API.
+const PROD_API_ORIGIN = 'https://api.sonare.vip';
 export const DEFAULT_API_ORIGIN = __DEV__ ? DEV_API_ORIGIN : PROD_API_ORIGIN;
 /** Plain http is for development: debug builds and dev APKs (`./buildFE.sh dev android`). */
 export const ALLOWS_HTTP = __DEV__ || isDevApk;

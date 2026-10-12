@@ -32,7 +32,7 @@ There is no env file. `src/data/config.ts` picks the API origin:
   `adb reverse tcp:3010 tcp:3010` (`../runFE.sh mobile` sets it up; run it by hand after
   reconnecting a phone). Works on the emulator and on a phone; a phone on Wi-Fi only can
   be pointed at the computer's LAN address in Settings → Server address;
-- release builds: `https://api.sonare.dev` (Settings → Server address can override it, but
+- release builds: `https://api.sonare.vip` (Settings → Server address can override it, but
   release builds only allow HTTPS).
 
 ## Scripts
@@ -61,7 +61,7 @@ Every test title starts with an id listed in `TEST-PLAN.md`.
   ```
 
 - Build: `cd android && ./gradlew assembleRelease` (or `bundleRelease` for Play).
-- Release builds talk to `https://api.sonare.dev`.
+- Release builds talk to `https://api.sonare.vip`.
 - iOS is not set up.
 
 ## Layout

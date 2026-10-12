@@ -67,12 +67,12 @@ web app offers them under Settings → About. `../build.sh` from the root repo d
 - Desktop / web: `desktop/.env` (copy `desktop/.env.example`). `SONARE_ENV` picks the API,
   the desktop counterpart of the mobile app's `__DEV__`: `dev` (default) uses
   `VITE_API_BASE` (`http://127.0.0.1:3010/api/v1`), `prod` uses `VITE_API_BASE_PROD`
-  (`https://api.sonare.dev/api/v1`) and leaves the dev auto-login credentials out of the
+  (`https://api.sonare.vip/api/v1`) and leaves the dev auto-login credentials out of the
   bundle. Set it on the web server's build (`SONARE_ENV=prod npm run build`) or start
   `./buildFE.sh` with `prod`; a prod build without `VITE_API_BASE_PROD` fails.
 - Mobile: no env file. `mobile/src/data/config.ts` uses `http://localhost:3010` in debug
   builds (`./runFE.sh mobile` forwards it to this computer with `adb reverse`, on the
-  emulator or a USB phone) and `https://api.sonare.dev` in release builds. Settings →
+  emulator or a USB phone) and `https://api.sonare.vip` in release builds. Settings →
   Server address overrides it on the phone (e.g. the computer's LAN IP over Wi-Fi).
 
 ## Tests and checks

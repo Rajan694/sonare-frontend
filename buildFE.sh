@@ -277,7 +277,7 @@ package_linux() {
                 'Architecture: amd64' \
                 'Depends: libgtk-3-0, libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37' \
                 'Recommends: gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav' \
-                'Maintainer: Sonare <no-reply@sonare.dev>' \
+                'Maintainer: Sonare <no-reply@sonare.vip>' \
                 'Description: Sonare music player' \
                 ' Plays music from YouTube through a Sonare server, and files on this computer.' \
                 > "$root/DEBIAN/control"
