@@ -154,7 +154,7 @@ function Start-WindowBuild {
     }
 
     # Chosen up front so the dev server can point the page's globals script at it.
-    $nlPort = node -e "const s = require('net').createServer(); s.listen(0, '127.0.0.1', () => { console.log(s.address().port); s.close(); })"
+    $nlPort = node -e "const s = require('net').createServer(); s.listen(0, '127.0.0.1', () => { console.log(String(s.address().port)); s.close(); })"
 
     $vite = $null
     $window = $null

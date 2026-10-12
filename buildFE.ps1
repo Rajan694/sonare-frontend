@@ -1,11 +1,11 @@
 # PowerShell version of buildFE.sh.
 #
 # Builds the installable apps: the Android APK, Linux packages, the Windows .exe and the web
-# bundle. The results go to dist/releases/, named so the admin page (Releases) can read the
-# platform and version off the file name when they are uploaded.
+# bundle. The results go to dist/releases/.
 #
 # On Windows the Linux .deb and .AppImage are skipped (dpkg-deb and appimagetool are Linux
-# tools); the Linux .tar.gz is still built, with the binary marked executable.
+# tools); the Linux .tar.gz is still built, with the binary marked executable. So a GitHub
+# release, which must carry every file, is made on Linux with `./buildFE.sh prod all`.
 
 $ScriptDir = $PSScriptRoot
 $OnWindows = $env:OS -eq 'Windows_NT'
@@ -548,10 +548,10 @@ if ($Changed.Count -gt 0) {
 }
 Write-Host ""
 if ($BuildEnv -eq 'dev') {
-    Write-Host "These are dev builds (desktop/web use VITE_API_BASE, Android allows http). Build with prod before"
-    Write-Host "uploading them on the admin page's Releases tab."
+    Write-Host "These are dev builds (desktop/web use VITE_API_BASE, Android allows http): don't publish them."
 } else {
-    Write-Host "Upload them on the admin page: /admin/releases."
+    Write-Host "GitHub releases need every file, including the Linux .deb and .AppImage: build those"
+    Write-Host "on Linux with ./buildFE.sh prod all (it prepares dist/releases/github/)."
 }
 if ($script:EmulatorApk) {
     Write-Host "$($script:EmulatorApk) is for the emulator on this PC (adb install) - don't upload it."
