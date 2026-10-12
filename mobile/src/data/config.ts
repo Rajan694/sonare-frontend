@@ -12,7 +12,8 @@ import { directImageUrl, sizedImageUrl } from '../../../shared/catalog/images';
  * worked on the emulator, and Android 17 gates it behind local-network access.
  *
  * A phone on Wi-Fi without a cable can be pointed at the computer's LAN address in
- * Settings → Server address (saved on the phone, see setServerOrigin).
+ * Settings → Server address (saved on the phone, see setServerOrigin). That row is a
+ * development tool: release builds always talk to the production API.
  */
 const DEV_API_ORIGIN = 'http://localhost:3010';
 // Production API.
@@ -20,6 +21,8 @@ const PROD_API_ORIGIN = 'https://api.sonare.vip';
 export const DEFAULT_API_ORIGIN = __DEV__ ? DEV_API_ORIGIN : PROD_API_ORIGIN;
 /** Plain http is for development: debug builds and dev APKs (`./buildFE.sh dev android`). */
 export const ALLOWS_HTTP = __DEV__ || isDevApk;
+/** Settings → Server address, and a saved address, only count in development builds. */
+export const SERVER_ADDRESS_ENABLED = ALLOWS_HTTP;
 
 const STORAGE_KEY = 'sonare.serverOrigin';
 let origin = DEFAULT_API_ORIGIN;
@@ -65,6 +68,7 @@ export const setServerOrigin = async (next: string | null): Promise<void> => {
 
 /** Loads the saved address; RootNavigator waits for it before the first request. */
 export const loadServerOrigin = async (): Promise<void> => {
+  if (!SERVER_ADDRESS_ENABLED) return;
   try {
     const saved = await AsyncStorage.getItem(STORAGE_KEY);
     const valid = saved ? normalizeServerOrigin(saved) : null;

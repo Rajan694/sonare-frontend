@@ -73,7 +73,8 @@ web app offers them under Settings → About. `../build.sh` from the root repo d
 - Mobile: no env file. `mobile/src/data/config.ts` uses `http://localhost:3010` in debug
   builds (`./runFE.sh mobile` forwards it to this computer with `adb reverse`, on the
   emulator or a USB phone) and `https://api.sonare.vip` in release builds. Settings →
-  Server address overrides it on the phone (e.g. the computer's LAN IP over Wi-Fi).
+  Server address overrides it on the phone (e.g. the computer's LAN IP over Wi-Fi), in debug
+  builds and dev APKs only.
 
 ## Tests and checks
 
