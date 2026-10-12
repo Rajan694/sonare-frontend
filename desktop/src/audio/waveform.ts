@@ -98,7 +98,8 @@ const maybeUpload = (id: string) => {
     .catch(() => uploadState.set(id, Date.now() + RETRY_UPLOAD_MS));
 };
 
-let samples: Float32Array | null = null;
+// ArrayBuffer-backed, as getFloatTimeDomainData requires (TS 5.7 typed arrays are generic).
+let samples: Float32Array<ArrayBuffer> | null = null;
 let lastEmit = 0;
 
 const sample = () => {

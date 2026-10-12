@@ -792,7 +792,7 @@ const UpdatesCard = () => {
         <Button
           variant="out"
           size="sm"
-          onClick={() => void dispatch(release ? downloadAppUpdate(release) : checkForUpdates())}
+          onClick={() => void (release ? dispatch(downloadAppUpdate(release)) : dispatch(checkForUpdates()))}
         >
           Try again
         </Button>
