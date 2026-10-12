@@ -57,7 +57,7 @@ export const downloadUpdate = async (release: AppRelease, onProgress: (fraction:
   try {
     await curlDownload(api.releaseDownloadUrl(release.id), part, release.sizeBytes);
     const hash = toHex(await crypto.subtle.digest('SHA-256', await filesystem.readBinaryFile(part)));
-    if (hash !== release.sha256.toLowerCase())
+    if (release.sha256 && hash !== release.sha256.toLowerCase())
       throw new Error("The download doesn't match the uploaded file. Try again.");
     await filesystem.remove(path).catch(() => {});
     await filesystem.move(part, path);

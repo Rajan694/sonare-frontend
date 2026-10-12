@@ -1,14 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, NavLink, Outlet, Route, Routes } from 'react-router-dom';
-import {
-  Activity,
-  AlertTriangle,
-  KeyRound,
-  LayoutDashboard,
-  LogOut,
-  Package,
-  Settings as SettingsIcon,
-} from 'lucide-react';
+import { Activity, AlertTriangle, KeyRound, LayoutDashboard, LogOut, Settings as SettingsIcon } from 'lucide-react';
 import { BrandMark } from '../components/ui/BrandMark';
 import Button from '../components/ui/Button';
 import { cn } from '../lib/cn';
@@ -18,7 +10,6 @@ import { TextInput } from './components/TextInput';
 import Overview from './Overview';
 import ApiMetrics from './ApiMetrics';
 import ErrorLogs from './ErrorLogs';
-import Releases from './Releases';
 import Settings from './Settings';
 import Account from './Account';
 import '../sonare.css';
@@ -30,7 +21,6 @@ const NAV = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/api', label: 'API', icon: Activity },
   { to: '/admin/errors', label: 'Errors', icon: AlertTriangle },
-  { to: '/admin/releases', label: 'Releases', icon: Package },
   { to: '/admin/settings', label: 'Settings', icon: SettingsIcon },
   { to: '/admin/account', label: 'Account', icon: KeyRound },
 ];
@@ -68,7 +58,6 @@ const AdminApp = () => {
               <Route index element={<Overview />} />
               <Route path="api" element={<ApiMetrics />} />
               <Route path="errors" element={<ErrorLogs />} />
-              <Route path="releases" element={<Releases />} />
               <Route path="settings" element={<Settings />} />
               <Route path="account" element={<Account account={account} onChange={setAccount} />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />

@@ -46,7 +46,8 @@ export const useAppUpdateStore = create<AppUpdateStore>((set, get) => {
   /** A finished download: hand it over only if it is the file that was uploaded. */
   const verify = async (id: number, release: AppRelease) => {
     const hash = await SonareUpdates.checksum(id).catch(() => '');
-    if (hash && hash === release.sha256.toLowerCase()) {
+    // GitHub records a digest for every new asset; older ones have none to compare with.
+    if (hash && (!release.sha256 || hash === release.sha256.toLowerCase())) {
       set({ status: 'downloaded', progress: 1, downloadId: id, error: null });
       return;
     }

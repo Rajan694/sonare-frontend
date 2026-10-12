@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon, { type IconName } from '../components/ui/Icon';
 import Button from '../components/ui/Button';
@@ -8,7 +8,7 @@ import { Select } from '../components/ui/Select';
 import { OutputCard } from '../components/music/OutputPicker';
 import { outputSupport } from '../audio/output';
 import { LYRICS_SCRIPTS, updateDevicePrefs, useDevicePrefs } from '../storage/devicePrefs';
-import { CAPS, CLIENT } from '../lib/caps';
+import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { useLocalLibrary } from '../storage/local';
 import { showToast } from '../store/toasts';
@@ -29,14 +29,12 @@ import {
   DEFAULT_API_ORIGIN,
   customServerOrigin,
   normalizeServerOrigin,
+  SERVER_ADDRESS_ENABLED,
   switchServer,
 } from '../api/server';
 import { promptDialog } from '../store/dialogs';
 import { formatBytes } from '../lib/format';
-import { api, loadErrorMessage } from '../api/api';
-import type { AppRelease, ReleasePlatform } from '../types';
 import { version as APP_VERSION } from '../../neutralino.config.json';
-import { compareVersions } from '../../../shared/releases';
 import { useAppDispatch, useAppSelector } from '../store';
 import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
 import { openUpdate, showUpdateFolder } from '../storage/appUpdate';
@@ -553,7 +551,7 @@ const Settings = () => {
         </label>
       </div>
 
-      {CAPS.serverAddress && (
+      {SERVER_ADDRESS_ENABLED && (
         <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
           <Row icon="cloud" label="Server address" desc={customServerOrigin ?? `Default · ${DEFAULT_API_ORIGIN}`}>
             {customServerOrigin && (
@@ -695,40 +693,20 @@ const Settings = () => {
 };
 export default Settings;
 
-// ---- About: version, and on the web the app builds the admin page uploaded ----
-
-const PLATFORM_INFO: Record<ReleasePlatform, { label: string; icon: IconName }> = {
-  android: { label: 'Android', icon: 'smartphone' },
-  linux: { label: 'Linux', icon: 'monitor' },
-  windows: { label: 'Windows', icon: 'monitor' },
-};
+// ---- About: version, and the desktop window's update check ----
 
 const FORMAT_LABELS: Record<string, string> = {
   apk: 'APK',
   appimage: 'AppImage',
   deb: '.deb',
-  rpm: '.rpm',
   'tar.gz': '.tar.gz',
-  zip: '.zip',
   exe: '.exe',
-  msi: '.msi',
 };
-
-/** The platform the browser runs on, so its builds come first. */
-const currentPlatform = (): ReleasePlatform | null => {
-  const ua = navigator.userAgent;
-  if (/Android/i.test(ua)) return 'android';
-  if (/Windows/i.test(ua)) return 'windows';
-  if (/Linux|X11/i.test(ua) && !/CrOS/i.test(ua)) return 'linux';
-  return null;
-};
-
-// Only the web build offers the downloads: the installed apps already are one.
-const OFFERS_DOWNLOADS = CLIENT === 'web';
 
 /**
- * The desktop window's update check: compares this app's version with the builds uploaded on
- * the admin page and downloads a newer one into the Downloads folder (store/updateSlice.ts).
+ * The desktop window's update check: compares this app's version with the latest GitHub
+ * release (GET /releases) and downloads a newer one into the Downloads folder
+ * (store/updateSlice.ts). The web build has no downloads here: the intro page at / offers them.
  */
 const UpdatesCard = () => {
   const dispatch = useAppDispatch();
@@ -831,103 +809,12 @@ const UpdatesCard = () => {
 };
 
 const AboutSection = () => {
-  const [releases, setReleases] = useState<AppRelease[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  const { mode } = useModeStore();
-  const here = currentPlatform();
-
-  useEffect(() => {
-    if (!OFFERS_DOWNLOADS || mode === 'offline') return;
-    let live = true;
-    setError(null);
-    api.getReleases().then(
-      (r) => live && setReleases(r.items),
-      (e) => live && setError(loadErrorMessage(e)),
-    );
-    return () => {
-      live = false;
-    };
-  }, [mode, attempt]);
-
-  const platforms = (Object.keys(PLATFORM_INFO) as ReleasePlatform[])
-    .map((p) => ({
-      platform: p,
-      builds: (releases ?? []).filter((r) => r.platform === p).sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt)),
-    }))
-    .filter((p) => p.builds.length > 0)
-    .sort((a, b) => Number(b.platform === here) - Number(a.platform === here));
-
-  let downloads: React.ReactNode;
-  if (mode === 'offline') {
-    downloads = <Row icon="wifi-off" label="Downloads need Online mode" desc="Switch to Online to see the builds" />;
-  } else if (error) {
-    downloads = (
-      <Row icon="info" label="Couldn't load the downloads" desc={error}>
-        <Button variant="out" size="sm" onClick={() => setAttempt((n) => n + 1)}>
-          Retry
-        </Button>
-      </Row>
-    );
-  } else if (!releases) {
-    downloads = <Row icon="loader" label="Loading downloads…" />;
-  } else if (platforms.length === 0) {
-    downloads = <Row icon="download" label="No downloads yet" desc="Builds for other devices will show up here" />;
-  } else {
-    downloads = platforms.map(({ platform, builds }) => {
-      const info = PLATFORM_INFO[platform];
-      const newest = builds[0];
-      const isHere = platform === here;
-      const newer = isHere && compareVersions(newest.version, APP_VERSION) > 0;
-      const desc = [`Version ${newest.version}`, newer ? 'newer than this app' : null, newest.notes]
-        .filter(Boolean)
-        .join(' · ');
-      return (
-        <div key={platform} className="lrow flex-wrap">
-          <span className="icobox">
-            <Icon name={info.icon} size={18} />
-          </span>
-          <span className="flex flex-col grow min-w-0 gap-0.5">
-            <span className="flex items-center gap-2 text-body-m text-t1 font-medium">
-              {info.label}
-              {isHere && <span className="badge bg-accbg text-acc">This device</span>}
-            </span>
-            <span className="text-body-s text-t3 truncate" title={desc}>
-              {desc}
-            </span>
-          </span>
-          <span className="flex flex-wrap items-center justify-end gap-2 flex-none">
-            {builds.map((r) => (
-              <a
-                key={r.id}
-                href={api.releaseDownloadUrl(r.id)}
-                download={r.fileName}
-                className={`btn btn-sm ${isHere && r === newest ? 'btn-acc' : 'btn-out'}`}
-                title={`${r.fileName} · ${formatBytes(r.sizeBytes)} · version ${r.version}`}
-                aria-label={`Download ${info.label} ${FORMAT_LABELS[r.format] ?? r.format}, ${formatBytes(r.sizeBytes)}`}
-              >
-                <Icon name="download" size={15} />
-                {FORMAT_LABELS[r.format] ?? r.format}
-              </a>
-            ))}
-          </span>
-        </div>
-      );
-    });
-  }
-
   return (
     <div className="flex flex-col gap-4">
       <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
         <Row icon="info" label="About Sonare" desc={`Version ${APP_VERSION} · Offline-first music player`} />
       </div>
       {CAPS.appUpdates && <UpdatesCard />}
-      {OFFERS_DOWNLOADS && (
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Get Sonare</span>
-          <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">{downloads}</div>
-        </div>
-      )}
     </div>
   );
 };

@@ -181,6 +181,24 @@ describe('switching to Offline Mode', () => {
     localStorage.removeItem('sonare_server_origin');
   });
 
+  it('DSK-055 a release build has no server address setting and ignores one a dev build saved', async () => {
+    localStorage.setItem('sonare_server_origin', 'http://192.168.1.20:3010');
+    vi.stubEnv('VITE_SONARE_ENV', 'prod');
+    vi.resetModules();
+    try {
+      const prod = await import('../../src/api/server');
+      expect(prod.SERVER_ADDRESS_ENABLED).toBe(false);
+      expect(prod.customServerOrigin).toBeNull();
+      expect(prod.API_BASE).toBe(prod.DEFAULT_API_BASE);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+      localStorage.removeItem('sonare_server_origin');
+    }
+    const dev = await import('../../src/api/server');
+    expect(dev.SERVER_ADDRESS_ENABLED).toBe(true);
+  });
+
   it('DSK-053 About in the desktop app checks for a newer build instead of listing every download', async () => {
     // Only this test answers requests; the rest of this file runs without a server.
     server.listen({ onUnhandledRequest: 'bypass' });
