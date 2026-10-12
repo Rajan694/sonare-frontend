@@ -42,8 +42,14 @@ for everything).
 ./buildFE.sh dev web                    # the web app against the dev API
 ```
 
-Builds land in `dist/releases/`; upload them on the admin page's **Releases** tab and the
-web app offers them under Settings → About. `../build.sh` from the root repo does the same.
+Builds land in `dist/releases/`. `./buildFE.sh prod all` gives every platform one version and
+also copies the files to publish into `dist/releases/github/` under fixed names
+(`sonare-android-arm64.apk`, `sonare-linux-x64.AppImage` / `.deb` / `.tar.gz`,
+`sonare-windows-x64.exe`): attach all of them to a GitHub release of `Rajan694/sonare` tagged
+`v<version>`. The intro page's download buttons link to
+`github.com/Rajan694/sonare/releases/latest/download/<name>`, and the apps' update check reads
+the latest release through the backend's `/releases`, so every release must carry every file.
+`../build.sh` from the root repo does the same.
 
 - **Environment** (first argument): `dev` builds use `VITE_API_BASE` and get `-dev` in their
   file names; `prod` uses `VITE_API_BASE_PROD`. It sets `SONARE_ENV`, see Configuration.
