@@ -34,7 +34,7 @@ usage() {
     echo "  Left out  The patch number goes up by one (1.0.0 -> 1.0.1)."
     echo "  Desktop, web, Linux and Windows share desktop/neutralino.config.json's version;"
     echo "  Android has its own (versionName in mobile/android/app/build.gradle), and its"
-    echo "  versionCode goes up on every build so phones take it as an update. A lower"
+    echo "  versionCode follows from it (1.2.3 -> 1002003) so phones take it as an update. A lower"
     echo "  version than the current one is refused; if the build fails, the version"
     echo "  files are put back."
     echo "  'prod all' gives every platform one version (the higher of the two, bumped),"
@@ -45,7 +45,7 @@ usage() {
     echo "  --out=DIR        Where the builds go (default: dist/releases)"
     echo ""
     echo "Examples:"
-    echo "  ./buildFE.sh prod android            # 1.0.1 -> 1.0.2, versionCode +1"
+    echo "  ./buildFE.sh prod android            # 1.0.1 -> 1.0.2, versionCode 1000002"
     echo "  ./buildFE.sh prod linux windows 1.2.0"
     echo "  ./buildFE.sh dev linux --formats=deb"
     echo "  ./buildFE.sh prod all                # a GitHub release: dist/releases/github/"
@@ -126,6 +126,13 @@ bump_patch() {
     echo "${major:-0}.${minor:-0}.$(( ${patch:-0} + 1 ))"
 }
 
+# 1.2.3 -> 1002003: Android's versionCode for a version (minor and patch stay under 1000).
+version_code() {
+    local major minor patch
+    IFS=. read -r major minor patch <<< "$1"
+    echo $(( ${major:-0} * 1000000 + ${minor:-0} * 1000 + ${patch:-0} ))
+}
+
 # True when $1 is a lower version than $2.
 version_lt() { [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]; }
 
@@ -176,10 +183,18 @@ set_versions() {
         if version_lt "$next" "$current"; then
             echo "Error: Android is already at $current; $next would be a step back."; exit 1
         fi
+        # The versionCode follows from the version (1.2.3 -> 1002003), so a CI release (which
+        # can't commit its bump) and a build here agree, and it only ever goes up.
+        local next_code
+        next_code="$(version_code "$next")"
+        if [ "$next_code" -le "$code" ]; then
+            echo "Error: versionCode $next_code (from $next) is not above the current $code - phones"
+            echo "       wouldn't take it as an update. Build a higher version."; exit 1
+        fi
         backup_version_file "$GRADLE"
         sed -i -e "s/^\(\s*\)versionName \".*\"$/\1versionName \"$next\"/" \
-               -e "s/^\(\s*\)versionCode [0-9]*$/\1versionCode $((code + 1))/" "$GRADLE"
-        echo "Android version:     $current -> $next (versionCode $code -> $((code + 1)))"
+               -e "s/^\(\s*\)versionCode [0-9]*$/\1versionCode $next_code/" "$GRADLE"
+        echo "Android version:     $current -> $next (versionCode $code -> $next_code)"
     fi
 }
 
