@@ -17,7 +17,7 @@ afterEach(() => {
 });
 
 describe('capabilities and formatting', () => {
-  it('WEB-LIB-001 the web build has no local library, offline mode, native EQ, server address or update check, and includes admin', () => {
+  it('WEB-LIB-001 the web build has no local library, offline mode, native EQ, server address or update check, and includes admin and the intro page', () => {
     expect(CAPS).toEqual({
       localLibrary: false,
       offlineMode: false,
@@ -25,6 +25,7 @@ describe('capabilities and formatting', () => {
       offlineDownloads: false,
       nativeEq: false,
       admin: true,
+      landing: true,
       serverAddress: false,
       appUpdates: false,
     });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import type { Mode, Track } from './types';
 import { CAPS } from './lib/caps';
@@ -37,6 +37,9 @@ import ResetPassword from './screens/ResetPassword';
 import VerifyEmail from './screens/VerifyEmail';
 import './styles.css';
 import './sonare.css';
+
+// The web build's intro page at "/": its own chunk, so the music app doesn't load it.
+const Landing = lazy(() => import('./screens/Landing'));
 
 type Playback = Omit<player.PlaybackStatus, 'positionMs'>;
 
@@ -402,7 +405,18 @@ const App = () => {
       <PlayerContext.Provider value={playerValue}>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Navigate to="/home" replace />} />
+            {CAPS.landing ? (
+              <Route
+                path="/"
+                element={
+                  <Suspense fallback={<div className="min-h-[100dvh] bg-bg" />}>
+                    <Landing />
+                  </Suspense>
+                }
+              />
+            ) : (
+              <Route path="/" element={<Navigate to="/home" replace />} />
+            )}
             <Route element={<AppShell />}>
               <Route path="/home" element={<Home />} />
               <Route path="/search" element={<Search />} />
