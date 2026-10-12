@@ -387,3 +387,11 @@ navigation mock live in `test-utils/`.
 | `MOB-UPD-004` | a finished download from before a restart is offered for install straight away  |
 | `MOB-UPD-005` | Settings → About shows the version, the update and, once allowed, installs it   |
 | `MOB-UPD-006` | Offline mode does not check                                                     |
+
+## `__tests__/serverAddress.test.tsx`
+
+| ID            | Use case                                                                   |
+| ------------- | -------------------------------------------------------------------------- |
+| `MOB-SRV-001` | a release build ignores a saved server address and uses the production API |
+| `MOB-SRV-002` | a development build loads the saved server address                         |
+| `MOB-SRV-003` | Settings shows the Server address row only in development builds           |

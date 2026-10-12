@@ -189,6 +189,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
 | `DSK-053` | About in the desktop app checks for a newer build instead of listing every download           |
 | `DSK-054` | the server address can point the desktop app at another backend, which restarts it signed out |
+| `DSK-075` | a release build has no server address setting and ignores one a dev build saved               |
 | `DSK-032` | with no folders it invites the user to add one, using the folder picker                       |
 | `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work                   |
 | `DSK-034` | a failed scan is reported instead of breaking the page                                        |
@@ -332,9 +333,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                |
 | `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                           |
 | `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch   |
-| `WEB-SETTINGS-012` | about: lists the uploaded builds, this device first, as download links                 |
-| `WEB-SETTINGS-013` | about: says when nothing is uploaded, and offers a retry when the list fails           |
-| `WEB-SETTINGS-014` | about: only a higher version than this app is called newer; a -dev build of it is not  |
+| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none       |
 
 ## `test/screens/signin.test.tsx`
 
@@ -350,6 +349,22 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                 |
 | `WEB-SIGNIN-009` | "Forgot password?" sends a reset link for the trimmed email and says it is on its way |
 | `WEB-SIGNIN-010` | a forgot-password error shows, and switching back to sign in clears it                |
+
+## `test/screens/landing.test.tsx`
+
+| ID             | Test                                                                               |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `WEB-LAND-001` | links every build to the latest GitHub release under its fixed name                |
+| `WEB-LAND-002` | opens the web app at /home                                                         |
+| `WEB-LAND-003` | a Linux visitor gets the AppImage first, with the Linux card leading the downloads |
+| `WEB-LAND-004` | an Android phone gets the APK, not the Linux build its user agent also mentions    |
+| `WEB-LAND-005` | macOS and other systems start in the browser                                       |
+| `WEB-LAND-006` | shows the version and size from /releases next to the download                     |
+| `WEB-LAND-007` | the buttons still work when /releases fails                                        |
+| `WEB-LAND-008` | sets the page title while it is open and puts the old one back                     |
+| `WEB-LAND-009` | switches the screenshots between Android and Linux                                 |
+| `WEB-LAND-010` | detectOs reads the platform, Android before Linux, ChromeOS as other               |
+| `WEB-LAND-011` | releaseLabel matches platform and format, and skips missing builds                 |
 
 ## `test/screens/email-links.test.tsx`
 

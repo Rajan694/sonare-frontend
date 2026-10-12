@@ -181,7 +181,7 @@ describe('switching to Offline Mode', () => {
     localStorage.removeItem('sonare_server_origin');
   });
 
-  it('DSK-055 a release build has no server address setting and ignores one a dev build saved', async () => {
+  it('DSK-075 a release build has no server address setting and ignores one a dev build saved', async () => {
     localStorage.setItem('sonare_server_origin', 'http://192.168.1.20:3010');
     vi.stubEnv('VITE_SONARE_ENV', 'prod');
     vi.resetModules();
