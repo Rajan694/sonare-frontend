@@ -90,7 +90,10 @@ function Test-Target($Name) { $Targets -contains $Name }
 
 # Runs a native command and stops the build if it fails, like `set -e`.
 function Invoke-Checked {
-    $cmd, $rest = $args
+    # @() keeps $rest an array: with one argument it would be a bare string, which
+    # splatting passes one character at a time ("install" -> i n s t a l l).
+    $cmd = $args[0]
+    $rest = @($args | Select-Object -Skip 1)
     $global:LASTEXITCODE = 0
     & $cmd @rest
     # $? also catches a command that isn't installed, which leaves $LASTEXITCODE alone.
