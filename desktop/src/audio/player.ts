@@ -7,6 +7,8 @@ import * as dsp from './dsp';
 import { localLibrary, type LocalFileData } from '../storage/local';
 import { API_QUALITY, getSettings } from '../storage/settings';
 import { CAPS } from '../lib/caps';
+import { inAppYoutube, isInAppYoutubeAllowed } from '../youtube/inApp';
+import { isGooglevideo, StreamDownloadError, streamCache } from '../youtube/streamCache';
 
 /**
  * Audio playback engine.
@@ -145,11 +147,49 @@ const el = (): HTMLAudioElement => {
   return a;
 };
 
-const resolveStream = async (trackId: string): Promise<string> => {
+interface ResolvedStream {
+  url: string;
+  /** A googlevideo url from the in-app catalog (absolute), rather than the backend's relay path. */
+  direct: boolean;
+  rawId: string;
+  itag: number;
+  mimeType: string;
+  contentLength: number;
+}
+
+const resolveStream = async (trackId: string): Promise<ResolvedStream> => {
   const res = await api.getTrackStream(trackId, API_QUALITY[getSettings().streamQuality] ?? 'auto');
   expiresAt = res.expiresAt ?? 0;
   muxed = !!res.muxed;
-  return absolute(res.url);
+  // In the desktop window the in-app catalog answers with a googlevideo url; the backend with its relay.
+  const direct = isInAppYoutubeAllowed() && isGooglevideo(res.url);
+  return {
+    url: direct ? res.url : absolute(res.url),
+    direct,
+    rawId: trackId.startsWith('yt:') ? trackId.slice(3) : trackId,
+    itag: res.itag ?? (/mp4|m4a/.test(res.mimeType ?? '') ? 140 : 251),
+    mimeType: res.mimeType || 'audio/webm',
+    contentLength: res.contentLength ?? 0,
+  };
+};
+
+/**
+ * Download an in-app stream into the cache. A 403 means YouTube gave this session a "limited"
+ * url, so start a fresh session, get a new url and try once more.
+ */
+const downloadInApp = async (trackId: string, resolved: ResolvedStream, force: boolean): Promise<string> => {
+  if (force) await streamCache.remove(resolved.rawId, resolved.itag);
+  const fetchInto = (r: ResolvedStream) =>
+    streamCache.getOrDownload(r.rawId, r.url, r.itag, r.mimeType, r.contentLength);
+  try {
+    return await fetchInto(resolved);
+  } catch (err) {
+    if (!(err instanceof StreamDownloadError) || err.status !== 403) throw err;
+    await (await inAppYoutube.getSource()).refresh();
+    const fresh = await resolveStream(trackId);
+    if (!fresh.direct) throw err;
+    return fetchInto(fresh);
+  }
 };
 
 const startTicker = () => {
@@ -230,6 +270,30 @@ const webAudioPlayback = async (file: LocalFileData): Promise<BufferPlayback | S
 };
 
 /**
+ * Where to play a file's bytes from: Linux decodes them in memory (WebKitGTK's <audio> drops
+ * audio), elsewhere a blob url. Null when the decoded player took over, or another track was
+ * picked meanwhile.
+ */
+const fileSource = async (trackId: string, file: LocalFileData): Promise<string | null> => {
+  if (DECODE_LOCAL_FILES) {
+    const playback = await webAudioPlayback(file);
+    if (currentTrackId !== trackId) {
+      playback?.dispose();
+      return null;
+    }
+    if (playback) {
+      emptyElement(el());
+      decoded = playback;
+      loading = false;
+      if (trackId.startsWith('local:')) localLibrary.noteDuration(trackId, Math.round(playback.duration * 1000));
+      emit();
+      return null;
+    }
+  }
+  return localLibrary.blobUrlFor(file);
+};
+
+/**
  * Point the player at `trackId`, fetching a fresh stream url when the cached one is
  * missing or past `expiresAt`. Does not start playback on its own.
  */
@@ -256,24 +320,41 @@ export const load = async (trackId: string, force = false): Promise<void> => {
       expiresAt = Number.POSITIVE_INFINITY;
       muxed = false;
       if (currentTrackId !== trackId) return;
-      if (DECODE_LOCAL_FILES) {
-        const playback = await webAudioPlayback(file);
-        if (currentTrackId !== trackId) {
-          playback?.dispose();
-          return;
+      const fileSrc = await fileSource(trackId, file);
+      if (!fileSrc) return;
+      src = fileSrc;
+    } else {
+      // Start the audio graph now, close to the click: the download below can outlast the click's
+      // user activation, and an AudioContext created after that stays suspended (silent).
+      if (DECODE_LOCAL_FILES && isInAppYoutubeAllowed()) void dsp.ensureGraph();
+      const resolved = await resolveStream(trackId);
+      if (currentTrackId !== trackId) return;
+      if (!resolved.direct) {
+        src = resolved.url;
+      } else {
+        let path: string | null = null;
+        try {
+          path = await downloadInApp(trackId, resolved, force);
+        } catch (err) {
+          console.warn(
+            '[in-app-yt] stream download failed, using the backend:',
+            err instanceof Error ? err.message : err,
+          );
         }
-        if (playback) {
-          emptyElement(a);
-          decoded = playback;
-          loading = false;
-          if (trackId.startsWith('local:')) localLibrary.noteDuration(trackId, Math.round(playback.duration * 1000));
-          emit();
-          return;
+        if (currentTrackId !== trackId) return;
+        if (path) {
+          expiresAt = Number.POSITIVE_INFINITY;
+          muxed = false;
+          const fileSrc = await fileSource(trackId, await streamCache.readFile(path, resolved.mimeType));
+          if (!fileSrc) return;
+          src = fileSrc;
+        } else {
+          const res = await api.getBackendTrackStream(trackId, API_QUALITY[getSettings().streamQuality] ?? 'auto');
+          expiresAt = res.expiresAt ?? 0;
+          muxed = !!res.muxed;
+          src = absolute(res.url);
         }
       }
-      src = localLibrary.blobUrlFor(file);
-    } else {
-      src = await resolveStream(trackId);
     }
     // Another track may have been selected while this request was in flight.
     if (currentTrackId !== trackId) return;

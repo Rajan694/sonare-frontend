@@ -52,7 +52,7 @@ const Artist = () => {
       const next = !isFollowing;
       setFollowing(next);
       try {
-        await api.setArtistFollowing(id, next);
+        await api.setArtistFollowing(id, next, artist ?? undefined);
       } catch {
         setFollowing(!next);
       }

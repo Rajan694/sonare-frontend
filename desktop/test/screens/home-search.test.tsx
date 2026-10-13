@@ -257,7 +257,11 @@ describe('search', () => {
     await user.click(await screen.findByRole('button', { name: 'Add Paranoid Android to playlist' }));
     expect(screen.getByRole('button', { name: 'Paranoid Android added' })).toBeDisabled();
     expect(screen.getByText('1 added — search for more')).toBeInTheDocument();
-    await waitFor(() => expect(added).toEqual([{ trackIds: ['yt:s1'] }]));
+    await waitFor(() =>
+      expect(added).toEqual([
+        { trackIds: ['yt:s1'], metas: { 'yt:s1': expect.objectContaining({ title: 'Paranoid Android' }) } },
+      ]),
+    );
     expect(screen.getByRole('link', { name: 'Done' })).toHaveAttribute('href', '/playlist/sonare:gym');
   });
 

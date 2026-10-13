@@ -5,6 +5,8 @@ import { create } from 'zustand';
 import { api, ApiError } from './api';
 import { useAuthStore } from './auth';
 import { useModeStore } from '../store/mode';
+import { trackMeta } from '../../../shared/catalog/meta';
+import type { Track, TrackMeta } from './types';
 
 /**
  * Background sync for plays, same contract as the desktop app (desktop/src/api/sync.ts).
@@ -26,6 +28,8 @@ export type PendingPlay = {
   at: number;
   ms: number;
   userId?: string;
+  /** What the app knew about the song: the backend may never have seen one found in-app. */
+  meta?: TrackMeta;
 };
 
 const QUEUE_KEY = 'sonare.pendingPlays';
@@ -155,12 +159,13 @@ export const requestSync = (): void => {
 };
 
 /** Queue a play the listener has actually heard; it uploads in the background. */
-export const queuePlay = (trackId: string, at: number, ms: number): void => {
+export const queuePlay = (track: Track, at: number, ms: number): void => {
   queue.push({
-    trackRef: trackRef(trackId),
+    trackRef: trackRef(track.id),
     at,
     ms: Math.round(ms),
     userId: useAuthStore.getState().user?.id,
+    meta: trackMeta(track),
   });
   // Before the saved queue is loaded, saving now would overwrite it; load() merges instead.
   load().then(() => {

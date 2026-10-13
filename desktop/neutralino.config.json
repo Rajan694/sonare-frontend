@@ -20,6 +20,7 @@
     "os.open",
     "os.execCommand",
     "os.getPath",
+    "os.getEnv",
     "os.showFolderDialog",
     "storage.setData",
     "storage.getData",
@@ -31,6 +32,8 @@
     "filesystem.appendBinaryFile",
     "filesystem.remove",
     "filesystem.move",
+    "filesystem.writeFile",
+    "filesystem.writeBinaryFile",
     "debug.log"
   ],
   "modes": {

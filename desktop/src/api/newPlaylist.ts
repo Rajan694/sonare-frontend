@@ -37,10 +37,7 @@ export const createPlaylistNamed = async (name: string): Promise<Playlist | null
 /** Adds the tracks and says so in a toast; false when it failed. */
 export const addTracksWithToast = async (playlist: { id: string; name: string }, tracks: Track[]): Promise<boolean> => {
   try {
-    await api.addTracksToPlaylist(
-      playlist.id,
-      tracks.map((t) => t.id),
-    );
+    await api.addTracksToPlaylist(playlist.id, tracks);
     notifyPlaylistsChanged();
     showToast({
       title: `Added to ${playlist.name}`,

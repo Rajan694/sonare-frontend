@@ -33,6 +33,16 @@ export interface ProgressEvent {
   positionMs: number;
   durationMs: number;
   bufferedMs: number;
+  /** The loudest sample (0..1) decoded since the last event; the waveform is drawn from it. */
+  level?: number;
+}
+
+export interface PlayerErrorEvent {
+  message: string;
+  /** Media3's error code name, e.g. ERROR_CODE_IO_BAD_HTTP_STATUS when the server refused the url. */
+  code?: string;
+  mediaId?: string | null;
+  positionMs?: number;
 }
 
 export interface AudioEffects {
@@ -116,7 +126,7 @@ export const SonarePlayer = {
 
   onState: (handler: (e: PlayerStateEvent) => void) => on('state', handler),
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),
-  onError: (handler: (e: { message: string }) => void) => on('error', handler),
+  onError: (handler: (e: PlayerErrorEvent) => void) => on('error', handler),
   /** Next / previous pressed on the lock screen, notification or a headset. */
   onRemote: (handler: (e: { command: 'next' | 'previous' }) => void) => on('remote', handler),
   /** The player moved on to the next track by itself; sent before the state change it causes. */

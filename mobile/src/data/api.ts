@@ -1,7 +1,23 @@
 import { apiBase } from './config';
 import { useAuthStore } from './auth';
 import { httpRequest } from './http';
-import type { Album, Artist, Lyrics, Page, Playlist, SearchItem, StreamInfo, Track, User } from './types';
+import { isInAppYoutubeEnabled } from '../youtube/appConfig';
+import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
+import { useLibraryStore } from '../store/library';
+import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
+import type {
+  Album,
+  AlbumMeta,
+  AppRelease,
+  Artist,
+  Lyrics,
+  Page,
+  Playlist,
+  SearchItem,
+  StreamInfo,
+  Track,
+  User,
+} from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -64,37 +80,160 @@ const request = async <T>(
 
 const enc = encodeURIComponent;
 
+/** Only YouTube items can come from the in-app catalog. */
+export const isYouTubeId = (id: string): boolean => !id.startsWith('local:') && !id.startsWith('sonare:');
+
+const ytId = (id: string): string => (id.startsWith('yt:') ? id : `yt:${id}`);
+
+const lastFallbackWarning = new Map<string, number>();
+
+/**
+ * Ask the in-app catalog first (when the admin allows it) and fall back to the backend on any
+ * error, saying so at most once a minute per method.
+ */
+const localFirst = async <T>(
+  method: string,
+  local: (c: InAppCatalog) => Promise<T>,
+  remote: () => Promise<T>,
+  id?: string,
+): Promise<T> => {
+  if (isInAppYoutubeEnabled() && (id === undefined || isYouTubeId(id))) {
+    try {
+      return await local(await getInAppCatalog());
+    } catch (err) {
+      const now = Date.now();
+      if (now - (lastFallbackWarning.get(method) ?? 0) > 60_000) {
+        lastFallbackWarning.set(method, now);
+        console.warn(`[in-app-yt] ${method} fell back to the backend:`, err instanceof Error ? err.message : err);
+      }
+    }
+  }
+  return remote();
+};
+
+/** Paged lists: an `L.` cursor came from the in-app catalog and only works there; others only on the backend. */
+const paged = <T>(
+  method: string,
+  cursor: string | undefined,
+  local: (c: InAppCatalog, cursor?: string) => Promise<T>,
+  remote: (cursor?: string) => Promise<T>,
+  id?: string,
+): Promise<T> => {
+  if (cursor?.startsWith('L.')) return getInAppCatalog().then((c) => local(c, cursor));
+  if (cursor) return remote(cursor);
+  return localFirst(
+    method,
+    (c) => local(c),
+    () => remote(),
+    id,
+  );
+};
+
+export const resetFallbackLogThrottleForTesting = () => lastFallbackWarning.clear();
+
 export const api = {
-  // Catalog
-  search: (q: string, type: 'all' | 'songs' | 'albums' | 'artists' | 'playlists' = 'all') =>
-    request<Page<SearchItem>>('/search', { params: { q, type } }),
-  trending: (limit = 20) => request<Page<Track>>('/trending', { params: { region: 'IN', limit } }),
-  album: (id: string) => request<Album>(`/albums/${enc(id)}`),
-  albumTracks: (id: string) => request<Page<Track>>(`/albums/${enc(id)}/tracks`),
-  artist: (id: string) => request<Artist>(`/artists/${enc(id)}`),
+  // Catalog: YouTube from the phone first (see youtube/inApp.ts), the backend otherwise.
+  search: (q: string, type: 'all' | 'songs' | 'albums' | 'artists' | 'playlists' = 'all', cursor?: string) =>
+    paged<Page<SearchItem>>(
+      'search',
+      cursor,
+      (c, cur) => c.search(q, type, cur) as Promise<Page<SearchItem>>,
+      (cur) => request('/search', { params: { q, type, cursor: cur } }),
+    ),
+  trending: (limit = 20) =>
+    localFirst<Page<Track>>(
+      'trending',
+      (c) => c.trending('IN', limit),
+      () => request('/trending', { params: { region: 'IN', limit } }),
+    ),
+  album: (id: string) =>
+    localFirst<Album>(
+      'album',
+      (c) => c.album(ytId(id)),
+      () => request(`/albums/${enc(id)}`),
+      id,
+    ),
+  albumTracks: (id: string, cursor?: string) =>
+    paged<Page<Track>>(
+      'albumTracks',
+      cursor,
+      (c, cur) => c.albumTracks(ytId(id), cur),
+      (cur) => request(`/albums/${enc(id)}/tracks`, { params: { cursor: cur } }),
+      id,
+    ),
+  artist: (id: string) =>
+    localFirst<Artist>(
+      'artist',
+      // Only the backend knows who you follow; the library store keeps that list.
+      async (c) => ({ ...(await c.artist(ytId(id))), following: useLibraryStore.getState().isArtistFollowed(id) }),
+      () => request(`/artists/${enc(id)}`),
+      id,
+    ),
   artistTopTracks: (id: string, limit = 20) =>
-    request<Page<Track>>(`/artists/${enc(id)}/top-tracks`, {
-      params: { limit },
-    }),
-  artistAlbums: (id: string) => request<Page<Album>>(`/artists/${enc(id)}/albums`),
+    localFirst<Page<Track>>(
+      'artistTopTracks',
+      (c) => c.artistTopTracks(ytId(id), limit),
+      () => request(`/artists/${enc(id)}/top-tracks`, { params: { limit } }),
+      id,
+    ),
+  artistAlbums: (id: string, cursor?: string) =>
+    paged<Page<Album>>(
+      'artistAlbums',
+      cursor,
+      (c, cur) => c.artistAlbums(ytId(id), cur),
+      (cur) => request(`/artists/${enc(id)}/albums`, { params: { cursor: cur } }),
+      id,
+    ),
   /** YouTube playlists; the user's own ones go through the `my*` calls below. */
-  playlist: (id: string) => request<Playlist>(`/playlists/${enc(id)}`),
-  playlistTracks: (id: string) => request<Page<Track>>(`/playlists/${enc(id)}/tracks`),
+  playlist: (id: string) =>
+    localFirst<Playlist>(
+      'playlist',
+      (c) => c.playlist(ytId(id)),
+      () => request(`/playlists/${enc(id)}`),
+      id,
+    ),
+  playlistTracks: (id: string, cursor?: string) =>
+    paged<Page<Track>>(
+      'playlistTracks',
+      cursor,
+      (c, cur) => c.playlistTracks(ytId(id), cur),
+      (cur) => request(`/playlists/${enc(id)}/tracks`, { params: { cursor: cur } }),
+      id,
+    ),
 
   // Playback
+  /** In-app, a direct googlevideo url (it can 403 later; see refreshInAppSession); else the backend's relay. */
   stream: (id: string, quality: 'auto' | 'low' | 'normal' | 'high' = 'auto', format?: 'opus' | 'm4a') =>
-    request<StreamInfo>(`/tracks/${enc(id)}/stream`, {
-      params: { quality, format },
-    }),
+    localFirst<StreamInfo>(
+      'stream',
+      (c) => c.stream(ytId(id), { quality, format }),
+      () => request(`/tracks/${enc(id)}/stream`, { params: { quality, format } }),
+      id,
+    ),
+  /** `placeholder`: nobody has uploaded this song's waveform yet; these bars are made up. */
   peaks: (id: string, bars: number) =>
-    request<{ peaks: number[] }>(`/tracks/${enc(id)}/peaks`, {
+    request<{ peaks: number[]; placeholder?: boolean }>(`/tracks/${enc(id)}/peaks`, {
       params: { bars },
     }),
-  /** `script` other than 'original' asks for the version in that script when LRCLIB has one. */
-  lyrics: (id: string, script: string = 'original') =>
+  /** The waveform heard on this phone (150 bars, 0..1); the first upload for a song wins. */
+  putPeaks: (id: string, peaks: number[]) =>
+    request<{ stored: boolean }>(`/tracks/${enc(id)}/peaks`, { method: 'PUT', body: { peaks } }),
+  /**
+   * `script` other than 'original' asks for the version in that script when LRCLIB has one.
+   * `track` names the song for the lookup when the backend has never seen it (found in-app).
+   */
+  lyrics: (id: string, script: string = 'original', track?: Pick<Track, 'title' | 'artist' | 'durationMs'>) =>
     request<Lyrics>(`/tracks/${enc(id)}/lyrics`, {
-      params: { prefer: 'synced', ...(script !== 'original' && { script }) },
+      params: {
+        prefer: 'synced',
+        ...(script !== 'original' && { script }),
+        ...(track?.title && track.artist && { title: track.title, artist: track.artist }),
+        ...(track?.durationMs && { durationMs: track.durationMs }),
+      },
     }),
+  /** App builds uploaded on the admin page: the newest of each platform and format. */
+  releases: () => request<{ items: AppRelease[] }>('/releases'),
+  releaseDownloadUrl: (id: string) => `${apiBase()}/releases/${enc(id)}/download`,
   /** Browse categories; `query` is what opening one searches for. */
   genres: () => request<{ id: string; name: string; query?: string }[]>('/genres'),
   /** Followed artists, then the artists of liked and playlisted songs. */
@@ -127,20 +266,32 @@ export const api = {
       params: { sort, order: sort === 'title' ? 'asc' : 'desc' },
     }),
   favourites: () => request<Page<Track>>('/me/favourites/tracks'),
-  setFavourite: (trackId: string, favourite: boolean) =>
+  // Saving one sends what the app knows about it (`meta`): the backend may never have seen
+  // an item found in-app.
+  setFavourite: (trackId: string, favourite: boolean, track?: Track) =>
     request<{ ok: boolean }>(`/me/favourites/tracks/${enc(trackId)}`, {
       method: favourite ? 'PUT' : 'DELETE',
+      ...(favourite && track && { body: { meta: trackMeta(track) } }),
     }),
   /** Albums the user has saved (hearted). */
   libraryAlbums: () => request<Page<Album>>('/me/library/albums'),
-  setAlbumFavourite: (albumId: string, favourite: boolean) =>
+  setAlbumFavourite: (albumId: string, favourite: boolean, meta?: AlbumMeta) =>
     request<{ ok: boolean }>(`/me/favourites/albums/${enc(albumId)}`, {
       method: favourite ? 'PUT' : 'DELETE',
+      ...(favourite && meta && { body: { meta } }),
     }),
-  setFollowing: (artistId: string, following: boolean) =>
-    request<{ ok: boolean }>(`/me/following/artists/${enc(artistId)}`, {
-      method: following ? 'PUT' : 'DELETE',
-    }),
+  setFollowing: async (artistId: string, following: boolean, artist?: Artist) => {
+    useLibraryStore.getState().setArtistFollowed(artistId, following);
+    try {
+      return await request<{ ok: boolean }>(`/me/following/artists/${enc(artistId)}`, {
+        method: following ? 'PUT' : 'DELETE',
+        ...(following && artist && { body: { meta: artistMeta(artist) } }),
+      });
+    } catch (e) {
+      useLibraryStore.getState().setArtistFollowed(artistId, !following);
+      throw e;
+    }
+  },
   recentlyPlayed: (limit = 20) => request<Page<Track>>('/me/recently-played', { params: { limit } }),
   mostPlayed: (limit = 20) => request<Page<Track>>('/me/most-played', { params: { limit } }),
   /** Plays the listener has actually heard; queued and sent by data/sync.ts. */
@@ -170,10 +321,10 @@ export const api = {
       body: { name, kind: 'synced' },
     }),
   deletePlaylist: (id: string) => request<{ ok: boolean }>(`/me/playlists/${enc(id)}`, { method: 'DELETE' }),
-  addToPlaylist: (id: string, trackIds: string[]) =>
+  addToPlaylist: (id: string, tracks: Track[]) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {
       method: 'POST',
-      body: { trackIds },
+      body: { trackIds: tracks.map((t) => t.id), metas: trackMetas(tracks) },
     }),
   removeFromPlaylist: (id: string, index: number) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {

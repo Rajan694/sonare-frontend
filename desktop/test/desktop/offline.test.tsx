@@ -1,9 +1,10 @@
 import React from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import { opened, resetFs, writeFile } from '../helpers/fakeNeutralino';
 import { makeTrack } from '../helpers/fixtures';
 import { makePlayer, renderWithProviders } from '../helpers/render';
+import { API, http, HttpResponse, server } from '../helpers/server';
 import type { Mode } from '../../src/types';
 import type { PlayerStore } from '../../src/store/playerContext';
 
@@ -180,14 +181,69 @@ describe('switching to Offline Mode', () => {
     localStorage.removeItem('sonare_server_origin');
   });
 
-  it('DSK-053 About in the desktop app shows the version but no downloads (those are on the web only)', () => {
-    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+  it('DSK-075 a release build has no server address setting and ignores one a dev build saved', async () => {
+    localStorage.setItem('sonare_server_origin', 'http://192.168.1.20:3010');
+    vi.stubEnv('VITE_SONARE_ENV', 'prod');
+    vi.resetModules();
+    try {
+      const prod = await import('../../src/api/server');
+      expect(prod.SERVER_ADDRESS_ENABLED).toBe(false);
+      expect(prod.customServerOrigin).toBeNull();
+      expect(prod.API_BASE).toBe(prod.DEFAULT_API_BASE);
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+      localStorage.removeItem('sonare_server_origin');
+    }
+    const dev = await import('../../src/api/server');
+    expect(dev.SERVER_ADDRESS_ENABLED).toBe(true);
+  });
+
+  it('DSK-053 About in the desktop app checks for a newer build instead of listing every download', async () => {
+    // Only this test answers requests; the rest of this file runs without a server.
+    server.listen({ onUnhandledRequest: 'bypass' });
+    onTestFinished(() => {
+      server.resetHandlers();
+      server.close();
+    });
+    server.use(
+      http.get(`${API}/releases`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'n',
+              platform: 'linux',
+              format: 'tar.gz',
+              version: '9.0.0',
+              fileName: 'sonare-9.0.0-linux-x64.tar.gz',
+              sizeBytes: 2_000_000,
+              sha256: 'x',
+              notes: 'Faster search',
+              uploadedAt: '2026-10-11T00:00:00Z',
+            },
+            {
+              id: 'w',
+              platform: 'windows',
+              format: 'exe',
+              version: '10.0.0',
+              fileName: 'sonare.exe',
+              sizeBytes: 1,
+              sha256: 'x',
+              notes: null,
+              uploadedAt: '2026-10-11T00:00:00Z',
+            },
+          ],
+        }),
+      ),
+    );
     const { container } = renderWithProviders(<Settings />, { route: '/settings?section=about' });
     const wide = within(container.firstElementChild!.children[1] as HTMLElement);
     expect(wide.getByText('About Sonare')).toBeInTheDocument();
     expect(wide.queryByText('Get Sonare')).toBeNull();
-    expect(fetchSpy.mock.calls.some(([url]) => String(url).includes('/releases'))).toBe(false);
-    fetchSpy.mockRestore();
+    // Only this platform's builds count.
+    expect(await wide.findByText('Sonare 9.0.0 is available')).toBeInTheDocument();
+    expect(wide.getByText(/Faster search/)).toBeInTheDocument();
+    expect(wide.getByRole('button', { name: 'Download .tar.gz' })).toBeInTheDocument();
   });
 });
 

@@ -479,7 +479,14 @@ describe('Playlist, album and artist pages', () => {
     fireEvent.press(await findByLabelText('Favourite playlist'));
     expect(anyCall).toHaveBeenCalled();
     // Saved the same way as an album: the library lists it with the saved albums.
-    await waitFor(() => expect(api.setAlbumFavourite).toHaveBeenCalledWith('yt:PL1', true));
+    // Saved like an album, with what the app knows about it.
+    await waitFor(() =>
+      expect(api.setAlbumFavourite).toHaveBeenCalledWith(
+        'yt:PL1',
+        true,
+        expect.objectContaining({ title: expect.any(String) }),
+      ),
+    );
   });
 
   it('MOB-PL-005 your own playlist has no favourite button', async () => {
@@ -574,7 +581,7 @@ describe('Playlist, album and artist pages', () => {
     const { findByText, getByLabelText } = render(<ArtistScreen />);
     await findByText('Portishead');
     await act(async () => fireEvent.press(getByLabelText('Follow')));
-    expect(follow).toHaveBeenCalledWith('yt:rh', true);
+    expect(follow).toHaveBeenCalledWith('yt:rh', true, expect.objectContaining({ id: 'yt:rh' }));
     expect(getByLabelText('Unfollow')).toBeTruthy();
     follow.mockRejectedValueOnce(new Error('offline'));
     await act(async () => fireEvent.press(getByLabelText('Unfollow')));

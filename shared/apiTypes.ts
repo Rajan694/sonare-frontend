@@ -121,17 +121,57 @@ export interface StreamInfo {
 
 export type ReleasePlatform = "android" | "linux" | "windows";
 
-/** An app build offered in Settings → About (GET /releases). */
+/** An app build: an asset of the latest GitHub release (GET /releases). */
 export interface AppRelease {
+  /** The GitHub asset id; GET /releases/:id/download redirects to the file. */
   id: string;
   platform: ReleasePlatform;
-  /** apk | appimage | deb | rpm | tar.gz | zip | exe | msi */
+  /** apk | appimage | deb | tar.gz | exe */
   format: string;
   version: string;
   /** What the download is saved as. */
   fileName: string;
   sizeBytes: number;
-  sha256: string;
+  /** GitHub's digest of the file; null for assets uploaded before GitHub recorded one. */
+  sha256: string | null;
   notes: string | null;
   uploadedAt: string;
+  /** The file on GitHub. */
+  url?: string;
 }
+
+/** GET /app-config. */
+export interface AppConfig {
+  inAppYoutube: boolean;
+  youtubeClients: string[];
+  updatedAt: number;
+}
+
+// Catalog metadata for tracks, albums, and artists stored in row metadata or catalog_items table.
+// Used for offline/fallback display when Piped is unreachable.
+
+export interface TrackMeta {
+  title: string;
+  artist: string;
+  artistId: string;
+  album?: string;
+  albumId?: string;
+  durationMs: number | null;
+  thumbnail?: string;
+}
+
+export interface AlbumMeta {
+  title: string;
+  artist: string;
+  artistId: string;
+  year?: number | null;
+  trackCount?: number | null;
+  thumbnail?: string;
+}
+
+export interface ArtistMeta {
+  name: string;
+  thumbnail?: string;
+  monthlyListeners?: number | null;
+}
+

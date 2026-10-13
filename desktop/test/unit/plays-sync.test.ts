@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { API, apiError, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
+import type { Track } from '../../src/types';
 
 useMockServer();
 
@@ -15,6 +16,10 @@ const fresh = async (signedIn = true) => {
 };
 
 const pending = () => JSON.parse(localStorage.getItem('sonare_pending_plays') ?? '[]');
+
+/** Counting only looks at the id; without a title the play carries no metadata. */
+const song = (id: string, title = ''): Track =>
+  ({ id, title, artist: '', artistId: '', album: null, albumId: null, durationMs: null }) as Track;
 
 /** A /me/sync handler that records bodies and answers with `respond`. */
 const syncEndpoint = (respond: () => Response = () => HttpResponse.json({ ok: true })) => {
@@ -36,48 +41,48 @@ afterEach(() => {
 describe('play counting', () => {
   it('WEB-PLAY-001 a guest listening records nothing', async () => {
     const { maybeRecordPlay } = await fresh(false);
-    maybeRecordPlay('yt:t1', 1000, 60_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1000, 60_000, 200_000);
     expect(pending()).toEqual([]);
   });
 
   it('WEB-PLAY-002 a long song counts after 30 seconds, not before', async () => {
     const { maybeRecordPlay } = await fresh();
-    maybeRecordPlay('yt:t1', 1000, 29_999, 240_000);
+    maybeRecordPlay(song('yt:t1'), 1000, 29_999, 240_000);
     expect(pending()).toHaveLength(0);
-    maybeRecordPlay('yt:t1', 1000, 30_000, 240_000);
+    maybeRecordPlay(song('yt:t1'), 1000, 30_000, 240_000);
     expect(pending()).toEqual([{ trackRef: { kind: 'server', id: 't1' }, at: 1000, ms: 30_000, userId: testUser.id }]);
   });
 
   it('WEB-PLAY-003 a short song counts at half its length; an unknown length waits 30 seconds', async () => {
     const { maybeRecordPlay } = await fresh();
-    maybeRecordPlay('yt:short', 1, 19_000, 40_000);
+    maybeRecordPlay(song('yt:short'), 1, 19_000, 40_000);
     expect(pending()).toHaveLength(0);
-    maybeRecordPlay('yt:short', 1, 20_000, 40_000);
+    maybeRecordPlay(song('yt:short'), 1, 20_000, 40_000);
     expect(pending()).toHaveLength(1);
-    maybeRecordPlay('yt:unknown', 2, 29_000, 0);
+    maybeRecordPlay(song('yt:unknown'), 2, 29_000, 0);
     expect(pending()).toHaveLength(1);
-    maybeRecordPlay('yt:unknown', 2, 30_000, 0);
+    maybeRecordPlay(song('yt:unknown'), 2, 30_000, 0);
     expect(pending()).toHaveLength(2);
   });
 
   it('WEB-PLAY-004 one listen counts once; a replay counts again', async () => {
     const { maybeRecordPlay, resetPlay } = await fresh();
-    maybeRecordPlay('yt:t1', 1000, 31_000, 200_000);
-    maybeRecordPlay('yt:t1', 1000, 90_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1000, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1000, 90_000, 200_000);
     expect(pending()).toHaveLength(1);
-    maybeRecordPlay('yt:t1', 5000, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 5000, 31_000, 200_000);
     expect(pending()).toHaveLength(2);
     // Restarting the same listen (same start time) lets it count again.
     resetPlay('yt:t1', 5000);
-    maybeRecordPlay('yt:t1', 5000, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 5000, 31_000, 200_000);
     expect(pending()).toHaveLength(3);
   });
 
   it('WEB-PLAY-005 local files are sent by fingerprint and server tracks by bare id', async () => {
     const { maybeRecordPlay } = await fresh();
-    maybeRecordPlay('local:abc123', 1, 31_000, 100_000);
-    maybeRecordPlay('yt:xyz', 2, 31_000, 100_000);
-    maybeRecordPlay('plainid', 3, 31_000, 100_000);
+    maybeRecordPlay(song('local:abc123'), 1, 31_000, 100_000);
+    maybeRecordPlay(song('yt:xyz'), 2, 31_000, 100_000);
+    maybeRecordPlay(song('plainid'), 3, 31_000, 100_000);
     expect(pending().map((p: any) => p.trackRef)).toEqual([
       { kind: 'local', fingerprint: 'abc123' },
       { kind: 'server', id: 'xyz' },
@@ -103,9 +108,9 @@ describe('play counting', () => {
 
   it('WEB-PLAY-007 removing uploaded plays keeps ones recorded meanwhile', async () => {
     const { maybeRecordPlay, pendingPlaysFor, removePendingPlays } = await fresh();
-    maybeRecordPlay('yt:first', 1, 31_000, 100_000);
+    maybeRecordPlay(song('yt:first'), 1, 31_000, 100_000);
     const uploaded = pendingPlaysFor(testUser.id);
-    maybeRecordPlay('yt:second', 2, 31_000, 100_000);
+    maybeRecordPlay(song('yt:second'), 2, 31_000, 100_000);
     removePendingPlays(uploaded);
     expect(pending().map((p: any) => p.trackRef.id)).toEqual(['second']);
   });
@@ -118,11 +123,39 @@ describe('play counting', () => {
 });
 
 describe('background sync', () => {
+  it('WEB-PLAY-009 a play carries what the app knows about the song, for one the backend never saw', async () => {
+    const { maybeRecordPlay } = await fresh();
+    const found = {
+      ...song('yt:inApp1', 'Found In-App'),
+      artist: 'Band',
+      artistId: 'yt:UCband',
+      album: 'Record',
+      albumId: 'yt:MPRErecord',
+      durationMs: 200_000,
+      thumbnail: 'https://i.ytimg.com/vi/inApp1/hqdefault.jpg',
+    };
+    maybeRecordPlay(found, 1000, 31_000, 200_000);
+    maybeRecordPlay({ ...song('local:abc', 'My File') }, 2000, 31_000, 200_000);
+    expect(pending().map((p: any) => p.meta)).toEqual([
+      {
+        title: 'Found In-App',
+        artist: 'Band',
+        artistId: 'yt:UCband',
+        album: 'Record',
+        albumId: 'yt:MPRErecord',
+        durationMs: 200_000,
+        thumbnail: 'https://i.ytimg.com/vi/inApp1/hqdefault.jpg',
+      },
+      // Local files are the device's own business.
+      undefined,
+    ]);
+  });
+
   it('WEB-SYNC-001 a counted play uploads straight away in Online Mode and leaves the queue', async () => {
     const bodies = syncEndpoint();
     const { maybeRecordPlay, setSyncOnline } = await fresh();
     setSyncOnline(true);
-    maybeRecordPlay('yt:t1', 1000, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1000, 31_000, 200_000);
     await vi.waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0]).toEqual({
       since: 0,
@@ -138,8 +171,8 @@ describe('background sync', () => {
     const { maybeRecordPlay, setSyncOnline } = await fresh();
     const refreshed = vi.fn();
     window.addEventListener('sonare:playlists-changed', refreshed);
-    maybeRecordPlay('yt:t1', 1, 31_000, 200_000);
-    maybeRecordPlay('yt:t2', 2, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t2'), 2, 31_000, 200_000);
     await new Promise((r) => setTimeout(r, 20));
     expect(bodies).toHaveLength(0);
     expect(pending()).toHaveLength(2);
@@ -158,7 +191,7 @@ describe('background sync', () => {
     Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
     startBackgroundSync();
     setSyncOnline(true);
-    maybeRecordPlay('yt:t1', 1, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1, 31_000, 200_000);
     await new Promise((r) => setTimeout(r, 20));
     expect(bodies).toHaveLength(0);
 
@@ -173,7 +206,7 @@ describe('background sync', () => {
     const bodies = syncEndpoint(() => (++calls <= 2 ? apiError(503, 'DOWN') : HttpResponse.json({ ok: true })));
     const { maybeRecordPlay, setSyncOnline } = await fresh();
     setSyncOnline(true);
-    maybeRecordPlay('yt:t1', 1, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1, 31_000, 200_000);
     await vi.waitFor(() => expect(bodies).toHaveLength(1));
     expect(pending()).toHaveLength(1);
 
@@ -191,7 +224,7 @@ describe('background sync', () => {
     const bodies = syncEndpoint(() => apiError(400, 'VALIDATION', 'bad play'));
     const { maybeRecordPlay, setSyncOnline } = await fresh();
     setSyncOnline(true);
-    maybeRecordPlay('yt:t1', 1, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1, 31_000, 200_000);
     await vi.waitFor(() => expect(bodies).toHaveLength(1));
     await vi.waitFor(() => expect(pending()).toEqual([]));
   });
@@ -201,7 +234,7 @@ describe('background sync', () => {
     server.use(http.post(`${API}/auth/refresh`, () => apiError(401, 'X')));
     const { maybeRecordPlay, setSyncOnline } = await fresh();
     setSyncOnline(true);
-    maybeRecordPlay('yt:t1', 1, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1, 31_000, 200_000);
     await vi.waitFor(() => expect(bodies.length).toBeGreaterThanOrEqual(1));
     await new Promise((r) => setTimeout(r, 20));
     expect(pending()).toHaveLength(1);
@@ -220,10 +253,10 @@ describe('background sync', () => {
     );
     const { maybeRecordPlay, setSyncOnline } = await fresh();
     setSyncOnline(true);
-    maybeRecordPlay('yt:a', 1, 31_000, 200_000);
+    maybeRecordPlay(song('yt:a'), 1, 31_000, 200_000);
     await vi.waitFor(() => expect(bodies).toHaveLength(1));
-    maybeRecordPlay('yt:b', 2, 31_000, 200_000);
-    maybeRecordPlay('yt:c', 3, 31_000, 200_000);
+    maybeRecordPlay(song('yt:b'), 2, 31_000, 200_000);
+    maybeRecordPlay(song('yt:c'), 3, 31_000, 200_000);
     release();
     await vi.waitFor(() => expect(bodies).toHaveLength(2));
     expect(bodies[1].plays.map((p: any) => p.trackRef.id)).toEqual(['b', 'c']);
@@ -234,8 +267,8 @@ describe('background sync', () => {
     const { maybeRecordPlay, useSyncStatus, requestSync } = await fresh();
     const { renderHook } = await import('@testing-library/react');
     const { result } = renderHook(() => useSyncStatus());
-    maybeRecordPlay('yt:t1', 1, 31_000, 200_000);
-    maybeRecordPlay('yt:t2', 2, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t1'), 1, 31_000, 200_000);
+    maybeRecordPlay(song('yt:t2'), 2, 31_000, 200_000);
     requestSync();
     await vi.waitFor(() => expect(result.current).toEqual({ pending: 2, syncing: false }));
   });

@@ -4,7 +4,7 @@ import { cn } from '../../lib/cn';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
 import { usePlaybackPosition } from '../../store/playbackPosition';
-import { usePeaks } from '../../api/hooks';
+import { useWaveform } from '../../audio/waveform';
 import { useFavourite } from '../../api/favourites';
 import Icon from '../ui/Icon';
 import { IconButton } from '../ui/Button';
@@ -53,9 +53,8 @@ const BottomPlayer = () => {
   const isOffline = mode === 'offline';
   const local = useLocalLibrary();
 
-  const { data: peaksData } = usePeaks(currentTrack?.id);
-  const peaks = currentTrack?.peaks || peaksData?.peaks;
-  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack?.id, currentTrack?.favourite);
+  const { peaks, real: realPeaks } = useWaveform(currentTrack);
+  const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack);
 
   // Nothing to control until a track is picked: the bar only takes space while it's useful.
   if (!currentTrack) return null;
@@ -157,6 +156,7 @@ const BottomPlayer = () => {
           <div className="grow min-w-0 overflow-hidden flex items-center">
             <Waveform
               peaks={peaks}
+              real={realPeaks}
               barCount={80}
               positionRatio={positionRatio}
               durationMs={effectiveDurationMs}

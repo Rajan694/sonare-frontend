@@ -187,8 +187,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-029` | offline, the queue skips songs that are not on this device                                    |
 | `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                      |
 | `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
-| `DSK-053` | About in the desktop app shows the version but no downloads (those are on the web only)       |
+| `DSK-053` | About in the desktop app checks for a newer build instead of listing every download           |
 | `DSK-054` | the server address can point the desktop app at another backend, which restarts it signed out |
+| `DSK-075` | a release build has no server address setting and ignores one a dev build saved               |
 | `DSK-032` | with no folders it invites the user to add one, using the folder picker                       |
 | `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work                   |
 | `DSK-034` | a failed scan is reported instead of breaking the page                                        |
@@ -332,9 +333,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                |
 | `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                           |
 | `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch   |
-| `WEB-SETTINGS-012` | about: lists the uploaded builds, this device first, as download links                 |
-| `WEB-SETTINGS-013` | about: says when nothing is uploaded, and offers a retry when the list fails           |
-| `WEB-SETTINGS-014` | about: only a higher version than this app is called newer; a -dev build of it is not  |
+| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none       |
 
 ## `test/screens/signin.test.tsx`
 
@@ -350,6 +349,22 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                 |
 | `WEB-SIGNIN-009` | "Forgot password?" sends a reset link for the trimmed email and says it is on its way |
 | `WEB-SIGNIN-010` | a forgot-password error shows, and switching back to sign in clears it                |
+
+## `test/screens/landing.test.tsx`
+
+| ID             | Test                                                                               |
+| -------------- | ---------------------------------------------------------------------------------- |
+| `WEB-LAND-001` | links every build to the latest GitHub release under its fixed name                |
+| `WEB-LAND-002` | opens the web app at /home                                                         |
+| `WEB-LAND-003` | a Linux visitor gets the AppImage first, with the Linux card leading the downloads |
+| `WEB-LAND-004` | an Android phone gets the APK, not the Linux build its user agent also mentions    |
+| `WEB-LAND-005` | macOS and other systems start in the browser                                       |
+| `WEB-LAND-006` | shows the version and size from /releases next to the download                     |
+| `WEB-LAND-007` | the buttons still work when /releases fails                                        |
+| `WEB-LAND-008` | sets the page title while it is open and puts the old one back                     |
+| `WEB-LAND-009` | switches the screenshots between Android and Linux                                 |
+| `WEB-LAND-010` | detectOs reads the platform, Android before Linux, ChromeOS as other               |
+| `WEB-LAND-011` | releaseLabel matches platform and format, and skips missing builds                 |
 
 ## `test/screens/email-links.test.tsx`
 
@@ -386,6 +401,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-API-017` | shares one refresh between requests that fail at the same time                   |
 | `WEB-API-018` | does not try to refresh a guest request that gets 401                            |
 | `WEB-API-019` | explains upstream outages, unreachable servers and other failures in plain words |
+| `WEB-API-020` | saving an album or following an artist sends what the app knows about it         |
 
 ## `test/unit/audioDemux.test.ts`
 
@@ -500,6 +516,17 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through            |
 | `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                              |
 | `WEB-DSP-015` | a suspended context is resumed on the next play                                 |
+| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                       |
+
+## `test/unit/waveform.test.tsx`
+
+| ID             | Use case                                                                                |
+| :------------- | :-------------------------------------------------------------------------------------- |
+| `WEB-WAVE-001` | a placeholder is drawn dimmed, and bars turn real as the song plays past them           |
+| `WEB-WAVE-002` | once every bar is heard the waveform is uploaded, once, and drawn without dimming       |
+| `WEB-WAVE-003` | a guest keeps the full waveform; it is uploaded the next time the song shows, signed in |
+| `WEB-WAVE-004` | a real waveform from the backend is drawn as it is, and nothing is sampled              |
+| `WEB-WAVE-005` | device files keep their own waveform and never ask the backend                          |
 
 ## `test/unit/favourites.test.tsx`
 
@@ -536,27 +563,27 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOOK-014` | useMyPlaylists refetches when playlists change anywhere in the app  |
 | `WEB-HOOK-015` | the favourites list refetches after a heart is saved elsewhere      |
 | `WEB-HOOK-016` | lyrics for a local file are never requested from the server         |
-| `WEB-HOOK-017` | lyrics errors surface as the hook error                             |
+| `WEB-HOOK-017` | lyrics requests name the song; errors surface as the hook error     |
 
 ## `test/unit/lib.test.ts`
 
-| ID            | Use case                                                                                          |
-| :------------ | :------------------------------------------------------------------------------------------------ |
-| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ or server address, and includes admin |
-| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour                |
-| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                            |
-| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                    |
-| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                         |
-| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                             |
-| `WEB-LIB-007` | is online when either probe answers                                                               |
-| `WEB-LIB-008` | is offline when both probes fail or time out                                                      |
-| `WEB-LIB-009` | sends an error with its type, stack and page                                                      |
-| `WEB-LIB-010` | turns strings and objects into readable messages                                                  |
-| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                         |
-| `WEB-LIB-012` | sends nothing while offline                                                                       |
-| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                           |
-| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                      |
-| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                           |
+| ID            | Use case                                                                                                        |
+| :------------ | :-------------------------------------------------------------------------------------------------------------- |
+| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ, server address or update check, and includes admin |
+| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour                              |
+| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                                          |
+| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                                  |
+| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                                       |
+| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                                           |
+| `WEB-LIB-007` | is online when either probe answers                                                                             |
+| `WEB-LIB-008` | is offline when both probes fail or time out                                                                    |
+| `WEB-LIB-009` | sends an error with its type, stack and page                                                                    |
+| `WEB-LIB-010` | turns strings and objects into readable messages                                                                |
+| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                                       |
+| `WEB-LIB-012` | sends nothing while offline                                                                                     |
+| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                                         |
+| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                                    |
+| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                                         |
 
 ## `test/unit/player.test.ts`
 
@@ -594,6 +621,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PLAY-006` | each account only uploads its own plays (plus untagged older ones)                 |
 | `WEB-PLAY-007` | removing uploaded plays keeps ones recorded meanwhile                              |
 | `WEB-PLAY-008` | unreadable stored plays are treated as none                                        |
+| `WEB-PLAY-009` | a play carries what the app knows about the song, for one the backend never saw    |
 | `WEB-SYNC-001` | a counted play uploads straight away in Online Mode and leaves the queue           |
 | `WEB-SYNC-002` | Offline Mode holds plays, and switching to Online uploads them and refreshes lists |
 | `WEB-SYNC-003` | with the network down nothing is sent; the online event sends it                   |
@@ -714,3 +742,126 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-OUTPUT-005` | a remembered device that is gone reads as the system default                               |
 | `WEB-OUTPUT-006` | the Now Playing card opens the same list and switches the device                           |
 | `WEB-OUTPUT-007` | before a media permission the blank placeholder output is the default, not a second device |
+
+## `test/unit/sharedCatalog/catalog.test.ts`
+
+| ID            | Use case                                                                                           |
+| :------------ | :------------------------------------------------------------------------------------------------- |
+| `WEB-CAT-001` | encodeCursor encodes a string to base64url with L. prefix, and returns undefined for empty input   |
+| `WEB-CAT-002` | decodeCursor decodes an L. prefixed base64url cursor including UTF-8 characters                    |
+| `WEB-CAT-003` | decodeCursor throws CatalogInputError when L. prefix is missing or cursor is malformed             |
+| `WEB-CAT-004` | idHelpers extracts YouTube ID and strips yt: prefix, rejecting invalid prefixes                    |
+| `WEB-CAT-005` | idHelpers parses channel and playlist IDs from URLs and constructs prefix identifiers              |
+| `WEB-CAT-006` | directImageUrl returns raw direct image url and strips backend proxy prefix if present             |
+| `WEB-CAT-007` | trackThumbUrl produces canonical YouTube thumbnail URL from video ID                               |
+| `WEB-CAT-008` | sizedImageUrl resizes image URLs and skips signed URLs with rs query parameter                     |
+| `WEB-CAT-009` | cleanTitle strips video badges, audio indicators, and extraneous whitespace                        |
+| `WEB-CAT-010` | cleanArtist strips Topic suffix and trims uploader name                                            |
+| `WEB-CAT-011` | normalizeStreamToTrack maps Piped Streams object to Sonare Track with direct image URLs and codecs |
+| `WEB-CAT-012` | normalizeStreamItemToTrack converts search stream item to Track                                    |
+| `WEB-CAT-013` | normalizeStreamItemToArtist converts channel item to Artist                                        |
+| `WEB-CAT-014` | normalizeStreamItemToAlbum converts playlist item to Album                                         |
+| `WEB-CAT-015` | normalizeChannelToArtist converts Channel to Artist and assigns artwork route                      |
+| `WEB-CAT-016` | normalizePlaylistToAlbum extracts release year from description and determines uploader            |
+| `WEB-CAT-017` | selectBestAudioStream picks highest bitrate stream for high quality                                |
+| `WEB-CAT-018` | selectBestAudioStream picks medium bitrate stream for medium and auto quality                      |
+| `WEB-CAT-019` | selectBestAudioStream filters by format when specified                                             |
+| `WEB-CAT-020` | selectBestAudioStream falls back to videoStreams when audioStreams is empty                        |
+| `WEB-CAT-021` | toStreamInfo maps Piped stream to Sonare StreamInfo with bitrate in kbps                           |
+| `WEB-CAT-022` | suggestions returns query suggestions and validates non-empty query                                |
+| `WEB-CAT-023` | search queries specific type and encodes pagination cursor                                         |
+| `WEB-CAT-024` | search aggregates songs, albums, artists, and playlists when type is all                           |
+| `WEB-CAT-025` | search throws CatalogInputError on invalid query or invalid type                                   |
+| `WEB-CAT-026` | trending filters out non-music streams and returns normalized tracks                               |
+| `WEB-CAT-027` | trending falls back to music search when raw trending has fewer items than limit                   |
+| `WEB-CAT-028` | trending rethrows source error when both trending and search fail                                  |
+| `WEB-CAT-029` | album fetches playlist and returns normalized album                                                |
+| `WEB-CAT-030` | albumTracks supports pagination via cursor                                                         |
+| `WEB-CAT-031` | artist returns artist metadata with following set to false                                         |
+| `WEB-CAT-032` | artistTopTracks falls back to search when artist channel has no related streams                    |
+| `WEB-CAT-033` | artistAlbums fetches from channel tab or falls back to search                                      |
+| `WEB-CAT-034` | playlist and playlistTracks return metadata and tracks                                             |
+| `WEB-CAT-035` | track resolves best audio stream codec and bitrate, and stream returns StreamInfo                  |
+| `WEB-CAT-036` | stream throws SourceError when no audio or video streams are available                             |
+
+## `test/unit/sharedCatalog/youtubeiSource.test.ts`
+
+| ID            | Use case                                                                                                          |
+| :------------ | :---------------------------------------------------------------------------------------------------------------- |
+| `WEB-CAT-037` | getStream maps VISIONOS response to Piped Streams shape                                                           |
+| `WEB-CAT-038` | getStream tries clients in order and uses first success                                                           |
+| `WEB-CAT-039` | getStream skips formats without a url                                                                             |
+| `WEB-CAT-040` | getStream maps codec and format correctly                                                                         |
+| `WEB-CAT-041` | getStream throws blocked when all clients return LOGIN_REQUIRED                                                   |
+| `WEB-CAT-042` | getStream throws not_found for ERROR status                                                                       |
+| `WEB-CAT-043` | getStream throws unavailable on network error                                                                     |
+| `WEB-CAT-044` | getStream contentLength is -1 when unknown                                                                        |
+| `WEB-CAT-045` | search songs maps to Piped StreamItem with correct url and artist                                                 |
+| `WEB-CAT-046` | search songs joins multiple artist names with comma                                                               |
+| `WEB-CAT-047` | search albums extracts OLAK playlist id from overlay                                                              |
+| `WEB-CAT-048` | search albums skips items without OLAK id                                                                         |
+| `WEB-CAT-049` | search artists maps to channel StreamItem with subscriberCount                                                    |
+| `WEB-CAT-050` | search playlists strips VL prefix from id                                                                         |
+| `WEB-CAT-051` | search returns nextpage with continuation token and filter                                                        |
+| `WEB-CAT-052` | search returns null nextpage when no continuation                                                                 |
+| `WEB-CAT-053` | suggestions extracts plain strings from SearchSuggestion items                                                    |
+| `WEB-CAT-054` | suggestions extracts strings from MusicResponsiveListItem in second section                                       |
+| `WEB-CAT-055` | suggestions wraps network error as SourceError unavailable                                                        |
+| `WEB-CAT-056` | unimplemented methods throw SourceError unavailable                                                               |
+| `WEB-CAT-057` | getStream selects largest thumbnail by width                                                                      |
+| `WEB-CAT-058` | getStream falls through client with no audio formats to next client                                               |
+| `WEB-CAT-059` | search wraps network error as SourceError unavailable                                                             |
+| `WEB-CAT-060` | getStream uses muxed formats in videoStreams when present                                                         |
+| `WEB-CAT-061` | placeholderPeaks produces deterministic waveform matching pinned literal array for yt:NJAv_7lHUIU                 |
+| `WEB-CAT-062` | resamplePeaks downsamples with max-pooling when shrinking                                                         |
+| `WEB-CAT-063` | resamplePeaks upsamples with linear interpolation when growing and handles edge cases                             |
+| `WEB-CAT-081` | recordPeak fills the bars a stretch of the song touches, keeping each bar's loudest level                         |
+| `WEB-CAT-082` | a waveform is finished only when every bar is heard, scaled so the loudest is 1                                   |
+| `WEB-CAT-083` | mergeHeardPeaks draws heard bars scaled to the loudest, the placeholder elsewhere                                 |
+| `WEB-CAT-064` | playlist maps playlist details and video items to Piped Playlist shape                                            |
+| `WEB-CAT-065` | playlist strips VL prefix from playlist ID                                                                        |
+| `WEB-CAT-066` | playlistNextPage fetches continuation items and returns nextpage cursor                                           |
+| `WEB-CAT-067` | playlistNextPage handles last page with null nextpage                                                             |
+| `WEB-CAT-068` | channel maps channel metadata, tabs, and relatedStreams                                                           |
+| `WEB-CAT-069` | channel for Topic channel returns empty relatedStreams                                                            |
+| `WEB-CAT-070` | channelTabs fetches albums tab and maps OLAK playlists to ChannelTabItem                                          |
+| `WEB-CAT-071` | searchNextPage uses continuation token and returns mapped StreamItems                                             |
+| `WEB-CAT-072` | trending delegates to getTrending when available or throws unavailable                                            |
+| `WEB-CAT-073` | channel strips yt: prefix from artist ID                                                                          |
+| `WEB-CAT-074` | getStream switches to a fresh session when the probe reports limited (403) urls; probes the top-bitrate audio url |
+| `WEB-CAT-075` | getStream gives up as SourceError 'blocked' after three sessions of limited urls                                  |
+| `WEB-CAT-076` | getStream without a probe returns the first session's urls unchecked                                              |
+| `WEB-CAT-077` | a probe network error moves getStream on to a fresh session                                                       |
+| `WEB-CAT-078` | after a session switch, later calls (search) go through the new session                                           |
+| `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
+| `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
+
+## `test/desktop/appUpdate.test.ts`
+
+| ID        | Use case                                                                                            |
+| :-------- | :-------------------------------------------------------------------------------------------------- |
+| `DSK-068` | versions compare by number, and a -dev build comes before its release                               |
+| `DSK-069` | the update is the newest version above this one, in the way this copy was installed                 |
+| `DSK-070` | the install kind comes first: AppImage, the .deb in /opt/sonare, else the archive; Windows the .exe |
+| `DSK-071` | checkForUpdate compares this app (1.2.0) with the builds uploaded on the admin page                 |
+| `DSK-072` | a download lands in Downloads once its checksum matches, with progress, and can be opened           |
+| `DSK-073` | a download that does not match the uploaded file is thrown away                                     |
+| `DSK-074` | an AppImage is made executable, and odd characters in the name are made safe                        |
+
+## `test/desktop/inAppYoutube.test.ts`
+
+| ID        | Use case                                                                                                     |
+| :-------- | :----------------------------------------------------------------------------------------------------------- |
+| `DSK-055` | curlFetch writes url, headers, and body to a -K config file with escaping and cleans up temp files           |
+| `DSK-056` | curlFetch parses status code, multi-hop headers, and binary body from curl output                            |
+| `DSK-057` | curlFetch throws on non-zero curl exit code and supports abort signals                                       |
+| `DSK-058` | isInAppYoutubeAllowed returns true only in Neutralino window mode and respects admin kill-switch             |
+| `DSK-059` | loadCachedConfig and setAppConfig sync config with Neutralino storage and re-create catalog on client change |
+| `DSK-060` | streamCache downloads stream via curl with Range: bytes=0- into .part file and renames on success            |
+| `DSK-061` | streamCache deduplicates concurrent in-flight downloads for the same video and itag                          |
+| `DSK-062` | streamCache evicts oldest accessed files when total size exceeds 500 MB limit                                |
+| `DSK-063` | streamCache detects deleted files on disk and removes them from the cached index                             |
+| `DSK-064` | player downloads direct YouTube stream into streamCache and decodes via Web Audio on Linux                   |
+| `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
+| `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |
+| `DSK-067` | api catalog methods query inApp catalog first and fall back to backend endpoints on failure                  |

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from './api';
 import { requireAccount } from './accountGate';
+import type { Track } from '../types';
 
 /**
  * Favourite state that survives across screens.
@@ -31,13 +32,14 @@ export const isFavourite = (trackId: string, serverValue: boolean): boolean => {
   return o === undefined ? serverValue : o;
 };
 
-export const setFavourite = async (trackId: string, next: boolean): Promise<void> => {
+/** `track` goes with a new favourite as its metadata (the backend may not know a song found in-app). */
+export const setFavourite = async (trackId: string, next: boolean, track?: Track): Promise<void> => {
   const previous = overrides.get(trackId);
   // Optimistic: flip immediately so the heart feels instant.
   overrides.set(trackId, next);
   emit();
   try {
-    await api.setTrackFavourite(trackId, next);
+    await api.setTrackFavourite(trackId, next, track);
     for (const l of savedListeners) l();
   } catch (e) {
     // Roll back to whatever we knew before rather than leaving a lie on screen.
@@ -67,25 +69,27 @@ export const useFavouriteLookup = (): typeof isFavourite => {
 };
 
 /**
- * Binds one track's heart. `serverValue` is the value from the fetched track object;
+ * Binds one track's heart. `track.favourite` is the value from the fetched track object;
  * the returned state folds in any local toggle.
  */
-export const useFavourite = (trackId: string | undefined, serverValue: boolean | undefined) => {
+export const useFavourite = (track: Track | null | undefined) => {
   const [, force] = useState(0);
 
   useEffect(() => subscribe(() => force((n) => n + 1)), []);
 
-  const favourite = trackId ? isFavourite(trackId, !!serverValue) : false;
+  const trackId = track?.id;
+  const serverValue = !!track?.favourite;
+  const favourite = trackId ? isFavourite(trackId, serverValue) : false;
 
   const toggle = useCallback(() => {
-    if (!trackId) return;
+    if (!track) return;
     // Favourites live in the account; a guest is asked to sign in first, then it's saved.
     requireAccount('Create a free account to save songs you love.', () =>
-      setFavourite(trackId, !isFavourite(trackId, !!serverValue)).catch(() => {
+      setFavourite(track.id, !isFavourite(track.id, serverValue), track).catch(() => {
         // setFavourite already rolled the UI back; nothing useful to show here.
       }),
     );
-  }, [trackId, serverValue]);
+  }, [track, serverValue]);
 
   return { favourite, toggle };
 };

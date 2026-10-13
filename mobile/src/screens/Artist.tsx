@@ -44,7 +44,7 @@ export const ArtistScreen = () => {
     requireAccount('Create a free account to follow artists.', async () => {
       const next = !following;
       setFollowing(next);
-      await api.setFollowing(id, next).catch(() => setFollowing(!next));
+      await api.setFollowing(id, next, info ?? undefined).catch(() => setFollowing(!next));
     });
 
   const shufflePlay = () => {

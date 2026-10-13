@@ -482,11 +482,11 @@ describe('Store Layer', () => {
       const setFavSpy = jest.spyOn(api, 'setFavourite').mockResolvedValue({ ok: true });
       await useLibraryStore.getState().toggleFavourite(mockTrack1);
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(true);
-      expect(setFavSpy).toHaveBeenCalledWith('t1', true);
+      expect(setFavSpy).toHaveBeenCalledWith('t1', true, expect.objectContaining({ id: 't1' }));
 
       await useLibraryStore.getState().toggleFavourite(mockTrack1);
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(false);
-      expect(setFavSpy).toHaveBeenCalledWith('t1', false);
+      expect(setFavSpy).toHaveBeenCalledWith('t1', false, expect.objectContaining({ id: 't1' }));
 
       // Failure rollback
       jest.spyOn(api, 'setFavourite').mockRejectedValueOnce(new Error('Network fail'));
@@ -526,7 +526,7 @@ describe('Store Layer', () => {
       expect(useLibraryStore.getState().playlists.find((p) => p.id === 'sonare:3')).toBeUndefined();
 
       await useLibraryStore.getState().addToPlaylist('sonare:2', mockTrack1);
-      expect(api.addToPlaylist).toHaveBeenCalledWith('sonare:2', ['t1']);
+      expect(api.addToPlaylist).toHaveBeenCalledWith('sonare:2', [mockTrack1]);
     });
   });
 

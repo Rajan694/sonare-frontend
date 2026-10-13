@@ -22,6 +22,7 @@ const state = (g.__sonareFakeFs ??= {
   unreadable: new Set<string>(),
   clock: { now: 1_700_000_000_000 },
   commands: { ran: [] as string[], answer: null as null | ((cmd: string) => ExecResult) },
+  env: {} as Record<string, string>,
 });
 export const files = state.files as Map<string, FakeFile>;
 export const dirs = state.dirs as Set<string>;
@@ -29,6 +30,8 @@ export const store = state.store as Map<string, string>;
 export const dialog = state.dialog as { folder: string | null };
 export const opened = state.opened as string[];
 export const unreadable = state.unreadable as Set<string>;
+/** os.getEnv answers from here (unset names are ''). */
+export const env = state.env as Record<string, string>;
 
 interface ExecResult {
   stdOut?: string;
@@ -66,8 +69,10 @@ export const resetFs = () => {
   unreadable.clear();
   commands.ran.length = 0;
   commands.answer = null;
+  for (const k of Object.keys(env)) delete env[k];
   dialog.folder = '/home/me/Picked';
   for (const fn of Object.values(lib.filesystem)) vi.mocked(fn).mockClear();
+  for (const fn of Object.values(lib.os)) vi.mocked(fn).mockClear();
 };
 
 export const lib = {
@@ -108,6 +113,12 @@ export const lib = {
       if (dirs.has(path)) throw new Error('exists');
       dirs.add(path);
     }),
+    writeFile: vi.fn(async (path: string, data: string) => {
+      writeFile(path, data);
+    }),
+    writeBinaryFile: vi.fn(async (path: string, data: ArrayBuffer) => {
+      writeFile(path, new Uint8Array(data));
+    }),
     appendBinaryFile: vi.fn(async (path: string, data: ArrayBuffer) => {
       const prev = files.get(path)?.bytes ?? new Uint8Array(0);
       const next = new Uint8Array(prev.length + data.byteLength);
@@ -126,7 +137,14 @@ export const lib = {
     }),
   },
   os: {
-    getPath: vi.fn(async (name: string) => (name === 'music' ? '/home/me/Music' : '/home/me')),
+    getPath: vi.fn(async (name: string) => {
+      if (name === 'music') return '/home/me/Music';
+      if (name === 'temp') return '/tmp';
+      if (name === 'cache') return '/home/me/.cache';
+      if (name === 'downloads') return '/home/me/Downloads';
+      return '/home/me';
+    }),
+    getEnv: vi.fn(async (name: string) => env[name] ?? ''),
     showFolderDialog: vi.fn(async () => dialog.folder),
     open: vi.fn(async (url: string) => {
       opened.push(url);
@@ -137,6 +155,8 @@ export const lib = {
       const r = commands.answer?.(cmd) ?? { exitCode: 127, stdErr: 'command not found' };
       return { pid: 1, stdOut: r.stdOut ?? '', stdErr: r.stdErr ?? '', exitCode: r.exitCode ?? 0 };
     }),
+    spawnProcess: vi.fn(async (_cmd: string, _cwd?: string) => ({ id: 1, pid: 1 })),
+    updateSpawnedProcess: vi.fn(async (_id: number, _event: string, _data?: unknown) => {}),
     showMessageBox: vi.fn(async () => 'OK'),
   },
   storage: {

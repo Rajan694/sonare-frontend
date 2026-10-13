@@ -1,5 +1,7 @@
 import { getCurrentUser, isAuthenticated } from './auth';
 import { requestSync } from './sync';
+import { trackMeta } from '../../../shared/catalog/meta';
+import type { Track, TrackMeta } from '../types';
 
 /**
  * Split a namespaced id (contract 8.1) into the TrackRef shape from 8.3. The backend
@@ -39,7 +41,14 @@ export const resetPlay = (trackId: string, startedAt: number): void => {
  * carries the account it was heard on, so one made before a sign-out never lands on the
  * next account.
  */
-export type PendingPlay = { trackRef: ReturnType<typeof trackRef>; at: number; ms: number; userId?: string };
+export type PendingPlay = {
+  trackRef: ReturnType<typeof trackRef>;
+  at: number;
+  ms: number;
+  userId?: string;
+  /** What the app knew about the song: the backend may never have seen one found in-app. */
+  meta?: TrackMeta;
+};
 const PENDING_KEY = 'sonare_pending_plays';
 
 const readPending = (): PendingPlay[] => {
@@ -79,7 +88,8 @@ export const removePendingPlays = (done: PendingPlay[]): void => {
  * Call on each position update. Records the play the first time the threshold is met
  * for this listen; repeated calls afterwards are no-ops.
  */
-export const maybeRecordPlay = (trackId: string, startedAt: number, positionMs: number, durationMs: number): void => {
+export const maybeRecordPlay = (track: Track, startedAt: number, positionMs: number, durationMs: number): void => {
+  const trackId = track.id;
   if (!trackId || positionMs <= 0) return;
   // History belongs to an account; guests just listen.
   if (!isAuthenticated()) return;
@@ -96,6 +106,7 @@ export const maybeRecordPlay = (trackId: string, startedAt: number, positionMs: 
     at: startedAt,
     ms: Math.round(positionMs),
     userId: getCurrentUser()?.id,
+    meta: trackMeta(track),
   };
   writePending([...readPending(), play]);
   // Uploads straight away when online; in Offline Mode it waits for the switch back.

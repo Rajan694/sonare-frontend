@@ -16,6 +16,14 @@ const mockSonarePlayerNative = {
   setPauseAtEndOfTrack: jest.fn(),
 };
 
+const mockSonareUpdatesNative = {
+  download: jest.fn().mockResolvedValue(7),
+  status: jest.fn().mockResolvedValue({ state: 'running', bytes: 0, total: 100 }),
+  checksum: jest.fn().mockResolvedValue(''),
+  install: jest.fn().mockResolvedValue('started'),
+  remove: jest.fn().mockResolvedValue(undefined),
+};
+
 const mockSonareDownloadsNative = {
   setActive: jest.fn(),
   start: jest.fn().mockResolvedValue(undefined),
@@ -213,6 +221,8 @@ jest.mock('react-native', () => {
     NativeModules: {
       SonarePlayer: mockSonarePlayerNative,
       SonareDownloads: mockSonareDownloadsNative,
+      SonareUpdates: mockSonareUpdatesNative,
+      SonareBuild: { dev: false, version: '1.0.1' },
       PlatformConstants: {
         getConstants: () => ({ isTesting: true }),
       },
@@ -449,7 +459,18 @@ class MockXMLHttpRequest {
 }
 global.XMLHttpRequest = MockXMLHttpRequest;
 
+// Unit tests talk to a mocked backend. In-app YouTube is off unless a test turns it on, and
+// youtubei.js never reaches youtube.com (a session fails to start, so calls fall back).
+jest.mock('youtubei.js/react-native', () => ({
+  Innertube: { create: jest.fn(() => Promise.reject(new Error('No YouTube in unit tests'))) },
+  Log: { setLevel: jest.fn(), Level: { ERROR: 1 } },
+}));
+beforeEach(() => {
+  require('./src/youtube/appConfig').resetAppConfigForTesting({ inAppYoutube: false });
+});
+
 module.exports = {
+  mockSonareUpdatesNative,
   mockSonarePlayerNative,
   mockSonareDownloadsNative,
   mockEventEmitter,

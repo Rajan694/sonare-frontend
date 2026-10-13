@@ -67,6 +67,32 @@ load_android_sdk() {
     export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 }
 
+# Gradle needs a full JDK (javac); a JRE alone fails with "JAVA_COMPILER". run.sh's
+# terminals are non-interactive login shells, so a JAVA_HOME set in ~/.bashrc never
+# reaches us and the system JRE wins. Same lookup as buildFE.sh.
+load_jdk() {
+    if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/javac" ]; then return; fi
+    if command -v javac >/dev/null; then return; fi
+    local jdk
+    for jdk in "$HOME"/.jdks/jdk-17*; do
+        if [ -x "$jdk/bin/javac" ]; then export JAVA_HOME="$jdk"; return; fi
+    done
+    echo "Error: no JDK found (javac). Install JDK 17 or set JAVA_HOME."
+    exit 1
+}
+
+# Vite and Metro each need an inotify instance to watch files. The default per-user limit
+# (128) is easily used up by editors and language servers, and then whichever dev server
+# starts last dies with "EMFILE: too many open files, watch".
+inotify_hint() {
+    local limit
+    limit=$(cat /proc/sys/fs/inotify/max_user_instances 2>/dev/null) || return
+    [ "$limit" -ge 512 ] && return
+    echo "If the log above says 'EMFILE: too many open files, watch', the inotify limit"
+    echo "($limit instances per user) is used up. Raise it once with:"
+    echo "  echo fs.inotify.max_user_instances=1024 | sudo tee /etc/sysctl.d/60-inotify.conf && sudo sysctl --system"
+}
+
 METRO_PORT=""
 DEVICE=""
 USE_EMULATOR=0
@@ -123,7 +149,8 @@ run_linux_window() {
     fi
 
     # Chosen up front so the dev server can point the page's globals script at it.
-    nl_port=$(node -e 'const s = require("net").createServer(); s.listen(0, "127.0.0.1", () => { console.log(s.address().port); s.close(); })')
+    # A string, not a number: with FORCE_COLOR set, console.log colours numbers.
+    nl_port=$(node -e 'const s = require("net").createServer(); s.listen(0, "127.0.0.1", () => { console.log(String(s.address().port)); s.close(); })')
 
     SONARE_VITE_PORT=$LINUX_VITE_PORT SONARE_NL_PORT=$nl_port node_modules/.bin/vite &
     LINUX_VITE_PID=$!
@@ -137,6 +164,7 @@ run_linux_window() {
     done
     if ! vite_is_up; then
         echo "Error: the dev server did not come up on port $LINUX_VITE_PORT."
+        inotify_hint
         exit 1
     fi
 
@@ -248,6 +276,7 @@ case "$TARGET" in
         load_nvm
         nvm use 22 2>/dev/null
         load_android_sdk
+        load_jdk
         cd "$SCRIPT_DIR/mobile"
 
         [ "$USE_EMULATOR" = 1 ] && pick_emulator
@@ -288,6 +317,7 @@ case "$TARGET" in
             if ! metro_is_up; then
                 echo "Error: Metro did not come up on port $PORT."
                 echo "Something else may be using it - try a different --port."
+                inotify_hint
                 exit 1
             fi
         fi

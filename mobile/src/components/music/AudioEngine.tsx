@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { AppState } from 'react-native';
 import { api } from '../../data/api';
 import { absoluteUrl, artworkUrl } from '../../data/config';
 import { useAuthStore } from '../../data/auth';
@@ -9,6 +10,8 @@ import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
 import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
+import { refreshInAppSession } from '../../youtube/inApp';
+import { noteLevel, saveWaveforms, watchWaveform } from '../../store/waveforms';
 import { sleepAtTrackEnd, watchSleepTimer } from '../../store/sleepTimer';
 import { watchOutput } from '../../store/output';
 import { watchPlayerPersistence } from '../../store/playerPersist';
@@ -20,6 +23,8 @@ const PLAY_THRESHOLD_MS = 30_000;
 /** Which track the native player holds, once its stream has been handed over. */
 let loadedId: string | null = null;
 let listen: { trackId: string; startedAt: number; counted: boolean } | null = null;
+/** The previous progress event, so each level covers the stretch between two of them. */
+let lastProgress: { trackId: string; positionMs: number } | null = null;
 let endedHandled = false;
 /** Bumped per load so a slow stream fetch for a skipped track is ignored. */
 let loadToken = 0;
@@ -29,6 +34,8 @@ let advancedTo: string | null = null;
 /** The next track the native player holds; undefined when it holds nothing we know of. */
 let nextSent: string | null | undefined;
 let nextToken = 0;
+/** The track whose refused stream url was already swapped for a fresh one; once per track. */
+let refreshedFor: string | null = null;
 
 const current = () => usePlayerStore.getState().currentTrack;
 
@@ -98,6 +105,8 @@ const adopt = (id: string) => {
   ++loadToken; // a load still in flight for an older track must not replace this one
   loadedId = id;
   listen = { trackId: id, startedAt: Date.now(), counted: false };
+  const adopted = current();
+  if (adopted) watchWaveform(adopted);
   endedHandled = false;
   nextSent = undefined;
   prepareNext();
@@ -133,6 +142,7 @@ const loadCurrent = async () => {
     if (token !== loadToken) return;
     loadedId = track.id;
     listen = { trackId: track.id, startedAt: Date.now(), counted: false };
+    watchWaveform(track);
     // load() clears whatever next track the player held.
     nextSent = undefined;
     prepareNext();
@@ -184,15 +194,44 @@ const startAudio = () => {
     if (!listen || listen.trackId !== player.currentTrack?.id || loadedId !== listen.trackId) return;
     player.setPositionMs(e.positionMs);
     if (e.durationMs > 0 && e.durationMs !== player.durationMs) player.setDurationMs(e.durationMs);
+    // The waveform: the level heard since the last event covers the stretch played since then.
+    // After a seek (a jump) it holds audio from before it, so that one is skipped.
+    const prev = lastProgress?.trackId === listen.trackId ? lastProgress.positionMs : null;
+    const step = prev === null ? -1 : e.positionMs - prev;
+    if (e.level !== undefined && step > 0 && step <= 2000 * useAudioStore.getState().speed) {
+      noteLevel(listen.trackId, e.durationMs, prev!, e.positionMs, e.level);
+    }
+    lastProgress = { trackId: listen.trackId, positionMs: e.positionMs };
     const threshold = Math.min(PLAY_THRESHOLD_MS, player.durationMs / 2 || PLAY_THRESHOLD_MS);
     // History belongs to an account; guests just listen.
     if (!listen.counted && e.positionMs >= threshold && useAuthStore.getState().status === 'signedIn') {
       listen.counted = true;
-      queuePlay(listen.trackId, listen.startedAt, e.positionMs);
+      queuePlay(player.currentTrack!, listen.startedAt, e.positionMs);
     }
   });
 
-  SonarePlayer.onError((e) => usePlayerStore.getState().setError(e.message || 'Playback failed'));
+  SonarePlayer.onError((e) => {
+    const track = current();
+    // A YouTube url that stops working mid-song (403): get a fresh one and carry on from there.
+    if (
+      e.code === 'ERROR_CODE_IO_BAD_HTTP_STATUS' &&
+      track &&
+      e.mediaId === track.id &&
+      refreshedFor !== track.id &&
+      !localUriFor(track.id)
+    ) {
+      refreshedFor = track.id;
+      refreshInAppSession()
+        .catch(() => {})
+        .then(() => {
+          if (current()?.id !== track.id) return;
+          usePlayerStore.setState({ startAtMs: e.positionMs || null });
+          loadCurrent();
+        });
+      return;
+    }
+    usePlayerStore.getState().setError(e.message || 'Playback failed');
+  });
 
   SonarePlayer.onRemote((e) => {
     const player = usePlayerStore.getState();
@@ -211,6 +250,11 @@ const startAudio = () => {
     }
     advancedTo = mediaId;
     player.setCurrentTrack(track);
+  });
+
+  // Partial waveforms are written every few seconds; write the latest before Android may stop the app.
+  AppState.addEventListener('change', (next) => {
+    if (next === 'background') saveWaveforms();
   });
 
   watchSleepTimer();
@@ -239,6 +283,7 @@ const startAudio = () => {
   // Store -> native.
   usePlayerStore.subscribe((state, prev) => {
     if (state.currentTrack?.id !== prev.currentTrack?.id) {
+      refreshedFor = null;
       if (state.currentTrack && state.currentTrack.id === advancedTo) adopt(state.currentTrack.id);
       else loadCurrent(); // the new load carries play state and starts from 0
       return;

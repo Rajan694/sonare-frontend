@@ -9,6 +9,8 @@ const MIN_BAR_PX = 2;
 
 interface WaveformProps {
   peaks?: number[];
+  /** Which of `peaks` are real; the rest (a placeholder not yet heard) are drawn dimmed. All when absent. */
+  real?: boolean[];
   /** The most bars to draw; fewer are drawn when the rail is too narrow to fit them. */
   barCount?: number;
   positionRatio?: number;
@@ -22,6 +24,7 @@ interface WaveformProps {
 
 const Waveform = ({
   peaks,
+  real,
   barCount = 150,
   positionRatio = 0,
   durationMs = 0,
@@ -64,6 +67,11 @@ const Waveform = ({
     const max = Math.max(...raw) || 1;
     return raw.map((v) => Math.max(0.12, v / max));
   }, [peaks, count]);
+
+  const dim = useMemo(
+    () => (real ? Array.from({ length: count }, (_, i) => !real[Math.floor((i / count) * real.length)]) : null),
+    [real, count],
+  );
 
   const [hoverRatio, setHoverRatio] = useState<number | null>(null);
   const [scrubRatio, setScrubRatio] = useState<number | null>(null);
@@ -136,7 +144,7 @@ const Waveform = ({
         return (
           <i
             key={i}
-            className={isHead ? 'hd' : isPlayed ? 'on' : undefined}
+            className={cn(isHead ? 'hd' : isPlayed && 'on', dim?.[i] && 'ph')}
             style={{ height: `${h * 100}%`, width: isHead ? barWidth + 1 : barWidth }}
             aria-hidden
           />

@@ -14,13 +14,15 @@ interface WaveformProps {
   mode: 'online' | 'offline';
   /** Real amplitudes from the server, any scale; a stand-in shape is drawn until they arrive. */
   peaks?: number[] | null;
+  /** Which of `peaks` are real; the rest (a placeholder not yet heard) are drawn dimmed. All when absent. */
+  real?: boolean[];
   /** Tap-to-seek; receives the tapped position as a 0..1 fraction. */
   onSeek?: (fraction: number) => void;
   size?: keyof typeof HEIGHT;
   className?: string;
 }
 
-export const Waveform = ({ trackId, progress, mode, peaks, onSeek, size = 'md', className }: WaveformProps) => {
+export const Waveform = ({ trackId, progress, mode, peaks, real, onSeek, size = 'md', className }: WaveformProps) => {
   const maxH = HEIGHT[size] - 4;
   const heights = React.useMemo(() => {
     // The stand-in shape is drawn for the 26px rail; scale it to this one.
@@ -64,6 +66,8 @@ export const Waveform = ({ trackId, progress, mode, peaks, onSeek, size = 'md', 
               style={{
                 height: Math.max(MIN_H, height),
                 width: isPlayhead ? 3 : 2,
+                // A placeholder bar: the real level shows once the song has played past it.
+                opacity: real && peaks?.length === heights.length && !real[i] ? 0.45 : 1,
               }}
             />
           );

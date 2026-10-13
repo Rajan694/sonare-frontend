@@ -1,5 +1,4 @@
 import { API_BASE } from '../api/auth';
-import type { AppRelease, ReleasePlatform } from '../types';
 
 // The admin page's own client. Admin sessions are separate from app sign-in: a different
 // token, kept in sessionStorage so closing the tab signs out.
@@ -102,8 +101,6 @@ export interface Health {
   piped: { up: boolean; url: string };
   database: boolean;
   redis: boolean;
-  /** Without ffmpeg the backend serves placeholder waveforms. */
-  ffmpeg: boolean;
   uptimeSec: number;
   node: string;
   memoryMb: number;
@@ -178,64 +175,35 @@ export interface ErrorFilter {
   q?: string;
 }
 
-export interface AdminRelease extends AppRelease {
-  downloads: number;
+export interface AdminSettings {
+  pipedApiUrl: {
+    saved: string | null;
+    effective: string;
+    envDefault: string;
+  };
+  youtubeClients: {
+    saved: string[] | null;
+    effective: string[];
+    default: string[];
+    allowed: string[];
+  };
+  inAppYoutube: {
+    saved: boolean | null;
+    effective: boolean;
+  };
 }
 
-export interface ReleaseList {
-  items: AdminRelease[];
-  /** The file extensions each platform takes. */
-  accepts: Record<ReleasePlatform, string[]>;
+export interface AdminSettingsUpdate {
+  pipedApiUrl?: string | null;
+  youtubeClients?: string[] | null;
+  inAppYoutube?: boolean | null;
 }
 
-export interface ReleaseUpload {
-  platform: ReleasePlatform;
-  version: string;
-  notes?: string;
-  file: File;
+export interface PipedHealthTestResult {
+  ok: boolean;
+  ms: number;
+  error?: string;
 }
-
-/**
- * The file goes up as the raw request body. XHR rather than fetch, because fetch can't
- * report upload progress and an installer takes a while.
- */
-const uploadRelease = (
-  { platform, version, notes, file }: ReleaseUpload,
-  onProgress: (fraction: number) => void,
-  signal?: AbortSignal,
-): Promise<AdminRelease> => {
-  const url = new URL(`${API_BASE}/admin/releases`);
-  url.searchParams.set('platform', platform);
-  url.searchParams.set('version', version);
-  url.searchParams.set('fileName', file.name);
-  if (notes) url.searchParams.set('notes', notes);
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url);
-    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
-    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
-    xhr.onload = () => {
-      let data: { error?: { message?: string; code?: string } } | null = null;
-      try {
-        data = JSON.parse(xhr.responseText);
-      } catch {
-        // A proxy's HTML error page.
-      }
-      if (xhr.status >= 200 && xhr.status < 300) return resolve(data as unknown as AdminRelease);
-      if (xhr.status === 401) setToken(null);
-      const message =
-        data?.error?.message ??
-        (xhr.status === 413 ? 'The file is larger than the server accepts' : `Upload failed (${xhr.status})`);
-      reject(new AdminApiError(message, xhr.status, data?.error?.code));
-    };
-    xhr.onerror = () => reject(new AdminApiError("Can't reach the Sonare server.", 0));
-    xhr.onabort = () => reject(new DOMException('Upload cancelled', 'AbortError'));
-    signal?.addEventListener('abort', () => xhr.abort());
-    xhr.send(file);
-  });
-};
 
 // ---- Calls ----
 
@@ -282,16 +250,15 @@ export const adminApi = {
     return call<{ deleted: number }>('/errors', { method: 'DELETE', params: { ...filter } });
   },
 
-  releases() {
-    return call<ReleaseList>('/releases');
+  getSettings() {
+    return call<AdminSettings>('/settings');
   },
 
-  uploadRelease,
+  saveSettings(update: AdminSettingsUpdate) {
+    return call<AdminSettings>('/settings', { method: 'PUT', body: update });
+  },
 
-  deleteRelease(id: string) {
-    return call<void>(`/releases/${id}`, { method: 'DELETE' });
+  testPipedUrl(url: string) {
+    return call<PipedHealthTestResult>('/settings/piped-test', { method: 'POST', body: { url } });
   },
 };
-
-/** Where a build downloads from; public, so the admin page links to it directly. */
-export const releaseDownloadUrl = (id: string) => `${API_BASE}/releases/${id}/download`;

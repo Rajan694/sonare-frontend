@@ -94,7 +94,10 @@ const PlaylistPicker = ({ track }: { track: Track }) => {
             accessibilityLabel={`Add to ${p.name}`}
           >
             <Artwork
-              uri={p.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${p.id}/artwork` }, 64) : undefined}
+              uri={
+                artworkUrl(p, 64) ??
+                (p.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${p.id}/artwork` }, 64) : undefined)
+              }
               size={40}
             />
             <View className="flex-1">

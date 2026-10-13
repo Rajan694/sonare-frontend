@@ -99,7 +99,13 @@ export const PlaylistsScreen = () => {
             accessibilityHint="Long press for options"
           >
             <Artwork
-              uri={item.trackCount ? artworkUrl({ thumbnail: `/api/v1/playlists/${item.id}/artwork` }, 140) : undefined}
+              uri={
+                item.thumbnail
+                  ? artworkUrl(item, 140)
+                  : item.trackCount
+                    ? artworkUrl({ thumbnail: `/api/v1/playlists/${item.id}/artwork` }, 140)
+                    : undefined
+              }
               size={56}
               rings
               className="rounded-md"

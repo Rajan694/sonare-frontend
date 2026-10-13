@@ -2,8 +2,9 @@
 set -e
 
 # Builds the installable apps: the Android APK, Linux packages, the Windows .exe and the web
-# bundle. The results go to dist/releases/, named so the admin page (Releases) can read the
-# platform and version off the file name when they are uploaded.
+# bundle. The results go to dist/releases/. A `prod all` build also copies the files to
+# upload into dist/releases/github/ under fixed names: they become the assets of a GitHub
+# release, which the site's download buttons and the apps' update check read.
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # Packages carry their files' permissions; a tight umask (007) makes dpkg-deb refuse them
@@ -33,18 +34,21 @@ usage() {
     echo "  Left out  The patch number goes up by one (1.0.0 -> 1.0.1)."
     echo "  Desktop, web, Linux and Windows share desktop/neutralino.config.json's version;"
     echo "  Android has its own (versionName in mobile/android/app/build.gradle), and its"
-    echo "  versionCode goes up on every build so phones take it as an update. A lower"
+    echo "  versionCode follows from it (1.2.3 -> 1002003) so phones take it as an update. A lower"
     echo "  version than the current one is refused; if the build fails, the version"
     echo "  files are put back."
+    echo "  'prod all' gives every platform one version (the higher of the two, bumped),"
+    echo "  because a GitHub release carries them all under one tag."
     echo ""
     echo "Options:"
     echo "  --formats=LIST   Linux formats, comma-separated: tar.gz,deb,appimage (default: all)"
     echo "  --out=DIR        Where the builds go (default: dist/releases)"
     echo ""
     echo "Examples:"
-    echo "  ./buildFE.sh prod android            # 1.0.1 -> 1.0.2, versionCode +1"
+    echo "  ./buildFE.sh prod android            # 1.0.1 -> 1.0.2, versionCode 1000002"
     echo "  ./buildFE.sh prod linux windows 1.2.0"
     echo "  ./buildFE.sh dev linux --formats=deb"
+    echo "  ./buildFE.sh prod all                # a GitHub release: dist/releases/github/"
     exit 1
 }
 
@@ -78,6 +82,15 @@ done
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 
+# A GitHub release holds every platform: github.com/.../releases/latest/download/<name>
+# only looks in the newest release, so one missing file would break that download button.
+RELEASE_SET=false
+if [ "$ENV" = "prod" ] && printf '%s\n' "${TARGETS[@]}" | grep -qx android \
+    && printf '%s\n' "${TARGETS[@]}" | grep -qx linux && printf '%s\n' "${TARGETS[@]}" | grep -qx windows; then
+    RELEASE_SET=true
+fi
+RELEASE_REPO="Rajan694/sonare"
+
 has_target() {
     local t
     for t in "${TARGETS[@]}"; do [ "$t" = "$1" ] && return 0; done
@@ -94,6 +107,8 @@ load_nvm() {
 suffix() { [ "$ENV" = "dev" ] && echo "-dev" || true; }
 
 BUILT=()
+# "<built file>:<GitHub asset name>" for every file a GitHub release carries.
+UPLOAD=()
 
 # ---- versions ---------------------------------------------------------------------------
 
@@ -109,6 +124,13 @@ bump_patch() {
     local major minor patch
     IFS=. read -r major minor patch <<< "$1"
     echo "${major:-0}.${minor:-0}.$(( ${patch:-0} + 1 ))"
+}
+
+# 1.2.3 -> 1002003: Android's versionCode for a version (minor and patch stay under 1000).
+version_code() {
+    local major minor patch
+    IFS=. read -r major minor patch <<< "$1"
+    echo $(( ${major:-0} * 1000000 + ${minor:-0} * 1000 + ${patch:-0} ))
 }
 
 # True when $1 is a lower version than $2.
@@ -131,6 +153,11 @@ restore_version_files() {
 
 # Picks each app's new version (given, or the patch bumped) and writes it before building.
 set_versions() {
+    if $RELEASE_SET && [ -z "$VERSION" ]; then
+        local higher
+        higher="$(printf '%s\n%s\n' "$(desktop_version)" "$(android_version)" | sort -V | tail -1)"
+        VERSION="$(bump_patch "$higher")"
+    fi
     if has_target linux || has_target windows || has_target web; then
         local current next
         current="$(desktop_version)"
@@ -156,10 +183,18 @@ set_versions() {
         if version_lt "$next" "$current"; then
             echo "Error: Android is already at $current; $next would be a step back."; exit 1
         fi
+        # The versionCode follows from the version (1.2.3 -> 1002003), so a CI release (which
+        # can't commit its bump) and a build here agree, and it only ever goes up.
+        local next_code
+        next_code="$(version_code "$next")"
+        if [ "$next_code" -le "$code" ]; then
+            echo "Error: versionCode $next_code (from $next) is not above the current $code - phones"
+            echo "       wouldn't take it as an update. Build a higher version."; exit 1
+        fi
         backup_version_file "$GRADLE"
         sed -i -e "s/^\(\s*\)versionName \".*\"$/\1versionName \"$next\"/" \
-               -e "s/^\(\s*\)versionCode [0-9]*$/\1versionCode $((code + 1))/" "$GRADLE"
-        echo "Android version:     $current -> $next (versionCode $code -> $((code + 1)))"
+               -e "s/^\(\s*\)versionCode [0-9]*$/\1versionCode $next_code/" "$GRADLE"
+        echo "Android version:     $current -> $next (versionCode $code -> $next_code)"
     fi
 }
 
@@ -210,6 +245,8 @@ build_desktop() {
         c.cli.frontendLibrary.buildCommand = "npm run build -- --sourcemap false";
         require("fs").writeFileSync("neutralino.config.json", JSON.stringify(c, null, 2));
     '
+    # The intro page (and its screenshots) is the web build's; keep them out of the binary.
+    if [ -d public/landing ]; then mv public/landing "$STAGE/landing.web-only"; fi
     # `neu build` runs `npm run build` first (cli.frontendLibrary), which reads SONARE_ENV.
     SONARE_ENV="$ENV" npx neu build --release --embed-resources
 }
@@ -220,6 +257,7 @@ package_windows() {
     local name="sonare-$version$(suffix)-windows-x64.exe"
     cp "$exe" "$OUT/$name"
     BUILT+=("$name")
+    UPLOAD+=("$name:sonare-windows-x64.exe")
 }
 
 desktop_entry() {
@@ -253,6 +291,7 @@ package_linux() {
             > "$work/$dir/README.txt"
         tar -C "$work" -czf "$OUT/$dir.tar.gz" "$dir"
         BUILT+=("$dir.tar.gz")
+        UPLOAD+=("$dir.tar.gz:sonare-linux-x64.tar.gz")
     fi
 
     if [[ ",$FORMATS," == *",deb,"* ]]; then
@@ -277,13 +316,14 @@ package_linux() {
                 'Architecture: amd64' \
                 'Depends: libgtk-3-0, libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37' \
                 'Recommends: gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav' \
-                'Maintainer: Sonare <no-reply@sonare.dev>' \
+                'Maintainer: Sonare <no-reply@sonare.vip>' \
                 'Description: Sonare music player' \
                 ' Plays music from YouTube through a Sonare server, and files on this computer.' \
                 > "$root/DEBIAN/control"
             local name="sonare_${debver}_amd64.deb"
             dpkg-deb --build --root-owner-group "$root" "$OUT/$name" >/dev/null
             BUILT+=("$name")
+            UPLOAD+=("$name:sonare-linux-x64.deb")
         fi
     fi
 
@@ -302,6 +342,7 @@ package_linux() {
             local name="sonare-$version$(suffix)-linux-x64.AppImage"
             ARCH=x86_64 appimagetool --no-appstream "$app" "$OUT/$name" >/dev/null
             BUILT+=("$name")
+            UPLOAD+=("$name:sonare-linux-x64.AppImage")
         fi
     fi
 
@@ -313,6 +354,7 @@ build_web() {
     echo "=== Building the web app (SONARE_ENV=$ENV) ==="
     stage_desktop
     cd "$STAGE/desktop"
+    if [ -d "$STAGE/landing.web-only" ]; then mv "$STAGE/landing.web-only" public/landing; fi
     SONARE_ENV="$ENV" npm run build
     local name="sonare-$1$(suffix)-web.tar.gz"
     # Source maps stay out of what goes on the server.
@@ -391,6 +433,7 @@ build_android() {
     version="$(android_version)$(suffix)"
     cp "$apks/app-arm64-v8a-release.apk" "$OUT/sonare-$version-android-arm64.apk"
     BUILT+=("sonare-$version-android-arm64.apk")
+    UPLOAD+=("sonare-$version-android-arm64.apk:sonare-android-arm64.apk")
     EMULATOR_APK="sonare-$version-android-x86_64-emulator.apk"
     cp "$apks/app-x86_64-release.apk" "$OUT/$EMULATOR_APK"
     BUILT+=("$EMULATOR_APK")
@@ -412,6 +455,20 @@ fi
 has_target web && build_web "$(desktop_version)"
 has_target android && build_android
 
+GITHUB_DIR="$OUT/github"
+if $RELEASE_SET; then
+    rm -rf "$GITHUB_DIR"
+    mkdir -p "$GITHUB_DIR"
+    for pair in "${UPLOAD[@]}"; do
+        cp "$OUT/${pair%%:*}" "$GITHUB_DIR/${pair#*:}"
+    done
+    missing=()
+    for asset in sonare-android-arm64.apk sonare-linux-x64.AppImage sonare-linux-x64.deb \
+                 sonare-linux-x64.tar.gz sonare-windows-x64.exe; do
+        [ -f "$GITHUB_DIR/$asset" ] || missing+=("$asset")
+    done
+fi
+
 echo ""
 echo "=== Built (in $OUT) ==="
 for f in "${BUILT[@]}"; do
@@ -424,11 +481,20 @@ if [ ${#CHANGED[@]} -gt 0 ]; then
 fi
 if [ "$ENV" = "dev" ]; then
     echo ""
-    echo "These are dev builds (desktop/web use VITE_API_BASE, Android allows http). Build with prod before"
-    echo "uploading them on the admin page's Releases tab."
+    echo "These are dev builds (desktop/web use VITE_API_BASE, Android allows http): don't publish them."
+elif $RELEASE_SET; then
+    echo ""
+    echo "GitHub release: https://github.com/$RELEASE_REPO/releases/new"
+    echo "  tag v$(desktop_version), and attach every file in ${GITHUB_DIR#"$SCRIPT_DIR/"}/:"
+    ls -1 "$GITHUB_DIR" | sed 's/^/    /'
+    if [ ${#missing[@]} -gt 0 ]; then
+        echo "  Missing (their download buttons would break - install the tool and rebuild):"
+        printf '    %s\n' "${missing[@]}"
+    fi
+    echo "  The site's download buttons and the apps' update check read the latest release."
 else
     echo ""
-    echo "Upload them on the admin page: /admin/releases."
+    echo "A GitHub release needs every platform at one version: ./buildFE.sh prod all"
 fi
 if [ -n "$EMULATOR_APK" ]; then
     echo "$EMULATOR_APK is for the emulator on this PC (adb install) - don't upload it."

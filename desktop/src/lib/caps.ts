@@ -15,8 +15,12 @@ export const CAPS = {
   nativeEq: native,
   /** The /admin page is part of the web build only. */
   admin: !native,
+  /** `/` is the intro page with the downloads in the web build; the window opens on Home. */
+  landing: !native,
   /** Settings → Server address; the web build talks to the server it is served with. */
   serverAddress: native,
+  /** Settings → About checks for a newer build and downloads it; the web build lists them all. */
+  appUpdates: native,
 } as const;
 
 /** Which app this is, sent as X-Sonare-Client for the admin analytics. */

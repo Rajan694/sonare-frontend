@@ -15,6 +15,7 @@ import { Ambient } from '../components/music/Ambient';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
+import { playlistMeta } from '../../../shared/catalog/meta';
 import { api, isOwnPlaylist } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
@@ -34,10 +35,13 @@ export const PlaylistDetailScreen = () => {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const shuffle = usePlayerStore((state) => state.shuffle);
   const [menuOpen, setMenuOpen] = useState(false);
-  // YouTube playlists are saved to the library the same way albums are.
-  const { isSaved, toggle: toggleSaved } = useSavedAlbum(id, 'Create a free account to save playlists you love.');
-
   const playlist = useAsync(() => (own ? api.myPlaylist(id) : api.playlist(id)), [id], { refetchOnFocus: own });
+  // YouTube playlists are saved to the library the same way albums are.
+  const { isSaved, toggle: toggleSaved } = useSavedAlbum(
+    id,
+    'Create a free account to save playlists you love.',
+    playlist.data && !own ? playlistMeta(playlist.data) : undefined,
+  );
   const from = playlist.data ? { kind: 'Playlist', name: playlist.data.name } : undefined;
   const tracksQuery = useAsync(() => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)), [id], {
     refetchOnFocus: own,
@@ -76,7 +80,12 @@ export const PlaylistDetailScreen = () => {
 
   return (
     <Screen scrollable={false}>
-      <Ambient uri={tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 64) : undefined} />
+      <Ambient
+        uri={
+          artworkUrl(info, 64) ??
+          (tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 64) : undefined)
+        }
+      />
       <Header
         title={<Text className="text-ll font-medium text-t2">Playlist</Text>}
         left={
@@ -106,7 +115,10 @@ export const PlaylistDetailScreen = () => {
           <View>
             <View className="flex-row items-start px-5 pt-2 pb-4 gap-4">
               <Artwork
-                uri={tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 300) : undefined}
+                uri={
+                  artworkUrl(info, 300) ??
+                  (tracks.length ? artworkUrl({ thumbnail: `/api/v1/playlists/${id}/artwork` }, 300) : undefined)
+                }
                 size={132}
                 rings
                 className="rounded-lg shadow-e4 flex-none"

@@ -13,6 +13,7 @@ import { bindAccountGateNavigator, takePendingAction } from '../../src/api/accou
 import { clearSession, setSession } from '../../src/api/auth';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
+import type { Track } from '../../src/types';
 
 useMockServer();
 
@@ -79,8 +80,20 @@ describe('favourite state', () => {
   });
 });
 
+const song = (id: string, favourite: boolean) =>
+  ({
+    id,
+    favourite,
+    title: 'Song',
+    artist: 'Band',
+    artistId: 'yt:UCband',
+    album: null,
+    albumId: null,
+    durationMs: 1000,
+  }) as Track;
+
 const Heart = ({ id, server: serverValue }: { id?: string; server?: boolean }) => {
-  const { favourite, toggle } = useFavourite(id, serverValue);
+  const { favourite, toggle } = useFavourite(id ? song(id, !!serverValue) : undefined);
   return (
     <button aria-pressed={favourite} onClick={toggle}>
       heart {id}
@@ -91,7 +104,13 @@ const Heart = ({ id, server: serverValue }: { id?: string; server?: boolean }) =
 describe('useFavourite', () => {
   it('WEB-FAV-006 every heart for the same song updates together', async () => {
     setSession('a', 'r', testUser);
-    server.use(http.put(`${API}/me/favourites/tracks/:id`, () => HttpResponse.json({ ok: true })));
+    const bodies: unknown[] = [];
+    server.use(
+      http.put(`${API}/me/favourites/tracks/:id`, async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ ok: true });
+      }),
+    );
     render(
       <>
         <Heart id="yt:sync1" server={false} />
@@ -102,6 +121,10 @@ describe('useFavourite', () => {
     await userEvent.click(a);
     expect(a).toHaveAttribute('aria-pressed', 'true');
     expect(b).toHaveAttribute('aria-pressed', 'true');
+    // The song goes with it: the backend may never have seen one found in-app.
+    await waitFor(() =>
+      expect(bodies).toEqual([{ meta: { title: 'Song', artist: 'Band', artistId: 'yt:UCband', durationMs: 1000 } }]),
+    );
   });
 
   it('WEB-FAV-007 a guest is sent to sign up, and the heart is saved after signing in', async () => {
@@ -139,7 +162,7 @@ describe('useFavourite', () => {
 
   it('WEB-FAV-009 no track id means not favourite and a no-op toggle', async () => {
     const rec = recordRequests();
-    const { result } = renderHook(() => useFavourite(undefined, true));
+    const { result } = renderHook(() => useFavourite(undefined));
     expect(result.current.favourite).toBe(false);
     act(() => result.current.toggle());
     rec.stop();

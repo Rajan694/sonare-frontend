@@ -59,7 +59,7 @@ const Lyrics = () => {
   // Local files keep lyrics on the device (saved edits or a sidecar .lrc); the server
   // only knows catalog tracks.
   const isLocal = currentTrack?.source === 'local';
-  const server = useLyrics(currentTrack?.id);
+  const server = useLyrics(currentTrack);
   const local = useAsync(() => localLibrary.lyrics(currentTrack!.id), [currentTrack?.id], { enabled: !!isLocal });
   const { data: lyricsData, loading, refetch } = isLocal ? local : server;
   const lines = lyricsData?.lines || currentTrack?.lyrics?.lines || [];

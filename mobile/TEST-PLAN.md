@@ -293,6 +293,8 @@ navigation mock live in `test-utils/`.
 | `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                  |
 | `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                 |
 | `MOB-AUD-007`          | with the sleep timer on "End of track", a track that ends stops there instead of playing the next |
+| `MOB-AUD-008`          | a stream url refused mid-song is swapped for a fresh one once, resuming where it stopped          |
+| `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                    |
 | `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                   |
 
 ## `__tests__/playback-extras.test.ts`
@@ -338,3 +340,58 @@ navigation mock live in `test-utils/`.
 | `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                            |
 | `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                             |
 | `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                                   |
+
+## `__tests__/youtube.test.ts`
+
+| ID           | Use case                                                                                 |
+| :----------- | :--------------------------------------------------------------------------------------- |
+| `MOB-YT-001` | in-app YouTube follows the admin switch                                                  |
+| `MOB-YT-002` | the last app config is loaded from the phone; unreadable data keeps the defaults         |
+| `MOB-YT-003` | app config is fetched from /api/v1/app-config; an older backend (404) keeps what we have |
+| `MOB-YT-004` | config changes reach subscribers; polling starts and stops                               |
+| `MOB-YT-005` | search asks the in-app catalog first and falls back to the backend on an error           |
+| `MOB-YT-006` | an `L.` cursor pages in-app; any other cursor pages on the backend                       |
+| `MOB-YT-007` | trending comes from the in-app catalog, else the backend                                 |
+| `MOB-YT-008` | artist top tracks and albums come from the in-app catalog, else the backend              |
+| `MOB-YT-009` | album and album tracks come from the in-app catalog; `L.` cursors stay in-app            |
+| `MOB-YT-010` | an in-app artist page says whether you follow the artist, without asking the backend     |
+| `MOB-YT-011` | YouTube playlists and their tracks come from the in-app catalog                          |
+| `MOB-YT-012` | stream urls come from the in-app catalog (googlevideo), else the backend's relay         |
+| `MOB-YT-013` | a fallback warns at most once a minute per call                                          |
+| `MOB-YT-014` | artwork: YouTube image urls are sized directly, backend artwork gets `size=`             |
+| `MOB-YT-015` | a new client order from the admin rebuilds the catalog on the same session               |
+| `MOB-YT-016` | a session that fails to start is tried again on the next call                            |
+| `MOB-YT-017` | refreshing starts a new YouTube session for the next stream lookup                       |
+| `MOB-YT-018` | lyrics requests name the song (title, artist, length)                                    |
+| `MOB-YT-019` | only artists you follow count as followed, with or without the `yt:` prefix              |
+| `MOB-YT-020` | a refused download url gets a fresh session before the download starts again             |
+| `MOB-YT-021` | xhrFetch answers like fetch (status, headers, url, body) without waiting on timers       |
+| `MOB-YT-022` | saving a song, adding it to a playlist or following its artist sends what the app knows  |
+
+## `__tests__/waveforms.test.tsx`
+
+| ID             | Use case                                                                            |
+| :------------- | :---------------------------------------------------------------------------------- |
+| `MOB-WAVE-001` | only songs whose backend waveform is a placeholder are filled in                    |
+| `MOB-WAVE-002` | the screen shows the placeholder dimmed, with heard bars real, at its own bar count |
+| `MOB-WAVE-003` | a whole song heard is uploaded once, signed in, and drawn without dimming           |
+| `MOB-WAVE-004` | a guest keeps the waveform on the phone; it is uploaded on a later play, signed in  |
+
+## `__tests__/appUpdate.test.tsx`
+
+| ID            | Use case                                                                        |
+| :------------ | :------------------------------------------------------------------------------ |
+| `MOB-UPD-001` | only a newer APK is an update; other platforms and older builds are not         |
+| `MOB-UPD-002` | the download is followed to the end, checked against the upload, then installed |
+| `MOB-UPD-003` | a download that does not match the uploaded file is removed                     |
+| `MOB-UPD-004` | a finished download from before a restart is offered for install straight away  |
+| `MOB-UPD-005` | Settings → About shows the version, the update and, once allowed, installs it   |
+| `MOB-UPD-006` | Offline mode does not check                                                     |
+
+## `__tests__/serverAddress.test.tsx`
+
+| ID            | Use case                                                                   |
+| ------------- | -------------------------------------------------------------------------- |
+| `MOB-SRV-001` | a release build ignores a saved server address and uses the production API |
+| `MOB-SRV-002` | a development build loads the saved server address                         |
+| `MOB-SRV-003` | Settings shows the Server address row only in development builds           |

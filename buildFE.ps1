@@ -1,11 +1,11 @@
 # PowerShell version of buildFE.sh.
 #
 # Builds the installable apps: the Android APK, Linux packages, the Windows .exe and the web
-# bundle. The results go to dist/releases/, named so the admin page (Releases) can read the
-# platform and version off the file name when they are uploaded.
+# bundle. The results go to dist/releases/.
 #
 # On Windows the Linux .deb and .AppImage are skipped (dpkg-deb and appimagetool are Linux
-# tools); the Linux .tar.gz is still built, with the binary marked executable.
+# tools); the Linux .tar.gz is still built, with the binary marked executable. So a GitHub
+# release, which must carry every file, is made on Linux with `./buildFE.sh prod all`.
 
 $ScriptDir = $PSScriptRoot
 $OnWindows = $env:OS -eq 'Windows_NT'
@@ -34,7 +34,7 @@ function Show-Usage {
     Write-Host "  Left out  The patch number goes up by one (1.0.0 -> 1.0.1)."
     Write-Host "  Desktop, web, Linux and Windows share desktop/neutralino.config.json's version;"
     Write-Host "  Android has its own (versionName in mobile/android/app/build.gradle), and its"
-    Write-Host "  versionCode goes up on every build so phones take it as an update. A lower"
+    Write-Host "  versionCode follows from it (1.2.3 -> 1002003) so phones take it as an update. A lower"
     Write-Host "  version than the current one is refused; if the build fails, the version"
     Write-Host "  files are put back."
     Write-Host ""
@@ -43,7 +43,7 @@ function Show-Usage {
     Write-Host "  --out=DIR        Where the builds go (default: dist/releases)"
     Write-Host ""
     Write-Host "Examples:"
-    Write-Host "  .\buildFE.ps1 prod android            # 1.0.1 -> 1.0.2, versionCode +1"
+    Write-Host "  .\buildFE.ps1 prod android            # 1.0.1 -> 1.0.2, versionCode 1000002"
     Write-Host "  .\buildFE.ps1 prod linux windows 1.2.0"
     Write-Host "  .\buildFE.ps1 dev linux --formats=deb"
     exit 1
@@ -138,6 +138,12 @@ function ConvertTo-Version($Text) {
     New-Object Version $parts[0], $parts[1], $parts[2]
 }
 
+# 1.2.3 -> 1002003: Android's versionCode for a version (minor and patch stay under 1000).
+function Get-VersionCode($Text) {
+    $v = ConvertTo-Version $Text
+    $v.Major * 1000000 + $v.Minor * 1000 + $v.Build
+}
+
 # 1.0 -> 1.0.1, 1.2.3 -> 1.2.4
 function Get-BumpedPatch($Text) {
     $v = ConvertTo-Version $Text
@@ -184,7 +190,12 @@ function Set-Versions {
         if ((ConvertTo-Version $next) -lt (ConvertTo-Version $current)) {
             Write-Host "Error: Android is already at $current; $next would be a step back."; exit 1
         }
-        $newCode = [int]$code + 1
+        # The versionCode follows from the version, so CI releases and builds here agree.
+        $newCode = Get-VersionCode $next
+        if ($newCode -le [int]$code) {
+            Write-Host "Error: versionCode $newCode (from $next) is not above the current $code - phones"
+            Write-Host "       wouldn't take it as an update. Build a higher version."; exit 1
+        }
         Backup-VersionFile $Gradle
         $text = Read-Text $Gradle
         $text = [regex]::Replace($text, '(?m)^([ \t]*)versionName "[^"]*"', "`${1}versionName `"$next`"")
@@ -361,7 +372,7 @@ function Save-LinuxPackages($Ver) {
                     'Architecture: amd64'
                     'Depends: libgtk-3-0, libwebkit2gtk-4.1-0 | libwebkit2gtk-4.0-37'
                     'Recommends: gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-libav'
-                    'Maintainer: Sonare <no-reply@sonare.dev>'
+                    'Maintainer: Sonare <no-reply@sonare.vip>'
                     'Description: Sonare music player'
                     ' Plays music from YouTube through a Sonare server, and files on this computer.'
                 ) -join "`n"
@@ -548,10 +559,10 @@ if ($Changed.Count -gt 0) {
 }
 Write-Host ""
 if ($BuildEnv -eq 'dev') {
-    Write-Host "These are dev builds (desktop/web use VITE_API_BASE, Android allows http). Build with prod before"
-    Write-Host "uploading them on the admin page's Releases tab."
+    Write-Host "These are dev builds (desktop/web use VITE_API_BASE, Android allows http): don't publish them."
 } else {
-    Write-Host "Upload them on the admin page: /admin/releases."
+    Write-Host "GitHub releases need every file, including the Linux .deb and .AppImage: build those"
+    Write-Host "on Linux with ./buildFE.sh prod all (it prepares dist/releases/github/)."
 }
 if ($script:EmulatorApk) {
     Write-Host "$($script:EmulatorApk) is for the emulator on this PC (adb install) - don't upload it."

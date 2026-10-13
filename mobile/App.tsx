@@ -6,11 +6,14 @@ import { AudioEngine } from './src/components/music/AudioEngine';
 import { hasInternet } from './src/lib/connectivity';
 import { useModeStore } from './src/store/mode';
 import { startBackgroundSync } from './src/data/sync';
+import { startAppConfigPolling } from './src/youtube/appConfig';
 import './global.css';
 
 const App = () => {
   useEffect(() => {
     startBackgroundSync();
+    // What the admin set for in-app YouTube; checked now, every 5 min and on returning to the app.
+    return startAppConfigPolling();
   }, []);
 
   useEffect(() => {

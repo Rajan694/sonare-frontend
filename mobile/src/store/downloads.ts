@@ -5,6 +5,7 @@ import { absoluteUrl } from '../data/config';
 import { API_QUALITY, useSettingsStore, type AudioQuality, type DownloadFormat } from '../data/settings';
 import type { StreamInfo, Track } from '../data/types';
 import { SonareDownloads } from '../native/SonareDownloads';
+import { refreshInAppSession } from '../youtube/inApp';
 
 /**
  * Download manager for the phone.
@@ -243,8 +244,13 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       if (!item || item.status !== 'downloading') return pump();
       patch(e.id, { receivedBytes: e.receivedBytes }, false);
       if (e.code === 'E_URL' && (refreshes[e.id] = (refreshes[e.id] ?? 0) + 1) <= MAX_URL_REFRESHES) {
-        // Expired token or a dead YouTube url: fetch a fresh one and carry on.
-        start(e.id);
+        // Expired token or a dead YouTube url: fetch a fresh one (from a new in-app session) and carry on.
+        refreshInAppSession()
+          .catch(() => {})
+          .then(() => {
+            // Paused or removed meanwhile: leave it be.
+            if (get().items[e.id]?.status === 'downloading') start(e.id);
+          });
         return;
       }
       // E_NETWORK arrives only after the native side has given up retrying.

@@ -49,10 +49,7 @@ export const QueueScreen = () => {
       const tracks = usePlayerStore.getState().queue;
       try {
         const playlist = await useLibraryStore.getState().createPlaylist(name);
-        await api.addToPlaylist(
-          playlist.id,
-          tracks.map((t) => t.id),
-        );
+        await api.addToPlaylist(playlist.id, tracks);
         await useLibraryStore.getState().reloadPlaylists();
         setSaved(`Saved as "${name}"`);
       } catch (e: any) {

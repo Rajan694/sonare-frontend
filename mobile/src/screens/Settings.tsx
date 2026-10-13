@@ -18,7 +18,9 @@ import { usePlayerSheets } from '../components/music/PlayerSheets';
 import { useOutputStore } from '../store/output';
 import { sleepTimerLabel, useSleepTimerStore } from '../store/sleepTimer';
 import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
-import { DEFAULT_API_ORIGIN, customServerOrigin } from '../data/config';
+import { DEFAULT_API_ORIGIN, SERVER_ADDRESS_ENABLED, customServerOrigin } from '../data/config';
+import { useAppUpdateStore } from '../store/appUpdate';
+import { appVersion } from '../native/SonareBuild';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
 
@@ -377,29 +379,33 @@ export const SettingsScreen = () => {
           </View>
         </View>
 
-        {/* Connection: which backend this phone talks to */}
-        <View className="gap-2">
-          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Server</Text>
-          <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
-            <Pressable
-              onPress={() => showSheet('server')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5"
-              accessibilityRole="button"
-              accessibilityLabel="Server address"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="server" size={18} color="#9A9AA8" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Server address</Text>
-                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                  {customServerOrigin() ?? `Default · ${DEFAULT_API_ORIGIN}`}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
+        {/* Connection: which backend this phone talks to (development builds only) */}
+        {SERVER_ADDRESS_ENABLED && (
+          <View className="gap-2">
+            <Text className="text-ov font-semibold text-t3 uppercase pl-1">Server</Text>
+            <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
+              <Pressable
+                onPress={() => showSheet('server')}
+                className="flex-row items-center gap-3.5 px-4 py-3.5"
+                accessibilityRole="button"
+                accessibilityLabel="Server address"
+              >
+                <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                  <Icon name="server" size={18} color="#9A9AA8" />
+                </View>
+                <View className="flex-1 gap-0.5 min-w-0">
+                  <Text className="text-tm font-medium text-t1">Server address</Text>
+                  <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                    {customServerOrigin() ?? `Default · ${DEFAULT_API_ORIGIN}`}
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={16} color="#7E7E8C" />
+              </Pressable>
+            </View>
           </View>
-        </View>
+        )}
+
+        <AboutSection online={mode !== 'offline'} />
 
         {user && (
           <View className="gap-2">
@@ -426,5 +432,118 @@ export const SettingsScreen = () => {
         )}
       </ScrollView>
     </Screen>
+  );
+};
+
+const formatSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+
+/** The app's version, and the update check against the builds uploaded on the admin page. */
+const AboutSection = ({ online }: { online: boolean }) => {
+  const { status, release, progress, error, check, download, install } = useAppUpdateStore();
+
+  // Look each time Settings opens (a download in progress carries on).
+  React.useEffect(() => {
+    if (online) check();
+  }, [online, check]);
+
+  const onInstall = async () => {
+    if ((await install()) === 'permission') {
+      Alert.alert(
+        'Allow Sonare to install the update',
+        'Turn on "Allow from this source", come back, and tap Install again.',
+      );
+    }
+  };
+
+  let icon: React.ComponentProps<typeof Icon>['name'] = 'refresh';
+  let label = 'Checking for updates…';
+  let desc: string | undefined;
+  let action: React.ReactNode = null;
+  if (!online) {
+    icon = 'wifi-off';
+    label = 'Updates need Online mode';
+    desc = 'Switch to Online to check for a newer version';
+  } else if (status === 'current') {
+    icon = 'check';
+    label = 'Sonare is up to date';
+    desc = `Version ${appVersion} is the newest`;
+    action = (
+      <Button variant="outline" size="sm" onPress={() => check()}>
+        Check again
+      </Button>
+    );
+  } else if (status === 'available' && release) {
+    icon = 'download';
+    label = `Sonare ${release.version} is available`;
+    desc = [formatSize(release.sizeBytes), release.notes].filter(Boolean).join(' · ');
+    action = (
+      <Button size="sm" onPress={() => download()}>
+        Download
+      </Button>
+    );
+  } else if (status === 'downloading' && release) {
+    icon = 'download';
+    label = `Downloading Sonare ${release.version}…`;
+    desc = `${Math.round(progress * 100)}% of ${formatSize(release.sizeBytes)}`;
+  } else if (status === 'downloaded' && release) {
+    icon = 'check';
+    label = `Sonare ${release.version} is downloaded`;
+    desc = 'Install it to update; your music and settings stay';
+    action = (
+      <Button size="sm" onPress={onInstall}>
+        Install
+      </Button>
+    );
+  } else if (status === 'error') {
+    icon = 'warning';
+    label = release ? "Couldn't download the update" : "Couldn't check for updates";
+    desc = error ?? undefined;
+    action = (
+      <Button variant="outline" size="sm" onPress={() => (release ? download() : check())}>
+        Try again
+      </Button>
+    );
+  }
+
+  return (
+    <View className="gap-2">
+      <Text className="text-ov font-semibold text-t3 uppercase pl-1">About</Text>
+      <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
+        <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
+          <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+            <Icon name="info" size={18} color="#9A9AA8" />
+          </View>
+          <View className="flex-1 gap-0.5 min-w-0">
+            <Text className="text-tm font-medium text-t1">Sonare</Text>
+            <Text className="text-bs text-t3">Version {appVersion}</Text>
+          </View>
+        </View>
+        <View className="px-4 py-3.5 gap-2.5" accessibilityLabel="Updates">
+          <View className="flex-row items-center gap-3.5">
+            <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+              <Icon name={icon} size={18} color="#9A9AA8" />
+            </View>
+            <View className="flex-1 gap-0.5 min-w-0">
+              <Text className="text-tm font-medium text-t1">{label}</Text>
+              {desc ? (
+                <Text className="text-bs text-t3" numberOfLines={2}>
+                  {desc}
+                </Text>
+              ) : null}
+            </View>
+            {action}
+          </View>
+          {status === 'downloading' && (
+            <View
+              className="h-1.5 rounded-full bg-s3 overflow-hidden"
+              accessibilityRole="progressbar"
+              accessibilityValue={{ min: 0, max: 100, now: Math.round(progress * 100) }}
+            >
+              <View className="h-full bg-acc" style={{ width: `${progress * 100}%` }} />
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
   );
 };

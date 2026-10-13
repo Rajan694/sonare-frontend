@@ -3,16 +3,19 @@ import { api } from '../data/api';
 import type { Playlist, Track } from '../data/types';
 
 /**
- * The signed-in user's favourites and playlists, shared so a heart toggled on one screen
+ * The signed-in user's favourites, playlists and followed artists, shared so a heart toggled on one screen
  * shows on every other. Loaded after sign-in; cleared on sign-out.
  */
 interface LibraryStore {
   favouriteIds: Record<string, true>;
   playlists: Playlist[];
+  followingArtistIds: Record<string, true>;
   load: () => Promise<void>;
   reset: () => void;
   isFavourite: (trackId: string) => boolean;
   toggleFavourite: (track: Track) => Promise<void>;
+  isArtistFollowed: (artistId: string) => boolean;
+  setArtistFollowed: (artistId: string, following: boolean) => void;
   reloadPlaylists: () => Promise<void>;
   createPlaylist: (name: string) => Promise<Playlist>;
   /** Rejects if the server refuses; the playlist stays listed until it is really gone. */
@@ -20,23 +23,47 @@ interface LibraryStore {
   addToPlaylist: (playlistId: string, track: Track) => Promise<void>;
 }
 
+/** Artist pages from the in-app catalog can't ask the backend who you follow; this list answers. */
+const followKey = (artistId: string) => (artistId.startsWith('yt:') ? artistId : `yt:${artistId}`);
+
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   favouriteIds: {},
   playlists: [],
+  followingArtistIds: {},
 
   load: async () => {
-    const [favs, lists] = await Promise.all([api.favourites().catch(() => null), api.myPlaylists().catch(() => null)]);
+    const [favs, lists, artists] = await Promise.all([
+      api.favourites().catch(() => null),
+      api.myPlaylists().catch(() => null),
+      api.libraryArtists().catch(() => null),
+    ]);
     set({
       ...(favs && {
         favouriteIds: Object.fromEntries(favs.items.map((t) => [t.id, true as const])),
       }),
       ...(lists && { playlists: lists.items }),
+      // The library also lists artists of liked songs; only `following` ones are followed.
+      ...(artists && {
+        followingArtistIds: Object.fromEntries(
+          artists.items.filter((a) => a.following).map((a) => [followKey(a.id), true as const]),
+        ),
+      }),
     });
   },
 
-  reset: () => set({ favouriteIds: {}, playlists: [] }),
+  reset: () => set({ favouriteIds: {}, playlists: [], followingArtistIds: {} }),
 
   isFavourite: (trackId) => !!get().favouriteIds[trackId],
+
+  isArtistFollowed: (artistId) => !!get().followingArtistIds[followKey(artistId)],
+
+  setArtistFollowed: (artistId, following) =>
+    set((state) => {
+      const next = { ...state.followingArtistIds };
+      if (following) next[followKey(artistId)] = true;
+      else delete next[followKey(artistId)];
+      return { followingArtistIds: next };
+    }),
 
   toggleFavourite: async (track) => {
     const next = !get().favouriteIds[track.id];
@@ -50,7 +77,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
     // Optimistic; undone if the server refuses.
     apply(next);
     try {
-      await api.setFavourite(track.id, next);
+      await api.setFavourite(track.id, next, track);
     } catch (e) {
       apply(!next);
       throw e;
@@ -74,7 +101,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   },
 
   addToPlaylist: async (playlistId, track) => {
-    await api.addToPlaylist(playlistId, [track.id]);
+    await api.addToPlaylist(playlistId, [track]);
     await get()
       .reloadPlaylists()
       .catch(() => {});

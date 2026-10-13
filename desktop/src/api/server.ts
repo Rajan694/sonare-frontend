@@ -6,6 +6,8 @@ import { CAPS } from '../lib/caps';
  * vite.config.ts); in the desktop app, Settings → Connection → Server address can point an
  * installed build somewhere else, e.g. a computer on the LAN. It is read once at startup
  * (every module takes API_BASE as a constant), so changing it restarts the app.
+ * That setting is a development tool (it is the Sonare API, not Piped, which the admin page
+ * sets): release builds don't show it and ignore an address saved by a dev build.
  */
 
 const STORAGE_KEY = 'sonare_server_origin';
@@ -15,6 +17,8 @@ export const DEFAULT_API_ORIGIN = new URL(DEFAULT_API_BASE).origin;
 
 /** Plain http is for development: prod builds only connect over HTTPS. */
 export const ALLOWS_HTTP = import.meta.env.VITE_SONARE_ENV !== 'prod';
+/** Settings → Server address: the desktop window, development builds only. */
+export const SERVER_ADDRESS_ENABLED = CAPS.serverAddress && ALLOWS_HTTP;
 
 /**
  * `192.168.1.20:3010` → `http://192.168.1.20:3010`; trailing slashes and `/api/v1` are
@@ -30,7 +34,7 @@ export const normalizeServerOrigin = (input: string): string | null => {
 };
 
 const savedOrigin = (): string | null => {
-  if (!CAPS.serverAddress) return null;
+  if (!SERVER_ADDRESS_ENABLED) return null;
   try {
     const origin = normalizeServerOrigin(localStorage.getItem(STORAGE_KEY) ?? '');
     if (!origin || (!ALLOWS_HTTP && !origin.startsWith('https://'))) return null;
