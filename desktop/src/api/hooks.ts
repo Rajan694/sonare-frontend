@@ -127,6 +127,17 @@ export const useSearch = (
   });
 };
 
+/**
+ * Autocomplete for the search field, asked for once typing pauses. The previous list stays up
+ * while the next one loads, so it doesn't flicker on every keystroke.
+ */
+export const useSearchSuggestions = (query: string, enabled: boolean = true): string[] => {
+  const debouncedQuery = useDebounce(query.trim(), 250);
+  const on = enabled && debouncedQuery.length > 0 && debouncedQuery.length <= 200;
+  const { data } = useAsync(() => api.searchSuggestions(debouncedQuery), [debouncedQuery], { enabled: on });
+  return on && query.trim() ? (data ?? []).slice(0, 8) : [];
+};
+
 export const useGenres = () => {
   return useAsync(() => api.getGenres(), []);
 };

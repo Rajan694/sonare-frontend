@@ -140,6 +140,13 @@ export const api = {
       (c, cur) => c.search(q, type, cur) as Promise<Page<SearchItem>>,
       (cur) => request('/search', { params: { q, type, cursor: cur } }),
     ),
+  /** Autocomplete for the search field. */
+  suggestions: (q: string) =>
+    localFirst<string[]>(
+      'suggestions',
+      (c) => c.suggestions(q),
+      () => request('/search/suggestions', { params: { q } }),
+    ),
   trending: (limit = 20) =>
     localFirst<Page<Track>>(
       'trending',

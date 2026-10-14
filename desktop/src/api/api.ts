@@ -212,6 +212,15 @@ export const api = {
     );
   },
 
+  /** Autocomplete for the search field. */
+  searchSuggestions(q: string) {
+    return localFirst<string[]>(
+      'suggestions',
+      (c) => c.suggestions(q),
+      () => request('/search/suggestions', { params: { q } }),
+    );
+  },
+
   getTrending(region: string = 'IN', limit: number = 50) {
     return localFirst<Page<Track>>(
       'trending',

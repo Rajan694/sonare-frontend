@@ -44,6 +44,7 @@ beforeEach(() => {
   useDownloadsStore.setState({ items: {} });
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
   stub('trending', async () => page([]));
+  stub('suggestions', async () => []);
 });
 
 describe('Home', () => {
@@ -257,6 +258,20 @@ describe('Search', () => {
     expect(await findByText('No results for "zzqx"')).toBeTruthy();
   });
 
+  it('MOB-SEARCH-008 suggestions show once typing pauses; picking one searches for it', async () => {
+    const suggestions = stub('suggestions', async (q: string) => [`${q} songs`, `${q} live`]);
+    const search = stub('search', async () => page([]));
+    const { getByLabelText, findByLabelText, queryByLabelText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'ari');
+    fireEvent.changeText(getByLabelText('Search all music'), 'arijit');
+    fireEvent.press(await findByLabelText('arijit live'));
+    expect(suggestions).toHaveBeenCalledTimes(1);
+    expect(suggestions).toHaveBeenCalledWith('arijit');
+    expect(getByLabelText('Search all music').props.value).toBe('arijit live');
+    expect(queryByLabelText('Search suggestions')).toBeNull();
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('arijit live', 'all'));
+  });
+
   it('MOB-SEARCH-005 offline, the server is never searched and it offers to go online', async () => {
     useModeStore.setState({ mode: 'offline' });
     const search = jest.spyOn(api, 'search');
@@ -264,6 +279,7 @@ describe('Search', () => {
     fireEvent.changeText(getByLabelText('Search music on this device'), 'anything');
     await new Promise((r) => setTimeout(r, 400));
     expect(search).not.toHaveBeenCalled();
+    expect(api.suggestions).not.toHaveBeenCalled();
     expect(getByText('Not on this device')).toBeTruthy();
     fireEvent.press(getByText('Go online'));
     expect(useModeStore.getState().mode).toBe('online');

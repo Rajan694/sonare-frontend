@@ -85,6 +85,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-036` | "Add to playlist" opens the playlist picker for the playing song                   |
 | `WEB-LAYOUT-037` | a guest pressing "Add to playlist" is asked to create an account first             |
 | `WEB-LAYOUT-038` | no output button where the browser cannot choose the speaker                       |
+| `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
 
 ## `test/components/music.test.tsx`
 

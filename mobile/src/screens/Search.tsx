@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import { View, ScrollView, Pressable, Keyboard } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -81,6 +81,20 @@ export const SearchScreen = () => {
     enabled: online && q.length > 0 && q === query.trim() && filter !== 'genres',
   });
 
+  // Autocomplete while typing, asked for once typing pauses; closed by picking one, submitting
+  // or leaving the field. The previous list stays up while the next one loads.
+  const [suggesting, setSuggesting] = useState(false);
+  const typed = query.trim();
+  const sq = useDebounced(typed, 250);
+  const suggestionsOn = online && suggesting && sq.length > 0 && sq.length <= 200;
+  const suggested = useAsync(() => api.suggestions(sq), [sq], { enabled: suggestionsOn });
+  const suggestions = suggestionsOn && typed ? (suggested.data ?? []).slice(0, 8) : [];
+  const pickSuggestion = (s: string) => {
+    setQuery(s);
+    setSuggesting(false);
+    Keyboard.dismiss();
+  };
+
   const items = q ? (results.data?.items ?? []) : [];
   const tracks = items.filter((i): i is SearchItem & Track & { kind: 'track' } => i.kind === 'track');
   const albums = items.filter((i): i is SearchItem & { kind: 'album' } => i.kind === 'album');
@@ -124,7 +138,12 @@ export const SearchScreen = () => {
             icon={<Icon name="search" size={18} color="#7E7E8C" />}
             placeholder={online ? 'Search all music' : 'Search music on this device'}
             value={query}
-            onChangeText={setQuery}
+            onChangeText={(v) => {
+              setQuery(v);
+              setSuggesting(true);
+            }}
+            onSubmitEditing={() => setSuggesting(false)}
+            onBlur={() => setSuggesting(false)}
             autoCorrect={false}
             returnKeyType="search"
             accessibilityLabel={online ? 'Search all music' : 'Search music on this device'}
@@ -152,7 +171,36 @@ export const SearchScreen = () => {
           </ScrollView>
         </View>
 
-        {online ? (
+        {suggestions.length > 0 ? (
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 140 }}
+            keyboardShouldPersistTaps="handled"
+            accessibilityLabel="Search suggestions"
+          >
+            {suggestions.map((s) => (
+              <Pressable
+                key={s}
+                onPress={() => pickSuggestion(s)}
+                className="flex-row items-center gap-3 h-12 px-2 rounded-md active:bg-s2"
+                accessibilityRole="button"
+                accessibilityLabel={s}
+              >
+                <Icon name="search" size={16} color="#7E7E8C" />
+                <Text className="flex-1 text-bm text-t2" numberOfLines={1}>
+                  {s.toLowerCase().startsWith(typed.toLowerCase()) ? (
+                    <>
+                      {s.slice(0, typed.length)}
+                      <Text className="text-bm font-semibold text-t1">{s.slice(typed.length)}</Text>
+                    </>
+                  ) : (
+                    s
+                  )}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : online ? (
           /* ONLINE SEARCH RESULTS (M03) */
           <ScrollView
             className="flex-1"

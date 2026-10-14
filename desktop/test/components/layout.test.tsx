@@ -41,6 +41,7 @@ vi.mock('../../src/audio/player', () => ({
 useMockServer(
   http.get(`${API}/tracks/:id/peaks`, () => HttpResponse.json({ peaks: [0.5, 1] })),
   http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/search/suggestions`, () => HttpResponse.json([])),
 );
 
 const song = makeTrack({ id: 'yt:np', title: 'Nude', artist: 'Radiohead', durationMs: 200_000 });
@@ -210,17 +211,17 @@ describe('search field', () => {
   it('WEB-LAYOUT-010 typing stores the query and jumps to the search page; clearing empties it', async () => {
     const store = makeStore();
     const { user, location } = renderWithProviders(<SearchField />, { route: '/library', store });
-    await user.type(screen.getByRole('textbox', { name: 'Search' }), 'blur');
+    await user.type(screen.getByRole('combobox', { name: 'Search' }), 'blur');
     expect(store.getState().search.query).toBe('blur');
     expect(location()).toBe('/search');
     await user.click(screen.getByRole('button', { name: 'Clear search' }));
     expect(store.getState().search.query).toBe('');
-    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveFocus();
+    expect(screen.getByRole('combobox', { name: 'Search' })).toHaveFocus();
   });
 
   it('WEB-LAYOUT-011 spaces alone do not leave the page; Enter does', async () => {
     const { user, location } = renderWithProviders(<SearchField />, { route: '/home' });
-    const box = screen.getByRole('textbox', { name: 'Search' });
+    const box = screen.getByRole('combobox', { name: 'Search' });
     await user.type(box, '  ');
     expect(location()).toBe('/home');
     await user.type(box, '{Enter}');
@@ -234,7 +235,7 @@ describe('search field', () => {
         <SearchField />
       </>,
     );
-    const box = screen.getByRole('textbox', { name: 'Search' });
+    const box = screen.getByRole('combobox', { name: 'Search' });
     await user.keyboard('/');
     expect(box).toHaveFocus();
     await user.click(screen.getByRole('textbox', { name: 'Other' }));
@@ -242,6 +243,35 @@ describe('search field', () => {
     expect(screen.getByRole('textbox', { name: 'Other' })).toHaveValue('/');
     await user.keyboard('{Control>}k{/Control}');
     expect(box).toHaveFocus();
+  });
+
+  it('WEB-LAYOUT-039 suggestions show once typing pauses; arrows and Enter or a click pick one', async () => {
+    const asked: string[] = [];
+    server.use(
+      http.get(`${API}/search/suggestions`, ({ request }) => {
+        const q = new URL(request.url).searchParams.get('q') ?? '';
+        asked.push(q);
+        return HttpResponse.json([`${q} songs`, `${q} live`]);
+      }),
+    );
+    const store = makeStore();
+    const { user, location } = renderWithProviders(<SearchField />, { route: '/home', store });
+    const box = screen.getByRole('combobox', { name: 'Search' });
+    await user.type(box, 'blur');
+    expect(await screen.findByRole('option', { name: 'blur songs' })).toBeInTheDocument();
+    expect(asked).toEqual(['blur']);
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(screen.getByRole('option', { name: 'blur live' })).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Enter}');
+    expect(store.getState().search.query).toBe('blur live');
+    expect(location()).toBe('/search');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    await user.type(box, ' 2');
+    await user.click(await screen.findByRole('option', { name: 'blur live 2 songs' }));
+    expect(store.getState().search.query).toBe('blur live 2 songs');
+    expect(box).toHaveFocus();
+    await user.keyboard('x{Escape}');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 });
 

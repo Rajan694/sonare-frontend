@@ -171,6 +171,7 @@ navigation mock live in `test-utils/`.
 | `MOB-SEARCH-005` | offline, the server is never searched and it offers to go online                       |
 | `MOB-SEARCH-006` | the Genres chip shows the categories, and a category searches for its query            |
 | `MOB-SEARCH-007` | a genre opened from the Library arrives as the search                                  |
+| `MOB-SEARCH-008` | suggestions show once typing pauses; picking one searches for it                       |
 | `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                    |
 | `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                             |
 | `MOB-LIB-S-003`  | the sort chip opens a sheet of orders; picking one refetches                           |
