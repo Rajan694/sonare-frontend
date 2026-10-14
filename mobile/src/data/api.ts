@@ -239,9 +239,6 @@ export const api = {
         ...(track?.durationMs && { durationMs: track.durationMs }),
       },
     }),
-  /** The account's own lyrics for a song: LRC (timed) or plain text. */
-  saveLyrics: (id: string, body: { lrc?: string; plain?: string }) =>
-    request<{ ok: boolean }>(`/tracks/${enc(id)}/lyrics`, { method: 'POST', body }),
   /** Shifts the account's lyric timing for a song; positive shows each line later. */
   updateLyricsOffset: (id: string, offsetMs: number) =>
     request<{ ok: boolean }>(`/tracks/${enc(id)}/lyrics/offset`, { method: 'PATCH', body: { offsetMs } }),
@@ -280,6 +277,8 @@ export const api = {
       params: { sort, order: sort === 'title' ? 'asc' : 'desc' },
     }),
   favourites: () => request<Page<Track>>('/me/favourites/tracks'),
+  /** Just the ids, for the apps' heart state: no metadata lookups. */
+  favouriteIds: () => request<{ ids: string[] }>('/me/favourites/ids'),
   // Saving one sends what the app knows about it (`meta`): the backend may never have seen
   // an item found in-app.
   setFavourite: (trackId: string, favourite: boolean, track?: Track) =>
@@ -337,6 +336,9 @@ export const api = {
       body: { name, kind: 'synced' },
     }),
   deletePlaylist: (id: string) => request<{ ok: boolean }>(`/me/playlists/${enc(id)}`, { method: 'DELETE' }),
+  /** Renames and/or re-describes an own playlist; an empty description clears it. */
+  updatePlaylist: (id: string, body: { name?: string; description?: string }) =>
+    request<Playlist>(`/me/playlists/${enc(id)}`, { method: 'PATCH', body }),
   addToPlaylist: (id: string, tracks: Track[]) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {
       method: 'POST',

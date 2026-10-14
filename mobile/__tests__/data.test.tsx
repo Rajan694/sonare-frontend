@@ -830,6 +830,51 @@ describe('Data Layer', () => {
       expect(rem.ok).toBe(true);
     });
 
+    it('MOB-DATA-057 favouriteIds asks only for the ids, so the heart state needs no metadata', async () => {
+      const urls: string[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ ids: ['t1', 't2'] });
+        onload: (() => void) | null = null;
+        open(_method: string, url: string) {
+          urls.push(url);
+        }
+        setRequestHeader() {}
+        send() {
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      const res = await api.favouriteIds();
+      expect(res.ids).toEqual(['t1', 't2']);
+      expect(urls[0]).toBe('http://localhost:3010/api/v1/me/favourites/ids');
+    });
+
+    it('MOB-DATA-058 updatePlaylist PATCHes the name and description and returns the playlist', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ id: 'sonare:1', name: 'Workout', description: 'New' });
+        onload: (() => void) | null = null;
+        open(method: string, url: string) {
+          calls.push({ method, url, body: undefined });
+        }
+        setRequestHeader() {}
+        send(body: string) {
+          calls[0].body = body;
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      const updated = await api.updatePlaylist('sonare:1', { name: 'Workout', description: 'New' });
+      expect(updated.name).toBe('Workout');
+      expect(calls[0].method).toBe('PATCH');
+      expect(calls[0].url).toBe('http://localhost:3010/api/v1/me/playlists/sonare%3A1');
+      expect(JSON.parse(calls[0].body as string)).toEqual({ name: 'Workout', description: 'New' });
+    });
+
     it('MOB-DATA-029 auto-refreshes expired access token on 401 response', async () => {
       let attempts = 0;
       class RefreshOn401XHR {

@@ -452,7 +452,7 @@ describe('In-App YouTube Support', () => {
   });
 
   it('MOB-YT-019 only followed artists from the library count as followed, with or without the yt: prefix', async () => {
-    jest.spyOn(api, 'favourites').mockResolvedValue({ items: [], nextCursor: null } as never);
+    jest.spyOn(api, 'favouriteIds').mockResolvedValue({ ids: [] });
     jest.spyOn(api, 'myPlaylists').mockResolvedValue({ items: [], nextCursor: null } as never);
     jest.spyOn(api, 'libraryArtists').mockResolvedValue({
       items: [

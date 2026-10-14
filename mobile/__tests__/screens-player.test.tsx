@@ -1,6 +1,6 @@
 import React from 'react';
 import { Alert } from 'react-native';
-import { act, fireEvent, render } from '@testing-library/react-native';
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { NowPlayingScreen } from '../src/screens/NowPlaying';
 import { QueueScreen } from '../src/screens/Queue';
 import { LyricsScreen } from '../src/screens/Lyrics';
@@ -19,6 +19,8 @@ import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
 import { useTrackMenuStore } from '../src/store/trackMenu';
+import { useLyricsAvailabilityStore } from '../src/store/lyricsAvailability';
+import { useDevicePrefsStore } from '../src/store/devicePrefs';
 import { navigationRef } from '../src/data/accountGate';
 import { alice, makeDownload, makePlaylist, makeTrack, nav, route } from '../test-utils';
 
@@ -76,7 +78,11 @@ beforeEach(() => {
   useDownloadsStore.setState({ items: {}, ready: true });
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
   useTrackMenuStore.setState({ track: null });
+  useLyricsAvailabilityStore.setState({ status: {} });
+  useDevicePrefsStore.setState({ lyricsScript: 'original', lyricsAutoScroll: true });
   jest.spyOn(api, 'peaks').mockResolvedValue({ peaks: [1, 2, 3] } as never);
+  // Now Playing asks for the current song's lyrics once so the Lyrics button knows its state.
+  jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: false, lines: [], offsetMs: 0 } as never);
 });
 
 describe('Now Playing', () => {
@@ -152,6 +158,37 @@ describe('Now Playing', () => {
     expect(getByText('Nothing playing')).toBeTruthy();
     fireEvent.press(getByLabelText('Close now playing'));
     expect(nav.goBack).toHaveBeenCalled();
+  });
+
+  it('MOB-NP-008 Up next lists the queue after this song, a tap jumps to it, and it hides at the end', () => {
+    const { getByText, getByLabelText } = render(<NowPlayingScreen />);
+    expect(getByText('Up next')).toBeTruthy();
+    expect(getByText('Next one')).toBeTruthy();
+    expect(getByText('Next two')).toBeTruthy();
+    fireEvent.press(getByLabelText(`Play Next two by ${next2.artist}`));
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(next2.id);
+  });
+
+  it('MOB-NP-009 nothing comes after the last song, so Up next is hidden', () => {
+    usePlayerStore.setState({ currentTrack: next2, index: 2 });
+    const { queryByText } = render(<NowPlayingScreen />);
+    expect(queryByText('Up next')).toBeNull();
+  });
+
+  it('MOB-NP-010 the Up next "Open queue" link opens the Queue screen', () => {
+    const { getByLabelText } = render(<NowPlayingScreen />);
+    fireEvent.press(getByLabelText('Open queue'));
+    expect(nav.navigate).toHaveBeenCalledWith('Queue');
+  });
+
+  it('MOB-NP-011 a song whose lyrics cannot be found shows a disabled Lyrics button; while unknown it is enabled', async () => {
+    jest.spyOn(api, 'lyrics').mockRejectedValue(new ApiError('Lyrics not found', 404));
+    const { getByLabelText, findByLabelText, queryByLabelText } = render(<NowPlayingScreen />);
+    // Nothing is known yet, so the button is still usable.
+    expect(getByLabelText('Lyrics').props.disabled).toBeFalsy();
+    const unavailable = await findByLabelText('Lyrics not available');
+    expect(unavailable.props.disabled).toBe(true);
+    expect(queryByLabelText('Lyrics')).toBeNull();
   });
 });
 
@@ -322,7 +359,7 @@ describe('Lyrics', () => {
     expect(lyrics).toHaveBeenCalledTimes(2);
   });
 
-  it('MOB-LYR-006 "Earlier" and "Later" move the timing and save it to the account', async () => {
+  it('MOB-LYR-006 "Earlier" and "Later" move the timing at once and save once after the taps stop', async () => {
     useAuthStore.setState({ status: 'signedIn', user: alice } as never);
     jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: true, lines, offsetMs: 0, provider: 'lrclib' } as never);
     const save = jest.spyOn(api, 'updateLyricsOffset').mockResolvedValue({ ok: true });
@@ -330,30 +367,48 @@ describe('Lyrics', () => {
     expect(await findByText('Timing 0.00s')).toBeTruthy();
     fireEvent.press(getByText('Later'));
     fireEvent.press(getByText('Later'));
+    // The label moves on every tap...
     expect(getByText('Timing +0.50s')).toBeTruthy();
-    expect(save).toHaveBeenLastCalledWith(expect.any(String), 500);
+    // ...but the save waits for the taps to stop, so only one request goes out.
+    expect(save).not.toHaveBeenCalled();
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1), { timeout: 2000 });
+    expect(save).toHaveBeenLastCalledWith(song.id, 500);
     fireEvent.press(getByText('Earlier'));
-    expect(save).toHaveBeenLastCalledWith(expect.any(String), 250);
+    expect(getByText('Timing +0.25s')).toBeTruthy();
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith(song.id, 250), { timeout: 2000 });
   });
 
-  it('MOB-LYR-007 lyrics can be edited: timed lines save as LRC, anything else as plain text', async () => {
+  it('MOB-LYR-007 lyrics are read-only: there is no Edit control and no way to replace the words', async () => {
     useAuthStore.setState({ status: 'signedIn', user: alice } as never);
-    const lyricsCall = jest
-      .spyOn(api, 'lyrics')
-      .mockResolvedValue({ synced: true, lines, offsetMs: 0, provider: 'lrclib' } as never);
-    const save = jest.spyOn(api, 'saveLyrics').mockResolvedValue({ ok: true });
-    const lrc = '[00:00.00]First line\n[00:50.00]Second line\n[01:30.00]Third line';
-    const { findByText, getByText, getByLabelText } = render(<LyricsScreen />);
-    fireEvent.press(await findByText('Edit'));
-    expect(getByLabelText('Lyrics text').props.value).toBe(lrc);
-    await act(async () => fireEvent.press(getByText('Save')));
-    expect(save).toHaveBeenLastCalledWith(expect.any(String), { lrc });
-    expect(lyricsCall.mock.calls.length).toBeGreaterThan(1);
+    jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: true, lines, offsetMs: 0, provider: 'lrclib' } as never);
+    const { findByText, queryByText, queryByLabelText } = render(<LyricsScreen />);
+    expect(await findByText('Second line')).toBeTruthy();
+    expect(queryByText('Edit')).toBeNull();
+    expect(queryByText('Add lyrics')).toBeNull();
+    expect(queryByLabelText('Lyrics text')).toBeNull();
+  });
 
-    fireEvent.press(getByText('Edit'));
-    fireEvent.changeText(getByLabelText('Lyrics text'), 'Just words\nNo times');
-    await act(async () => fireEvent.press(getByText('Save')));
-    expect(save).toHaveBeenLastCalledWith(expect.any(String), { plain: 'Just words\nNo times' });
+  it('MOB-LYR-008 synced lyrics have an Auto-scroll switch, on by default, remembered on the phone', async () => {
+    jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: true, lines, offsetMs: 0, provider: 'lrclib' } as never);
+    const { findByText, getByLabelText } = render(<LyricsScreen />);
+    await findByText('Second line');
+    const before = getByLabelText('Auto-scroll');
+    expect(before.props.accessibilityState.checked).toBe(true);
+    fireEvent.press(before);
+    expect(useDevicePrefsStore.getState().lyricsAutoScroll).toBe(false);
+    expect(getByLabelText('Auto-scroll').props.accessibilityState.checked).toBe(false);
+  });
+
+  it('MOB-LYR-009 a timing change still waiting when the screen closes is saved', async () => {
+    useAuthStore.setState({ status: 'signedIn', user: alice } as never);
+    jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: true, lines, offsetMs: 0, provider: 'lrclib' } as never);
+    const save = jest.spyOn(api, 'updateLyricsOffset').mockResolvedValue({ ok: true });
+    const { findByText, getByText, unmount } = render(<LyricsScreen />);
+    expect(await findByText('Timing 0.00s')).toBeTruthy();
+    fireEvent.press(getByText('Later'));
+    expect(save).not.toHaveBeenCalled();
+    unmount();
+    await waitFor(() => expect(save).toHaveBeenCalledWith(song.id, 250));
   });
 });
 

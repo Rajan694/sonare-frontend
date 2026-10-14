@@ -14,7 +14,9 @@ import { useModeStore } from '../src/store/mode';
 import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
+import { useRecentSearchesStore } from '../src/store/recentSearches';
 import { navigationRef } from '../src/data/accountGate';
+import * as NetInfo from '@react-native-community/netinfo';
 import { alice, makeAlbum, makeArtist, makeDownload, makePlaylist, makeTrack, nav, page, route } from '../test-utils';
 
 jest.mock('@react-navigation/native', () => require('../test-utils').navigationMock());
@@ -44,6 +46,9 @@ beforeEach(() => {
   });
   useDownloadsStore.setState({ items: {} });
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
+  useRecentSearchesStore.setState({ searches: [] });
+  // Online and reachable unless a test says otherwise.
+  (NetInfo.useNetInfo as jest.Mock).mockReturnValue({ isConnected: true, isInternetReachable: true });
   stub('trending', async () => page([]));
   stub('suggestions', async () => []);
 });
@@ -177,6 +182,10 @@ describe('Search', () => {
     // Shown as the top result and again in the song list.
     expect(getByText('Top result')).toBeTruthy();
     expect(getAllByText('Radiohead · OK Computer')).toHaveLength(2);
+    // Songs only: the other sections are hidden when empty (only their chips remain).
+    expect(getAllByText('Albums')).toHaveLength(1);
+    expect(getAllByText('Playlists')).toHaveLength(1);
+    expect(getAllByText('Artists')).toHaveLength(1);
   });
 
   it('MOB-SEARCH-002 tapping a song plays it with the other results queued', async () => {
@@ -193,6 +202,8 @@ describe('Search', () => {
     fireEvent.press(await findByLabelText(`Song B by ${b.artist}`));
     expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
     expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([a.id, b.id]);
+    // Tapping into a result remembers the search.
+    expect(useRecentSearchesStore.getState().searches[0]).toBe('song');
   });
 
   it('MOB-SEARCH-003 album and artist results open their pages; filters change the search type', async () => {
@@ -208,13 +219,13 @@ describe('Search', () => {
         { ...artist, kind: 'artist' },
       ]),
     );
-    const { getByLabelText, findByText, getByText } = render(<SearchScreen />);
+    const { getByLabelText, findAllByText } = render(<SearchScreen />);
     fireEvent.changeText(getByLabelText('Search all music'), 'radiohead');
-    fireEvent.press(await findByText('OK Computer'));
+    fireEvent.press((await findAllByText('OK Computer'))[0]);
     expect(nav.navigate).toHaveBeenCalledWith('Album', { id: 'yt:okc' });
     fireEvent.press(getByLabelText('Radiohead'));
     expect(nav.navigate).toHaveBeenCalledWith('Artist', { id: 'yt:rh' });
-    fireEvent.press(getByText('Albums'));
+    fireEvent.press(getByLabelText('Albums'));
     await waitFor(() => expect(search).toHaveBeenLastCalledWith('radiohead', 'albums'));
   });
 
@@ -273,17 +284,155 @@ describe('Search', () => {
     await waitFor(() => expect(search).toHaveBeenLastCalledWith('arijit live', 'all'));
   });
 
-  it('MOB-SEARCH-005 offline, the server is never searched and it offers to go online', async () => {
+  it("MOB-SEARCH-005 offline, the phone's songs are searched and the server is never asked", async () => {
     useModeStore.setState({ mode: 'offline' });
+    const song = makeTrack({ title: 'Paranoid Android', artist: 'Radiohead', album: 'OK Computer' });
+    useDownloadsStore.setState({ items: { [song.id]: makeDownload(song) } });
     const search = jest.spyOn(api, 'search');
-    const { getByLabelText, getByText } = render(<SearchScreen />);
-    fireEvent.changeText(getByLabelText('Search music on this device'), 'anything');
+    const { getByLabelText, getByText, findByLabelText } = render(<SearchScreen />);
+    expect(getByLabelText('Search music on this device')).toBeTruthy();
+    fireEvent.changeText(getByLabelText('Search music on this device'), 'radiohead');
+    fireEvent.press(await findByLabelText(`Paranoid Android by Radiohead`));
+    // Plays with the matching list as the queue, straight off the phone.
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(song.id);
+    expect(usePlayerStore.getState().playingFrom).toEqual({ kind: 'Search', name: 'radiohead' });
     await new Promise((r) => setTimeout(r, 400));
     expect(search).not.toHaveBeenCalled();
     expect(api.suggestions).not.toHaveBeenCalled();
+    // The block still offers the full catalog.
     expect(getByText('Not on this device')).toBeTruthy();
     fireEvent.press(getByText('Go online'));
     expect(useModeStore.getState().mode).toBe('online');
+  });
+
+  it('MOB-SEARCH-009 the Albums and Playlists chips draw a list that opens its page', async () => {
+    stub('search', async (_q: string, type?: string) => {
+      if (type === 'albums')
+        return page([
+          { ...makeAlbum({ id: 'yt:okc', title: 'OK Computer', artist: 'Radiohead' }), kind: 'album' },
+          { ...makeAlbum({ id: 'yt:kid', title: 'Kid A', artist: 'Radiohead' }), kind: 'album' },
+        ]);
+      if (type === 'playlists')
+        return page([
+          { ...makeAlbum({ id: 'yt:pl1', title: 'Chill mix', artist: 'Some Channel' }), kind: 'album' },
+          { ...makeAlbum({ id: 'yt:pl2', title: 'Focus', artist: 'Another Channel' }), kind: 'album' },
+        ]);
+      return page([]);
+    });
+    const { getByLabelText, findByLabelText, getAllByLabelText, getByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'radiohead');
+
+    fireEvent.press(getByLabelText('Albums'));
+    expect(await findByLabelText('Album Kid A by Radiohead')).toBeTruthy();
+    expect(getAllByLabelText(/^Album /)).toHaveLength(2);
+    fireEvent.press(getByLabelText('Album Kid A by Radiohead'));
+    expect(nav.navigate).toHaveBeenCalledWith('Album', { id: 'yt:kid' });
+
+    fireEvent.press(getByLabelText('Playlists'));
+    expect(await findByLabelText('Playlist Chill mix')).toBeTruthy();
+    expect(getByText('Playlist · Some Channel')).toBeTruthy();
+    fireEvent.press(getByLabelText('Playlist Chill mix'));
+    expect(nav.navigate).toHaveBeenCalledWith('Playlist', { id: 'yt:pl1' });
+  });
+
+  it('MOB-SEARCH-010 the All tab shows a section per kind, each hidden when empty', async () => {
+    const track = makeTrack({ title: 'A song' });
+    const artist = makeArtist({ name: 'An artist' });
+    const album = makeAlbum({ title: 'An album' });
+    const playlist = makePlaylist({ name: 'A list' });
+    stub('search', async () =>
+      page([
+        { ...track, kind: 'track' },
+        { ...artist, kind: 'artist' },
+        { ...album, kind: 'album' },
+        { ...playlist, kind: 'playlist' },
+      ]),
+    );
+    const { getByLabelText, getAllByText, findByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'x');
+    expect(await findByText('Top result')).toBeTruthy();
+    // Each section heading shows along with its chip.
+    expect(getAllByText('Songs')).toHaveLength(2);
+    expect(getAllByText('Artists')).toHaveLength(2);
+    expect(getAllByText('Albums')).toHaveLength(2);
+    expect(getAllByText('Playlists')).toHaveLength(2);
+  });
+
+  it('MOB-SEARCH-011 offline, the Albums and Artists chips group the matches', async () => {
+    useModeStore.setState({ mode: 'offline' });
+    const one = makeTrack({
+      title: 'Song One',
+      artist: 'Artist X',
+      artistId: 'yt:x',
+      album: 'Album Y',
+      albumId: 'alb:y',
+    });
+    const two = makeTrack({
+      title: 'Song Two',
+      artist: 'Artist X',
+      artistId: 'yt:x',
+      album: 'Album Y',
+      albumId: 'alb:y',
+    });
+    const three = makeTrack({
+      title: 'Song Three',
+      artist: 'Artist Z',
+      artistId: 'yt:z',
+      album: 'Album W',
+      albumId: 'alb:w',
+    });
+    useDownloadsStore.setState({
+      items: { [one.id]: makeDownload(one), [two.id]: makeDownload(two), [three.id]: makeDownload(three) },
+    });
+    const { getByLabelText, findByLabelText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search music on this device'), 'artist');
+
+    fireEvent.press(getByLabelText('Artists'));
+    expect(await findByLabelText('Play Artist X')).toBeTruthy();
+    expect(getByLabelText('Play Artist Z')).toBeTruthy();
+    fireEvent.press(getByLabelText('Play Artist X'));
+    expect(usePlayerStore.getState().currentTrack?.id).toBe(one.id);
+    expect(usePlayerStore.getState().queue.map((t) => t.id)).toEqual([one.id, two.id]);
+
+    fireEvent.press(getByLabelText('Albums'));
+    expect(await findByLabelText('Play album Album Y')).toBeTruthy();
+    expect(getByLabelText('Play album Album W')).toBeTruthy();
+  });
+
+  it('MOB-SEARCH-012 online with no network, the phone is searched and the server is not', async () => {
+    (NetInfo.useNetInfo as jest.Mock).mockReturnValue({ isConnected: false, isInternetReachable: false });
+    const song = makeTrack({ title: 'On the phone', artist: 'Local Artist' });
+    useDownloadsStore.setState({ items: { [song.id]: makeDownload(song) } });
+    const search = jest.spyOn(api, 'search');
+    const { getByLabelText, getByText, findByLabelText } = render(<SearchScreen />);
+    expect(getByText('OFFLINE')).toBeTruthy();
+    fireEvent.changeText(getByLabelText('Search music on this device'), 'on the phone');
+    expect(await findByLabelText(`On the phone by Local Artist`)).toBeTruthy();
+    expect(search).not.toHaveBeenCalled();
+  });
+
+  it('MOB-SEARCH-013 recent searches fill and search, × removes one, Clear empties the list', async () => {
+    const search = stub('search', async () => page([]));
+    useRecentSearchesStore.setState({ searches: ['radiohead', 'kendrick'] });
+    const { getByLabelText, getByText, queryByLabelText } = render(<SearchScreen />);
+    expect(getByText('Recent searches')).toBeTruthy();
+    // Tapping one fills the field, searches, and moves it to the front.
+    fireEvent.press(getByLabelText('Search for kendrick'));
+    expect(getByLabelText('Search all music').props.value).toBe('kendrick');
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('kendrick', 'all'));
+    expect(useRecentSearchesStore.getState().searches).toEqual(['kendrick', 'radiohead']);
+    // Submitting a new query remembers it, trimmed.
+    fireEvent.changeText(getByLabelText('Search all music'), '  new query  ');
+    fireEvent(getByLabelText('Search all music'), 'submitEditing');
+    expect(useRecentSearchesStore.getState().searches).toEqual(['new query', 'kendrick', 'radiohead']);
+    // Clearing the field shows the list again once the debounce settles; × drops one.
+    fireEvent.changeText(getByLabelText('Search all music'), '');
+    await waitFor(() => expect(getByLabelText('Search for radiohead')).toBeTruthy());
+    fireEvent.press(getByLabelText('Remove radiohead'));
+    expect(useRecentSearchesStore.getState().searches).toEqual(['new query', 'kendrick']);
+    fireEvent.press(getByLabelText('Clear recent searches'));
+    expect(useRecentSearchesStore.getState().searches).toEqual([]);
+    expect(queryByLabelText('Search for kendrick')).toBeNull();
   });
 });
 
@@ -514,6 +663,49 @@ describe('Playlist, album and artist pages', () => {
     const { findByText, queryByLabelText } = render(<PlaylistDetailScreen />);
     expect(await findByText('Mine')).toBeTruthy();
     expect(queryByLabelText('Favourite playlist')).toBeNull();
+  });
+
+  it('MOB-PL-006 renaming your own playlist saves it, refreshes the screen and the library', async () => {
+    signIn();
+    route.params = { id: 'sonare:gym' };
+    let name = 'Gym';
+    stub('myPlaylist', async () => makePlaylist({ id: 'sonare:gym', name }));
+    stub('myPlaylistTracks', async () => page(songs));
+    const update = stub('updatePlaylist', async (_id: string, body: { name: string }) => {
+      name = body.name;
+      return makePlaylist({ id: 'sonare:gym', name: body.name });
+    });
+    const reload = jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockResolvedValue();
+    const { findByLabelText, getByLabelText, findByText, getByText } = render(<PlaylistDetailScreen />);
+    expect(await findByText('Gym')).toBeTruthy();
+    fireEvent.press(await findByLabelText('Playlist options'));
+    fireEvent.press(getByLabelText('Rename playlist'));
+    fireEvent.changeText(getByLabelText('Playlist name'), 'Workout');
+    fireEvent.changeText(getByLabelText('Playlist description'), 'New description');
+    fireEvent.press(getByText('Save'));
+    await waitFor(() =>
+      expect(update).toHaveBeenCalledWith('sonare:gym', { name: 'Workout', description: 'New description' }),
+    );
+    expect(await findByText('Workout')).toBeTruthy();
+    await waitFor(() => expect(reload).toHaveBeenCalled());
+  });
+
+  it('MOB-PL-007 a refused rename shows the error and leaves the sheet open', async () => {
+    signIn();
+    route.params = { id: 'sonare:gym' };
+    stub('myPlaylist', async () => makePlaylist({ id: 'sonare:gym', name: 'Gym' }));
+    stub('myPlaylistTracks', async () => page(songs));
+    stub('updatePlaylist', async () => {
+      throw new ApiError('That name is taken', 409);
+    });
+    const { findByLabelText, getByLabelText, findByText, getByText } = render(<PlaylistDetailScreen />);
+    expect(await findByText('Gym')).toBeTruthy();
+    fireEvent.press(await findByLabelText('Playlist options'));
+    fireEvent.press(getByLabelText('Rename playlist'));
+    fireEvent.changeText(getByLabelText('Playlist name'), 'Taken');
+    fireEvent.press(getByText('Save'));
+    expect(await findByText('That name is taken')).toBeTruthy();
+    expect(getByLabelText('Playlist name').props.value).toBe('Taken');
   });
 
   it('MOB-ALB-001 an album shows its artist link and year, and shuffle plays it all', async () => {

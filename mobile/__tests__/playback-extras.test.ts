@@ -233,6 +233,18 @@ describe('device preferences and lyrics', () => {
     expect(prefs.useDevicePrefsStore.getState().lyricsScript).toBe('original');
   });
 
+  it('MOB-PREFS-004 the auto-scroll choice is kept on the phone and restored', async () => {
+    let { prefs } = fresh();
+    expect(prefs.useDevicePrefsStore.getState().lyricsAutoScroll).toBe(true);
+    prefs.useDevicePrefsStore.getState().setLyricsAutoScroll(false);
+    await waitFor(async () =>
+      expect(await AsyncStorage.getItem('sonare.devicePrefs')).toContain('"lyricsAutoScroll":false'),
+    );
+    ({ prefs } = fresh());
+    await prefs.useDevicePrefsStore.getState().hydrate();
+    expect(prefs.useDevicePrefsStore.getState().lyricsAutoScroll).toBe(false);
+  });
+
   it('MOB-PREFS-003 lyrics are asked for in the chosen script; "original" sends none', async () => {
     const { api } = fresh();
     const opened: string[] = [];

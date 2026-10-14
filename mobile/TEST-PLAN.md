@@ -111,6 +111,8 @@ navigation mock live in `test-utils/`.
 | `MOB-DATA-054` | resendVerification sends the access token                                                         |
 | `MOB-DATA-055` | a hand-made (Custom) EQ stays on the phone; gapless and normalization sync                        |
 | `MOB-DATA-056` | signing in keeps the phone's Custom EQ but takes the account's other settings                     |
+| `MOB-DATA-057` | favouriteIds asks only for the ids, so the heart state needs no metadata                          |
+| `MOB-DATA-058` | updatePlaylist PATCHes the name and description and returns the playlist                          |
 
 ## `__tests__/lib.test.tsx`
 
@@ -133,6 +135,9 @@ navigation mock live in `test-utils/`.
 | `MOB-LIB-044` | without Hermes promise tracking, uncaught errors are still reported                              |
 | `MOB-LIB-045` | names a saved queue one past the highest "Queue N"; other names are ignored                      |
 | `MOB-LIB-046` | playShuffled turns shuffle on, keeps every song and starts from one of them                      |
+| `MOB-LIB-047` | matches title, artist and album ignoring case and accents, and needs every word                  |
+| `MOB-LIB-049` | groups the matches by artist and by album, keeping the order they came in                        |
+| `MOB-LIB-048` | keeps the newest first, trims, dedupes case-insensitively and caps the list                      |
 | `MOB-LIB-015` | durations, easings and the springs exported; springs settle without overshoot                    |
 | `MOB-LIB-016` | AnimatedView rises in after its delay; FadeView fades with visibility; reduced motion skips both |
 
@@ -173,10 +178,15 @@ navigation mock live in `test-utils/`.
 | `MOB-SEARCH-002` | tapping a song plays it with the other results queued                                  |
 | `MOB-SEARCH-003` | album and artist results open their pages; filters change the search type              |
 | `MOB-SEARCH-004` | no results says so; a failed search can be retried                                     |
-| `MOB-SEARCH-005` | offline, the server is never searched and it offers to go online                       |
+| `MOB-SEARCH-005` | offline, the phone's songs are searched and the server is never asked                  |
 | `MOB-SEARCH-006` | the Genres chip shows the categories, and a category searches for its query            |
 | `MOB-SEARCH-007` | a genre opened from the Library arrives as the search                                  |
 | `MOB-SEARCH-008` | suggestions show once typing pauses; picking one searches for it                       |
+| `MOB-SEARCH-009` | the Albums and Playlists chips draw a list that opens its page                         |
+| `MOB-SEARCH-010` | the All tab shows a section per kind, each hidden when empty                           |
+| `MOB-SEARCH-011` | offline, the Albums and Artists chips group the matches                                |
+| `MOB-SEARCH-012` | online with no network, the phone is searched and the server is not                    |
+| `MOB-SEARCH-013` | recent searches fill and search, × removes one, Clear empties the list                 |
 | `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                    |
 | `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                             |
 | `MOB-LIB-S-003`  | the sort chip opens a sheet of orders; picking one refetches                           |
@@ -192,6 +202,8 @@ navigation mock live in `test-utils/`.
 | `MOB-PL-003`     | deleting the playlist from its options leaves the page once it is gone                 |
 | `MOB-PL-004`     | the favourite button on a playlist saves it                                            |
 | `MOB-PL-005`     | your own playlist has no favourite button                                              |
+| `MOB-PL-006`     | renaming your own playlist saves it, refreshes the screen and the library              |
+| `MOB-PL-007`     | a refused rename shows the error and leaves the sheet open                             |
 | `MOB-ALB-001`    | an album shows its artist link and year, and shuffle plays it all                      |
 | `MOB-ALB-002`    | "Add to queue" appends the whole album                                                 |
 | `MOB-ALB-003`    | the favourite button on an album saves it                                              |
@@ -210,6 +222,10 @@ navigation mock live in `test-utils/`.
 | `MOB-NP-005`     | a guest hearting the song is asked to sign up; a signed-in user saves it                          |
 | `MOB-NP-006`     | playback errors are shown with Retry; lyrics, queue, equalizer and the song menu are one tap away |
 | `MOB-NP-007`     | with nothing playing it says so and can be closed                                                 |
+| `MOB-NP-008`     | Up next lists the queue after this song, a tap jumps to it, and it hides at the end               |
+| `MOB-NP-009`     | nothing comes after the last song, so Up next is hidden                                           |
+| `MOB-NP-010`     | the Up next "Open queue" link opens the Queue screen                                              |
+| `MOB-NP-011`     | a song whose lyrics cannot be found shows a disabled Lyrics button; while unknown it is enabled   |
 | `MOB-Q-001`      | shows what is next, counts server songs, and plays a tapped song                                  |
 | `MOB-Q-002`      | "Clear queue" keeps only the current song; then it says the queue has ended                       |
 | `MOB-Q-003`      | a song's menu can remove it from the queue                                                        |
@@ -223,8 +239,10 @@ navigation mock live in `test-utils/`.
 | `MOB-LYR-003`    | plain text view shows the words without timing                                                    |
 | `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files        |
 | `MOB-LYR-005`    | LRCLIB down shows the reason and a retry, not "No lyrics found"                                   |
-| `MOB-LYR-006`    | "Earlier" and "Later" move the timing and save it to the account                                  |
-| `MOB-LYR-007`    | lyrics can be edited: timed lines save as LRC, anything else as plain text                        |
+| `MOB-LYR-006`    | "Earlier" and "Later" move the timing at once and save once after the taps stop                   |
+| `MOB-LYR-007`    | lyrics are read-only: there is no Edit control and no way to replace the words                    |
+| `MOB-LYR-008`    | synced lyrics have an Auto-scroll switch, on by default, remembered on the phone                  |
+| `MOB-LYR-009`    | a timing change still waiting when the screen closes is saved                                     |
 | `MOB-EQ-001`     | presets and switches respond to taps                                                              |
 | `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                                 |
 | `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                           |
@@ -280,7 +298,7 @@ navigation mock live in `test-utils/`.
 | `MOB-STORE-017` | chooseLocation and resetLocation update download directory                                       |
 | `MOB-STORE-018` | checkFiles checks existence of downloaded files on disk                                          |
 | `MOB-STORE-019` | localUriFor, downloadProgress, downloadTrack, downloadedTracks helper functions                  |
-| `MOB-STORE-020` | load fetches favourites and user playlists from server                                           |
+| `MOB-STORE-020` | load fetches favourite ids and user playlists from server                                        |
 | `MOB-STORE-021` | reset clears favourites and playlists                                                            |
 | `MOB-STORE-022` | isFavourite checks presence in favouriteIds                                                      |
 | `MOB-STORE-023` | toggleFavourite optimistically toggles and calls api.setFavourite                                |
@@ -291,6 +309,8 @@ navigation mock live in `test-utils/`.
 | `MOB-STORE-028` | open, setView, close manage track action sheet state                                             |
 | `MOB-STORE-029` | the next track is the following one; repeat all wraps; repeat one and the end have none          |
 | `MOB-STORE-030` | saved audio settings come back on launch; broken values are ignored                              |
+| `MOB-STORE-031` | recent searches are trimmed, deduped and kept on the phone across a restart                      |
+| `MOB-STORE-032` | asks for a song once and remembers whether its lyrics were found; no network is no answer        |
 
 ## `__tests__/audio.test.tsx`
 
@@ -324,6 +344,7 @@ navigation mock live in `test-utils/`.
 | `MOB-PREFS-001`   | the lyrics language is kept on the phone and restored                                   |
 | `MOB-PREFS-002`   | an unknown saved script is ignored                                                      |
 | `MOB-PREFS-003`   | lyrics are asked for in the chosen script; "original" sends none                        |
+| `MOB-PREFS-004`   | the auto-scroll choice is kept on the phone and restored                                |
 | `MOB-FROM-001`    | playTrack remembers where the queue came from; moving along keeps it                    |
 
 ## `__tests__/screens-extras.test.tsx`

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -11,6 +11,8 @@ import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { useTrackMenuStore } from '../store/trackMenu';
+import { useLyricsAvailabilityStore } from '../store/lyricsAvailability';
+import { useDevicePrefsStore } from '../store/devicePrefs';
 import { artworkUrl } from '../data/config';
 import { requireAccount } from '../data/accountGate';
 import { useNavigation } from '@react-navigation/native';
@@ -39,6 +41,9 @@ export const NowPlayingScreen = () => {
   const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
   const playPrevious = usePlayerStore((state) => state.playPrevious);
   const playNext = usePlayerStore((state) => state.playNext);
+  const queue = usePlayerStore((state) => state.queue);
+  const index = usePlayerStore((state) => state.index);
+  const playAt = usePlayerStore((state) => state.playAt);
   const positionMs = usePlayerStore((state) => state.positionMs);
   const durationMs = usePlayerStore((state) => state.durationMs);
   const buffering = usePlayerStore((state) => state.buffering);
@@ -55,6 +60,19 @@ export const NowPlayingScreen = () => {
   const wave = useWaveform(currentTrack, 76);
   const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
   const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
+
+  // Ask once per song whether its lyrics can be found, so a miss shows a disabled Lyrics button.
+  const lyricsScript = useDevicePrefsStore((state) => state.lyricsScript);
+  const lyricsStatus = useLyricsAvailabilityStore((state) =>
+    currentTrack ? state.status[currentTrack.id] : undefined,
+  );
+  const lyricsUnavailable = lyricsStatus === 'unavailable';
+  useEffect(() => {
+    if (currentTrack) useLyricsAvailabilityStore.getState().check(currentTrack, lyricsScript);
+  }, [currentTrack, lyricsScript]);
+
+  // The next few queue entries after the one playing; tapping one jumps to it.
+  const upNext = index >= 0 ? queue.slice(index + 1, index + 5) : [];
 
   const navigation = useNavigation<any>();
   // The extra utility buttons need room on shorter phones.
@@ -148,7 +166,11 @@ export const NowPlayingScreen = () => {
           />
         }
       />
-      <View className="flex-1 px-[22px] pt-1 pb-[22px]">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 4, paddingBottom: 22 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Large Artwork matching M09 (~306px) */}
         <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
           <AnimatedViewComponent style={artworkStyle} className="self-center mt-3 mb-[26px]">
@@ -336,10 +358,11 @@ export const NowPlayingScreen = () => {
           {/* Bottom Utility Row */}
           <View className="flex-row items-center justify-between mt-2">
             <IconButton
-              icon={<Icon name="lyrics" size={21} color="#9A9AA8" />}
+              icon={<Icon name="lyrics" size={21} color={lyricsUnavailable ? '#5A5A66' : '#9A9AA8'} />}
               size={44}
               onPress={() => navigation.navigate('Lyrics')}
-              accessibilityLabel="Lyrics"
+              accessibilityLabel={lyricsUnavailable ? 'Lyrics not available' : 'Lyrics'}
+              disabled={lyricsUnavailable}
             />
             <IconButton
               icon={<Icon name="equalizer" size={21} color="#9A9AA8" />}
@@ -356,8 +379,43 @@ export const NowPlayingScreen = () => {
           </View>
         </View>
 
-        <View className="flex-1" />
-      </View>
+        {/* Up next: the queue entries after this one; hidden when nothing comes next. */}
+        {upNext.length > 0 && (
+          <View className="gap-1 mt-4 pt-3 border-t border-ln">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-ov font-semibold text-t3 uppercase">Up next</Text>
+              <Pressable
+                onPress={() => navigation.navigate('Queue')}
+                accessibilityRole="button"
+                accessibilityLabel="Open queue"
+              >
+                <Text className="text-t2 text-ll">Open queue</Text>
+              </Pressable>
+            </View>
+            <View className="gap-0.5 mt-1">
+              {upNext.map((track, i) => (
+                <Pressable
+                  key={`${track.id}:${i}`}
+                  onPress={() => playAt(index + 1 + i)}
+                  className="flex-row items-center gap-3 py-1.5 rounded-md active:bg-s2"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Play ${track.title} by ${track.artist}`}
+                >
+                  <Artwork uri={artworkUrl(track, 64)} size={40} className="rounded-sm" />
+                  <View className="flex-1 min-w-0 gap-0.5">
+                    <Text numberOfLines={1} className="text-tm font-medium text-t1">
+                      {track.title}
+                    </Text>
+                    <Text numberOfLines={1} className="text-t2 text-bs">
+                      {track.artist}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+      </ScrollView>
     </Screen>
   );
 };

@@ -23,6 +23,7 @@ import { Text } from '../components/ui/Text';
 import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
 import { PlayerSheetsHost } from '../components/music/PlayerSheets';
 import { useDevicePrefsStore } from '../store/devicePrefs';
+import { useRecentSearchesStore } from '../store/recentSearches';
 import { cn } from '../lib/cn';
 
 const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
@@ -118,6 +119,7 @@ export const RootNavigator = () => {
 
   useEffect(() => {
     useDevicePrefsStore.getState().hydrate();
+    useRecentSearchesStore.getState().hydrate();
     hydrate();
     // Picks up downloads that were running when the app last closed; then the phone's music,
     // whose scan also finds downloads the list lost (a reinstall).

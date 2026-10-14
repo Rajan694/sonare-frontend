@@ -22,24 +22,42 @@ const STORAGE_KEY = 'sonare.devicePrefs';
 /** Preferences kept on this phone only (not the account). */
 interface DevicePrefsStore {
   lyricsScript: LyricsScript;
+  /** Synced lyrics follow playback unless the user turns this off. */
+  lyricsAutoScroll: boolean;
   hydrate: () => Promise<void>;
   setLyricsScript: (script: LyricsScript) => void;
+  setLyricsAutoScroll: (on: boolean) => void;
 }
 
-export const useDevicePrefsStore = create<DevicePrefsStore>((set) => ({
+const persist = (prefs: { lyricsScript: LyricsScript; lyricsAutoScroll: boolean }) => {
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)).catch(() => {});
+};
+
+export const useDevicePrefsStore = create<DevicePrefsStore>((set, get) => ({
   lyricsScript: 'original',
+  lyricsAutoScroll: true,
   hydrate: async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const saved = raw ? JSON.parse(raw) : {};
-      if (LYRICS_SCRIPTS.some((s) => s.value === saved.lyricsScript)) set({ lyricsScript: saved.lyricsScript });
+      const lyricsScript = LYRICS_SCRIPTS.some((s) => s.value === saved.lyricsScript)
+        ? (saved.lyricsScript as LyricsScript)
+        : 'original';
+      set({
+        lyricsScript,
+        lyricsAutoScroll: typeof saved.lyricsAutoScroll === 'boolean' ? saved.lyricsAutoScroll : true,
+      });
     } catch {
       // Defaults apply.
     }
   },
   setLyricsScript: (lyricsScript) => {
     set({ lyricsScript });
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ lyricsScript })).catch(() => {});
+    persist({ lyricsScript, lyricsAutoScroll: get().lyricsAutoScroll });
+  },
+  setLyricsAutoScroll: (lyricsAutoScroll) => {
+    set({ lyricsAutoScroll });
+    persist({ lyricsScript: get().lyricsScript, lyricsAutoScroll });
   },
 }));
 

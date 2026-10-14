@@ -10,6 +10,7 @@ import { SongRow } from '../components/music/SongRow';
 import { DownloadAllButton } from '../components/music/DownloadAllButton';
 import { Badge } from '../components/ui/Badge';
 import { Sheet } from '../components/ui/Sheet';
+import { Field } from '../components/ui/Field';
 import { Artwork } from '../components/music/Artwork';
 import { Ambient } from '../components/music/Ambient';
 import { StateView } from '../components/ui/StateView';
@@ -36,6 +37,11 @@ export const PlaylistDetailScreen = () => {
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
   const shuffle = usePlayerStore((state) => state.shuffle);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [renameError, setRenameError] = useState<string | null>(null);
   const playlist = useAsync(() => (own ? api.myPlaylist(id) : api.playlist(id)), [id], { refetchOnFocus: own });
   // YouTube playlists are saved to the library the same way albums are.
   const { isSaved, toggle: toggleSaved } = useSavedAlbum(
@@ -68,6 +74,35 @@ export const PlaylistDetailScreen = () => {
   const deletePlaylist = async () => {
     setMenuOpen(false);
     if (await confirmDeletePlaylist({ id, name: info?.name })) navigation.goBack();
+  };
+
+  const startRename = () => {
+    setMenuOpen(false);
+    setName(info?.name ?? '');
+    setDescription(info?.description ?? '');
+    setRenameError(null);
+    setRenameOpen(true);
+  };
+
+  // Saves the new name (and description, empty clears it) and refreshes the screen and the list.
+  const saveRename = async () => {
+    const trimmedName = name.trim();
+    if (!trimmedName || saving) return;
+    setSaving(true);
+    setRenameError(null);
+    try {
+      await api.updatePlaylist(id, { name: trimmedName, description: description.trim() });
+      setRenameOpen(false);
+      playlist.refetch();
+      useLibraryStore
+        .getState()
+        .reloadPlaylists()
+        .catch(() => {});
+    } catch (e: any) {
+      setRenameError(e?.message ?? 'Could not rename the playlist');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const playAll = () => {
@@ -241,7 +276,18 @@ export const PlaylistDetailScreen = () => {
       />
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)}>
-        <View className="px-6 pb-6">
+        <View className="px-6 pb-6 gap-2">
+          <Text className="text-t1 text-h2 font-medium" numberOfLines={1}>
+            {info?.name ?? 'Playlist'}
+          </Text>
+          <Button
+            variant="ghost"
+            className="justify-start px-2 py-3"
+            onPress={startRename}
+            accessibilityLabel="Rename playlist"
+          >
+            <Text className="text-t1 text-tm">Rename</Text>
+          </Button>
           <Button
             variant="ghost"
             className="justify-start px-2 py-3"
@@ -249,6 +295,34 @@ export const PlaylistDetailScreen = () => {
             accessibilityLabel="Delete playlist"
           >
             <Text className="text-red text-tm">Delete playlist</Text>
+          </Button>
+        </View>
+      </Sheet>
+
+      <Sheet visible={renameOpen} onClose={() => setRenameOpen(false)}>
+        <View className="px-6 pb-6 gap-4">
+          <Text className="text-t1 text-h2 font-medium">Rename playlist</Text>
+          <Field
+            placeholder="Playlist name"
+            value={name}
+            onChangeText={setName}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={() => saveRename()}
+            accessibilityLabel="Playlist name"
+          />
+          <Field
+            placeholder="Description (optional)"
+            value={description}
+            onChangeText={setDescription}
+            maxLength={500}
+            returnKeyType="done"
+            onSubmitEditing={() => saveRename()}
+            accessibilityLabel="Playlist description"
+          />
+          {renameError && <Text className="text-red text-bs">{renameError}</Text>}
+          <Button variant="accent" onPress={() => saveRename()} disabled={saving || !name.trim()}>
+            {saving ? 'Saving…' : 'Save'}
           </Button>
         </View>
       </Sheet>

@@ -5,6 +5,19 @@ import { hasInternet } from '../src/lib/connectivity';
 import { confirmDeletePlaylist } from '../src/lib/confirmDeletePlaylist';
 import { confirmRemoveDownloads } from '../src/lib/confirmRemoveDownloads';
 import { playShuffled } from '../src/lib/playShuffled';
+import {
+  foldForSearch,
+  groupLocalByAlbum,
+  groupLocalByArtist,
+  matchesLocalQuery,
+  searchLocalTracks,
+} from '../src/lib/localSearch';
+import {
+  MAX_RECENT_SEARCHES,
+  addRecentSearch,
+  removeRecentSearch,
+  sanitizeRecentSearches,
+} from '../src/lib/recentSearches';
 import { nextQueuePlaylistName } from '../../shared/player/playlistNames';
 import { durations, easings, springConfig, springs, AnimatedView, FadeView } from '../src/lib/motion';
 import { useLibraryStore } from '../src/store/library';
@@ -381,6 +394,66 @@ describe('Lib Layer', () => {
       usePlayerStore.setState({ shuffle: false, currentTrack: null, queue: [] });
       playShuffled([]);
       expect(usePlayerStore.getState()).toMatchObject({ shuffle: false, currentTrack: null, queue: [] });
+    });
+  });
+
+  describe('localSearch.ts', () => {
+    it('MOB-LIB-047 matches title, artist and album ignoring case and accents, and needs every word', () => {
+      const tracks = [
+        makeTrack({ title: 'Paranoid Android', artist: 'Radiohead', album: 'OK Computer' }),
+        makeTrack({ title: 'Café Noir', artist: 'Édith', album: 'Chansons' }),
+        makeTrack({ title: 'Bohemian Rhapsody', artist: 'Queen', album: 'A Night at the Opera' }),
+      ];
+      expect(foldForSearch('Édith Café')).toBe('edith cafe');
+      // Case- and accent-insensitive, across all three fields.
+      expect(searchLocalTracks(tracks, 'RADIOHEAD').map((t) => t.title)).toEqual(['Paranoid Android']);
+      expect(searchLocalTracks(tracks, 'cafe').map((t) => t.title)).toEqual(['Café Noir']);
+      expect(searchLocalTracks(tracks, 'edith').map((t) => t.title)).toEqual(['Café Noir']);
+      expect(searchLocalTracks(tracks, 'night').map((t) => t.title)).toEqual(['Bohemian Rhapsody']);
+      // Every word of the query has to match somewhere.
+      expect(searchLocalTracks(tracks, 'paranoid android').map((t) => t.title)).toEqual(['Paranoid Android']);
+      expect(searchLocalTracks(tracks, 'paranoid queen')).toEqual([]);
+      // An empty query matches nothing.
+      expect(searchLocalTracks(tracks, '   ')).toEqual([]);
+      expect(matchesLocalQuery(tracks[0], 'ok computer')).toBe(true);
+      expect(matchesLocalQuery(tracks[0], 'ok missing')).toBe(false);
+    });
+
+    it('MOB-LIB-049 groups the matches by artist and by album, keeping the order they came in', () => {
+      const [a, b, c] = [
+        makeTrack({ title: 'One', artist: 'X', artistId: 'yt:x', album: 'M', albumId: 'alb:m' }),
+        makeTrack({ title: 'Two', artist: 'X', artistId: 'yt:x', album: 'M', albumId: 'alb:m' }),
+        makeTrack({ title: 'Three', artist: 'Y', artistId: 'yt:y', album: 'N', albumId: 'alb:n' }),
+      ];
+      const byArtist = groupLocalByArtist([a, b, c]);
+      expect(byArtist.map((g) => [g.name, g.tracks.length])).toEqual([
+        ['X', 2],
+        ['Y', 1],
+      ]);
+      const byAlbum = groupLocalByAlbum([a, b, c]);
+      expect(byAlbum.map((g) => [g.title, g.artist, g.tracks.length])).toEqual([
+        ['M', 'X', 2],
+        ['N', 'Y', 1],
+      ]);
+    });
+  });
+
+  describe('recentSearches.ts', () => {
+    it('MOB-LIB-048 keeps the newest first, trims, dedupes case-insensitively and caps the list', () => {
+      expect(addRecentSearch([], '  Radiohead  ')).toEqual(['Radiohead']);
+      expect(addRecentSearch(['Radiohead'], 'radiohead')).toEqual(['radiohead']);
+      expect(addRecentSearch(['a', 'b'], 'c')).toEqual(['c', 'a', 'b']);
+      // An empty query leaves the list alone.
+      expect(addRecentSearch(['a'], '   ')).toEqual(['a']);
+      const many = Array.from({ length: 12 }, (_, i) => `q${i}`);
+      const capped = addRecentSearch(many, 'new');
+      expect(capped).toHaveLength(MAX_RECENT_SEARCHES);
+      expect(capped[0]).toBe('new');
+
+      expect(removeRecentSearch(['a', 'b', 'c'], 'b')).toEqual(['a', 'c']);
+      // Whatever was stored is cleaned up when it is read back.
+      expect(sanitizeRecentSearches([' a ', '', 3, 'A', 'b'])).toEqual(['a', 'b']);
+      expect(sanitizeRecentSearches('nope')).toEqual([]);
     });
   });
 
