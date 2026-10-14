@@ -61,10 +61,9 @@ const sortTracks = (list: Track[], key: SortKey, desc: boolean): Track[] => {
 const Library = () => {
   const { mode } = useModeStore();
   const { currentTrack, playTrack } = usePlayerStore();
-  const [params, setParams] = useSearchParams();
+  const [params] = useSearchParams();
   const slug = (t: Tab) => t.toLowerCase().replace(' ', '-');
   const activeTab: Tab = TABS.find((t) => slug(t) === params.get('view')) ?? 'Songs';
-  const setActiveTab = (t: Tab) => setParams(t === 'Songs' ? {} : { view: slug(t) }, { replace: true });
 
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(null);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'local' | 'server'>('all');
@@ -214,19 +213,6 @@ const Library = () => {
               </>
             )}
           </div>
-        </div>
-
-        {/* Horizontal scrollable tabs row */}
-        <div className="tabs overflow-x-auto no-scrollbar flex items-center">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              className={cn('tab flex-none', activeTab === tab && 'on')}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
         </div>
 
         {/* Filter chips & list/grid toggle row */}
@@ -424,6 +410,7 @@ const Library = () => {
               {(genres ?? DEFAULT_GENRES).map((g, i) => (
                 <GenreCard
                   key={g.id}
+                  id={g.id}
                   name={g.name}
                   variant={genreVariant(i)}
                   to={`/search?q=${encodeURIComponent(genreQuery(g))}`}

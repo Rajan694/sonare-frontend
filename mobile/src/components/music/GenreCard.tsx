@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { Image, Pressable, StyleSheet, type ImageSourcePropType } from 'react-native';
 import { Text } from '../ui/Text';
 import Svg, { Defs, LinearGradient, Stop, Rect, Circle } from 'react-native-svg';
 import { artGradients } from '../../data/gradients';
@@ -31,10 +31,34 @@ export const genreQuery = (g: Genre) => g.query || g.name;
 
 const KEYS = Object.keys(artGradients);
 
-/** A browse category: the generated artwork gradient fills the whole card (genres have no art). */
+/** A photo per genre id (shared/assets/genres, sources in its CREDITS.md). */
+const GENRE_PHOTOS: Record<string, ImageSourcePropType> = {
+  popular: require('../../../../shared/assets/genres/popular.webp'),
+  'top-this-year': require('../../../../shared/assets/genres/top-this-year.webp'),
+  bollywood: require('../../../../shared/assets/genres/bollywood.webp'),
+  punjabi: require('../../../../shared/assets/genres/punjabi.webp'),
+  bhojpuri: require('../../../../shared/assets/genres/bhojpuri.webp'),
+  devotional: require('../../../../shared/assets/genres/devotional.webp'),
+  party: require('../../../../shared/assets/genres/party.webp'),
+  romantic: require('../../../../shared/assets/genres/romantic.webp'),
+  sad: require('../../../../shared/assets/genres/sad.webp'),
+  lofi: require('../../../../shared/assets/genres/lofi.webp'),
+  workout: require('../../../../shared/assets/genres/workout.webp'),
+  ghazal: require('../../../../shared/assets/genres/ghazal.webp'),
+  indie: require('../../../../shared/assets/genres/indie.webp'),
+  'hip-hop': require('../../../../shared/assets/genres/hip-hop.webp'),
+  'english-pop': require('../../../../shared/assets/genres/english-pop.webp'),
+  classical: require('../../../../shared/assets/genres/classical.webp'),
+};
+
+/**
+ * A browse category: the genre's photo under a shade that keeps the label readable. Genres
+ * without one (the server can add more) get the generated artwork gradient across the card.
+ */
 export const GenreCard = ({ genre, index, onPress }: { genre: Genre; index: number; onPress: () => void }) => {
   const stops = artGradients[KEYS[index % KEYS.length]];
   const id = `genre-${genre.id}`;
+  const photo = GENRE_PHOTOS[genre.id];
   // A percentage-sized Svg only paints its first measured width, so it gets the card's real size.
   const [size, setSize] = React.useState({ width: 0, height: 0 });
   return (
@@ -54,9 +78,27 @@ export const GenreCard = ({ genre, index, onPress }: { genre: Genre; index: numb
           </LinearGradient>
         </Defs>
         <Rect width={size.width} height={size.height} fill={`url(#${id})`} />
-        <Circle cx="85%" cy="20%" r="46" stroke="rgba(255,255,255,0.07)" strokeWidth="1" fill="none" />
-        <Circle cx="85%" cy="20%" r="78" stroke="rgba(255,255,255,0.04)" strokeWidth="1" fill="none" />
+        {!photo && (
+          <>
+            <Circle cx="85%" cy="20%" r="46" stroke="rgba(255,255,255,0.07)" strokeWidth="1" fill="none" />
+            <Circle cx="85%" cy="20%" r="78" stroke="rgba(255,255,255,0.04)" strokeWidth="1" fill="none" />
+          </>
+        )}
       </Svg>
+      {photo && (
+        <>
+          <Image source={photo} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <Svg style={StyleSheet.absoluteFill} width={size.width} height={size.height}>
+            <Defs>
+              <LinearGradient id={`${id}-shade`} x1="0%" y1="100%" x2="0%" y2="0%">
+                <Stop offset="0%" stopColor="#000" stopOpacity={0.78} />
+                <Stop offset="75%" stopColor="#000" stopOpacity={0.12} />
+              </LinearGradient>
+            </Defs>
+            <Rect width={size.width} height={size.height} fill={`url(#${id}-shade)`} />
+          </Svg>
+        </>
+      )}
       <Text className="text-tl font-semibold text-t1" numberOfLines={1}>
         {genre.name}
       </Text>

@@ -441,6 +441,7 @@ const Search = () => {
                 {(genres ?? DEFAULT_GENRES).map((g, i) => (
                   <GenreCard
                     key={g.id}
+                    id={g.id}
                     name={g.name}
                     variant={genreVariant(i)}
                     onClick={() => dispatch(setQuery(genreQuery(g)))}
