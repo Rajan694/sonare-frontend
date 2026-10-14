@@ -223,15 +223,50 @@ export const signOut = async (): Promise<void> => {
 
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Another tab of the web app may have renewed the tokens (the server spends a refresh token
+ * on use) or signed out. Take what storage holds now when it differs from what this tab has.
+ */
+const adoptStoredSession = (): boolean => {
+  const stored = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (stored === currentRefreshToken) return false;
+  currentAccessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  currentRefreshToken = stored;
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    currentUser = stored && raw ? JSON.parse(raw) : null;
+  } catch {
+    currentUser = null;
+  }
+  notifyListeners();
+  return true;
+};
+
+/** One tab refreshes at a time, so two tabs never spend the same refresh token. */
+const oneTabAtATime = <T>(fn: () => Promise<T>): Promise<T> => {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  // request() resolves with what the callback's promise resolves with.
+  return locks ? (locks.request('sonare-refresh', fn) as Promise<T>) : fn();
+};
+
+/**
+ * Renews the access token. Only the server refusing the refresh token (401) ends the
+ * session; a network error, a rate limit or a server waking up keeps it, and the caller's
+ * request fails as it would have anyway.
+ */
 export const refreshAccessToken = async (): Promise<string | null> => {
   if (refreshPromise) return refreshPromise;
 
   if (!currentRefreshToken) {
+    if (adoptStoredSession()) return currentAccessToken;
     clearSession();
     return null;
   }
 
-  refreshPromise = (async () => {
+  const spent = currentRefreshToken;
+  refreshPromise = oneTabAtATime(async () => {
+    // Renewed (or signed out) by another tab while this one waited.
+    if (adoptStoredSession() || !currentRefreshToken) return currentAccessToken;
     try {
       const res = await fetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
@@ -239,12 +274,17 @@ export const refreshAccessToken = async (): Promise<string | null> => {
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
       });
 
-      if (!res.ok) {
+      if (res.status === 401) {
+        // A browser without Web Locks can still lose the race to another tab.
+        if (adoptStoredSession()) return currentAccessToken;
         clearSession();
         return null;
       }
+      if (!res.ok) return null;
 
       const json = await res.json();
+      // Signed out or signed in as someone else meanwhile: this answer is for an old session.
+      if (currentRefreshToken !== spent) return currentAccessToken;
       currentAccessToken = json.accessToken;
       currentRefreshToken = json.refreshToken || currentRefreshToken;
 
@@ -255,15 +295,30 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
       return currentAccessToken;
     } catch {
-      clearSession();
       return null;
-    } finally {
-      refreshPromise = null;
     }
-  })();
+  }).finally(() => {
+    refreshPromise = null;
+  });
 
   return refreshPromise;
 };
+
+// A sign-in, sign-out or token renewal in another tab applies here too.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.storageArea !== localStorage || adoptStoredSession()) return;
+    if (e.key === ACCESS_TOKEN_KEY) currentAccessToken = e.newValue;
+    if (e.key === USER_KEY && e.newValue) {
+      try {
+        currentUser = JSON.parse(e.newValue);
+        notifyListeners();
+      } catch {
+        // Keep the user this tab has.
+      }
+    }
+  });
+}
 
 export const initDevAuth = async (): Promise<void> => {
   // Someone who signed out stays a guest; dev auto-login is only for a fresh start.

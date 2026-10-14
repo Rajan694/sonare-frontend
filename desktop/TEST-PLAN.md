@@ -439,7 +439,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-AUTH-010` | restores a saved session on start-up                                          |
 | `WEB-AUTH-011` | ignores a corrupt saved user instead of crashing                              |
 | `WEB-AUTH-012` | refreshing without a refresh token signs out and returns null                 |
-| `WEB-AUTH-013` | a refresh that cannot reach the server signs out                              |
+| `WEB-AUTH-013` | a refresh that fails for any reason but a refused token keeps the session     |
 | `WEB-AUTH-014` | without dev credentials, auth is ready immediately                            |
 | `WEB-AUTH-015` | holds auth-ready until the dev account has signed in                          |
 | `WEB-AUTH-016` | registers the dev account when it does not exist yet                          |
@@ -449,6 +449,10 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-AUTH-020` | sends a guest to sign-up with the reason and holds the action until then      |
 | `WEB-AUTH-021` | runs the action straight away for a signed-in user                            |
 | `WEB-AUTH-022` | keeps only the latest pending action, and cancelling drops it                 |
+| `WEB-AUTH-023` | a refused refresh token signs out                                             |
+| `WEB-AUTH-024` | tokens another tab renewed are used instead of spending the old refresh token |
+| `WEB-AUTH-025` | losing the refresh race to another tab keeps the session the other tab saved  |
+| `WEB-AUTH-026` | signing out or in another tab applies here                                    |
 
 ## `test/unit/downloadTargets.test.ts`
 
