@@ -526,6 +526,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                                     |
 | `WEB-DSP-015` | a suspended context is resumed on the next play                                        |
 | `WEB-DSP-016` | the waveform level meter hears every source before the EQ                              |
+| `WEB-DSP-017` | the output ends in a hard limiter at -1 dB, normalization on or off                    |
 
 ## `test/unit/waveform.test.tsx`
 

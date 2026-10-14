@@ -41,7 +41,11 @@ class FakeContext {
   destination = new Node();
   biquads: Biquad[] = [];
   gains: Gain[] = [];
-  comp!: Compressor;
+  comps: Compressor[] = [];
+  /** The normalization compressor; the limiter after it is comps[1]. */
+  get comp() {
+    return this.comps[0];
+  }
   constructor() {
     contexts.push(this);
   }
@@ -70,8 +74,9 @@ class FakeContext {
     return new Node();
   }
   createDynamicsCompressor() {
-    this.comp = new Compressor();
-    return this.comp;
+    const c = new Compressor();
+    this.comps.push(c);
+    return c;
   }
   async resume() {
     this.state = 'running';
@@ -259,6 +264,18 @@ describe('audio graph', () => {
     expect([comp.threshold.value, comp.ratio.value]).toEqual([-24, 4]);
     d.updateSettings({ normalization: false });
     expect([comp.threshold.value, comp.ratio.value]).toEqual([0, 1]);
+  });
+
+  it('WEB-DSP-017 the output ends in a hard limiter at -1 dB, normalization on or off', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const [comp, limiter] = contexts[0].comps;
+    expect(comp.connections).toEqual([limiter]);
+    expect(limiter.connections).toEqual([contexts[0].destination]);
+    d.updateSettings({ normalization: false });
+    expect([limiter.threshold.value, limiter.ratio.value, limiter.knee.value]).toEqual([-1, 20, 0]);
   });
 
   it('WEB-DSP-014 without Web Audio, playback carries on unprocessed', async () => {

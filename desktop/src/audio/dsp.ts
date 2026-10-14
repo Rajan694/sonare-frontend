@@ -80,6 +80,8 @@ interface Graph {
   lr: GainNode;
   rr: GainNode;
   comp: DynamicsCompressorNode;
+  /** Last in the chain: keeps EQ and bass boost from clipping, like Android's −1 dBFS limiter. */
+  limiter: DynamicsCompressorNode;
 }
 
 let graph: Graph | null = null;
@@ -170,6 +172,13 @@ export const ensureGraph = async (): Promise<void> => {
     comp.knee.value = 12;
     comp.attack.value = 0.01;
     comp.release.value = 0.25;
+    // The browser's compressor looks ahead a few ms; hard and fast, it works as a peak limiter.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -1;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.1;
 
     // Every source joins here; the analyser hears the song as it is, whatever the EQ does.
     const input = ctx.createGain();
@@ -195,9 +204,10 @@ export const ensureGraph = async (): Promise<void> => {
     rr.connect(merge, 0, 1);
     lr.connect(merge, 0, 1);
     merge.connect(comp);
-    comp.connect(ctx.destination);
+    comp.connect(limiter);
+    limiter.connect(ctx.destination);
 
-    graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp };
+    graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp, limiter };
     apply();
     if (ctx.state === 'suspended') await ctx.resume();
   } catch {
