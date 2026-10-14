@@ -135,6 +135,36 @@ describe('bringing the queue back', () => {
     });
   });
 
+  it("MOB-RESTORE-006 signed in, a newer queue from another device replaces the phone's; an older one doesn't", async () => {
+    await AsyncStorage.setItem(
+      'sonare.playerState',
+      JSON.stringify({ queue: [a, b], currentId: a.id, index: 0, positionMs: 1000, savedAt: 5_000 }),
+    );
+    const { player, persist, api, auth } = fresh();
+    const answer = (updatedAt: number) => ({
+      trackRef: { kind: 'server' as const, id: c.id },
+      positionMs: 7000,
+      queue: [{ v: 1, playingFrom: { kind: 'Search', name: 'desktop' } }, c],
+      index: 0,
+      shuffle: false,
+      repeat: 'off' as const,
+      updatedAt,
+    });
+    const ask = jest.spyOn(api.api, 'playerState').mockResolvedValueOnce(answer(4_000));
+    act(() => auth.useAuthStore.setState({ status: 'signedIn' } as never));
+    persist.watchPlayerPersistence();
+    await waitFor(() => expect(ask).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(player.usePlayerStore.getState().currentTrack?.id).toBe(a.id);
+
+    // Signing in again later finds a newer one, saved on the desktop.
+    ask.mockResolvedValueOnce(answer(9_000));
+    act(() => auth.useAuthStore.setState({ status: 'guest' } as never));
+    act(() => auth.useAuthStore.setState({ status: 'signedIn' } as never));
+    await waitFor(() => expect(player.usePlayerStore.getState().currentTrack?.id).toBe(c.id));
+    expect(player.usePlayerStore.getState()).toMatchObject({ positionMs: 7000, playingFrom: { name: 'desktop' } });
+  });
+
   it('MOB-RESTORE-005 signed in, the queue is also saved to the account', async () => {
     const { player, persist, api, auth } = fresh();
     const save = jest.spyOn(api.api, 'savePlayerState').mockResolvedValue({ ok: true });

@@ -310,19 +310,20 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/playback-extras.test.ts`
 
-| ID                | Use case                                                                          |
-| ----------------- | --------------------------------------------------------------------------------- |
-| `MOB-RESTORE-001` | the queue, track, position, modes and source are saved as they change             |
-| `MOB-RESTORE-002` | on the next start it comes back paused where it was, and the player resumes there |
-| `MOB-RESTORE-003` | a damaged save, or one whose track is missing, is ignored                         |
-| `MOB-RESTORE-004` | a fresh install signed in gets the queue the account remembers                    |
-| `MOB-RESTORE-005` | signed in, the queue is also saved to the account                                 |
-| `MOB-SERVER-001`  | debug builds talk to localhost (adb reverse); there is no other address           |
-| `MOB-SERVER-002`  | an address saved by an older build is ignored                                     |
-| `MOB-PREFS-001`   | the lyrics language is kept on the phone and restored                             |
-| `MOB-PREFS-002`   | an unknown saved script is ignored                                                |
-| `MOB-PREFS-003`   | lyrics are asked for in the chosen script; "original" sends none                  |
-| `MOB-FROM-001`    | playTrack remembers where the queue came from; moving along keeps it              |
+| ID                | Use case                                                                                |
+| ----------------- | --------------------------------------------------------------------------------------- |
+| `MOB-RESTORE-001` | the queue, track, position, modes and source are saved as they change                   |
+| `MOB-RESTORE-002` | on the next start it comes back paused where it was, and the player resumes there       |
+| `MOB-RESTORE-003` | a damaged save, or one whose track is missing, is ignored                               |
+| `MOB-RESTORE-004` | a fresh install signed in gets the queue the account remembers                          |
+| `MOB-RESTORE-005` | signed in, the queue is also saved to the account                                       |
+| `MOB-RESTORE-006` | signed in, a newer queue from another device replaces the phone's; an older one doesn't |
+| `MOB-SERVER-001`  | debug builds talk to localhost (adb reverse); there is no other address                 |
+| `MOB-SERVER-002`  | an address saved by an older build is ignored                                           |
+| `MOB-PREFS-001`   | the lyrics language is kept on the phone and restored                                   |
+| `MOB-PREFS-002`   | an unknown saved script is ignored                                                      |
+| `MOB-PREFS-003`   | lyrics are asked for in the chosen script; "original" sends none                        |
+| `MOB-FROM-001`    | playTrack remembers where the queue came from; moving along keeps it                    |
 
 ## `__tests__/screens-extras.test.tsx`
 

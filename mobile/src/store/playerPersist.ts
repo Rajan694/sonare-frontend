@@ -7,8 +7,9 @@ import { usePlayerStore, type PlayingFrom, type RestoredPlayer } from './player'
 /**
  * Brings the queue back after the app process was killed: the queue, the current track,
  * where it was, shuffle / repeat and where it was playing from. Saved on the phone (works
- * for guests and offline) and, signed in, to the account (PUT /me/player-state), which a
- * fresh install restores from.
+ * for guests and offline) and, signed in, to the account (PUT /me/player-state). The
+ * account's copy wins when it is newer and nothing has played yet: a fresh install, or a
+ * queue carried on from the desktop app.
  */
 
 const STORAGE_KEY = 'sonare.playerState';
@@ -27,6 +28,8 @@ interface Saved {
   shuffle: boolean;
   repeat: 'off' | 'all' | 'one';
   playingFrom: PlayingFrom | null;
+  /** When it was saved (epoch ms); older saves have none. */
+  savedAt?: number;
 }
 
 const isTrack = (t: unknown): t is Track =>
@@ -67,8 +70,14 @@ const snapshot = (): Saved | null => {
     shuffle: s.shuffle,
     repeat: s.repeat,
     playingFrom: s.playingFrom,
+    savedAt: Date.now(),
   };
 };
+
+/** When the queue on show was saved; the account's copy must be newer to replace it. */
+let shownSavedAt = 0;
+/** Something played since launch: a queue saved elsewhere no longer replaces it. */
+let playedSinceLaunch = false;
 
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let serverTimer: ReturnType<typeof setTimeout> | undefined;
@@ -110,8 +119,10 @@ const saveToAccountSoon = () => {
 const restoreFromPhone = async (): Promise<boolean> => {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    const restored = raw ? toRestored(JSON.parse(raw)) : null;
+    const saved = raw ? (JSON.parse(raw) as Partial<Saved>) : null;
+    const restored = saved ? toRestored(saved) : null;
     if (!restored || usePlayerStore.getState().currentTrack) return !!restored;
+    shownSavedAt = typeof saved?.savedAt === 'number' ? saved.savedAt : 0;
     usePlayerStore.getState().restore(restored);
     return true;
   } catch {
@@ -120,9 +131,11 @@ const restoreFromPhone = async (): Promise<boolean> => {
 };
 
 const restoreFromAccount = async () => {
-  if (usePlayerStore.getState().currentTrack) return;
+  if (playedSinceLaunch) return;
   try {
     const state = await api.playerState();
+    // With a queue on show, only a newer one replaces it.
+    if (usePlayerStore.getState().currentTrack && (state.updatedAt ?? 0) <= shownSavedAt) return;
     const [meta, ...rest] = Array.isArray(state.queue) ? state.queue : [];
     const queue = (isTrack(meta) ? [meta, ...rest] : rest).filter(isTrack);
     const index = queue[state.index] ? state.index : 0;
@@ -140,7 +153,9 @@ const restoreFromAccount = async () => {
         })
       : null;
     // Something started playing while this was loading: that wins.
-    if (restored && !usePlayerStore.getState().currentTrack) usePlayerStore.getState().restore(restored);
+    if (!restored || playedSinceLaunch) return;
+    shownSavedAt = state.updatedAt ?? 0;
+    usePlayerStore.getState().restore(restored);
   } catch {
     // Offline or nothing saved.
   }
@@ -153,21 +168,19 @@ export const watchPlayerPersistence = (): void => {
   if (wired) return;
   wired = true;
 
-  restoreFromPhone().then((restored) => {
-    if (restored) return;
-    // A fresh install: the account may remember a queue from this phone's last install.
+  restoreFromPhone().then(() => {
+    // Signed in, the account may hold a newer queue: this phone's last install, or another device.
     const tryAccount = () => {
       if (useAuthStore.getState().status === 'signedIn') restoreFromAccount();
     };
     tryAccount();
-    const unsubscribe = useAuthStore.subscribe((state, prev) => {
-      if (state.status === prev.status || state.status === 'loading') return;
-      unsubscribe();
-      tryAccount();
+    useAuthStore.subscribe((state, prev) => {
+      if (state.status === 'signedIn' && prev.status !== 'signedIn') tryAccount();
     });
   });
 
   usePlayerStore.subscribe((state, prev) => {
+    if (state.isPlaying && !prev.isPlaying) playedSinceLaunch = true;
     const changed =
       state.playId !== prev.playId ||
       state.index !== prev.index ||
