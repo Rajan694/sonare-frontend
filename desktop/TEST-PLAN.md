@@ -17,31 +17,33 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/app/queue.test.tsx`
 
-| ID              | Use case                                                                                           |
-| :-------------- | :------------------------------------------------------------------------------------------------- |
-| `WEB-QUEUE-001` | playing a song from a list queues the list and starts that song                                    |
-| `WEB-QUEUE-002` | playing a single song jumps to it if queued, otherwise puts it first                               |
-| `WEB-QUEUE-003` | counts a play from the live playback position                                                      |
-| `WEB-QUEUE-004` | the web app always syncs in Online Mode                                                            |
-| `WEB-QUEUE-005` | next walks forward and stops at the end when repeat is off                                         |
-| `WEB-QUEUE-006` | repeat all wraps from the last song to the first                                                   |
-| `WEB-QUEUE-007` | repeat cycles off → all → one → off                                                                |
-| `WEB-QUEUE-008` | previous restarts the song after 3 seconds, and goes back before that                              |
-| `WEB-QUEUE-009` | skip-to-previous always changes song, however far in                                               |
-| `WEB-QUEUE-010` | a finished song advances to the next one                                                           |
-| `WEB-QUEUE-011` | with repeat one, a finished song plays again from the start                                        |
-| `WEB-QUEUE-012` | seeking by fraction clamps to the track and uses the live duration                                 |
-| `WEB-QUEUE-013` | shuffle plays every song exactly once, starting from the current one, without reordering the queue |
-| `WEB-QUEUE-014` | turning shuffle off continues in the real queue order from the current song                        |
-| `WEB-QUEUE-015` | play next puts a song right after the current one                                                  |
-| `WEB-QUEUE-016` | play next moves a song that is already queued instead of duplicating it                            |
-| `WEB-QUEUE-017` | add to queue appends new songs and skips ones already there                                        |
-| `WEB-QUEUE-018` | removing a song before the current one keeps the same song playing                                 |
-| `WEB-QUEUE-019` | removing the playing song hands over to the one after it                                           |
-| `WEB-QUEUE-020` | removing the playing last song falls back to the new last song                                     |
-| `WEB-QUEUE-021` | reordering keeps the playing song playing and ignores invalid moves                                |
-| `WEB-QUEUE-022` | clear upcoming keeps everything up to the current song                                             |
-| `WEB-QUEUE-023` | play next on an empty queue makes it the only song                                                 |
+| ID              | Use case                                                                          |
+| :-------------- | :-------------------------------------------------------------------------------- |
+| `WEB-QUEUE-001` | playing a song from a list queues the list and starts that song                   |
+| `WEB-QUEUE-002` | playing a single song jumps to it if queued, otherwise puts it first              |
+| `WEB-QUEUE-003` | counts a play from the live playback position                                     |
+| `WEB-QUEUE-004` | the web app always syncs in Online Mode                                           |
+| `WEB-QUEUE-005` | next walks forward and stops at the end when repeat is off                        |
+| `WEB-QUEUE-006` | repeat all wraps from the last song to the first                                  |
+| `WEB-QUEUE-007` | repeat cycles off → all → one → off                                               |
+| `WEB-QUEUE-008` | previous restarts the song after 3 seconds, and goes back before that             |
+| `WEB-QUEUE-009` | skip-to-previous always changes song, however far in                              |
+| `WEB-QUEUE-010` | a finished song advances to the next one                                          |
+| `WEB-QUEUE-011` | with repeat one, a finished song plays again from the start                       |
+| `WEB-QUEUE-012` | seeking by fraction clamps to the track and uses the live duration                |
+| `WEB-QUEUE-013` | shuffle reorders the queue: the current song first, then every other song once    |
+| `WEB-QUEUE-014` | turning shuffle off keeps the shuffled order and carries on from the current song |
+| `WEB-QUEUE-015` | play next puts a song right after the current one                                 |
+| `WEB-QUEUE-016` | play next moves a song that is already queued instead of duplicating it           |
+| `WEB-QUEUE-017` | add to queue appends new songs and skips ones already there                       |
+| `WEB-QUEUE-018` | removing a song before the current one keeps the same song playing                |
+| `WEB-QUEUE-019` | removing the playing song hands over to the one after it                          |
+| `WEB-QUEUE-020` | removing the playing last song falls back to the new last song                    |
+| `WEB-QUEUE-021` | reordering keeps the playing song playing and ignores invalid moves               |
+| `WEB-QUEUE-022` | clear upcoming keeps everything up to the current song                            |
+| `WEB-QUEUE-023` | play next on an empty queue makes it the only song                                |
+| `WEB-QUEUE-024` | an album or playlist Shuffle button turns shuffle on and starts the list shuffled |
+| `WEB-QUEUE-025` | the same song twice in a list plays twice, from the start each time               |
 
 ## `test/components/layout.test.tsx`
 
@@ -69,7 +71,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-020` | clicking an upcoming song plays it; its X removes it without playing               |
 | `WEB-LAYOUT-021` | dragging a row onto another moves it                                               |
 | `WEB-LAYOUT-022` | Clear drops upcoming songs; with none left it says so                              |
-| `WEB-LAYOUT-023` | saves the queue as a playlist and opens it                                         |
+| `WEB-LAYOUT-023` | saves the queue as the next "Queue N" playlist and opens it                        |
 | `WEB-LAYOUT-024` | a guest is asked to sign in first; an empty queue cannot be saved                  |
 | `WEB-LAYOUT-025` | the phone sheet has its own play button and a close button                         |
 | `WEB-LAYOUT-026` | Space plays or pauses from anywhere, but not while typing                          |

@@ -407,10 +407,10 @@ describe('queue panel', () => {
   it('WEB-LAYOUT-020 clicking an upcoming song plays it; its X removes it without playing', async () => {
     const { user, p } = panel();
     await user.click(screen.getByText('Last One'));
-    expect(p.setState).toHaveBeenCalledWith({ index: 3 });
+    expect(p.playAt).toHaveBeenCalledWith(3);
     await user.click(screen.getAllByRole('button', { name: 'Remove from queue' })[0]);
     expect(p.removeFromQueue).toHaveBeenCalledWith(2);
-    expect(p.setState).toHaveBeenCalledTimes(1);
+    expect(p.playAt).toHaveBeenCalledTimes(1);
   });
 
   it('WEB-LAYOUT-021 dragging a row onto another moves it', () => {
@@ -431,11 +431,21 @@ describe('queue panel', () => {
     expect(screen.getByText('No upcoming songs in queue')).toBeInTheDocument();
   });
 
-  it('WEB-LAYOUT-023 saves the queue as a playlist and opens it', async () => {
+  it('WEB-LAYOUT-023 saves the queue as the next "Queue N" playlist and opens it', async () => {
     setSession('a', 'r', testUser);
     let added: unknown;
+    let created: unknown;
     server.use(
-      http.post(`${API}/me/playlists`, () => HttpResponse.json(makePlaylist({ id: 'sonare:sun', name: 'Sunday' }))),
+      http.get(`${API}/me/playlists`, () =>
+        HttpResponse.json({
+          items: [makePlaylist({ name: 'Queue 2' }), makePlaylist({ name: 'Road trip' })],
+          meta: { total: 2 },
+        }),
+      ),
+      http.post(`${API}/me/playlists`, async ({ request }) => {
+        created = await request.json();
+        return HttpResponse.json(makePlaylist({ id: 'sonare:sun', name: 'Queue 3' }));
+      }),
       http.post(`${API}/me/playlists/:id/tracks`, async ({ request }) => {
         added = await request.json();
         return HttpResponse.json({ ok: true });
@@ -443,10 +453,9 @@ describe('queue panel', () => {
     );
     const { user, onClose, location } = panel();
     await user.click(screen.getByRole('button', { name: 'Save as playlist' }));
-    // Suggests a name, which the user replaces.
-    expect(await screen.findByDisplayValue('My queue')).toBeInTheDocument();
-    await answerPrompt(user, 'Sunday');
+    // No name to type: it's one past the highest "Queue N" there is.
     await waitFor(() => expect(location()).toBe('/playlist/sonare:sun'));
+    expect(created).toMatchObject({ name: 'Queue 3' });
     expect(added).toMatchObject({ trackIds: queue.map((t) => t.id) });
     expect(onClose).toHaveBeenCalled();
     expect(screen.getByText('Playlist saved')).toBeInTheDocument();

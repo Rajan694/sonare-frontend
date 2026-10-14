@@ -6,7 +6,8 @@ import { hasInternet } from './lib/connectivity';
 import { ModeContext } from './store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from './store/playerContext';
 import { setPlaybackPosition } from './store/playbackPosition';
-import type { PlayerState } from './types';
+import type { PlayerState, PlayingFrom } from './types';
+import * as queueOps from '../../shared/player/queue';
 import { initDevAuth } from './api/auth';
 import * as player from './audio/player';
 import { maybeRecordPlay, resetPlay } from './api/plays';
@@ -118,8 +119,6 @@ const App = () => {
   // Everything about playback except the position, which lives in store/playbackPosition so
   // a position tick doesn't re-render the app (see there).
   const [playback, setPlayback] = useState<Playback>(() => withoutPosition(player.getStatus()));
-  /** Queue indices in shuffled order; rebuilt whenever shuffle is switched on. */
-  const shuffleOrder = useRef<number[]>([]);
   /** When the current listen began — used to key a play so a replay counts again. */
   const playStartedAt = useRef<number>(Date.now());
 
@@ -148,14 +147,14 @@ const App = () => {
     });
   }, []);
 
-  // Load and play whenever the selected track changes.
+  // Load and play whenever another queue entry becomes the current one.
   useEffect(() => {
     if (!currentTrack) return;
     const startedAt = Date.now();
     playStartedAt.current = startedAt;
     resetPlay(currentTrack.id, startedAt);
-    void player.playTrackId(currentTrack.id);
-  }, [currentTrack?.id]);
+    void player.playTrackId(currentTrack.id, true);
+  }, [currentTrack?.id, playerState.playId]);
 
   // Advance the queue when a track finishes.
   useEffect(() => {
@@ -175,17 +174,6 @@ const App = () => {
     setPlayerState((prev) => ({ ...prev, ...patch }));
   };
 
-  // Shuffle keeps the queue order intact and walks a separate randomised order, so
-  // turning it off returns you to the real running order rather than a scrambled queue.
-  const buildShuffleOrder = (length: number, startIndex: number): number[] => {
-    const rest = Array.from({ length }, (_, i) => i).filter((i) => i !== startIndex);
-    for (let i = rest.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [rest[i], rest[j]] = [rest[j], rest[i]];
-    }
-    return [startIndex, ...rest];
-  };
-
   /** Offline, only tracks on this device (local files or downloads) can play. */
   const playable = (t: Track) => {
     return modeRef.current === 'online' || !!localLibrary.localIdFor(t.id);
@@ -202,25 +190,11 @@ const App = () => {
     return next !== prev && playable(next.queue[next.index]) ? next : prev;
   };
 
+  // Shuffle reorders the queue itself (shared/player/queue.ts), so the queue's order is the
+  // play order: Up next and the queue panel show what really comes next.
   const stepOnce = (prev: PlayerState, delta: 1 | -1): PlayerState => {
-    if (prev.queue.length === 0) return prev;
-    if (prev.shuffle && shuffleOrder.current.length === prev.queue.length) {
-      const pos = shuffleOrder.current.indexOf(prev.index);
-      const nextPos = pos + delta;
-      if (nextPos < 0) return prev;
-      if (nextPos >= shuffleOrder.current.length) {
-        if (prev.repeat !== 'all') return prev;
-        return { ...prev, index: shuffleOrder.current[0] };
-      }
-      return { ...prev, index: shuffleOrder.current[nextPos] };
-    }
-    const nextIndex = prev.index + delta;
-    if (nextIndex < 0) return prev;
-    if (nextIndex >= prev.queue.length) {
-      if (prev.repeat !== 'all') return prev;
-      return { ...prev, index: 0 };
-    }
-    return { ...prev, index: nextIndex };
+    const at = queueOps.stepIndex(prev, delta);
+    return at < 0 ? prev : { ...prev, index: at, playId: prev.playId + 1 };
   };
 
   const next = () => {
@@ -228,11 +202,7 @@ const App = () => {
   };
 
   const toggleShuffle = () => {
-    setPlayerState((prev) => {
-      const shuffle = !prev.shuffle;
-      shuffleOrder.current = shuffle ? buildShuffleOrder(prev.queue.length, prev.index) : [];
-      return { ...prev, shuffle };
-    });
+    setPlayerState((prev) => queueOps.toggleShuffle(prev));
   };
 
   const cycleRepeat = () => {
@@ -261,31 +231,20 @@ const App = () => {
     skipToPrevious();
   };
 
-  /** Queue edits move the playing index along with the current track, and reshuffle. */
-  const editQueue = (edit: (queue: Track[], index: number) => { queue: Track[]; index: number }) => {
-    setPlayerState((prev) => {
-      const { queue, index } = edit(prev.queue, prev.index);
-      if (prev.shuffle) shuffleOrder.current = buildShuffleOrder(queue.length, index);
-      return { ...prev, queue, index };
-    });
-  };
-
+  // A song already queued is added again rather than moved: moving it could take the playing
+  // entry away or skip what was lined up.
   const playNext = (track: Track) => {
-    editQueue((queue, index) => {
-      if (queue.length === 0) return { queue: [track], index: 0 };
-      const current = queue[index];
-      if (current.id === track.id) return { queue, index };
-      const rest = queue.filter((t) => t.id !== track.id);
-      const at = rest.indexOf(current);
-      return { queue: [...rest.slice(0, at + 1), track, ...rest.slice(at + 1)], index: at };
+    setPlayerState((prev) => {
+      const next = queueOps.insertNext(prev, [track]);
+      return prev.queue.length ? next : { ...next, playId: prev.playId + 1 };
     });
     showToast({ title: 'Playing next', description: track.title, icon: 'list' });
   };
 
   const enqueue = (tracks: Track[]) => {
-    editQueue((queue, index) => {
-      const known = new Set(queue.map((t) => t.id));
-      return { queue: [...queue, ...tracks.filter((t) => !known.has(t.id))], index };
+    setPlayerState((prev) => {
+      const next = queueOps.append(prev, tracks);
+      return prev.queue.length ? next : { ...next, playId: prev.playId + 1 };
     });
     showToast({
       title: 'Added to queue',
@@ -295,50 +254,47 @@ const App = () => {
   };
 
   const removeFromQueue = (i: number) => {
-    editQueue((queue, index) => {
-      const next = queue.filter((_, j) => j !== i);
-      // Removing the playing track hands over to whatever now sits at its position.
-      const newIndex = i < index ? index - 1 : Math.min(index, Math.max(0, next.length - 1));
-      return { queue: next, index: newIndex };
+    setPlayerState((prev) => {
+      const next = queueOps.removeAt(prev, i);
+      // The playing entry was removed: whatever took its place starts.
+      return i === prev.index ? { ...next, playId: prev.playId + 1 } : next;
     });
   };
 
   const moveInQueue = (from: number, to: number) => {
-    editQueue((queue, index) => {
-      if (from === to || from < 0 || to < 0 || from >= queue.length || to >= queue.length) return { queue, index };
-      const current = queue[index];
-      const next = [...queue];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return { queue: next, index: next.indexOf(current) };
-    });
+    setPlayerState((prev) => queueOps.move(prev, from, to));
   };
 
   const clearUpcoming = () => {
-    editQueue((queue, index) => ({ queue: queue.slice(0, index + 1), index }));
+    setPlayerState((prev) => queueOps.clearUpcoming(prev));
   };
 
-  const playTrack = (track: Track, newQueue?: Track[]) => {
-    if (newQueue) {
-      const idx = Math.max(
-        0,
-        newQueue.findIndex((t) => t.id === track.id),
-      );
-      setPlayerState((prev) => {
-        if (prev.shuffle) shuffleOrder.current = buildShuffleOrder(newQueue.length, idx);
-        return { ...prev, queue: newQueue, index: idx };
-      });
-    } else {
-      setPlayerState((prev) => {
-        const existingIdx = prev.queue.findIndex((t) => t.id === track.id);
-        if (existingIdx >= 0) {
-          return { ...prev, index: existingIdx };
-        }
-        const queue = [track, ...prev.queue];
-        if (prev.shuffle) shuffleOrder.current = buildShuffleOrder(queue.length, 0);
-        return { ...prev, queue, index: 0 };
-      });
-    }
+  const playAt = (index: number) => {
+    setPlayerState((prev) =>
+      index >= 0 && index < prev.queue.length ? { ...prev, index, playId: prev.playId + 1 } : prev,
+    );
+  };
+
+  const playTrack = (track: Track, newQueue?: Track[], from?: PlayingFrom) => {
+    setPlayerState((prev) => {
+      if (newQueue) {
+        return { ...queueOps.startQueue(prev, newQueue, track), playId: prev.playId + 1, playingFrom: from ?? null };
+      }
+      const at = queueOps.positionOf(prev.queue, track, prev.index);
+      if (at >= 0) return { ...prev, index: at, playId: prev.playId + 1 };
+      return { ...queueOps.startQueue(prev, [track, ...prev.queue], track), playId: prev.playId + 1 };
+    });
+  };
+
+  /** Shuffle on, and the list in random order from a random song. */
+  const playShuffled = (tracks: Track[], from?: PlayingFrom) => {
+    if (!tracks.length) return;
+    const first = tracks[Math.floor(Math.random() * tracks.length)];
+    setPlayerState((prev) => ({
+      ...queueOps.startQueue({ ...prev, shuffle: true }, tracks, first),
+      playId: prev.playId + 1,
+      playingFrom: from ?? null,
+    }));
   };
 
   // The handlers above are recreated on every render; consumers get stable wrappers that
@@ -346,6 +302,8 @@ const App = () => {
   const actions = {
     patchPlayerState,
     playTrack,
+    playShuffled,
+    playAt,
     seekRatio,
     next,
     previous,
@@ -363,7 +321,10 @@ const App = () => {
   const stableActions = useMemo(
     () => ({
       setState: (patch: Partial<PlayerState>) => actionsRef.current.patchPlayerState(patch),
-      playTrack: (track: Track, newQueue?: Track[]) => actionsRef.current.playTrack(track, newQueue),
+      playTrack: (track: Track, newQueue?: Track[], from?: PlayingFrom) =>
+        actionsRef.current.playTrack(track, newQueue, from),
+      playShuffled: (tracks: Track[], from?: PlayingFrom) => actionsRef.current.playShuffled(tracks, from),
+      playAt: (index: number) => actionsRef.current.playAt(index),
       seekRatio: (ratio: number) => actionsRef.current.seekRatio(ratio),
       next: () => actionsRef.current.next(),
       previous: () => actionsRef.current.previous(),

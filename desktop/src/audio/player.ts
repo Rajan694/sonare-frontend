@@ -369,9 +369,12 @@ export const load = async (trackId: string, force = false): Promise<void> => {
   }
 };
 
-export const playTrackId = async (trackId: string): Promise<void> => {
-  if (currentTrackId !== trackId) retriedForTrack = null;
+/** Loads and plays `trackId`; `fromStart` restarts it when it is the track already loaded. */
+export const playTrackId = async (trackId: string, fromStart = false): Promise<void> => {
+  const same = currentTrackId === trackId;
+  if (!same) retriedForTrack = null;
   await load(trackId);
+  if (same && fromStart) seek(0);
   await play();
 };
 

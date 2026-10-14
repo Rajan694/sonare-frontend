@@ -70,7 +70,7 @@ describe('now playing', () => {
   it('WEB-NP-002 shows the song, its album, artist link, stream quality and time left', () => {
     open();
     expect(screen.getByRole('heading', { name: 'Nude' })).toBeInTheDocument();
-    expect(screen.getByText('PLAYING FROM ALBUM')).toBeInTheDocument();
+    expect(screen.getByText('Playing from Album')).toBeInTheDocument();
     expect(screen.getByText('In Rainbows')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Radiohead' })).toHaveAttribute('href', '/artist/yt:rh');
     expect(screen.getByText('STREAMING')).toBeInTheDocument();

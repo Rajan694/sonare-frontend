@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'react';
-import type { PlayerState, Track } from '../types';
+import type { PlayerState, PlayingFrom, Track } from '../types';
 
 export const defaultPlayerState: PlayerState = {
   mode: 'online',
@@ -7,6 +7,8 @@ export const defaultPlayerState: PlayerState = {
   index: 0,
   shuffle: false,
   repeat: 'off',
+  playId: 0,
+  playingFrom: null,
 };
 
 /** Changes only with the track, queue, play state or settings - never on a position tick
@@ -15,7 +17,12 @@ export interface PlayerStore {
   state: PlayerState;
   setState: (s: Partial<PlayerState>) => void;
   currentTrack: Track | null;
-  playTrack: (track: Track, newQueue?: Track[]) => void;
+  /** Play `track`, with `newQueue` (it should contain the track) as the queue; `from` names where it came from. */
+  playTrack: (track: Track, newQueue?: Track[], from?: PlayingFrom) => void;
+  /** Shuffle on, and play `tracks` in random order (an album's or playlist's Shuffle button). */
+  playShuffled: (tracks: Track[], from?: PlayingFrom) => void;
+  /** Make the queue entry at `index` the current one. */
+  playAt: (index: number) => void;
   /** Live audio state, driven by the HTMLAudioElement in audio/player.ts. */
   isPlaying: boolean;
   isLoading: boolean;
@@ -51,6 +58,8 @@ export const PlayerContext = createContext<PlayerStore>({
   setState: () => void 0,
   currentTrack: null,
   playTrack: () => void 0,
+  playShuffled: () => void 0,
+  playAt: () => void 0,
   isPlaying: false,
   isLoading: false,
   durationMs: 0,

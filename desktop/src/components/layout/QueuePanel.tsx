@@ -6,7 +6,7 @@ import { usePlaybackPosition } from '../../store/playbackPosition';
 import { showToast } from '../../store/toasts';
 import { api } from '../../api/api';
 import { requireAccount } from '../../api/accountGate';
-import { promptDialog } from '../../store/dialogs';
+import { nextQueuePlaylistName } from '../../../../shared/player/playlistNames';
 import { notifyPlaylistsChanged } from '../../api/hooks';
 import { localLibrary, playsFrom, useLocalLibrary } from '../../storage/local';
 import { IconButton } from '../ui/Button';
@@ -26,7 +26,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
   const { mode } = useModeStore();
   const {
     state,
-    setState,
+    playAt,
     currentTrack,
     durationMs,
     isPlaying,
@@ -62,15 +62,10 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
   };
 
   const saveQueue = async () => {
-    const name = await promptDialog({
-      title: 'Save queue as playlist',
-      label: 'Name',
-      initialValue: 'My queue',
-      confirmLabel: 'Save',
-    });
-    if (!name) return;
     setSaving(true);
     try {
+      const existing = await api.getMyPlaylists();
+      const name = nextQueuePlaylistName(existing.items.map((p) => p.name));
       const playlist = await api.createPlaylist({ name, kind: 'synced' });
       await api.addTracksToPlaylist(
         playlist.id,
@@ -232,7 +227,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
                   dragFrom === index && 'opacity-40',
                   dropAt === index && dragFrom !== index && 'border-t-2 border-acc',
                 )}
-                onClick={() => setState({ index })}
+                onClick={() => playAt(index)}
               >
                 <span className="flex-none text-t4 cursor-grab hover:text-t2 p-1" aria-hidden>
                   <Icon name="menu" size={14} />

@@ -97,7 +97,7 @@ describe('starting playback', () => {
     run(() => store().playTrack(b, [a, b, c]));
     expect(ids()).toEqual(['yt:a', 'yt:b', 'yt:c']);
     expect(current()).toBe('yt:b');
-    expect(player.playTrackId).toHaveBeenCalledWith('yt:b');
+    expect(player.playTrackId).toHaveBeenCalledWith('yt:b', true);
     expect(plays.resetPlay).toHaveBeenCalledWith('yt:b', expect.any(Number));
   });
 
@@ -185,7 +185,7 @@ describe('next, previous and the end of a track', () => {
   it('WEB-QUEUE-010 a finished song advances to the next one', () => {
     trackEnds();
     expect(current()).toBe('yt:b');
-    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:b');
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:b', true);
   });
 
   it('WEB-QUEUE-011 with repeat one, a finished song plays again from the start', () => {
@@ -209,27 +209,49 @@ describe('next, previous and the end of a track', () => {
 describe('shuffle', () => {
   const tracks = Array.from({ length: 8 }, (_, i) => makeTrack({ id: `yt:s${i}` }));
 
-  it('WEB-QUEUE-013 shuffle plays every song exactly once, starting from the current one, without reordering the queue', () => {
+  it('WEB-QUEUE-013 shuffle reorders the queue: the current song first, then every other song once', () => {
     run(() => store().playTrack(tracks[3], tracks));
     run(() => store().toggleShuffle());
+    expect(current()).toBe('yt:s3');
+    expect(store().state.index).toBe(0);
+    expect([...ids()].sort()).toEqual(tracks.map((t) => t.id).sort());
+    // The queue order is the play order, so Up next shows what really comes next.
+    const order = ids();
     const heard = [current()];
-    for (let i = 0; i < tracks.length + 2; i++) {
+    for (let i = 1; i < tracks.length; i++) {
       run(() => store().next());
-      if (current() !== heard[heard.length - 1]) heard.push(current());
+      heard.push(current());
     }
-    expect(heard[0]).toBe('yt:s3');
-    expect([...heard].sort()).toEqual(tracks.map((t) => t.id).sort());
-    expect(ids()).toEqual(tracks.map((t) => t.id));
+    expect(heard).toEqual(order);
   });
 
-  it('WEB-QUEUE-014 turning shuffle off continues in the real queue order from the current song', () => {
+  it('WEB-QUEUE-014 turning shuffle off keeps the shuffled order and carries on from the current song', () => {
     run(() => store().playTrack(tracks[0], tracks));
     run(() => store().toggleShuffle());
     run(() => store().next());
-    const at = store().state.index;
+    const order = ids();
     run(() => store().toggleShuffle());
+    expect(ids()).toEqual(order);
     run(() => store().next());
-    expect(store().state.index).toBe(Math.min(at + 1, tracks.length - 1));
+    expect(current()).toBe(order[2]);
+  });
+
+  it('WEB-QUEUE-024 an album or playlist Shuffle button turns shuffle on and starts the list shuffled', () => {
+    run(() => store().playShuffled(tracks, { kind: 'Album', name: 'Some album' }));
+    expect(store().state.shuffle).toBe(true);
+    expect(store().state.index).toBe(0);
+    expect([...ids()].sort()).toEqual(tracks.map((t) => t.id).sort());
+    expect(store().state.playingFrom).toEqual({ kind: 'Album', name: 'Some album' });
+  });
+
+  it('WEB-QUEUE-025 the same song twice in a list plays twice, from the start each time', () => {
+    const again = { ...a };
+    run(() => store().playTrack(a, [a, b, again]));
+    run(() => store().next());
+    run(() => store().next());
+    expect(store().state.index).toBe(2);
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:a', true);
+    expect(vi.mocked(player.playTrackId).mock.calls.filter(([id]) => id === 'yt:a')).toHaveLength(2);
   });
 });
 

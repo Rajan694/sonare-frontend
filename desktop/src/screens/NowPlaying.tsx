@@ -75,13 +75,12 @@ const NowPlaying = () => {
   const currentIndex = state.index >= 0 ? state.index : 0;
   const upcomingQueue = state.queue.slice(currentIndex + 1, currentIndex + 5);
 
-  // Eyebrow source
-  const sourceEyebrow = currentTrack.album ? (
+  // Where the queue came from (an album, a playlist, a search …); else the song's album.
+  const from = state.playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
+  const sourceEyebrow = from ? (
     <span className="flex flex-col items-center justify-center gap-0.5 min-w-0">
-      <span className="text-overline text-t3 uppercase tracking-wider">PLAYING FROM ALBUM</span>
-      <span className="text-label-m text-t1 truncate max-w-[200px] @sm:max-w-[320px] font-medium">
-        {currentTrack.album}
-      </span>
+      <span className="text-overline text-t3 uppercase tracking-wider">Playing from {from.kind}</span>
+      <span className="text-label-m text-t1 truncate max-w-[200px] @sm:max-w-[320px] font-medium">{from.name}</span>
     </span>
   ) : null;
 
