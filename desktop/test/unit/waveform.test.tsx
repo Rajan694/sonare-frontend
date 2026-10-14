@@ -11,6 +11,8 @@ import { useWaveform, _resetWaveforms, _sampleWaveform } from '../../src/audio/w
 const h = vi.hoisted(() => ({
   status: { trackId: null, playing: false, positionMs: 0, durationMs: 0 } as Partial<PlaybackStatus>,
   level: 0.5,
+  /** When set, fills the meter's buffer instead of a constant level. */
+  fill: null as ((buf: Float32Array) => void) | null,
 }));
 
 vi.mock('../../src/audio/player', () => ({
@@ -21,7 +23,7 @@ vi.mock('../../src/audio/dsp', () => ({
   levelMeter: () => ({
     fftSize: 480,
     context: { sampleRate: 48_000 },
-    getFloatTimeDomainData: (buf: Float32Array) => buf.fill(-h.level),
+    getFloatTimeDomainData: (buf: Float32Array) => (h.fill ? h.fill(buf) : buf.fill(-h.level)),
   }),
 }));
 
@@ -55,6 +57,7 @@ const hear = (positionMs: number, level = 0.5) => {
 };
 
 beforeEach(() => {
+  h.fill = null;
   _resetWaveforms();
   localStorage.clear();
   vi.useRealTimers();
@@ -131,5 +134,21 @@ describe('waveforms heard on this device', () => {
     expect(result.current).toEqual({ peaks: [1, 2, 3] });
     await new Promise((r) => setTimeout(r, 30));
     expect(asked).toBe(false);
+  });
+
+  it('WEB-WAVE-006 a bar is as tall as the music is loud, not as its loudest sample', async () => {
+    peaksEndpoint(true);
+    const { result } = renderHook(() => useWaveform(song));
+    await waitFor(() => expect(result.current.real).toBeDefined());
+    // A loud bar: every sample at 0.5. A quiet one: silence but for one full-scale click.
+    hear(10_050, 0.5);
+    h.fill = (buf) => {
+      buf.fill(0);
+      buf[0] = 1;
+    };
+    hear(20_050);
+    await waitFor(() => expect(result.current.real?.[20]).toBe(true));
+    expect(result.current.peaks?.[10]).toBe(1);
+    expect(result.current.peaks?.[20]).toBeLessThan(1);
   });
 });

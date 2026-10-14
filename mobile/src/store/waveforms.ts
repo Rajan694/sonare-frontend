@@ -18,8 +18,8 @@ import {
 /**
  * Waveforms of YouTube songs. The backend has a real one once any listener uploaded it;
  * until then it sends a placeholder, and the phone replaces its bars with the real level as
- * the song plays (the native player measures the audio it decodes and sends the level with
- * every progress event, so there is no extra download). Seeks leave gaps that later plays
+ * the song plays (the native player measures the loudness of the audio it decodes and sends
+ * it with every progress event, so there is no extra download). Seeks leave gaps that later plays
  * fill; the partial waveform is kept on the phone. Once every bar is heard it is uploaded,
  * for everyone.
  *
@@ -27,7 +27,9 @@ import {
  * so nothing here waits on a timer.
  */
 
-const STORAGE_KEY = 'sonare.heardPeaks';
+// Levels are loudness (RMS) since 2026-10-14; partial waveforms saved before held sample peaks.
+const STORAGE_KEY = 'sonare.heardLevels';
+const OLD_STORAGE_KEY = 'sonare.heardPeaks';
 /** Songs whose partial waveform is kept (about 1.5 KB each). */
 const MAX_KEPT = 100;
 const SAVE_EVERY_MS = 5_000;
@@ -52,6 +54,7 @@ let lastSave = 0;
 const uploads = new Map<string, 'uploading' | 'done' | number>();
 
 const load = () => {
+  if (!loaded) AsyncStorage.removeItem(OLD_STORAGE_KEY).catch(() => {});
   loaded ??= AsyncStorage.getItem(STORAGE_KEY)
     .then((raw) => {
       const saved = raw ? (JSON.parse(raw) as Record<string, Heard>) : {};

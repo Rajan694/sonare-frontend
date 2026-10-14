@@ -28,7 +28,8 @@ import com.mobile.player.dsp.LevelMeter
  * JS face of [SonarePlaybackService]. Talks to the service through a MediaController, which
  * also starts it, so playback outlives the activity. Emits:
  *  - `SonarePlayer.state`    { playWhenReady, isPlaying, buffering, ended, mediaId }
- *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs, level } every 500ms while playing
+ *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs, level } every 500ms while playing;
+ *                            level is the loudness (RMS, 0..1) of the audio decoded since the last one
  *  - `SonarePlayer.error`    { message, code, mediaId, positionMs }
  *  - `SonarePlayer.remote`   { command: "next" | "previous" } from notification / lock screen
  *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
@@ -157,7 +158,7 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         putDouble("positionMs", player.currentPosition.toDouble())
         putDouble("durationMs", duration.toDouble())
         putDouble("bufferedMs", player.bufferedPosition.toDouble())
-        // The loudest sample decoded since the last event, for the waveform.
+        // How loud the audio decoded since the last event was, for the waveform.
         putDouble("level", LevelMeter.take().toDouble())
       },
     )

@@ -530,6 +530,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-WAVE-003` | a guest keeps the full waveform; it is uploaded the next time the song shows, signed in |
 | `WEB-WAVE-004` | a real waveform from the backend is drawn as it is, and nothing is sampled              |
 | `WEB-WAVE-005` | device files keep their own waveform and never ask the backend                          |
+| `WEB-WAVE-006` | a bar is as tall as the music is loud, not as its loudest sample                        |
 
 ## `test/unit/favourites.test.tsx`
 

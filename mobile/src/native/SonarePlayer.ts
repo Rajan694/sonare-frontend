@@ -33,7 +33,7 @@ export interface ProgressEvent {
   positionMs: number;
   durationMs: number;
   bufferedMs: number;
-  /** The loudest sample (0..1) decoded since the last event; the waveform is drawn from it. */
+  /** How loud (RMS, 0..1) the audio decoded since the last event was; the waveform is drawn from it. */
   level?: number;
 }
 
