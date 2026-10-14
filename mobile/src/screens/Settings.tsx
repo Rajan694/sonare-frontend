@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, ScrollView, Alert, Pressable } from 'react-native';
+import { View, ScrollView, Alert, Pressable, Dimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -21,6 +21,9 @@ import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
 import { useAppUpdateStore } from '../store/appUpdate';
 import { appVersion } from '../native/SonareBuild';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
+import { Sheet } from '../components/ui/Sheet';
+import { parseReleaseNotes } from '../../../shared/releaseNotes';
+import type { AppRelease } from '../data/types';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
 
@@ -406,6 +409,7 @@ const formatSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 /** The app's version, and the update check against the builds uploaded on the admin page. */
 const AboutSection = ({ online }: { online: boolean }) => {
   const { status, release, progress, error, check, download, install } = useAppUpdateStore();
+  const [notesOpen, setNotesOpen] = React.useState(false);
 
   // Look each time Settings opens (a download in progress carries on).
   React.useEffect(() => {
@@ -441,7 +445,7 @@ const AboutSection = ({ online }: { online: boolean }) => {
   } else if (status === 'available' && release) {
     icon = 'download';
     label = `Sonare ${release.version} is available`;
-    desc = [formatSize(release.sizeBytes), release.notes].filter(Boolean).join(' · ');
+    desc = `${formatSize(release.sizeBytes)} · Tap to see what's new`;
     action = (
       <Button size="sm" onPress={() => download()}>
         Download
@@ -454,7 +458,7 @@ const AboutSection = ({ online }: { online: boolean }) => {
   } else if (status === 'downloaded' && release) {
     icon = 'check';
     label = `Sonare ${release.version} is downloaded`;
-    desc = 'Install it to update; your music and settings stay';
+    desc = "Install it to update; your music and settings stay. Tap to see what's new";
     action = (
       <Button size="sm" onPress={onInstall}>
         Install
@@ -471,8 +475,28 @@ const AboutSection = ({ online }: { online: boolean }) => {
     );
   }
 
+  const hasNotes = online && !!release && (status === 'available' || status === 'downloaded');
+  const notesAction =
+    status === 'available'
+      ? { label: 'Download', run: () => download() }
+      : status === 'downloaded'
+        ? { label: 'Install', run: onInstall }
+        : null;
+
   return (
     <View className="gap-2">
+      {release && (
+        <ReleaseNotesSheet
+          visible={notesOpen && hasNotes}
+          release={release}
+          action={notesAction?.label}
+          onAction={() => {
+            setNotesOpen(false);
+            notesAction?.run();
+          }}
+          onClose={() => setNotesOpen(false)}
+        />
+      )}
       <Text className="text-ov font-semibold text-t3 uppercase pl-1">About</Text>
       <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
         <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
@@ -486,19 +510,33 @@ const AboutSection = ({ online }: { online: boolean }) => {
         </View>
         <View className="px-4 py-3.5 gap-2.5" accessibilityLabel="Updates">
           <View className="flex-row items-center gap-3.5">
-            <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-              <Icon name={icon} size={18} color="#9A9AA8" />
-            </View>
-            <View className="flex-1 gap-0.5 min-w-0">
-              <Text className="text-tm font-medium text-t1">{label}</Text>
-              {desc ? (
-                <Text className="text-bs text-t3" numberOfLines={2}>
-                  {desc}
-                </Text>
-              ) : null}
-            </View>
+            {/* A newer build: the row opens its changes. */}
+            <Pressable
+              className="flex-1 flex-row items-center gap-3.5 min-w-0"
+              disabled={!hasNotes}
+              onPress={() => setNotesOpen(true)}
+              accessibilityRole={hasNotes ? 'button' : undefined}
+              accessibilityLabel={hasNotes ? "What's new" : undefined}
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name={icon} size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">{label}</Text>
+                {desc ? (
+                  <Text className="text-bs text-t3" numberOfLines={2}>
+                    {desc}
+                  </Text>
+                ) : null}
+              </View>
+            </Pressable>
             {action}
           </View>
+          {hasNotes && (
+            <Button variant="outline" size="sm" className="self-start" onPress={() => setNotesOpen(true)}>
+              What's new
+            </Button>
+          )}
           {status === 'downloading' && (
             <View
               className="h-1.5 rounded-full bg-s3 overflow-hidden"
@@ -511,5 +549,78 @@ const AboutSection = ({ online }: { online: boolean }) => {
         </View>
       </View>
     </View>
+  );
+};
+
+/** What changed in a newer build (the release's notes), with its download or install. */
+const ReleaseNotesSheet = ({
+  visible,
+  release,
+  action,
+  onAction,
+  onClose,
+}: {
+  visible: boolean;
+  release: AppRelease;
+  action?: string;
+  onAction: () => void;
+  onClose: () => void;
+}) => {
+  const notes = parseReleaseNotes(release.notes);
+  const date = new Date(release.uploadedAt);
+  const meta = [
+    Number.isNaN(date.getTime())
+      ? null
+      : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
+    formatSize(release.sizeBytes),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Sheet visible={visible} onClose={onClose}>
+      <View className="px-6 pb-6 gap-4">
+        <View className="gap-1">
+          <Text className="text-h2 font-semibold text-t1">What's new in Sonare {release.version}</Text>
+          <Text className="text-bs text-t3">{meta}</Text>
+        </View>
+        <ScrollView
+          style={{ maxHeight: Dimensions.get('window').height * 0.45 }}
+          contentContainerStyle={{ gap: 10 }}
+          accessibilityLabel="Changes"
+        >
+          {notes.length === 0 ? (
+            <Text className="text-bm text-t3">This release has no notes.</Text>
+          ) : (
+            notes.map((block, i) =>
+              block.kind === 'heading' ? (
+                <Text key={i} className="text-tm font-semibold text-t1 pt-1">
+                  {block.text}
+                </Text>
+              ) : block.kind === 'item' ? (
+                <View key={i} className="flex-row gap-2.5">
+                  <View className="w-1.5 h-1.5 rounded-full bg-acc mt-[9px]" />
+                  <Text className="flex-1 text-bm text-t2">{block.text}</Text>
+                </View>
+              ) : (
+                <Text key={i} className="text-bm text-t2">
+                  {block.text}
+                </Text>
+              ),
+            )
+          )}
+        </ScrollView>
+        <View className="flex-row gap-2.5">
+          <Button variant="outline" className="flex-1" onPress={onClose}>
+            Later
+          </Button>
+          {action ? (
+            <Button variant="accent" className="flex-1" onPress={onAction}>
+              {action}
+            </Button>
+          ) : null}
+        </View>
+      </View>
+    </Sheet>
   );
 };

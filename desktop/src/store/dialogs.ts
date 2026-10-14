@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import type { Track } from '../types';
+import type { AppRelease } from '../../../shared/apiTypes';
 
 /**
  * Themed replacements for window.prompt / window.confirm. The native ones block the page
@@ -28,7 +29,8 @@ export interface ConfirmOptions {
 export type OpenDialog =
   | { id: number; kind: 'prompt'; options: PromptOptions; resolve: (value: string | null) => void }
   | { id: number; kind: 'confirm'; options: ConfirmOptions; resolve: (ok: boolean) => void }
-  | { id: number; kind: 'addToPlaylist'; tracks: Track[]; resolve: () => void };
+  | { id: number; kind: 'addToPlaylist'; tracks: Track[]; resolve: () => void }
+  | { id: number; kind: 'releaseNotes'; release: AppRelease; action: string; resolve: (act: boolean) => void };
 
 let current: OpenDialog | null = null;
 let nextId = 1;
@@ -43,7 +45,7 @@ const set = (next: OpenDialog | null) => {
 const cancelCurrent = () => {
   if (!current) return;
   if (current.kind === 'prompt') current.resolve(null);
-  else if (current.kind === 'confirm') current.resolve(false);
+  else if (current.kind === 'confirm' || current.kind === 'releaseNotes') current.resolve(false);
   else current.resolve();
 };
 
@@ -95,6 +97,23 @@ export const addToPlaylistDialog = (tracks: Track[]): Promise<void> => {
       resolve: () => {
         set(null);
         resolve();
+      },
+    });
+  });
+};
+
+/** What changed in a newer build; resolves true when `action` (e.g. "Download") was pressed. */
+export const releaseNotesDialog = (release: AppRelease, action: string): Promise<boolean> => {
+  cancelCurrent();
+  return new Promise((resolve) => {
+    set({
+      id: nextId++,
+      kind: 'releaseNotes',
+      release,
+      action,
+      resolve: (act) => {
+        set(null);
+        resolve(act);
       },
     });
   });

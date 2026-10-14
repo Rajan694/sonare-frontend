@@ -379,11 +379,11 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/appUpdate.test.tsx`
 
-| ID            | Use case                                                                        |
-| :------------ | :------------------------------------------------------------------------------ |
-| `MOB-UPD-001` | only a newer APK is an update; other platforms and older builds are not         |
-| `MOB-UPD-002` | the download is followed to the end, checked against the upload, then installed |
-| `MOB-UPD-003` | a download that does not match the uploaded file is removed                     |
-| `MOB-UPD-004` | a finished download from before a restart is offered for install straight away  |
-| `MOB-UPD-005` | Settings → About shows the version, the update and, once allowed, installs it   |
-| `MOB-UPD-006` | Offline mode does not check                                                     |
+| ID            | Use case                                                                                  |
+| :------------ | :---------------------------------------------------------------------------------------- |
+| `MOB-UPD-001` | only a newer APK is an update; other platforms and older builds are not                   |
+| `MOB-UPD-002` | the download is followed to the end, checked against the upload, then installed           |
+| `MOB-UPD-003` | a download that does not match the uploaded file is removed                               |
+| `MOB-UPD-004` | a finished download from before a restart is offered for install straight away            |
+| `MOB-UPD-005` | Settings → About shows the version, the update, what's new and, once allowed, installs it |
+| `MOB-UPD-006` | Offline mode does not check                                                               |

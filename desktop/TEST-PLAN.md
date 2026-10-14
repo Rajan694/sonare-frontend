@@ -180,21 +180,21 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/offline.test.tsx`
 
-| ID        | Use case                                                                            |
-| :-------- | :---------------------------------------------------------------------------------- |
-| `DSK-026` | with no internet the app starts in Offline Mode and says why                        |
-| `DSK-027` | with internet it stays online and syncs                                             |
-| `DSK-028` | "stay offline" survives a restart; going online clears it                           |
-| `DSK-029` | offline, the queue skips songs that are not on this device                          |
-| `DSK-030` | the confirmation shows what stays available and remembers "stay offline"            |
-| `DSK-031` | settings on the desktop include the connection mode and the library sections        |
-| `DSK-053` | About in the desktop app checks for a newer build instead of listing every download |
-| `DSK-054` | the desktop settings have no server address and no appearance section               |
-| `DSK-075` | an address saved by an older build's server setting is ignored                      |
-| `DSK-032` | with no folders it invites the user to add one, using the folder picker             |
-| `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work         |
-| `DSK-034` | a failed scan is reported instead of breaking the page                              |
-| `DSK-035` | the downloads folder cannot be removed from the list                                |
+| ID        | Use case                                                                                      |
+| :-------- | :-------------------------------------------------------------------------------------------- |
+| `DSK-026` | with no internet the app starts in Offline Mode and says why                                  |
+| `DSK-027` | with internet it stays online and syncs                                                       |
+| `DSK-028` | "stay offline" survives a restart; going online clears it                                     |
+| `DSK-029` | offline, the queue skips songs that are not on this device                                    |
+| `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                      |
+| `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
+| `DSK-053` | About in the desktop app checks for a newer build; "What's new" shows its changes in a dialog |
+| `DSK-054` | the desktop settings have no server address and no appearance section                         |
+| `DSK-075` | an address saved by an older build's server setting is ignored                                |
+| `DSK-032` | with no folders it invites the user to add one, using the folder picker                       |
+| `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work                   |
+| `DSK-034` | a failed scan is reported instead of breaking the page                                        |
+| `DSK-035` | the downloads folder cannot be removed from the list                                          |
 
 ## `test/desktop/player.test.ts`
 
@@ -587,6 +587,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                         |
 | `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                    |
 | `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                         |
+| `WEB-LIB-016` | turns GitHub's generated notes into headings and items without links or authors                 |
 
 ## `test/unit/player.test.ts`
 

@@ -9,6 +9,8 @@ import Button from './Button';
 import Icon from './Icon';
 import Artwork from '../music/Artwork';
 import { Field } from './Field';
+import { formatBytes } from '../../lib/format';
+import { parseReleaseNotes } from '../../../../shared/releaseNotes';
 
 /** Renders the dialog opened with promptDialog / confirmDialog (store/dialogs.ts). */
 export const DialogHost = () => {
@@ -29,7 +31,10 @@ export const DialogHost = () => {
             role={dialog.kind === 'confirm' ? 'alertdialog' : 'dialog'}
             aria-modal="true"
             aria-labelledby={`dialog-${dialog.id}-title`}
-            className="relative w-full max-w-[400px] bg-s2 border border-ln2 rounded-xl shadow-e4 p-6 flex flex-col gap-5"
+            className={cn(
+              'relative w-full bg-s2 border border-ln2 rounded-xl shadow-e4 p-6 flex flex-col gap-5',
+              dialog.kind === 'releaseNotes' ? 'max-w-[520px]' : 'max-w-[400px]',
+            )}
             initial={{ opacity: 0, y: 8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 4, scale: 0.98 }}
@@ -39,6 +44,8 @@ export const DialogHost = () => {
               <PromptBody dialog={dialog} />
             ) : dialog.kind === 'confirm' ? (
               <ConfirmBody dialog={dialog} />
+            ) : dialog.kind === 'releaseNotes' ? (
+              <ReleaseNotesBody dialog={dialog} />
             ) : (
               <AddToPlaylistBody dialog={dialog} />
             )}
@@ -51,7 +58,7 @@ export const DialogHost = () => {
 
 const cancel = (dialog: OpenDialog) => {
   if (dialog.kind === 'prompt') dialog.resolve(null);
-  else if (dialog.kind === 'confirm') dialog.resolve(false);
+  else if (dialog.kind === 'confirm' || dialog.kind === 'releaseNotes') dialog.resolve(false);
   else dialog.resolve();
 };
 
@@ -224,6 +231,65 @@ const AddToPlaylistBody = ({ dialog }: { dialog: Extract<OpenDialog, { kind: 'ad
       <div className="flex justify-end">
         <Button type="button" variant="ghost" onClick={() => dialog.resolve()}>
           Done
+        </Button>
+      </div>
+    </>
+  );
+};
+
+const ReleaseNotesBody = ({ dialog }: { dialog: Extract<OpenDialog, { kind: 'releaseNotes' }> }) => {
+  const { release } = dialog;
+  const notes = parseReleaseNotes(release.notes);
+  const actionRef = useRef<HTMLButtonElement>(null);
+  useEscape(dialog);
+
+  useEffect(() => {
+    actionRef.current?.focus();
+  }, []);
+
+  const date = new Date(release.uploadedAt);
+  const meta = [
+    Number.isNaN(date.getTime())
+      ? null
+      : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
+    release.sizeBytes ? formatBytes(release.sizeBytes) : null,
+  ].filter(Boolean);
+
+  return (
+    <>
+      <Heading
+        id={`dialog-${dialog.id}-title`}
+        title={`What's new in Sonare ${release.version}`}
+        description={meta.join(' · ') || undefined}
+      />
+      <div className="flex flex-col gap-2 max-h-[360px] overflow-auto pr-1" aria-label="Changes">
+        {notes.length === 0 ? (
+          <p className="text-body-m text-t3 m-0">This release has no notes.</p>
+        ) : (
+          notes.map((block, i) =>
+            block.kind === 'heading' ? (
+              <h3 key={i} className="text-label-l text-t1 font-semibold m-0 pt-1">
+                {block.text}
+              </h3>
+            ) : block.kind === 'item' ? (
+              <div key={i} className="flex gap-2.5 text-body-m text-t2">
+                <span className="mt-[9px] w-1.5 h-1.5 rounded-full bg-acc flex-none" aria-hidden />
+                <span>{block.text}</span>
+              </div>
+            ) : (
+              <p key={i} className="text-body-m text-t2 m-0">
+                {block.text}
+              </p>
+            ),
+          )
+        )}
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" onClick={() => dialog.resolve(false)}>
+          Later
+        </Button>
+        <Button ref={actionRef} type="button" variant="acc" onClick={() => dialog.resolve(true)}>
+          {dialog.action}
         </Button>
       </div>
     </>

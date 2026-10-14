@@ -29,6 +29,7 @@ import { formatBytes } from '../lib/format';
 import { version as APP_VERSION } from '../../neutralino.config.json';
 import { useAppDispatch, useAppSelector } from '../store';
 import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
+import { releaseNotesDialog } from '../store/dialogs';
 import { openUpdate, showUpdateFolder } from '../storage/appUpdate';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
@@ -637,10 +638,21 @@ const UpdatesCard = () => {
   }, [dispatch, online]);
 
   const { status, release, progress, path, error } = update;
-  const versionDesc = release
-    ? [`Version ${release.version}`, formatBytes(release.sizeBytes), release.notes].filter(Boolean).join(' · ')
-    : '';
   const fileKind = release ? (FORMAT_LABELS[release.format] ?? release.format) : '';
+
+  // The changes, with the download one click away.
+  const showChanges = async () => {
+    if (!release) return;
+    const canDownload = status === 'available' || status === 'error';
+    if ((await releaseNotesDialog(release, canDownload ? `Download ${fileKind}` : 'Close')) && canDownload) {
+      void dispatch(downloadAppUpdate(release));
+    }
+  };
+  const whatsNew = (
+    <Button variant="out" size="sm" onClick={() => void showChanges()}>
+      What's new
+    </Button>
+  );
 
   let row: React.ReactNode;
   if (!online) {
@@ -657,10 +669,17 @@ const UpdatesCard = () => {
     );
   } else if (status === 'available' && release) {
     row = (
-      <Row icon="download" label={`Sonare ${release.version} is available`} desc={versionDesc}>
-        <Button variant="acc" size="sm" onClick={() => void dispatch(downloadAppUpdate(release))}>
-          Download {fileKind}
-        </Button>
+      <Row
+        icon="download"
+        label={`Sonare ${release.version} is available`}
+        desc={`Version ${release.version} · ${formatBytes(release.sizeBytes)}`}
+      >
+        <span className="flex items-center gap-2 flex-none">
+          {whatsNew}
+          <Button variant="acc" size="sm" onClick={() => void dispatch(downloadAppUpdate(release))}>
+            Download {fileKind}
+          </Button>
+        </span>
       </Row>
     );
   } else if (status === 'downloading' && release) {
@@ -690,6 +709,7 @@ const UpdatesCard = () => {
         desc={`Saved to ${path}. Close Sonare, then install it.`}
       >
         <span className="flex items-center gap-2 flex-none">
+          {whatsNew}
           <Button variant="out" size="sm" onClick={() => void showUpdateFolder(path)}>
             Show in folder
           </Button>

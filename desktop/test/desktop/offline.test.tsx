@@ -185,7 +185,7 @@ describe('switching to Offline Mode', () => {
     }
   });
 
-  it('DSK-053 About in the desktop app checks for a newer build instead of listing every download', async () => {
+  it('DSK-053 About in the desktop app checks for a newer build; "What\'s new" shows its changes in a dialog', async () => {
     // Only this test answers requests; the rest of this file runs without a server.
     server.listen({ onUnhandledRequest: 'bypass' });
     onTestFinished(() => {
@@ -222,14 +222,21 @@ describe('switching to Offline Mode', () => {
         }),
       ),
     );
-    const { container } = renderWithProviders(<Settings />, { route: '/settings?section=about' });
+    const { container, user } = renderWithProviders(<Settings />, { route: '/settings?section=about' });
     const wide = within(container.firstElementChild!.children[1] as HTMLElement);
     expect(wide.getByText('About Sonare')).toBeInTheDocument();
     expect(wide.queryByText('Get Sonare')).toBeNull();
     // Only this platform's builds count.
     expect(await wide.findByText('Sonare 9.0.0 is available')).toBeInTheDocument();
-    expect(wide.getByText(/Faster search/)).toBeInTheDocument();
     expect(wide.getByRole('button', { name: 'Download .tar.gz' })).toBeInTheDocument();
+    // The changes open in a dialog, which can start the download too.
+    expect(wide.queryByText(/Faster search/)).toBeNull();
+    await user.click(wide.getByRole('button', { name: "What's new" }));
+    const dialog = await screen.findByRole('dialog', { name: "What's new in Sonare 9.0.0" });
+    expect(within(dialog).getByText('Faster search')).toBeInTheDocument();
+    expect(within(dialog).getByRole('button', { name: 'Download .tar.gz' })).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Later' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
 });
 

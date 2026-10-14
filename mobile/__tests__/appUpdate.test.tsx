@@ -94,13 +94,19 @@ describe('app updates on Android', () => {
     expect(native.download).not.toHaveBeenCalled();
   });
 
-  it('MOB-UPD-005 Settings → About shows the version, the update and, once allowed, installs it', async () => {
+  it("MOB-UPD-005 Settings → About shows the version, the update, what's new and, once allowed, installs it", async () => {
     uploaded([apk()]);
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const { getByText, findByText } = render(<SettingsScreen />);
     expect(getByText('Version 1.0.1')).toBeTruthy();
     expect(await findByText('Sonare 1.0.2 is available')).toBeTruthy();
-    expect(getByText('50.0 MB · Faster start')).toBeTruthy();
+    expect(getByText("50.0 MB · Tap to see what's new")).toBeTruthy();
+
+    // The changes open in a sheet, which can start the download too.
+    fireEvent.press(getByText("What's new"));
+    expect(await findByText("What's new in Sonare 1.0.2")).toBeTruthy();
+    expect(getByText('Faster start')).toBeTruthy();
+    fireEvent.press(getByText('Later'));
 
     native.status.mockResolvedValue({ state: 'done', bytes: 100, total: 100 });
     native.checksum.mockResolvedValue('abc123');
