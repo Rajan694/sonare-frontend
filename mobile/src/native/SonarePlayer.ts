@@ -77,6 +77,7 @@ interface NativeSonarePlayer {
   seekTo(positionMs: number): void;
   stop(): void;
   setNext(options: LoadOptions | null): void;
+  replaceUrl(url: string, fresh: string): void;
   setTransitions(options: Transitions): void;
   setSpeed(speed: number): void;
   setAudioEffects(options: AudioEffects): void;
@@ -107,6 +108,11 @@ export const SonarePlayer = {
   pause: () => native?.pause(),
   seekTo: (positionMs: number) => native?.seekTo(positionMs),
   stop: () => native?.stop(),
+  /**
+   * Loads of the track loaded with `url` go to `fresh` from now on: the answer to onStreamRefused,
+   * so the player's retry carries on without reloading the track.
+   */
+  replaceUrl: (url: string, fresh: string) => native?.replaceUrl?.(url, fresh),
   /** The track after the current one; the player starts it by itself (gapless or crossfade). */
   setNext: (options: LoadOptions | null) => native?.setNext(options),
   setTransitions: (options: Transitions) => native?.setTransitions(options),
@@ -133,6 +139,8 @@ export const SonarePlayer = {
   onAdvance: (handler: (e: { mediaId: string }) => void) => on('advance', handler),
   /** Audio output changed (headphones plugged in, Bluetooth connected…). */
   onOutput: (handler: (e: OutputDevice) => void) => on('output', handler),
+  /** The server refused a stream url (403) while loading; the player retries for a while. */
+  onStreamRefused: (handler: (e: { mediaId: string | null; url: string }) => void) => on('streamRefused', handler),
   /** The sleep timer ran out and paused playback. */
   onSleep: (handler: () => void) => on('sleep', handler),
 };

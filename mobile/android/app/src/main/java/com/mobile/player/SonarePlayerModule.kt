@@ -35,6 +35,8 @@ import com.mobile.player.dsp.LevelMeter
  *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
  *                            (gapless or crossfade), sent before the state change it causes
  *  - `SonarePlayer.output`   { id, type, name } when the audio output changes (headphones, Bluetooth…)
+ *  - `SonarePlayer.streamRefused` { mediaId, url } when the server refused a stream url (403) while
+ *                            loading; JS answers with replaceUrl() and the retry carries on
  *  - `SonarePlayer.sleep`    {} when the sleep timer paused playback
  */
 class SonarePlayerModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
@@ -80,6 +82,15 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         }
         EngineEvents.advanceListener = { mediaId ->
           emit(EVENT_ADVANCE, Arguments.createMap().apply { putString("mediaId", mediaId) })
+        }
+        EngineEvents.refusedListener = { mediaId, url ->
+          emit(
+            EVENT_REFUSED,
+            Arguments.createMap().apply {
+              putString("mediaId", mediaId)
+              putString("url", url)
+            },
+          )
         }
         pending.forEach { it(c) }
         pending.clear()
@@ -205,6 +216,12 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
       engine.load(item, startMs, autoplay)
       promise.resolve(null)
     }
+  }
+
+  /** Loads of the track loaded with `url` go to `fresh` from now on (see [StreamUrls]). */
+  @ReactMethod
+  fun replaceUrl(url: String, fresh: String) {
+    StreamUrls.replace(url, fresh)
   }
 
   /** The track after the current one (null: none), for gapless playback and crossfades. */
@@ -333,6 +350,7 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
       stopProgress()
       RemoteCommands.listener = null
       EngineEvents.advanceListener = null
+      EngineEvents.refusedListener = null
       controller?.release()
       controller = null
     }
@@ -349,5 +367,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     private const val EVENT_ADVANCE = "SonarePlayer.advance"
     private const val EVENT_OUTPUT = "SonarePlayer.output"
     private const val EVENT_SLEEP = "SonarePlayer.sleep"
+    private const val EVENT_REFUSED = "SonarePlayer.streamRefused"
   }
 }

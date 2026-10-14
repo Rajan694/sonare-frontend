@@ -286,18 +286,20 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/audio.test.tsx`
 
-| ID                     | Use case                                                                                          |
-| :--------------------- | :------------------------------------------------------------------------------------------------ |
-| `MOB-AUD-001`          | sends the Audio screen settings to the native player whenever they change                         |
-| `MOB-AUD-002`          | with gapless on, the next track is handed to the player once the current one loads                |
-| `MOB-AUD-003`          | when the player moves on by itself, the queue follows without loading the track again             |
-| `MOB-AUD-004`          | with gapless and crossfade off, no next track is handed over                                      |
-| `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                  |
-| `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                 |
-| `MOB-AUD-007`          | with the sleep timer on "End of track", a track that ends stops there instead of playing the next |
-| `MOB-AUD-008`          | a stream url refused mid-song is swapped for a fresh one once, resuming where it stopped          |
-| `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                    |
-| `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                   |
+| ID                     | Use case                                                                                             |
+| :--------------------- | :--------------------------------------------------------------------------------------------------- |
+| `MOB-AUD-001`          | sends the Audio screen settings to the native player whenever they change                            |
+| `MOB-AUD-002`          | with gapless on, the next track is handed to the player once the current one loads                   |
+| `MOB-AUD-003`          | when the player moves on by itself, the queue follows without loading the track again                |
+| `MOB-AUD-004`          | with gapless and crossfade off, no next track is handed over                                         |
+| `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                     |
+| `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                    |
+| `MOB-AUD-007`          | with the sleep timer on "End of track", a track that ends stops there instead of playing the next    |
+| `MOB-AUD-008`          | a stream url the player gave up on is reloaded fresh where it stopped, twice at most                 |
+| `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                       |
+| `MOB-AUD-010`          | the next song's stream is looked up while this one plays, so skipping starts it without asking again |
+| `MOB-AUD-011`          | a url refused mid-song is swapped for a fresh one of the same file, without reloading the song       |
+| `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                      |
 
 ## `__tests__/playback-extras.test.ts`
 

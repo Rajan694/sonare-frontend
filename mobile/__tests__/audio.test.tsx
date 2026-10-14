@@ -124,24 +124,26 @@ describe('AudioEngine and the native player', () => {
     expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
   });
 
-  it('MOB-AUD-008 a stream url refused mid-song is swapped for a fresh one once, resuming where it stopped', async () => {
+  it('MOB-AUD-008 a stream url the player gave up on is reloaded fresh where it stopped, twice at most', async () => {
     const inApp = require('../src/youtube/inApp');
     const refresh = jest.spyOn(inApp, 'refreshInAppSession').mockResolvedValue(undefined);
     await playFrom(a, [a, b]);
     native.load.mockClear();
 
     const refused = { message: 'ERROR_CODE_IO_BAD_HTTP_STATUS: 403', code: 'ERROR_CODE_IO_BAD_HTTP_STATUS' };
-    act(() => mockEventEmitter.emit('SonarePlayer.error', { ...refused, mediaId: a.id, positionMs: 42_000 }));
-    await waitFor(() =>
-      expect(native.load).toHaveBeenCalledWith(expect.objectContaining({ id: a.id, startMs: 42_000 })),
-    );
-    expect(refresh).toHaveBeenCalledTimes(1);
-    expect(usePlayerStore.getState().error).toBeFalsy();
+    for (const positionMs of [42_000, 43_000]) {
+      act(() => mockEventEmitter.emit('SonarePlayer.error', { ...refused, mediaId: a.id, positionMs }));
+      await waitFor(() =>
+        expect(native.load).toHaveBeenCalledWith(expect.objectContaining({ id: a.id, startMs: positionMs })),
+      );
+      expect(usePlayerStore.getState().error).toBeFalsy();
+    }
+    expect(refresh).toHaveBeenCalledTimes(2);
 
-    // Refused again: that is shown instead of looping.
-    act(() => mockEventEmitter.emit('SonarePlayer.error', { ...refused, mediaId: a.id, positionMs: 43_000 }));
+    // Refused a third time: that is shown instead of looping.
+    act(() => mockEventEmitter.emit('SonarePlayer.error', { ...refused, mediaId: a.id, positionMs: 44_000 }));
     expect(usePlayerStore.getState().error).toContain('403');
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(refresh).toHaveBeenCalledTimes(2);
     refresh.mockRestore();
   });
 
@@ -185,5 +187,67 @@ describe('AudioEngine and the native player', () => {
 
     await playFrom(c, [c]);
     expect(native.load.mock.calls.at(-1)![0]).not.toHaveProperty('startMs');
+  });
+});
+
+describe('streaming ahead', () => {
+  const info = (id: string, extra: object = {}) => ({
+    url: `/api/v1/stream/${id}`,
+    expiresAt: Date.now() + 3600_000,
+    itag: 251,
+    contentLength: 4_000_000,
+    ...extra,
+  });
+
+  it("MOB-AUD-010 the next song's stream is looked up while this one plays, so skipping starts it without asking again", async () => {
+    const stream = jest.spyOn(api, 'stream').mockImplementation(async (id: string) => info(id) as never);
+    await playFrom(a, [a, b, c]);
+    const asked = () => stream.mock.calls.map((call) => call[0]);
+    await waitFor(() => expect(asked()).toContain(b.id));
+    stream.mockClear();
+    act(() => usePlayerStore.getState().playNext());
+    await waitFor(() => expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ id: b.id })));
+    expect(asked()).not.toContain(b.id);
+    // …and the one after it is looked up in turn.
+    await waitFor(() => expect(asked()).toContain(c.id));
+    stream.mockRestore();
+    jest.spyOn(api, 'stream').mockImplementation(async (id: string) => ({ url: `/api/v1/stream/${id}` }) as never);
+  });
+
+  it('MOB-AUD-011 a url refused mid-song is swapped for a fresh one of the same file, without reloading the song', async () => {
+    const inApp = require('../src/youtube/inApp');
+    const refresh = jest.spyOn(inApp, 'refreshInAppSession').mockResolvedValue(undefined);
+    let n = 0;
+    const stream = jest
+      .spyOn(api, 'stream')
+      .mockImplementation(async (id: string) => info(id, { url: `/api/v1/stream/${id}?n=${n++}` }) as never);
+    await playFrom(a, [a]);
+    const loadedUrl = native.load.mock.calls.at(-1)![0].url as string;
+    native.load.mockClear();
+    native.replaceUrl.mockClear();
+
+    act(() => mockEventEmitter.emit('SonarePlayer.streamRefused', { mediaId: a.id, url: loadedUrl }));
+    await waitFor(() => expect(native.replaceUrl).toHaveBeenCalledTimes(1));
+    const [from, to] = native.replaceUrl.mock.calls[0];
+    expect(from).toBe(loadedUrl);
+    expect(to).not.toBe(loadedUrl);
+    expect(to).toContain(`/api/v1/stream/${a.id}`);
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(native.load).not.toHaveBeenCalled();
+
+    // The retries of the same refusal are answered once.
+    act(() => mockEventEmitter.emit('SonarePlayer.streamRefused', { mediaId: a.id, url: loadedUrl }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(native.replaceUrl).toHaveBeenCalledTimes(1);
+
+    // A different file can't carry on from the same byte: left to the reload.
+    stream.mockImplementation(async (id: string) => info(id, { url: `/x/${id}`, itag: 140 }) as never);
+    act(() => mockEventEmitter.emit('SonarePlayer.streamRefused', { mediaId: a.id, url: 'http://other/url' }));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(native.replaceUrl).toHaveBeenCalledTimes(1);
+
+    refresh.mockRestore();
+    stream.mockRestore();
+    jest.spyOn(api, 'stream').mockImplementation(async (id: string) => ({ url: `/api/v1/stream/${id}` }) as never);
   });
 });
