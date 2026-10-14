@@ -4,9 +4,13 @@ import { formatDuration, generatePeaks, songCount } from '../src/lib/format';
 import { hasInternet } from '../src/lib/connectivity';
 import { confirmDeletePlaylist } from '../src/lib/confirmDeletePlaylist';
 import { confirmRemoveDownloads } from '../src/lib/confirmRemoveDownloads';
+import { playShuffled } from '../src/lib/playShuffled';
+import { nextQueuePlaylistName } from '../../shared/player/playlistNames';
 import { durations, easings, springConfig, springs, AnimatedView, FadeView } from '../src/lib/motion';
 import { useLibraryStore } from '../src/store/library';
 import { useDownloadsStore } from '../src/store/downloads';
+import { usePlayerStore } from '../src/store/player';
+import { makeTrack } from '../test-utils';
 import { render } from '@testing-library/react-native';
 import React from 'react';
 
@@ -348,6 +352,35 @@ describe('Lib Layer', () => {
       const { installErrorReporting: install } = freshModule();
       expect(() => install()).not.toThrow();
       expect(sent.map((r) => r.body.message)).toEqual(['Boot failed']);
+    });
+  });
+
+  describe('shared/player/playlistNames.ts', () => {
+    it('MOB-LIB-045 names a saved queue one past the highest "Queue N"; other names are ignored', () => {
+      expect(nextQueuePlaylistName([])).toBe('Queue 1');
+      expect(nextQueuePlaylistName(['Gym', 'Queue 1'])).toBe('Queue 2');
+      expect(nextQueuePlaylistName(['Queue 1', 'Queue 4', 'Gym'])).toBe('Queue 5');
+      expect(nextQueuePlaylistName(['Queue 009'])).toBe('Queue 10');
+      expect(nextQueuePlaylistName(['Queue', 'Queue one', 'Queue 2 mix'])).toBe('Queue 1');
+    });
+  });
+
+  describe('playShuffled.ts', () => {
+    it('MOB-LIB-046 turns shuffle on, keeps every song and starts from one of them', () => {
+      const tracks = [makeTrack({ title: 'A' }), makeTrack({ title: 'B' }), makeTrack({ title: 'C' })];
+      usePlayerStore.setState({ shuffle: false, currentTrack: null, queue: [] });
+      playShuffled(tracks, { kind: 'Album', name: 'Letters' });
+      const state = usePlayerStore.getState();
+      expect(state.shuffle).toBe(true);
+      expect(state.isPlaying).toBe(true);
+      expect(state.playingFrom).toEqual({ kind: 'Album', name: 'Letters' });
+      expect(state.queue).toHaveLength(3);
+      expect(state.currentTrack?.id).toBe(state.queue[0].id);
+      expect(state.queue.map((t) => t.id).sort()).toEqual(tracks.map((t) => t.id).sort());
+      // An empty list changes nothing.
+      usePlayerStore.setState({ shuffle: false, currentTrack: null, queue: [] });
+      playShuffled([]);
+      expect(usePlayerStore.getState()).toMatchObject({ shuffle: false, currentTrack: null, queue: [] });
     });
   });
 

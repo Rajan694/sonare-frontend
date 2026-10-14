@@ -1,20 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NativeModules } from 'react-native';
 import { act, waitFor } from '@testing-library/react-native';
 import { makeTrack } from '../test-utils';
 
 /**
- * The phone-only extras behind Now Playing and Settings: sleep timer, audio output,
+ * The phone-only extras behind Now Playing and Settings: audio output,
  * bringing the queue back, the server address, device preferences and "playing from".
  * Each test loads the modules afresh: their `watch*` wiring runs once per JS runtime.
  */
 
-const native = NativeModules.SonarePlayer as Record<string, jest.Mock>;
 const { mockEventEmitter } = require('../jest.setup');
 
 type Modules = {
   player: typeof import('../src/store/player');
-  sleep: typeof import('../src/store/sleepTimer');
   persist: typeof import('../src/store/playerPersist');
   prefs: typeof import('../src/store/devicePrefs');
   config: typeof import('../src/data/config');
@@ -26,7 +23,6 @@ const fresh = (): Modules => {
   jest.resetModules();
   return {
     player: require('../src/store/player'),
-    sleep: require('../src/store/sleepTimer'),
     persist: require('../src/store/playerPersist'),
     prefs: require('../src/store/devicePrefs'),
     config: require('../src/data/config'),
@@ -35,77 +31,11 @@ const fresh = (): Modules => {
   };
 };
 
-const emit = (event: string, payload: unknown = {}) =>
-  act(() => mockEventEmitter.emit(`SonarePlayer.${event}`, payload));
-
 beforeEach(async () => {
   jest.clearAllMocks();
   jest.useRealTimers();
   mockEventEmitter.removeAllListeners();
   await AsyncStorage.clear();
-});
-
-describe('sleep timer', () => {
-  it('MOB-SLEEP-001 minutes are counted by the native player; the label counts down', () => {
-    const { sleep } = fresh();
-    sleep.useSleepTimerStore.getState().set(30);
-    expect(native.setSleepTimer).toHaveBeenLastCalledWith(30 * 60_000);
-    const { timer } = sleep.useSleepTimerStore.getState();
-    expect(timer).toMatchObject({ kind: 'minutes', minutes: 30 });
-    // Measured from when it was set, so a slow test run doesn't read 31.
-    const now = (timer as { endsAt: number }).endsAt - 30 * 60_000;
-    expect(sleep.sleepTimerLabel(timer, now)).toBe('Stops in 30 min');
-    expect(sleep.sleepTimerLabel(timer, now + 29 * 60_000 + 1)).toBe('Stops in 1 min');
-    // Never "0 min" while it's still on.
-    expect(sleep.sleepTimerLabel(timer, now + 31 * 60_000)).toBe('Stops in 1 min');
-    expect(native.setPauseAtEndOfTrack).not.toHaveBeenCalled();
-  });
-
-  it('MOB-SLEEP-002 "End of track" asks the player to stop at the end; switching away undoes it', () => {
-    const { sleep } = fresh();
-    const set = sleep.useSleepTimerStore.getState().set;
-    set('endOfTrack');
-    expect(native.setPauseAtEndOfTrack).toHaveBeenLastCalledWith(true);
-    expect(native.setSleepTimer).toHaveBeenLastCalledWith(0);
-    expect(sleep.sleepTimerLabel(sleep.useSleepTimerStore.getState().timer)).toBe('At the end of this track');
-    set(15);
-    expect(native.setPauseAtEndOfTrack).toHaveBeenLastCalledWith(false);
-    set(null);
-    expect(native.setSleepTimer).toHaveBeenLastCalledWith(0);
-    expect(sleep.useSleepTimerStore.getState().timer).toEqual({ kind: 'off' });
-    expect(sleep.sleepTimerLabel({ kind: 'off' })).toBe('Off');
-    // Off → off doesn't touch end-of-track again.
-    expect(native.setPauseAtEndOfTrack).toHaveBeenCalledTimes(2);
-  });
-
-  it('MOB-SLEEP-003 when the native timer fires, playback shows paused and the timer is off', () => {
-    const { sleep, player } = fresh();
-    sleep.watchSleepTimer();
-    act(() => {
-      player.usePlayerStore.getState().playTrack(makeTrack());
-      sleep.useSleepTimerStore.getState().set(45);
-    });
-    emit('sleep');
-    expect(player.usePlayerStore.getState().isPlaying).toBe(false);
-    expect(sleep.useSleepTimerStore.getState().timer).toEqual({ kind: 'off' });
-  });
-
-  it('MOB-SLEEP-004 "End of track" turns itself off once the track stops at its end, not on a pause', () => {
-    const { sleep, player } = fresh();
-    sleep.watchSleepTimer();
-    const store = player.usePlayerStore;
-    act(() => {
-      store.getState().playTrack(makeTrack({ durationMs: 200_000 }));
-      store.setState({ durationMs: 200_000, positionMs: 60_000 });
-      sleep.useSleepTimerStore.getState().set('endOfTrack');
-    });
-    act(() => store.getState().setIsPlaying(false));
-    expect(sleep.useSleepTimerStore.getState().timer.kind).toBe('endOfTrack');
-    act(() => store.setState({ isPlaying: true, positionMs: 199_500 }));
-    act(() => store.getState().setIsPlaying(false));
-    expect(sleep.useSleepTimerStore.getState().timer.kind).toBe('off');
-    expect(native.setPauseAtEndOfTrack).toHaveBeenLastCalledWith(false);
-  });
 });
 
 describe('bringing the queue back', () => {

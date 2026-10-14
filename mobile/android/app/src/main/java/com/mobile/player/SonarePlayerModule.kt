@@ -36,7 +36,6 @@ import com.mobile.player.dsp.LevelMeter
  *                            (gapless or crossfade), sent before the state change it causes
  *  - `SonarePlayer.streamRefused` { mediaId, url } when the server refused a stream url (403) while
  *                            loading; JS answers with replaceUrl() and the retry carries on
- *  - `SonarePlayer.sleep`    {} when the sleep timer paused playback
  */
 class SonarePlayerModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private val main = Handler(Looper.getMainLooper())
@@ -265,27 +264,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     )
   }
 
-  private val sleepTick = Runnable {
-    withController { it.pause() }
-    emit(EVENT_SLEEP, Arguments.createMap())
-  }
-
-  /**
-   * Pauses after `ms` (0 cancels). Runs here rather than in JS, whose timers can stall while
-   * the app is in the background.
-   */
-  @ReactMethod
-  fun setSleepTimer(ms: Double) {
-    main.removeCallbacks(sleepTick)
-    if (ms > 0) main.postDelayed(sleepTick, ms.toLong())
-  }
-
-  /** Stops when the current track ends instead of moving on (the sleep timer's "End of track"). */
-  @ReactMethod
-  fun setPauseAtEndOfTrack(value: Boolean) {
-    main.post { PlaybackEngine.instance?.setPauseAtEndOfTrack(value) }
-  }
-
   @ReactMethod fun play() = withController { it.play() }
 
   @ReactMethod fun pause() = withController { it.pause() }
@@ -310,7 +288,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
   @ReactMethod fun removeListeners(count: Double) {}
 
   override fun invalidate() {
-    main.removeCallbacks(sleepTick)
     main.post {
       stopProgress()
       RemoteCommands.listener = null
@@ -330,7 +307,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     private const val EVENT_ERROR = "SonarePlayer.error"
     private const val EVENT_REMOTE = "SonarePlayer.remote"
     private const val EVENT_ADVANCE = "SonarePlayer.advance"
-    private const val EVENT_SLEEP = "SonarePlayer.sleep"
     private const val EVENT_REFUSED = "SonarePlayer.streamRefused"
   }
 }

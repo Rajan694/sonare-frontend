@@ -28,6 +28,8 @@ navigation mock live in `test-utils/`.
 | `MOB-COMP-021` | tapping seeks to that fraction; played bars are coloured by mode                            |
 | `MOB-COMP-043` | without a seek handler the waveform cannot be tapped                                        |
 | `MOB-COMP-044` | "Go to album" and "Go to artist" open those pages, closing Now Playing first                |
+| `MOB-COMP-045` | a guest hearting from the mini player is asked to sign up; nothing is saved                 |
+| `MOB-COMP-046` | a playback error turns the play button into Retry, which reloads the song                   |
 | `MOB-COMP-025` | one song: download, pause while running, resume, delete once saved; nothing for local files |
 | `MOB-COMP-024` | a whole album: download the server songs, show progress, offer delete when all are saved    |
 
@@ -129,6 +131,8 @@ navigation mock live in `test-utils/`.
 | `MOB-LIB-013` | offline failures are not reported, repeats wait a minute, and a session sends at most 20         |
 | `MOB-LIB-014` | installErrorReporting reports uncaught errors and unhandled rejections, then hands them on       |
 | `MOB-LIB-044` | without Hermes promise tracking, uncaught errors are still reported                              |
+| `MOB-LIB-045` | names a saved queue one past the highest "Queue N"; other names are ignored                      |
+| `MOB-LIB-046` | playShuffled turns shuffle on, keeps every song and starts from one of them                      |
 | `MOB-LIB-015` | durations, easings and the springs exported; springs settle without overshoot                    |
 | `MOB-LIB-016` | AnimatedView rises in after its delay; FadeView fades with visibility; reduced motion skips both |
 
@@ -191,7 +195,7 @@ navigation mock live in `test-utils/`.
 | `MOB-ALB-001`    | an album shows its artist link and year, and shuffle plays it all                      |
 | `MOB-ALB-002`    | "Add to queue" appends the whole album                                                 |
 | `MOB-ALB-003`    | the favourite button on an album saves it                                              |
-| `MOB-ART-001`    | an artist shows listeners and albums; album tiles open the album                       |
+| `MOB-ART-001`    | an artist shows their name and albums; album tiles open the album                      |
 | `MOB-ART-002`    | following saves to the account; a failure turns it back                                |
 | `MOB-ART-003`    | an artist with no songs says so                                                        |
 
@@ -204,15 +208,16 @@ navigation mock live in `test-utils/`.
 | `MOB-NP-003`     | transport buttons drive the player                                                                |
 | `MOB-NP-004`     | tapping the waveform seeks to that point                                                          |
 | `MOB-NP-005`     | a guest hearting the song is asked to sign up; a signed-in user saves it                          |
-| `MOB-NP-006`     | playback errors are shown; lyrics, queue, equalizer and the song menu are one tap away            |
+| `MOB-NP-006`     | playback errors are shown with Retry; lyrics, queue, equalizer and the song menu are one tap away |
 | `MOB-NP-007`     | with nothing playing it says so and can be closed                                                 |
 | `MOB-Q-001`      | shows what is next, counts server songs, and plays a tapped song                                  |
 | `MOB-Q-002`      | "Clear queue" keeps only the current song; then it says the queue has ended                       |
 | `MOB-Q-003`      | a song's menu can remove it from the queue                                                        |
-| `MOB-Q-004`      | saving the queue creates a playlist with every queued song                                        |
+| `MOB-Q-004`      | saving the queue creates a playlist with every queued song, named "Queue 1"                       |
 | `MOB-Q-005`      | a failed save says why; shuffle and repeat work from here                                         |
 | `MOB-Q-006`      | an empty queue says so                                                                            |
 | `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                       |
+| `MOB-Q-008`      | saving the queue names it one past the highest "Queue N" already used                             |
 | `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                            |
 | `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                       |
 | `MOB-LYR-003`    | plain text view shows the words without timing                                                    |
@@ -249,7 +254,7 @@ navigation mock live in `test-utils/`.
 | `MOB-SIGNIN-008` | after signing up, the emailed code can be entered before going back, or skipped                   |
 | `MOB-MODE-001`   | confirming switches to Offline Mode and goes back                                                 |
 | `MOB-MODE-002`   | cancelling keeps the current mode                                                                 |
-| `MOB-MODE-003`   | turning off "stay offline automatically" is remembered                                            |
+| `MOB-MODE-003`   | "stay offline automatically" starts off, and turning it on is remembered                          |
 | `MOB-FOLD-001`   | a phone with no scanned folders shows no made-up folders                                          |
 
 ## `__tests__/store.test.ts`
@@ -297,7 +302,6 @@ navigation mock live in `test-utils/`.
 | `MOB-AUD-004`          | with gapless and crossfade off, no next track is handed over                                         |
 | `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                     |
 | `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                    |
-| `MOB-AUD-007`          | with the sleep timer on "End of track", a track that ends stops there instead of playing the next    |
 | `MOB-AUD-008`          | a stream url the player gave up on is reloaded fresh where it stopped, twice at most                 |
 | `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                       |
 | `MOB-AUD-010`          | the next song's stream is looked up while this one plays, so skipping starts it without asking again |
@@ -308,10 +312,6 @@ navigation mock live in `test-utils/`.
 
 | ID                | Use case                                                                          |
 | ----------------- | --------------------------------------------------------------------------------- |
-| `MOB-SLEEP-001`   | minutes are counted by the native player; the label counts down                   |
-| `MOB-SLEEP-002`   | "End of track" asks the player to stop at the end; switching away undoes it       |
-| `MOB-SLEEP-003`   | when the native timer fires, playback shows paused and the timer is off           |
-| `MOB-SLEEP-004`   | "End of track" turns itself off once the track stops at its end, not on a pause   |
 | `MOB-RESTORE-001` | the queue, track, position, modes and source are saved as they change             |
 | `MOB-RESTORE-002` | on the next start it comes back paused where it was, and the player resumes there |
 | `MOB-RESTORE-003` | a damaged save, or one whose track is missing, is ignored                         |
@@ -326,22 +326,23 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/screens-extras.test.tsx`
 
-| ID              | Use case                                                                                    |
-| --------------- | ------------------------------------------------------------------------------------------- |
-| `MOB-NPX-001`   | the header says where the queue is playing from, else the song’s album                      |
-| `MOB-NPX-002`   | + opens the playlist picker; a guest is asked to sign up first                              |
-| `MOB-NPX-003`   | the sleep-timer button opens its sheet and shows when the timer is on                       |
-| `MOB-NPX-004`   | there is no audio output card or button: music plays on the phone's output                  |
-| `MOB-SHEET-002` | the sleep sheet starts, switches and stops the timer                                        |
-| `MOB-SHEET-003` | the lyrics sheet sets the language                                                          |
-| `MOB-SETX-001`  | sleep timer and lyrics language show their state and open their sheets; no audio output row |
-| `MOB-SETX-002`  | there is no server address setting                                                          |
-| `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                                 |
-| `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                   |
-| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                    |
-| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                          |
-| `MOB-LIBX-005`  | Favourites and Most played show those songs from the account and play them in order         |
-| `MOB-LIBX-006`  | offline, Favourites shows the liked songs downloaded to this phone, fetching nothing        |
+| ID              | Use case                                                                                |
+| --------------- | --------------------------------------------------------------------------------------- |
+| `MOB-NPX-001`   | the header says where the queue is playing from, else the song’s album                  |
+| `MOB-NPX-002`   | + opens the playlist picker; a guest is asked to sign up first                          |
+| `MOB-NPX-004`   | there is no audio output card or button: music plays on the phone's output              |
+| `MOB-NPX-005`   | a song whose artist id the Artist screen can open shows a link; otherwise plain text    |
+| `MOB-NPX-006`   | the repeat button names its mode and shows repeat-one for a single song                 |
+| `MOB-SHEET-003` | the lyrics sheet sets the language                                                      |
+| `MOB-SETX-001`  | lyrics language shows its state and opens its sheet; no audio output or sleep timer row |
+| `MOB-SETX-002`  | there is no server address setting                                                      |
+| `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                             |
+| `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts               |
+| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                |
+| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                      |
+| `MOB-LIBX-005`  | Favourites and Most played show those songs from the account and play them in order     |
+| `MOB-LIBX-006`  | offline, Favourites shows the liked songs downloaded to this phone, fetching nothing    |
+| `MOB-LIBX-007`  | Shuffle turns shuffle mode on and starts the whole list shuffled                        |
 
 ## `__tests__/youtube.test.ts`
 
@@ -398,3 +399,24 @@ navigation mock live in `test-utils/`.
 | `MOB-SYNC-002` | a refused batch is split: too large goes up in halves, only the bad play is dropped |
 | `MOB-SYNC-003` | a server error keeps only the plays not yet confirmed                               |
 | `MOB-SYNC-004` | each uploaded play carries the song details the app had                             |
+
+## `__tests__/queue-positions.test.ts`
+
+| ID              | Use case                                                                 |
+| :-------------- | :----------------------------------------------------------------------- |
+| `MOB-QUEUE-001` | a list with the same song twice plays through to its end                 |
+| `MOB-QUEUE-002` | tapping the second copy of a song starts from that copy                  |
+| `MOB-QUEUE-003` | adding the playing song to the queue leaves the queue as it is           |
+| `MOB-QUEUE-004` | shuffle keeps every entry, duplicates too, with the playing one first    |
+| `MOB-QUEUE-005` | reordering keeps the playing entry current without reloading it          |
+| `MOB-QUEUE-006` | moving to the same song again still counts as a new entry for the player |
+| `MOB-QUEUE-007` | shuffleTracks returns every item, each order about equally often         |
+
+## `__tests__/settings-sync.test.ts`
+
+| ID             | Use case                                                                       |
+| :------------- | :----------------------------------------------------------------------------- |
+| `MOB-SETS-001` | starts from the shared defaults                                                |
+| `MOB-SETS-002` | a change made offline reaches the account when the network is back             |
+| `MOB-SETS-003` | a guest's changes go to the account on sign-in and win over the account's copy |
+| `MOB-SETS-004` | changes waiting for one account are not sent to another                        |

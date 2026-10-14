@@ -24,6 +24,7 @@ import { cn } from '../lib/cn';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useNavigation } from '@react-navigation/native';
 import { downloadedTracks, useDownloadsStore } from '../store/downloads';
+import { playShuffled } from '../lib/playShuffled';
 
 type Tab = 'songs' | 'liked' | 'mostPlayed' | 'albums' | 'artists' | 'genres';
 type TrackTab = 'songs' | 'liked' | 'mostPlayed';
@@ -136,10 +137,7 @@ export const LibraryScreen = () => {
   };
 
   const onShuffle = () => {
-    if (displayTracks.length > 0) {
-      const shuffled = [...displayTracks].sort(() => Math.random() - 0.5);
-      playTrack(shuffled[0], shuffled, from);
-    }
+    playShuffled(displayTracks, from);
   };
 
   return (

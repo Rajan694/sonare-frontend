@@ -10,8 +10,6 @@ const mockSonarePlayerNative = {
   setTransitions: jest.fn(),
   setSpeed: jest.fn(),
   setAudioEffects: jest.fn(),
-  setSleepTimer: jest.fn(),
-  setPauseAtEndOfTrack: jest.fn(),
 };
 
 const mockSonareUpdatesNative = {

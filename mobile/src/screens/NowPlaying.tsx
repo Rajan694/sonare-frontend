@@ -6,6 +6,7 @@ import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
 import { Ambient } from '../components/music/Ambient';
 import { IconButton } from '../components/ui/IconButton';
+import { Button } from '../components/ui/Button';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
@@ -24,8 +25,6 @@ import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
 import { useWaveform } from '../store/waveforms';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
-import { usePlayerSheets } from '../components/music/PlayerSheets';
-import { useSleepTimerStore } from '../store/sleepTimer';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -47,8 +46,6 @@ export const NowPlayingScreen = () => {
   const seekTo = usePlayerStore((state) => state.seekTo);
   const favourite = useLibraryStore((state) => !!currentTrack && !!state.favouriteIds[currentTrack.id]);
   const playingFrom = usePlayerStore((state) => state.playingFrom);
-  const sleepOn = useSleepTimerStore((state) => state.timer.kind !== 'off');
-  const showSheet = usePlayerSheets((state) => state.show);
   // A finished download plays from the phone too.
   const onDevice = useDownloadsStore(
     (state) =>
@@ -117,7 +114,6 @@ export const NowPlayingScreen = () => {
   }
 
   const isGold = mode === 'offline' || currentTrack.source === 'local';
-  const accent = isGold ? '#FFC24D' : '#00E28A';
   // Where the queue came from; a song's own album when it was started from elsewhere.
   const eyebrow = playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
 
@@ -180,10 +176,14 @@ export const NowPlayingScreen = () => {
                 className="text-tm text-t2 font-medium truncate"
                 numberOfLines={1}
                 onPress={() => {
+                  const aid = currentTrack.artistId;
+                  if (!aid || String(aid).startsWith('local:')) return;
                   navigation.goBack();
-                  openInCurrentTab('Artist', { id: currentTrack.artistId });
+                  openInCurrentTab('Artist', { id: aid });
                 }}
-                accessibilityRole="link"
+                accessibilityRole={
+                  currentTrack.artistId && !String(currentTrack.artistId).startsWith('local:') ? 'link' : undefined
+                }
               >
                 {currentTrack.artist}
               </Text>
@@ -244,7 +244,19 @@ export const NowPlayingScreen = () => {
                   .join(' · ')}
               </Text>
             )}
-            {error && <Text className="text-red text-bs ml-2 flex-1 truncate">{error}</Text>}
+            {error && (
+              <View className="flex-row items-center gap-2 ml-2 flex-1 min-w-0">
+                <Text className="text-red text-bs flex-1 truncate">{error}</Text>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => usePlayerStore.getState().retry()}
+                  accessibilityLabel="Retry"
+                >
+                  Retry
+                </Button>
+              </View>
+            )}
           </View>
 
           {/* Waveform Seek Rail */}
@@ -309,11 +321,15 @@ export const NowPlayingScreen = () => {
 
             <IconButton
               icon={
-                <Icon name="repeat" size={21} color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />
+                <Icon
+                  name={repeat === 'one' ? 'repeat-one' : 'repeat'}
+                  size={21}
+                  color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
+                />
               }
               size={44}
               onPress={cycleRepeat}
-              accessibilityLabel="Toggle repeat"
+              accessibilityLabel={repeat === 'off' ? 'Repeat off' : repeat === 'all' ? 'Repeat all' : 'Repeat one'}
             />
           </View>
 
@@ -330,12 +346,6 @@ export const NowPlayingScreen = () => {
               size={44}
               onPress={() => navigation.navigate('Equalizer')}
               accessibilityLabel="Equalizer"
-            />
-            <IconButton
-              icon={<Icon name="clock" size={21} color={sleepOn ? accent : '#9A9AA8'} />}
-              size={44}
-              onPress={() => showSheet('sleep')}
-              accessibilityLabel={sleepOn ? 'Sleep timer on' : 'Sleep timer'}
             />
             <IconButton
               icon={<Icon name="queue" size={21} color="#9A9AA8" />}

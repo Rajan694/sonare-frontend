@@ -12,7 +12,6 @@ import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
 import { refreshInAppSession } from '../../youtube/inApp';
 import { noteLevel, saveWaveforms, watchWaveform } from '../../store/waveforms';
-import { sleepAtTrackEnd, watchSleepTimer } from '../../store/sleepTimer';
 import { watchPlayerPersistence } from '../../store/playerPersist';
 
 // A play counts once the listener has heard 30s, or half of anything shorter. Asking for
@@ -255,13 +254,7 @@ const startAudio = () => {
     if (e.ended) {
       if (!endedHandled) {
         endedHandled = true;
-        if (sleepAtTrackEnd()) {
-          // Sleep timer "End of track": stop here, ready to play this track again.
-          player.setIsPlaying(false);
-          player.seekTo(0);
-        } else {
-          player.onTrackEnded();
-        }
+        player.onTrackEnded();
       }
       return;
     }
@@ -329,14 +322,14 @@ const startAudio = () => {
   // Gapless or crossfade: the player already started the next track. Move the queue along.
   SonarePlayer.onAdvance(({ mediaId }) => {
     const player = usePlayerStore.getState();
-    const track = player.queue.find((t) => t.id === mediaId);
-    if (!track) {
+    const at = player.upcomingIndex();
+    if (at < 0 || player.queue[at].id !== mediaId) {
       // The queue changed under the player: put back the track the queue says is current.
       loadCurrent();
       return;
     }
     advancedTo = mediaId;
-    player.setCurrentTrack(track);
+    player.playAt(at);
   });
 
   // Partial waveforms are written every few seconds; write the latest before Android may stop the app.
@@ -344,7 +337,6 @@ const startAudio = () => {
     if (next === 'background') saveWaveforms();
   });
 
-  watchSleepTimer();
   watchPlayerPersistence();
 
   // Audio settings -> native, now and whenever they change (including when the phone's saved
@@ -368,7 +360,8 @@ const startAudio = () => {
 
   // Store -> native.
   usePlayerStore.subscribe((state, prev) => {
-    if (state.currentTrack?.id !== prev.currentTrack?.id) {
+    // Another queue entry is current (the same song again counts: it can be in the queue twice).
+    if (state.playId !== prev.playId) {
       reloads = null;
       if (state.currentTrack && state.currentTrack.id === advancedTo) adopt(state.currentTrack.id);
       else loadCurrent(); // the new load carries play state and starts from 0

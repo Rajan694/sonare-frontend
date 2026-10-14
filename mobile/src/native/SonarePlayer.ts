@@ -74,8 +74,6 @@ interface NativeSonarePlayer {
   setTransitions(options: Transitions): void;
   setSpeed(speed: number): void;
   setAudioEffects(options: AudioEffects): void;
-  setSleepTimer(ms: number): void;
-  setPauseAtEndOfTrack(value: boolean): void;
 }
 
 const native = NativeModules.SonarePlayer as NativeSonarePlayer | undefined;
@@ -109,10 +107,6 @@ export const SonarePlayer = {
   /** Pitch is preserved. */
   setSpeed: (speed: number) => native?.setSpeed(speed),
   setAudioEffects: (options: AudioEffects) => native?.setAudioEffects(options),
-  /** Pause after `ms`; 0 cancels. Kept natively, so it fires with the app in the background. */
-  setSleepTimer: (ms: number) => native?.setSleepTimer?.(ms),
-  /** Stop when the current track ends instead of moving on. */
-  setPauseAtEndOfTrack: (value: boolean) => native?.setPauseAtEndOfTrack?.(value),
 
   onState: (handler: (e: PlayerStateEvent) => void) => on('state', handler),
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),
@@ -123,6 +117,4 @@ export const SonarePlayer = {
   onAdvance: (handler: (e: { mediaId: string }) => void) => on('advance', handler),
   /** The server refused a stream url (403) while loading; the player retries for a while. */
   onStreamRefused: (handler: (e: { mediaId: string | null; url: string }) => void) => on('streamRefused', handler),
-  /** The sleep timer ran out and paused playback. */
-  onSleep: (handler: () => void) => on('sleep', handler),
 };

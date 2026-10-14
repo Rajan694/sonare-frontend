@@ -21,6 +21,7 @@ import { AnimatedView, springs } from '../lib/motion';
 import { formatDuration, songCount } from '../lib/format';
 import { artworkUrl } from '../data/config';
 import { cn } from '../lib/cn';
+import { nextQueuePlaylistName } from '../../../shared/player/playlistNames';
 import type { Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 
@@ -29,7 +30,9 @@ export const QueueScreen = () => {
   const mode = useModeStore((state) => state.mode);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const queue = usePlayerStore((state) => state.queue);
-  const setCurrentTrack = usePlayerStore((state) => state.setCurrentTrack);
+  // The playing entry's position: the same song can be in the queue twice.
+  const currentIndex = usePlayerStore((state) => state.index);
+  const playAt = usePlayerStore((state) => state.playAt);
   const setQueue = usePlayerStore((state) => state.setQueue);
   const shuffle = usePlayerStore((state) => state.shuffle);
   const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
@@ -44,9 +47,9 @@ export const QueueScreen = () => {
 
   const saveAsPlaylist = () =>
     requireAccount('Create a free account to save your queue as a playlist.', async () => {
-      const name = `Queue · ${new Date().toLocaleDateString()}`;
       // Read the queue at run time: after a sign-in detour this runs later than the tap.
       const tracks = usePlayerStore.getState().queue;
+      const name = nextQueuePlaylistName(useLibraryStore.getState().playlists.map((p) => p.name));
       try {
         const playlist = await useLibraryStore.getState().createPlaylist(name);
         await api.addToPlaylist(playlist.id, tracks);
@@ -78,7 +81,6 @@ export const QueueScreen = () => {
   }
 
   const isGold = mode === 'offline' || currentTrack.source === 'local';
-  const currentIndex = queue.findIndex((t) => t.id === currentTrack.id);
   const upcomingQueue = queue.slice(currentIndex + 1);
   const serverCount = queue.filter((t) => t.source === 'server').length;
 
@@ -93,7 +95,7 @@ export const QueueScreen = () => {
     const next = [...queue];
     const [track] = next.splice(from, 1);
     next.splice(to, 0, track);
-    setQueue(next);
+    setQueue(next, currentIndex);
   };
 
   return (
@@ -197,7 +199,7 @@ export const QueueScreen = () => {
         <View className="flex-row justify-between items-center mb-2">
           <Text className="text-t3 text-ov uppercase">Next in queue</Text>
           {upcomingQueue.length > 0 && (
-            <Pressable onPress={() => setQueue([currentTrack])} accessibilityRole="button" hitSlop={8}>
+            <Pressable onPress={() => setQueue([currentTrack], 0)} accessibilityRole="button" hitSlop={8}>
               <Text className={cn('text-ll', isGold ? 'text-gold' : 'text-acc')}>Clear queue</Text>
             </Pressable>
           )}
@@ -213,8 +215,13 @@ export const QueueScreen = () => {
                 <AnimatedView key={`${item.id}-${index}`} delay={Math.min(i, 12) * 30}>
                   <QueueRow
                     track={item}
-                    onPress={() => setCurrentTrack(item)}
-                    onRemove={() => setQueue(queue.filter((_, j) => j !== index))}
+                    onPress={() => playAt(index)}
+                    onRemove={() =>
+                      setQueue(
+                        queue.filter((_, j) => j !== index),
+                        currentIndex,
+                      )
+                    }
                     onMove={(by) => move(index, by)}
                   />
                 </AnimatedView>

@@ -36,6 +36,7 @@ beforeEach(() => {
   usePlayerStore.setState({
     currentTrack: null,
     queue: [],
+    index: 0,
     isPlaying: false,
     positionMs: 0,
     durationMs: 0,
@@ -569,20 +570,14 @@ describe('Playlist, album and artist pages', () => {
     expect(anyCall).toHaveBeenCalled();
   });
 
-  it('MOB-ART-001 an artist shows listeners and albums; album tiles open the album', async () => {
+  it('MOB-ART-001 an artist shows their name and albums; album tiles open the album', async () => {
     route.params = { id: 'yt:rh' };
-    stub('artist', async () =>
-      makeArtist({
-        id: 'yt:rh',
-        name: 'Radiohead',
-        monthlyListeners: 1_234_567,
-      } as never),
-    );
+    stub('artist', async () => makeArtist({ id: 'yt:rh', name: 'Radiohead' }));
     stub('artistTopTracks', async () => page(songs));
     stub('artistAlbums', async () => page([makeAlbum({ id: 'yt:kida', title: 'Kid A', year: 2000 })]));
-    const { findByText, findByLabelText } = render(<ArtistScreen />);
+    const { findByText, findByLabelText, queryByText } = render(<ArtistScreen />);
     expect(await findByText('Radiohead')).toBeTruthy();
-    expect(await findByText(/1,234,567/)).toBeTruthy();
+    expect(queryByText(/listener/i)).toBeNull();
     fireEvent.press(await findByLabelText('Kid A'));
     expect(nav.push).toHaveBeenCalledWith('Album', { id: 'yt:kida' });
   });

@@ -15,7 +15,6 @@ import { useDownloadsStore } from '../store/downloads';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
 import { usePlayerSheets } from '../components/music/PlayerSheets';
-import { sleepTimerLabel, useSleepTimerStore } from '../store/sleepTimer';
 import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
 import { useAppUpdateStore } from '../store/appUpdate';
 import { appVersion } from '../native/SonareBuild';
@@ -46,7 +45,6 @@ export const SettingsScreen = () => {
 
   const isGold = mode === 'offline';
   const showSheet = usePlayerSheets((st) => st.show);
-  const sleepTimer = useSleepTimerStore((st) => st.timer);
   const lyricsScript = useDevicePrefsStore((st) => st.lyricsScript);
   const streamQuality = useSettingsStore((s) => s.streamQuality);
   const downloadQuality = useSettingsStore((s) => s.downloadQuality);
@@ -244,23 +242,6 @@ export const SettingsScreen = () => {
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>
 
-            <Pressable
-              onPress={() => showSheet('sleep')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
-              accessibilityRole="button"
-              accessibilityLabel="Sleep timer"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="clock" size={18} color="#9A9AA8" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Sleep timer</Text>
-                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                  {sleepTimerLabel(sleepTimer)}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
             <Pressable
               onPress={() => showSheet('lyrics')}
               className="flex-row items-center gap-3.5 px-4 py-3.5"

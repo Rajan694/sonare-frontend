@@ -63,6 +63,7 @@ beforeEach(() => {
   usePlayerStore.setState({
     currentTrack: song,
     queue: [song, next1, next2],
+    index: 0,
     isPlaying: true,
     positionMs: 60_000,
     durationMs: 240_000,
@@ -103,7 +104,7 @@ describe('Now Playing', () => {
     expect(usePlayerStore.getState().currentTrack?.id).toBe(next1.id);
     fireEvent.press(getByLabelText('Toggle shuffle'));
     expect(usePlayerStore.getState().shuffle).toBe(true);
-    fireEvent.press(getByLabelText('Toggle repeat'));
+    fireEvent.press(getByLabelText('Repeat off'));
     expect(usePlayerStore.getState().repeat).toBe('all');
   });
 
@@ -130,10 +131,13 @@ describe('Now Playing', () => {
     expect(toggle).toHaveBeenCalledWith(song);
   });
 
-  it('MOB-NP-006 playback errors are shown; lyrics, queue, equalizer and the song menu are one tap away', () => {
+  it('MOB-NP-006 playback errors are shown with Retry; lyrics, queue, equalizer and the song menu are one tap away', () => {
     usePlayerStore.setState({ error: 'Playback failed' });
     const { getByText, getByLabelText } = render(<NowPlayingScreen />);
     expect(getByText('Playback failed')).toBeTruthy();
+    const before = usePlayerStore.getState().playId;
+    fireEvent.press(getByLabelText('Retry'));
+    expect(usePlayerStore.getState()).toMatchObject({ error: null, isPlaying: true, playId: before + 1 });
     fireEvent.press(getByLabelText('Lyrics'));
     fireEvent.press(getByLabelText('Queue'));
     fireEvent.press(getByLabelText('Equalizer'));
@@ -192,9 +196,25 @@ describe('Queue', () => {
     const add = jest.spyOn(api, 'addToPlaylist').mockResolvedValue({ ok: true } as never);
     const { getByText, findByText } = render(<QueueScreen />);
     fireEvent.press(getByText('Save as playlist'));
-    expect(await findByText(/Saved as "Queue · /)).toBeTruthy();
-    expect(create).toHaveBeenCalledWith(expect.stringMatching(/^Queue · /));
+    expect(await findByText(/Saved as "Queue 1"/)).toBeTruthy();
+    expect(create).toHaveBeenCalledWith('Queue 1');
     expect(add).toHaveBeenCalledWith('sonare:q', [song, next1, next2]);
+  });
+
+  it('MOB-Q-008 saving the queue names it one past the highest "Queue N" already used', async () => {
+    signIn();
+    useLibraryStore.setState({
+      playlists: [makePlaylist({ name: 'Queue 1' }), makePlaylist({ name: 'Queue 4' }), makePlaylist({ name: 'Gym' })],
+    });
+    const create = jest
+      .spyOn(useLibraryStore.getState(), 'createPlaylist')
+      .mockResolvedValue(makePlaylist({ id: 'sonare:q2', name: 'Queue 5' }));
+    jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockResolvedValue();
+    jest.spyOn(api, 'addToPlaylist').mockResolvedValue({ ok: true } as never);
+    const { getByText, findByText } = render(<QueueScreen />);
+    fireEvent.press(getByText('Save as playlist'));
+    expect(await findByText(/Saved as "Queue 5"/)).toBeTruthy();
+    expect(create).toHaveBeenCalledWith('Queue 5');
   });
 
   it('MOB-Q-005 a failed save says why; shuffle and repeat work from here', async () => {
@@ -403,7 +423,8 @@ describe('Equalizer', () => {
     fireEvent.press(getByLabelText('Crossfade'));
     fireEvent.press(getByLabelText('Volume normalization'));
     expect(useAudioStore.getState()).toMatchObject({ speed: 1.5, crossfade: true });
-    expect(useSettingsStore.getState().normalization).toBe(true);
+    // On by default (Rajan's defaults for both apps), so the press turns it off.
+    expect(useSettingsStore.getState().normalization).toBe(false);
     expect(selected(getByText('1.5×'))).toBe(true);
     // With crossfade on, gapless keeps albums seamless.
     expect(getByText('No crossfade between tracks of one album')).toBeTruthy();
@@ -418,8 +439,9 @@ describe('Equalizer', () => {
     }
     adjust(getByLabelText('Bass boost'), 'increment');
     expect(useAudioStore.getState().bassBoost).toBe(0);
+    // Normalization is one of the frozen effects: it stays at its default (on).
     fireEvent.press(getByLabelText('Volume normalization'));
-    expect(useSettingsStore.getState().normalization).toBe(false);
+    expect(useSettingsStore.getState().normalization).toBe(true);
     fireEvent.press(getByText('1.25×'));
     fireEvent.press(getByLabelText('Crossfade'));
     expect(useAudioStore.getState()).toMatchObject({ speed: 1.25, crossfade: true });
@@ -786,15 +808,15 @@ describe('Mode switch', () => {
     expect(useModeStore.getState().mode).toBe('online');
   });
 
-  it('MOB-MODE-003 turning off "stay offline automatically" is remembered', () => {
+  it('MOB-MODE-003 "stay offline automatically" starts off, and turning it on is remembered', () => {
     route.params = { targetMode: 'offline' };
     const first = render(<ModeSwitchScreen />);
-    expect(first.getByLabelText('Stay offline automatically').props.accessibilityState.checked).toBe(true);
+    expect(first.getByLabelText('Stay offline automatically').props.accessibilityState.checked).toBe(false);
     fireEvent.press(first.getByLabelText('Stay offline automatically'));
     fireEvent.press(first.getByText('Go offline'));
     first.unmount();
     const again = render(<ModeSwitchScreen />);
-    expect(again.getByLabelText('Stay offline automatically').props.accessibilityState.checked).toBe(false);
+    expect(again.getByLabelText('Stay offline automatically').props.accessibilityState.checked).toBe(true);
   });
 });
 

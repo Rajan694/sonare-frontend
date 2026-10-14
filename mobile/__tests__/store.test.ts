@@ -68,6 +68,7 @@ describe('Store Layer', () => {
       usePlayerStore.setState({
         currentTrack: null,
         queue: [],
+        index: 0,
         isPlaying: false,
         positionMs: 0,
         durationMs: 0,
@@ -222,13 +223,14 @@ describe('Store Layer', () => {
       usePlayerStore.getState().onTrackEnded();
       expect(usePlayerStore.getState().positionMs).toBe(0);
 
-      usePlayerStore.setState({ repeat: 'off', currentTrack: mockTrack2 });
+      usePlayerStore.setState({ repeat: 'off', currentTrack: mockTrack2, index: 1 });
       usePlayerStore.getState().onTrackEnded();
       expect(usePlayerStore.getState().isPlaying).toBe(false);
 
       usePlayerStore.setState({
         repeat: 'all',
         currentTrack: mockTrack2,
+        index: 1,
         isPlaying: true,
       });
       usePlayerStore.getState().onTrackEnded();
@@ -579,16 +581,16 @@ describe('Store Layer', () => {
     const [x, y, z] = [t('x'), t('y'), t('z')];
 
     it('MOB-STORE-029 the next track is the following one; repeat all wraps; repeat one and the end have none', () => {
-      usePlayerStore.setState({ currentTrack: x, queue: [x, y, z], repeat: 'off' });
+      usePlayerStore.setState({ currentTrack: x, index: 0, queue: [x, y, z], repeat: 'off' });
       expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:y');
-      usePlayerStore.setState({ currentTrack: z });
+      usePlayerStore.setState({ currentTrack: z, index: 2 });
       expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
       usePlayerStore.setState({ repeat: 'all' });
       expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:x');
-      usePlayerStore.setState({ repeat: 'one', currentTrack: x });
+      usePlayerStore.setState({ repeat: 'one', currentTrack: x, index: 0 });
       expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
       // A single song on repeat all has nothing "next" to preload.
-      usePlayerStore.setState({ repeat: 'all', queue: [x] });
+      usePlayerStore.setState({ repeat: 'all', queue: [x], index: 0 });
       expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
     });
   });

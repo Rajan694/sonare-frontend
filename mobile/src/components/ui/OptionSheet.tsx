@@ -27,8 +27,8 @@ interface OptionSheetProps<T extends string | number> {
 }
 
 /**
- * A themed pick-one list in a bottom sheet: the app's dropdown (sort order, audio output,
- * sleep timer, lyrics language). Picking an option closes it.
+ * A themed pick-one list in a bottom sheet: the app's dropdown (sort order, lyrics language).
+ * Picking an option closes it.
  */
 export const OptionSheet = <T extends string | number>({
   visible,

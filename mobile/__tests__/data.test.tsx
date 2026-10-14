@@ -933,14 +933,17 @@ describe('Data Layer', () => {
     });
 
     it('MOB-DATA-055 a hand-made (Custom) EQ stays on the phone; gapless and normalization sync', async () => {
-      useAuthStore.setState({ status: 'signedIn' });
+      useAuthStore.setState({ status: 'signedIn', user: { id: 'u1', email: 'a@b.com', displayName: 'A' } });
       const save = jest.spyOn(api, 'saveSettings').mockResolvedValue({ ok: true });
       useSettingsStore.getState().update({ eqPreset: 'Custom' });
       await new Promise((r) => setTimeout(r, 500));
       expect(save).not.toHaveBeenCalled();
       useSettingsStore.getState().update({ eqPreset: 'Bass', gapless: false, normalization: true });
       await new Promise((r) => setTimeout(r, 500));
-      expect(save).toHaveBeenCalledWith({ eqPreset: 'Bass', gapless: false, normalization: true });
+      // Anything else still waiting for the account (an earlier guest change) goes along.
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ eqPreset: 'Bass', gapless: false, normalization: true }),
+      );
     });
 
     it("MOB-DATA-056 signing in keeps the phone's Custom EQ but takes the account's other settings", async () => {

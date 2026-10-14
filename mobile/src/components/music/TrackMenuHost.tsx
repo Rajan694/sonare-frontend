@@ -185,7 +185,7 @@ const Menu = ({ track }: { track: Track }) => {
           />
         ) : null)}
       {track.albumId && <MenuItem icon="disc" label="Go to album" onPress={run(() => goTo('Album', track.albumId!))} />}
-      {track.artistId && (
+      {track.artistId && !String(track.artistId).startsWith('local:') && (
         <MenuItem icon="user" label="Go to artist" onPress={run(() => goTo('Artist', track.artistId))} />
       )}
       {extraAction && <MenuItem icon="more" label={extraAction.label} onPress={run(extraAction.onPress)} />}

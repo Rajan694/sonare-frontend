@@ -65,7 +65,6 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   private var next: MediaItem? = null
   private var transitions = pendingTransitions
   private var speed = pendingSpeed
-  private var pauseAtEnd = false
 
   /** Called with the new active player when a crossfade hands over (the session follows it). */
   var onActiveChanged: ((ExoPlayer) -> Unit)? = null
@@ -187,13 +186,6 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     syncQueuedNext()
   }
 
-  /** "Sleep at end of track": stop when the current one finishes instead of moving on. */
-  fun setPauseAtEndOfTrack(value: Boolean) {
-    pauseAtEnd = value
-    active.pauseAtEndOfMediaItems = value
-    syncQueuedNext()
-  }
-
   /** Playback speed; Media3 time-stretches, so pitch stays the same. */
   fun setSpeed(value: Float) {
     speed = value
@@ -227,10 +219,9 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   }
 
   private fun crossfadeNext(): Boolean =
-    !pauseAtEnd &&
-      transitions.crossfadeMs > 0 && next != null && !(transitions.gapless && sameAlbum(active.currentMediaItem, next))
+    transitions.crossfadeMs > 0 && next != null && !(transitions.gapless && sameAlbum(active.currentMediaItem, next))
 
-  private fun gaplessNext(): Boolean = !pauseAtEnd && transitions.gapless && next != null && !crossfadeNext()
+  private fun gaplessNext(): Boolean = transitions.gapless && next != null && !crossfadeNext()
 
   /** Keeps the item after the current one in the active player only when it should play gapless. */
   private fun syncQueuedNext() {

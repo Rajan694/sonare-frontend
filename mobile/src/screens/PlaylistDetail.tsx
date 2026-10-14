@@ -21,6 +21,7 @@ import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import { useSavedAlbum } from '../data/savedAlbums';
 import { songCount } from '../lib/format';
+import { playShuffled } from '../lib/playShuffled';
 import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
 import Icon from '../components/ui/Icon';
 
@@ -69,11 +70,10 @@ export const PlaylistDetailScreen = () => {
     if (await confirmDeletePlaylist({ id, name: info?.name })) navigation.goBack();
   };
 
-  const playAll = (shuffled: boolean) => {
+  const playAll = () => {
     if (!tracks.length) return;
-    if (shuffled !== shuffle) toggleShuffle();
-    const first = shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0];
-    playTrack(first, tracks, from);
+    if (shuffle) toggleShuffle();
+    playTrack(tracks[0], tracks, from);
   };
 
   const isCurrentPlaylistPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
@@ -185,7 +185,7 @@ export const PlaylistDetailScreen = () => {
                   icon={<Icon name="shuffle" size={20} color={shuffle ? '#00E28A' : '#FFFFFF'} />}
                   size={44}
                   variant="bordered"
-                  onPress={() => playAll(true)}
+                  onPress={() => playShuffled(tracks, from)}
                   disabled={!tracks.length}
                   accessibilityLabel="Shuffle"
                 />
@@ -194,7 +194,7 @@ export const PlaylistDetailScreen = () => {
                     if (isCurrentPlaylistPlaying) {
                       setIsPlaying(false);
                     } else {
-                      playAll(false);
+                      playAll();
                     }
                   }}
                   disabled={!tracks.length}

@@ -1,5 +1,4 @@
 import React from 'react';
-import { NativeModules } from 'react-native';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
 import { NowPlayingScreen } from '../src/screens/NowPlaying';
 import { SettingsScreen } from '../src/screens/Settings';
@@ -13,7 +12,6 @@ import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
 import { useTrackMenuStore } from '../src/store/trackMenu';
-import { useSleepTimerStore } from '../src/store/sleepTimer';
 import { useDevicePrefsStore } from '../src/store/devicePrefs';
 import { alice, makeAlbum, makeArtist, makeDownload, makeTrack, nav, page, route } from '../test-utils';
 
@@ -21,7 +19,6 @@ jest.mock('@react-navigation/native', () => require('../test-utils').navigationM
 
 /** Now Playing's design extras (M09), the sheets they open, Settings' rows and the Library tabs. */
 
-const native = NativeModules.SonarePlayer as Record<string, jest.Mock>;
 const signIn = () => useAuthStore.setState({ status: 'signedIn', user: alice } as never);
 const guest = () => useAuthStore.setState({ status: 'guest', user: null } as never);
 
@@ -36,17 +33,19 @@ beforeEach(async () => {
   usePlayerStore.setState({
     currentTrack: song,
     queue: [song],
+    index: 0,
     isPlaying: true,
     positionMs: 0,
     durationMs: 240_000,
     error: null,
     playingFrom: null,
+    shuffle: false,
+    repeat: 'off',
   });
   useDownloadsStore.setState({ items: {}, ready: true });
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
   useTrackMenuStore.setState({ track: null });
   usePlayerSheets.setState({ open: null });
-  useSleepTimerStore.setState({ timer: { kind: 'off' } });
   useDevicePrefsStore.setState({ lyricsScript: 'original' });
   jest.spyOn(api, 'peaks').mockResolvedValue({ peaks: [1, 2, 3] } as never);
 });
@@ -82,40 +81,44 @@ describe('Now Playing extras', () => {
     expect(useTrackMenuStore.getState()).toMatchObject({ track: song, view: 'playlists' });
   });
 
-  it('MOB-NPX-003 the sleep-timer button opens its sheet and shows when the timer is on', () => {
-    const { getByLabelText, queryByLabelText } = render(<NowPlayingScreen />);
-    fireEvent.press(getByLabelText('Sleep timer'));
-    expect(usePlayerSheets.getState().open).toBe('sleep');
-    expect(queryByLabelText('Sleep timer on')).toBeNull();
-    act(() => useSleepTimerStore.setState({ timer: { kind: 'endOfTrack' } }));
-    expect(getByLabelText('Sleep timer on')).toBeTruthy();
-  });
-
   it("MOB-NPX-004 there is no audio output card or button: music plays on the phone's output", () => {
     const { queryByLabelText } = render(<NowPlayingScreen />);
     expect(queryByLabelText(/^Audio output/)).toBeNull();
   });
+
+  it('MOB-NPX-005 a song whose artist id the Artist screen can open shows a link; otherwise plain text', () => {
+    const linked = render(<NowPlayingScreen />);
+    expect(linked.getByText('Radiohead').props.accessibilityRole).toBe('link');
+    linked.unmount();
+
+    for (const artistId of ['', 'local:x']) {
+      usePlayerStore.setState({ currentTrack: makeTrack({ artist: 'Unknown', artistId }) });
+      const plain = render(<NowPlayingScreen />);
+      expect(plain.getByText('Unknown').props.accessibilityRole).toBeUndefined();
+      fireEvent.press(plain.getByText('Unknown'));
+      expect(nav.goBack).not.toHaveBeenCalled();
+      plain.unmount();
+    }
+  });
+
+  it('MOB-NPX-006 the repeat button names its mode and shows repeat-one for a single song', () => {
+    const { getByLabelText, UNSAFE_root } = render(<NowPlayingScreen />);
+    const oneIcons = () => UNSAFE_root.findAll((n) => n.props?.name === 'repeat-one');
+    expect(getByLabelText('Repeat off')).toBeTruthy();
+    expect(oneIcons()).toHaveLength(0);
+    fireEvent.press(getByLabelText('Repeat off'));
+    expect(getByLabelText('Repeat all')).toBeTruthy();
+    fireEvent.press(getByLabelText('Repeat all'));
+    expect(getByLabelText('Repeat one')).toBeTruthy();
+    expect(oneIcons()).toHaveLength(1);
+    fireEvent.press(getByLabelText('Repeat one'));
+    expect(getByLabelText('Repeat off')).toBeTruthy();
+    expect(oneIcons()).toHaveLength(0);
+  });
 });
 
 describe('player sheets', () => {
-  const show = (name: 'sleep' | 'lyrics') => act(() => usePlayerSheets.getState().show(name));
-
-  it('MOB-SHEET-002 the sleep sheet starts, switches and stops the timer', async () => {
-    const { findByLabelText, getByLabelText } = render(<PlayerSheetsHost />);
-    show('sleep');
-    fireEvent.press(await findByLabelText('30 minutes'));
-    expect(native.setSleepTimer).toHaveBeenLastCalledWith(30 * 60_000);
-    expect(useSleepTimerStore.getState().timer).toMatchObject({ kind: 'minutes', minutes: 30 });
-
-    show('sleep');
-    expect((await findByLabelText('30 minutes')).props.accessibilityState).toEqual({ selected: true });
-    fireEvent.press(getByLabelText('End of track'));
-    expect(native.setPauseAtEndOfTrack).toHaveBeenLastCalledWith(true);
-
-    show('sleep');
-    fireEvent.press(await findByLabelText('Off'));
-    expect(useSleepTimerStore.getState().timer).toEqual({ kind: 'off' });
-  });
+  const show = (name: 'lyrics') => act(() => usePlayerSheets.getState().show(name));
 
   it('MOB-SHEET-003 the lyrics sheet sets the language', async () => {
     const { findByLabelText } = render(<PlayerSheetsHost />);
@@ -126,20 +129,14 @@ describe('player sheets', () => {
 });
 
 describe('Settings rows', () => {
-  it('MOB-SETX-001 sleep timer and lyrics language show their state and open their sheets; no audio output row', () => {
-    useSleepTimerStore.setState({ timer: { kind: 'endOfTrack' } });
+  it('MOB-SETX-001 lyrics language shows its state and opens its sheet; no audio output or sleep timer row', () => {
     useDevicePrefsStore.setState({ lyricsScript: 'latin' });
     const { getByLabelText, getByText, queryByLabelText } = render(<SettingsScreen />);
     expect(queryByLabelText('Audio output')).toBeNull();
-    expect(getByText('At the end of this track')).toBeTruthy();
+    expect(queryByLabelText('Sleep timer')).toBeNull();
     expect(getByText('English / Romanised')).toBeTruthy();
-    for (const [label, sheet] of [
-      ['Sleep timer', 'sleep'],
-      ['Lyrics language', 'lyrics'],
-    ] as const) {
-      fireEvent.press(getByLabelText(label));
-      expect(usePlayerSheets.getState().open).toBe(sheet);
-    }
+    fireEvent.press(getByLabelText('Lyrics language'));
+    expect(usePlayerSheets.getState().open).toBe('lyrics');
   });
 
   it('MOB-SETX-002 there is no server address setting', () => {
@@ -233,5 +230,19 @@ describe('Library tabs', () => {
     expect(await findByText('Saved and liked')).toBeTruthy();
     expect(queryByText('Saved only')).toBeNull();
     expect(favourites).not.toHaveBeenCalled();
+  });
+
+  it('MOB-LIBX-007 Shuffle turns shuffle mode on and starts the whole list shuffled', async () => {
+    const liked = [makeTrack({ title: 'One' }), makeTrack({ title: 'Two' }), makeTrack({ title: 'Three' })];
+    jest.spyOn(api, 'favourites').mockResolvedValue(page(liked) as never);
+    usePlayerStore.setState({ shuffle: false });
+    const { getByText, findByText } = render(<LibraryScreen />);
+    fireEvent.press(getByText('Favourites'));
+    await findByText('One');
+    fireEvent.press(getByText('Shuffle'));
+    const state = usePlayerStore.getState();
+    expect(state.shuffle).toBe(true);
+    expect(state.currentTrack?.title).toBe(state.queue[0].title);
+    expect(state.queue.map((t) => t.title).sort()).toEqual(['One', 'Three', 'Two']);
   });
 });

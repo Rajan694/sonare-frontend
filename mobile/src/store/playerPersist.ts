@@ -21,6 +21,8 @@ const SERVER_DELAY_MS = 8000;
 interface Saved {
   queue: Track[];
   currentId: string;
+  /** Where the current track is in `queue`; older saves only have currentId. */
+  index?: number;
   positionMs: number;
   shuffle: boolean;
   repeat: 'off' | 'all' | 'one';
@@ -32,11 +34,14 @@ const isTrack = (t: unknown): t is Track =>
 
 const toRestored = (saved: Partial<Saved>): RestoredPlayer | null => {
   const queue = Array.isArray(saved.queue) ? saved.queue.filter(isTrack) : [];
-  const currentTrack = queue.find((t) => t.id === saved.currentId);
+  const atIndex = typeof saved.index === 'number' ? queue[saved.index] : undefined;
+  const index = atIndex?.id === saved.currentId ? saved.index! : queue.findIndex((t) => t.id === saved.currentId);
+  const currentTrack = queue[index];
   if (!currentTrack) return null;
   return {
     queue,
     currentTrack,
+    index,
     positionMs: typeof saved.positionMs === 'number' && saved.positionMs > 0 ? saved.positionMs : 0,
     shuffle: saved.shuffle === true,
     repeat: saved.repeat === 'all' || saved.repeat === 'one' ? saved.repeat : 'off',
@@ -51,15 +56,13 @@ const snapshot = (): Saved | null => {
   const s = usePlayerStore.getState();
   if (!s.currentTrack) return null;
   // Keep the window around the current track when the queue is very long.
-  const at = Math.max(
-    0,
-    s.queue.findIndex((t) => t.id === s.currentTrack!.id),
-  );
+  const at = s.index;
   const start = Math.max(0, Math.min(at - 50, s.queue.length - MAX_QUEUE));
   const queue = s.queue.length ? s.queue.slice(start, start + MAX_QUEUE) : [s.currentTrack];
   return {
     queue,
     currentId: s.currentTrack.id,
+    index: s.queue.length ? at - start : 0,
     positionMs: Math.round(s.positionMs),
     shuffle: s.shuffle,
     repeat: s.repeat,
@@ -88,7 +91,7 @@ const saveToAccountSoon = () => {
   serverTimer = setTimeout(() => {
     const saved = snapshot();
     if (!saved) return;
-    const index = saved.queue.findIndex((t) => t.id === saved.currentId);
+    const index = saved.index ?? saved.queue.findIndex((t) => t.id === saved.currentId);
     const current = saved.queue[index];
     api
       .savePlayerState({
@@ -122,12 +125,14 @@ const restoreFromAccount = async () => {
     const state = await api.playerState();
     const [meta, ...rest] = Array.isArray(state.queue) ? state.queue : [];
     const queue = (isTrack(meta) ? [meta, ...rest] : rest).filter(isTrack);
-    const current = queue[state.index] ?? queue[0];
+    const index = queue[state.index] ? state.index : 0;
+    const current = queue[index];
     const playingFrom = !isTrack(meta) ? ((meta as { playingFrom?: PlayingFrom })?.playingFrom ?? null) : null;
     const restored = current
       ? toRestored({
           queue,
           currentId: current.id,
+          index,
           positionMs: state.positionMs,
           shuffle: state.shuffle,
           repeat: state.repeat,
@@ -164,7 +169,8 @@ export const watchPlayerPersistence = (): void => {
 
   usePlayerStore.subscribe((state, prev) => {
     const changed =
-      state.currentTrack?.id !== prev.currentTrack?.id ||
+      state.playId !== prev.playId ||
+      state.index !== prev.index ||
       state.queue !== prev.queue ||
       state.shuffle !== prev.shuffle ||
       state.repeat !== prev.repeat ||

@@ -18,6 +18,7 @@ import { useSavedAlbum } from '../data/savedAlbums';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import { songCount } from '../lib/format';
+import { playShuffled } from '../lib/playShuffled';
 import Icon from '../components/ui/Icon';
 
 export const AlbumScreen = () => {
@@ -53,10 +54,10 @@ export const AlbumScreen = () => {
   ].filter(Boolean);
   const meta = metaParts.join(' · ');
 
-  const playAll = (shuffled: boolean) => {
+  const playAll = () => {
     if (!tracks.length) return;
-    if (shuffled !== shuffle) toggleShuffle();
-    playTrack(shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0], tracks, from);
+    if (shuffle) toggleShuffle();
+    playTrack(tracks[0], tracks, from);
   };
 
   const isCurrentAlbumPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
@@ -89,11 +90,13 @@ export const AlbumScreen = () => {
                 {info?.title ?? ' '}
               </Text>
               {info?.artist ? (
-                <Pressable
-                  onPress={info.artistId ? () => navigation.navigate('Artist', { id: info.artistId }) : undefined}
-                >
+                info.artistId && !String(info.artistId).startsWith('local:') ? (
+                  <Pressable onPress={() => navigation.navigate('Artist', { id: info.artistId })}>
+                    <Text className="text-tm font-medium text-t2 text-center">{info.artist}</Text>
+                  </Pressable>
+                ) : (
                   <Text className="text-tm font-medium text-t2 text-center">{info.artist}</Text>
-                </Pressable>
+                )
               ) : null}
               {meta ? <Text className="text-t3 text-bs text-center mt-0.5">{meta}</Text> : null}
             </View>
@@ -148,7 +151,7 @@ export const AlbumScreen = () => {
                   icon={<Icon name="shuffle" size={20} color={shuffle ? '#00E28A' : '#FFFFFF'} />}
                   size={44}
                   variant="bordered"
-                  onPress={() => playAll(true)}
+                  onPress={() => playShuffled(tracks, from)}
                   accessibilityLabel="Shuffle"
                   disabled={!tracks.length}
                 />
@@ -157,7 +160,7 @@ export const AlbumScreen = () => {
                     if (isCurrentAlbumPlaying) {
                       setIsPlaying(false);
                     } else {
-                      playAll(false);
+                      playAll();
                     }
                   }}
                   disabled={!tracks.length}
