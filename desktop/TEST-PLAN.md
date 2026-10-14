@@ -858,3 +858,15 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
 | `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |
 | `DSK-067` | api catalog methods query inApp catalog first and fall back to backend endpoints on failure                  |
+
+## `test/app/restore.test.tsx`
+
+| ID                | Use case                                                                     |
+| :---------------- | :--------------------------------------------------------------------------- |
+| `WEB-RESTORE-001` | a saved queue comes back paused at its song and position; Play resumes there |
+| `WEB-RESTORE-002` | seeking a restored song before Play moves where it resumes                   |
+| `WEB-RESTORE-003` | the queue, its song and the modes are saved on the device as they change     |
+| `WEB-RESTORE-004` | signed in, a newer queue from another device replaces this one's             |
+| `WEB-RESTORE-005` | a queue from the account arriving after something was played changes nothing |
+| `WEB-RESTORE-006` | an account queue older than the device's changes nothing                     |
+| `WEB-MEDIA-001`   | lock-screen and media-key controls drive the player and show the song        |

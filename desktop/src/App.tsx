@@ -5,10 +5,13 @@ import { CAPS } from './lib/caps';
 import { hasInternet } from './lib/connectivity';
 import { ModeContext } from './store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from './store/playerContext';
-import { setPlaybackPosition } from './store/playbackPosition';
+import { getPlaybackPosition, setPlaybackPosition } from './store/playbackPosition';
 import type { PlayerState, PlayingFrom } from './types';
 import * as queueOps from '../../shared/player/queue';
-import { initDevAuth } from './api/auth';
+import { getCurrentUser, initDevAuth, onAuthChange } from './api/auth';
+import { accountQueue, queueChanged, savedQueue, setQueueSource } from './storage/playerPersist';
+import { bindMediaSession, showInMediaSession, showPositionInMediaSession } from './audio/mediaSession';
+import type { SavedQueue } from '../../shared/player/savedQueue';
 import * as player from './audio/player';
 import { maybeRecordPlay, resetPlay } from './api/plays';
 import { setSyncOnline, startBackgroundSync } from './api/sync';
@@ -115,6 +118,18 @@ const App = () => {
 
   const currentTrackRef = useRef(currentTrack);
   currentTrackRef.current = currentTrack;
+  const playerStateRef = useRef(playerState);
+  playerStateRef.current = playerState;
+  /**
+   * A queue brought back from the last session (or another device) waits, paused, until Play:
+   * loading it at launch would fetch a stream (in the Linux window, the whole song) for nothing.
+   */
+  const resume = useRef<{ playId: number; id: string; positionMs: number } | null>(null);
+  /** Something was played this launch: a queue saved elsewhere doesn't replace it any more. */
+  const playedThisLaunch = useRef(false);
+  /** When the queue shown was saved, to tell whether the account's copy is newer. */
+  const queueSavedAt = useRef(0);
+  const lastPositionSave = useRef(0);
 
   // Everything about playback except the position, which lives in store/playbackPosition so
   // a position tick doesn't re-render the app (see there).
@@ -130,6 +145,70 @@ const App = () => {
     void downloads.init();
   }, []);
 
+  /** Put back a saved queue, paused at its position. */
+  const restoreQueue = (saved: SavedQueue<Track>) => {
+    const playId = playerStateRef.current.playId + 1;
+    resume.current = { playId, id: saved.queue[saved.index].id, positionMs: saved.positionMs };
+    queueSavedAt.current = saved.savedAt;
+    setPlaybackPosition(saved.positionMs);
+    setPlayerState((prev) => ({
+      ...prev,
+      queue: saved.queue,
+      index: saved.index,
+      shuffle: saved.shuffle,
+      repeat: saved.repeat,
+      playingFrom: saved.playingFrom,
+      playId,
+    }));
+  };
+
+  // The queue comes back after a restart; signed in, a newer one saved on another device
+  // (start on the phone, carry on here) wins until something is played.
+  useEffect(() => {
+    setQueueSource(() => {
+      const s = playerStateRef.current;
+      if (!s.queue.length) return null;
+      return {
+        queue: s.queue,
+        index: s.index,
+        positionMs: resume.current?.positionMs ?? player.getStatus().positionMs,
+        shuffle: s.shuffle,
+        repeat: s.repeat,
+        playingFrom: s.playingFrom,
+        savedAt: Date.now(),
+      };
+    });
+    const local = savedQueue();
+    if (local) restoreQueue(local);
+    const fromAccount = () =>
+      void accountQueue().then((saved) => {
+        if (saved && !playedThisLaunch.current && saved.savedAt > queueSavedAt.current) restoreQueue(saved);
+      });
+    if (getCurrentUser()) fromAccount();
+    return onAuthChange((user) => {
+      if (user) fromAccount();
+    });
+  }, []);
+
+  // Lock screen, notification and media-key controls.
+  useEffect(() => {
+    return bindMediaSession({
+      play: () => {
+        if (!player.getStatus().playing) actionsRef.current.togglePlay();
+      },
+      pause: () => player.pause(),
+      next: () => actionsRef.current.next(),
+      previous: () => actionsRef.current.previous(),
+      seekTo: (positionMs) => actionsRef.current.seek(positionMs),
+    });
+  }, []);
+
+  useEffect(() => showInMediaSession(currentTrack, playback.playing), [currentTrack, playback.playing]);
+
+  useEffect(() => {
+    if (playerState.queue.length || queueSavedAt.current) queueChanged();
+  }, [playerState]);
+
   // Plays held in Offline Mode upload in the background once the app is Online again.
   useEffect(() => setSyncOnline(effectiveMode === 'online'), [effectiveMode]);
 
@@ -137,7 +216,13 @@ const App = () => {
   // only when something other than the position changed.
   useEffect(() => {
     return player.onPlaybackChange((s) => {
-      setPlaybackPosition(s.positionMs);
+      // A restored queue shows its saved position until it plays.
+      if (!resume.current) setPlaybackPosition(s.positionMs);
+      showPositionInMediaSession(s.positionMs, s.durationMs);
+      if (s.playing && Date.now() - lastPositionSave.current >= 5000) {
+        lastPositionSave.current = Date.now();
+        queueChanged();
+      }
       setPlayback((prev) => (samePlayback(prev, s) ? prev : withoutPosition(s)));
       // Count the play once enough of the track has actually been heard.
       const track = currentTrackRef.current;
@@ -150,6 +235,10 @@ const App = () => {
   // Load and play whenever another queue entry becomes the current one.
   useEffect(() => {
     if (!currentTrack) return;
+    // A restored queue waits for Play.
+    if (resume.current?.playId === playerState.playId) return;
+    resume.current = null;
+    playedThisLaunch.current = true;
     const startedAt = Date.now();
     playStartedAt.current = startedAt;
     resetPlay(currentTrack.id, startedAt);
@@ -213,9 +302,34 @@ const App = () => {
     });
   };
 
+  const seek = (positionMs: number) => {
+    if (resume.current) {
+      resume.current = { ...resume.current, positionMs };
+      setPlaybackPosition(positionMs);
+      queueChanged();
+      return;
+    }
+    player.seek(positionMs);
+  };
+
   const seekRatio = (ratio: number) => {
     const total = playback.durationMs || currentTrack?.durationMs || 0;
-    if (total > 0) player.seek(Math.max(0, Math.min(1, ratio)) * total);
+    if (total > 0) seek(Math.max(0, Math.min(1, ratio)) * total);
+  };
+
+  /** Play / pause; the first Play of a restored queue loads it from where it was left. */
+  const togglePlay = () => {
+    const waiting = resume.current;
+    if (waiting && currentTrackRef.current?.id === waiting.id) {
+      resume.current = null;
+      playedThisLaunch.current = true;
+      const startedAt = Date.now();
+      playStartedAt.current = startedAt;
+      resetPlay(waiting.id, startedAt);
+      void player.playTrackId(waiting.id, false, waiting.positionMs);
+      return;
+    }
+    player.toggle();
   };
 
   const skipToPrevious = () => {
@@ -224,8 +338,8 @@ const App = () => {
 
   const previous = () => {
     // Match the usual player convention: restart the track unless we are near its start.
-    if (player.getStatus().positionMs > 3000) {
-      player.seek(0);
+    if ((resume.current ? getPlaybackPosition() : player.getStatus().positionMs) > 3000) {
+      seek(0);
       return;
     }
     skipToPrevious();
@@ -301,6 +415,8 @@ const App = () => {
   // call the latest ones, so the context value changes only when its data does.
   const actions = {
     patchPlayerState,
+    togglePlay,
+    seek,
     playTrack,
     playShuffled,
     playAt,
@@ -321,6 +437,8 @@ const App = () => {
   const stableActions = useMemo(
     () => ({
       setState: (patch: Partial<PlayerState>) => actionsRef.current.patchPlayerState(patch),
+      togglePlay: () => actionsRef.current.togglePlay(),
+      seek: (positionMs: number) => actionsRef.current.seek(positionMs),
       playTrack: (track: Track, newQueue?: Track[], from?: PlayingFrom) =>
         actionsRef.current.playTrack(track, newQueue, from),
       playShuffled: (tracks: Track[], from?: PlayingFrom) => actionsRef.current.playShuffled(tracks, from),
@@ -350,8 +468,6 @@ const App = () => {
       durationMs,
       playbackError: playback.error,
       volume: playback.volume,
-      togglePlay: player.toggle,
-      seek: player.seek,
       setVolume: player.setVolume,
       toggleMute: player.toggleMute,
     }),

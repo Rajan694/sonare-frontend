@@ -369,12 +369,29 @@ export const load = async (trackId: string, force = false): Promise<void> => {
   }
 };
 
-/** Loads and plays `trackId`; `fromStart` restarts it when it is the track already loaded. */
-export const playTrackId = async (trackId: string, fromStart = false): Promise<void> => {
+/** Moves to `positionMs` as soon as the loaded track can seek (a restored queue resumes mid-song). */
+const seekWhenReady = (positionMs: number) => {
+  if (decoded) {
+    decoded.seek(positionMs / 1000);
+    emit();
+    return;
+  }
+  const a = el();
+  if (a.readyState >= HTMLMediaElement.HAVE_METADATA) seek(positionMs);
+  else a.addEventListener('loadedmetadata', () => seek(positionMs), { once: true });
+};
+
+/**
+ * Loads and plays `trackId`; `fromStart` restarts it when it is the track already loaded, and
+ * `startMs` starts it from there.
+ */
+export const playTrackId = async (trackId: string, fromStart = false, startMs = 0): Promise<void> => {
   const same = currentTrackId === trackId;
   if (!same) retriedForTrack = null;
   await load(trackId);
-  if (same && fromStart) seek(0);
+  if (currentTrackId !== trackId) return;
+  if (startMs > 0) seekWhenReady(startMs);
+  else if (same && fromStart) seek(0);
   await play();
 };
 
