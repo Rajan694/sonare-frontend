@@ -491,43 +491,43 @@ describe('player keyboard shortcuts', () => {
       </>
     );
   };
-  const setup = (p = makePlayer({ queue: [song], index: 0 })) => ({
+  const setup = (p = makePlayer({ queue: [song], index: 0, positionMs: 60_000 })) => ({
     ...renderWithProviders(<Harness />, { player: p }),
     p,
   });
 
   it('WEB-LAYOUT-026 Space plays or pauses from anywhere, but not while typing', async () => {
-    const { user } = setup();
+    const { user, p } = setup();
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('textbox', { name: 'Notes' }));
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue(' ');
   });
 
   it('WEB-LAYOUT-027 a clicked button does not swallow Space; a Tab-focused one keeps it', async () => {
-    const { user } = setup();
+    const { user, p } = setup();
     await user.click(screen.getByRole('button', { name: 'Some button' }));
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Some button' })).not.toHaveFocus();
     await user.click(document.body);
     await user.tab();
     expect(screen.getByRole('button', { name: 'Some button' })).toHaveFocus();
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
   });
 
   it('WEB-LAYOUT-028 arrows seek 5 seconds; a quick double press changes song', async () => {
     const { p } = setup();
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(player.seek).toHaveBeenLastCalledWith(65_000);
+    expect(p.seek).toHaveBeenLastCalledWith(65_000);
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(p.next).toHaveBeenCalledTimes(1);
     vi.spyOn(performance, 'now').mockReturnValue(1e9);
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(player.seek).toHaveBeenLastCalledWith(55_000);
+    expect(p.seek).toHaveBeenLastCalledWith(55_000);
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(p.skipToPrevious).toHaveBeenCalledTimes(1);
     // Holding the key repeats the seek, it never counts as a double press.
@@ -537,20 +537,20 @@ describe('player keyboard shortcuts', () => {
   });
 
   it('WEB-LAYOUT-029 up and down change the volume by 5%; modified keys are left alone', () => {
-    setup();
+    const { p } = setup();
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     expect(vi.mocked(player.setVolume).mock.calls.map((c) => c[0])).toEqual([0.55, 0.45]);
     fireEvent.keyDown(window, { key: ' ', ctrlKey: true });
     fireEvent.keyDown(window, { key: 'ArrowUp', shiftKey: true });
-    expect(player.toggle).not.toHaveBeenCalled();
+    expect(p.togglePlay).not.toHaveBeenCalled();
     expect(player.setVolume).toHaveBeenCalledTimes(2);
   });
 
   it('WEB-LAYOUT-030 with nothing playing the arrows do not seek', () => {
-    setup(makePlayer());
+    const { p } = setup(makePlayer());
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(player.seek).not.toHaveBeenCalled();
+    expect(p.seek).not.toHaveBeenCalled();
   });
 });
 
