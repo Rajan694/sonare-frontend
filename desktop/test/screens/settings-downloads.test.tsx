@@ -144,10 +144,13 @@ describe('settings', () => {
     expect(nav).not.toContain('Connection mode');
     expect(nav).not.toContain('Library & scanning');
     // The phone layout stacks every section on one page.
-    for (const title of ['Account', 'Playback', 'Downloads', 'Audio & effects', 'Appearance', 'About']) {
+    for (const title of ['Account', 'Playback', 'Downloads', 'Audio & effects', 'About']) {
       expect(phone.getByText(title, { selector: '.text-overline' })).toBeInTheDocument();
     }
     expect(phone.queryByText('Connection mode')).not.toBeInTheDocument();
+    // Sonare is dark only: there is nothing to choose.
+    expect(phone.queryByText('Appearance')).not.toBeInTheDocument();
+    expect(nav).not.toContain('Appearance');
   });
 
   it('WEB-SETTINGS-004 playback: streaming quality and the two switches change the settings', async () => {

@@ -23,16 +23,7 @@ import {
 } from '../storage/downloadTargets';
 import { useDownloads } from '../storage/downloads';
 import { useAuth } from '../api/hooks';
-import { clearSession, resendVerification, signOut } from '../api/auth';
-import {
-  ALLOWS_HTTP,
-  DEFAULT_API_ORIGIN,
-  customServerOrigin,
-  normalizeServerOrigin,
-  SERVER_ADDRESS_ENABLED,
-  switchServer,
-} from '../api/server';
-import { promptDialog } from '../store/dialogs';
+import { resendVerification, signOut } from '../api/auth';
 import { formatBytes } from '../lib/format';
 import { version as APP_VERSION } from '../../neutralino.config.json';
 import { useAppDispatch, useAppSelector } from '../store';
@@ -169,14 +160,6 @@ const Settings = () => {
       available: CAPS.offlineMode,
     },
     {
-      id: 'appearance',
-      label: 'Appearance',
-      icon: 'moon',
-      title: 'Appearance',
-      description: 'Display and theme settings.',
-      available: true,
-    },
-    {
       id: 'about',
       label: 'About',
       icon: 'info',
@@ -206,37 +189,6 @@ const Settings = () => {
   const handleSignOut = async () => {
     await signOut();
     showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' });
-  };
-
-  // Sessions belong to a server, so switching signs out; the app restarts on the new one.
-  const changeServer = async (origin: string | null) => {
-    if ((origin ?? DEFAULT_API_ORIGIN) === (customServerOrigin ?? DEFAULT_API_ORIGIN)) return;
-    clearSession();
-    await switchServer(origin);
-  };
-
-  const handleServerAddress = async () => {
-    const text = await promptDialog({
-      title: 'Server address',
-      description: ALLOWS_HTTP
-        ? `The Sonare backend this app talks to; for a computer on the LAN, use its address. Default: ${DEFAULT_API_ORIGIN}. Changing it signs you out and restarts Sonare.`
-        : `The Sonare backend this app talks to. Default: ${DEFAULT_API_ORIGIN}. Changing it signs you out and restarts Sonare.`,
-      placeholder: ALLOWS_HTTP ? '192.168.1.20:3010' : 'https://api.example.com',
-      initialValue: customServerOrigin ?? '',
-      confirmLabel: 'Save & restart',
-      maxLength: 200,
-    });
-    if (!text) return;
-    const origin = normalizeServerOrigin(text);
-    if (!origin) {
-      showToast({ title: 'Not a server address', description: 'Enter an address like 192.168.1.20:3010' });
-      return;
-    }
-    if (!ALLOWS_HTTP && !origin.startsWith('https://')) {
-      showToast({ title: 'HTTPS only', description: 'This build only connects over HTTPS' });
-      return;
-    }
-    await changeServer(origin);
   };
 
   const totalLocalBytes = local.folders.reduce((n, f) => n + f.bytes, 0);
@@ -551,21 +503,6 @@ const Settings = () => {
         </label>
       </div>
 
-      {SERVER_ADDRESS_ENABLED && (
-        <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-          <Row icon="cloud" label="Server address" desc={customServerOrigin ?? `Default · ${DEFAULT_API_ORIGIN}`}>
-            {customServerOrigin && (
-              <Button variant="ghost" size="sm" onClick={() => void changeServer(null)}>
-                Use default
-              </Button>
-            )}
-            <Button variant="out" size="sm" onClick={() => void handleServerAddress()}>
-              Change
-            </Button>
-          </Row>
-        </div>
-      )}
-
       {CAPS.localLibrary && (
         <div className="flex items-center gap-3">
           <Button variant="out" icon="folder" onClick={() => navigate('/folders')}>
@@ -573,12 +510,6 @@ const Settings = () => {
           </Button>
         </div>
       )}
-    </div>
-  );
-
-  const renderAppearance = () => (
-    <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-      <Row icon="moon" label="Theme" desc="Dark (always on)" />
     </div>
   );
 
@@ -598,8 +529,6 @@ const Settings = () => {
         return renderLibrary();
       case 'connection':
         return renderConnection();
-      case 'appearance':
-        return renderAppearance();
       case 'about':
         return renderAbout();
       default:
@@ -646,11 +575,6 @@ const Settings = () => {
             {renderLibrary()}
           </div>
         )}
-
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Appearance</span>
-          {renderAppearance()}
-        </div>
 
         <div className="flex flex-col gap-2">
           <span className="text-overline text-t3 pl-1">About</span>

@@ -20,7 +20,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/ui/Icon';
 import { Text } from '../components/ui/Text';
 import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
-import { loadServerOrigin } from '../data/config';
 import { PlayerSheetsHost } from '../components/music/PlayerSheets';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 import { cn } from '../lib/cn';
@@ -118,12 +117,9 @@ export const RootNavigator = () => {
 
   useEffect(() => {
     useDevicePrefsStore.getState().hydrate();
-    // A server address saved in Settings applies before the first request goes out.
-    loadServerOrigin().finally(() => {
-      hydrate();
-      // Picks up downloads that were running when the app last closed.
-      useDownloadsStore.getState().hydrate();
-    });
+    hydrate();
+    // Picks up downloads that were running when the app last closed.
+    useDownloadsStore.getState().hydrate();
   }, [hydrate]);
   useSessionEffects(status);
 

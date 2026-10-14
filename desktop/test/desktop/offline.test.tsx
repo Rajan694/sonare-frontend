@@ -165,38 +165,24 @@ describe('switching to Offline Mode', () => {
     expect(location()).toBe('/mode-switch');
   });
 
-  it('DSK-054 the server address can point the desktop app at another backend, which restarts it signed out', async () => {
-    const { lib } = await import('../helpers/fakeNeutralino');
-    localStorage.setItem('sonare_access_token', 'old-server-token');
-    const { user, container } = renderWithProviders(<Settings />, { route: '/settings?section=connection' });
+  it('DSK-054 the desktop settings have no server address and no appearance section', () => {
+    const { container } = renderWithProviders(<Settings />, { route: '/settings?section=connection' });
     const wide = within(container.firstElementChild!.children[1] as HTMLElement);
-    expect(wide.getByText('Default · http://api.sonare.test')).toBeInTheDocument();
-    await user.click(wide.getByRole('button', { name: 'Change' }));
-    const dialog = await screen.findByRole('dialog');
-    await user.type(within(dialog).getByRole('textbox'), '192.168.1.20:3010/api/v1/');
-    await user.click(within(dialog).getByRole('button', { name: 'Save & restart' }));
-    await waitFor(() => expect(lib.app.restartProcess).toHaveBeenCalled());
-    expect(localStorage.getItem('sonare_server_origin')).toBe('http://192.168.1.20:3010');
-    expect(localStorage.getItem('sonare_access_token')).toBeNull();
-    localStorage.removeItem('sonare_server_origin');
+    expect(wide.queryByText('Server address')).not.toBeInTheDocument();
+    expect(wide.queryByRole('button', { name: 'Appearance' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Theme')).not.toBeInTheDocument();
   });
 
-  it('DSK-075 a release build has no server address setting and ignores one a dev build saved', async () => {
+  it("DSK-075 an address saved by an older build's server setting is ignored", async () => {
     localStorage.setItem('sonare_server_origin', 'http://192.168.1.20:3010');
-    vi.stubEnv('VITE_SONARE_ENV', 'prod');
     vi.resetModules();
     try {
-      const prod = await import('../../src/api/server');
-      expect(prod.SERVER_ADDRESS_ENABLED).toBe(false);
-      expect(prod.customServerOrigin).toBeNull();
-      expect(prod.API_BASE).toBe(prod.DEFAULT_API_BASE);
+      const { API_BASE } = await import('../../src/api/server');
+      expect(API_BASE).not.toContain('192.168.1.20');
     } finally {
-      vi.unstubAllEnvs();
       vi.resetModules();
       localStorage.removeItem('sonare_server_origin');
     }
-    const dev = await import('../../src/api/server');
-    expect(dev.SERVER_ADDRESS_ENABLED).toBe(true);
   });
 
   it('DSK-053 About in the desktop app checks for a newer build instead of listing every download', async () => {

@@ -18,7 +18,6 @@ import { usePlayerSheets } from '../components/music/PlayerSheets';
 import { useOutputStore } from '../store/output';
 import { sleepTimerLabel, useSleepTimerStore } from '../store/sleepTimer';
 import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
-import { DEFAULT_API_ORIGIN, SERVER_ADDRESS_ENABLED, customServerOrigin } from '../data/config';
 import { useAppUpdateStore } from '../store/appUpdate';
 import { appVersion } from '../native/SonareBuild';
 
@@ -57,8 +56,6 @@ export const SettingsScreen = () => {
   const output = useOutputStore((st) => st.current);
   const sleepTimer = useSleepTimerStore((st) => st.timer);
   const lyricsScript = useDevicePrefsStore((st) => st.lyricsScript);
-  // Re-render when the server sheet closes, so the row shows the saved address.
-  usePlayerSheets((st) => st.open);
   const downloadQuality = useSettingsStore((s) => s.downloadQuality);
   const downloadFormat = useSettingsStore((s) => s.downloadFormat);
   const updateSettings = useSettingsStore((s) => s.update);
@@ -378,32 +375,6 @@ export const SettingsScreen = () => {
             </Pressable>
           </View>
         </View>
-
-        {/* Connection: which backend this phone talks to (development builds only) */}
-        {SERVER_ADDRESS_ENABLED && (
-          <View className="gap-2">
-            <Text className="text-ov font-semibold text-t3 uppercase pl-1">Server</Text>
-            <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
-              <Pressable
-                onPress={() => showSheet('server')}
-                className="flex-row items-center gap-3.5 px-4 py-3.5"
-                accessibilityRole="button"
-                accessibilityLabel="Server address"
-              >
-                <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                  <Icon name="server" size={18} color="#9A9AA8" />
-                </View>
-                <View className="flex-1 gap-0.5 min-w-0">
-                  <Text className="text-tm font-medium text-t1">Server address</Text>
-                  <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                    {customServerOrigin() ?? `Default · ${DEFAULT_API_ORIGIN}`}
-                  </Text>
-                </View>
-                <Icon name="chevron-right" size={16} color="#7E7E8C" />
-              </Pressable>
-            </View>
-          </View>
-        )}
 
         <AboutSection online={mode !== 'offline'} />
 

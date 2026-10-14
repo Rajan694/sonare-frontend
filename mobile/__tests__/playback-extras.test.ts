@@ -284,40 +284,17 @@ describe('bringing the queue back', () => {
 });
 
 describe('server address', () => {
-  it('MOB-SERVER-001 debug builds use localhost (adb reverse); addresses are tidied up or rejected', () => {
+  it('MOB-SERVER-001 debug builds talk to localhost (adb reverse); there is no other address', () => {
     const { config } = fresh();
     expect(config.DEFAULT_API_ORIGIN).toBe('http://localhost:3010');
     expect(config.apiOrigin()).toBe('http://localhost:3010');
     expect(config.apiBase()).toBe('http://localhost:3010/api/v1');
-    expect(config.customServerOrigin()).toBeNull();
-    expect(config.normalizeServerOrigin('192.168.1.20:3010')).toBe('http://192.168.1.20:3010');
-    expect(config.normalizeServerOrigin(' HTTPS://api.example.com/api/v1/ ')).toBe('https://api.example.com');
-    expect(config.normalizeServerOrigin('http://host:3010/')).toBe('http://host:3010');
-    for (const bad of ['', '   ', 'ftp://x', 'http://', 'host:abc', 'http://a b']) {
-      expect(config.normalizeServerOrigin(bad)).toBeNull();
-    }
+    expect(config.absoluteUrl('/api/v1/tracks/x/artwork')).toBe('http://localhost:3010/api/v1/tracks/x/artwork');
   });
 
-  it('MOB-SERVER-002 a saved address is used for every request and survives a restart; reset goes back', async () => {
-    let { config } = fresh();
-    await config.setServerOrigin('http://192.168.1.20:3010');
-    expect(config.apiBase()).toBe('http://192.168.1.20:3010/api/v1');
-    expect(config.absoluteUrl('/api/v1/tracks/x/artwork')).toBe('http://192.168.1.20:3010/api/v1/tracks/x/artwork');
-    expect(config.customServerOrigin()).toBe('http://192.168.1.20:3010');
-
-    ({ config } = fresh());
-    expect(config.apiOrigin()).toBe('http://localhost:3010');
-    await config.loadServerOrigin();
-    expect(config.apiOrigin()).toBe('http://192.168.1.20:3010');
-
-    await config.setServerOrigin(null);
-    expect(config.apiOrigin()).toBe('http://localhost:3010');
-    expect(await AsyncStorage.getItem('sonare.serverOrigin')).toBeNull();
-  });
-
-  it('MOB-SERVER-003 the API client sends requests to the chosen server', async () => {
+  it('MOB-SERVER-002 an address saved by an older build is ignored', async () => {
+    await AsyncStorage.setItem('sonare.serverOrigin', 'http://192.168.1.20:3010');
     const { config, api } = fresh();
-    await config.setServerOrigin('http://10.1.1.5:3010');
     const opened: string[] = [];
     const open = XMLHttpRequest.prototype.open;
     jest.spyOn(XMLHttpRequest.prototype, 'open').mockImplementation(function (this: XMLHttpRequest, m, url) {
@@ -325,7 +302,8 @@ describe('server address', () => {
       return open.call(this, m, url);
     });
     await api.api.genres().catch(() => {});
-    expect(opened[0]).toBe('http://10.1.1.5:3010/api/v1/genres');
+    expect(config.apiOrigin()).toBe('http://localhost:3010');
+    expect(opened[0]).toBe('http://localhost:3010/api/v1/genres');
   });
 });
 

@@ -315,9 +315,8 @@ navigation mock live in `test-utils/`.
 | `MOB-RESTORE-003` | a damaged save, or one whose track is missing, is ignored                         |
 | `MOB-RESTORE-004` | a fresh install signed in gets the queue the account remembers                    |
 | `MOB-RESTORE-005` | signed in, the queue is also saved to the account                                 |
-| `MOB-SERVER-001`  | debug builds use localhost (adb reverse); addresses are tidied up or rejected     |
-| `MOB-SERVER-002`  | a saved address is used for every request and survives a restart; reset goes back |
-| `MOB-SERVER-003`  | the API client sends requests to the chosen server                                |
+| `MOB-SERVER-001`  | debug builds talk to localhost (adb reverse); there is no other address           |
+| `MOB-SERVER-002`  | an address saved by an older build is ignored                                     |
 | `MOB-PREFS-001`   | the lyrics language is kept on the phone and restored                             |
 | `MOB-PREFS-002`   | an unknown saved script is ignored                                                |
 | `MOB-PREFS-003`   | lyrics are asked for in the chosen script; "original" sends none                  |
@@ -325,22 +324,21 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/screens-extras.test.tsx`
 
-| ID              | Use case                                                                                             |
-| --------------- | ---------------------------------------------------------------------------------------------------- |
-| `MOB-NPX-001`   | the header says where the queue is playing from, else the song’s album                               |
-| `MOB-NPX-002`   | + opens the playlist picker; a guest is asked to sign up first                                       |
-| `MOB-NPX-003`   | the output and sleep-timer buttons open their sheets; the timer button shows when it is on           |
-| `MOB-NPX-004`   | the output card names the device, and whether a song plays without the network                       |
-| `MOB-SHEET-001` | the output sheet lists Automatic and every device; picking one keeps music there                     |
-| `MOB-SHEET-002` | the sleep sheet starts, switches and stops the timer                                                 |
-| `MOB-SHEET-003` | the lyrics sheet sets the language                                                                   |
-| `MOB-SHEET-004` | the server sheet saves a LAN address, rejects nonsense, and can go back to the default               |
-| `MOB-SETX-001`  | audio output, sleep timer, lyrics language and server address show their state and open their sheets |
-| `MOB-SETX-002`  | a custom server address is shown on its row                                                          |
-| `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                                          |
-| `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                            |
-| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                             |
-| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                                   |
+| ID              | Use case                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| `MOB-NPX-001`   | the header says where the queue is playing from, else the song’s album                     |
+| `MOB-NPX-002`   | + opens the playlist picker; a guest is asked to sign up first                             |
+| `MOB-NPX-003`   | the output and sleep-timer buttons open their sheets; the timer button shows when it is on |
+| `MOB-NPX-004`   | the output card names the device, and whether a song plays without the network             |
+| `MOB-SHEET-001` | the output sheet lists Automatic and every device; picking one keeps music there           |
+| `MOB-SHEET-002` | the sleep sheet starts, switches and stops the timer                                       |
+| `MOB-SHEET-003` | the lyrics sheet sets the language                                                         |
+| `MOB-SETX-001`  | audio output, sleep timer and lyrics language show their state and open their sheets       |
+| `MOB-SETX-002`  | there is no server address setting                                                         |
+| `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                                |
+| `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                  |
+| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                   |
+| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                         |
 
 ## `__tests__/youtube.test.ts`
 
@@ -388,11 +386,3 @@ navigation mock live in `test-utils/`.
 | `MOB-UPD-004` | a finished download from before a restart is offered for install straight away  |
 | `MOB-UPD-005` | Settings → About shows the version, the update and, once allowed, installs it   |
 | `MOB-UPD-006` | Offline mode does not check                                                     |
-
-## `__tests__/serverAddress.test.tsx`
-
-| ID            | Use case                                                                   |
-| ------------- | -------------------------------------------------------------------------- |
-| `MOB-SRV-001` | a release build ignores a saved server address and uses the production API |
-| `MOB-SRV-002` | a development build loads the saved server address                         |
-| `MOB-SRV-003` | Settings shows the Server address row only in development builds           |

@@ -7,7 +7,6 @@ import { LibraryScreen } from '../src/screens/Library';
 import { PlayerSheetsHost, usePlayerSheets } from '../src/components/music/PlayerSheets';
 import { api } from '../src/data/api';
 import { useAuthStore } from '../src/data/auth';
-import { apiOrigin, setServerOrigin } from '../src/data/config';
 import { navigationRef } from '../src/data/accountGate';
 import { useModeStore } from '../src/store/mode';
 import { usePlayerStore } from '../src/store/player';
@@ -55,7 +54,6 @@ beforeEach(async () => {
   useDevicePrefsStore.setState({ lyricsScript: 'original' });
   native.getOutputDevices.mockResolvedValue([speaker, buds]);
   native.getOutputDevice.mockResolvedValue(speaker);
-  await setServerOrigin(null);
   jest.spyOn(api, 'peaks').mockResolvedValue({ peaks: [1, 2, 3] } as never);
 });
 
@@ -119,7 +117,7 @@ describe('Now Playing extras', () => {
 });
 
 describe('player sheets', () => {
-  const show = (name: 'output' | 'sleep' | 'lyrics' | 'server') => act(() => usePlayerSheets.getState().show(name));
+  const show = (name: 'output' | 'sleep' | 'lyrics') => act(() => usePlayerSheets.getState().show(name));
 
   it('MOB-SHEET-001 the output sheet lists Automatic and every device; picking one keeps music there', async () => {
     const { getByLabelText, findByLabelText } = render(<PlayerSheetsHost />);
@@ -160,32 +158,10 @@ describe('player sheets', () => {
     fireEvent.press(await findByLabelText('Punjabi (Gurmukhi)'));
     expect(useDevicePrefsStore.getState().lyricsScript).toBe('gurmukhi');
   });
-
-  it('MOB-SHEET-004 the server sheet saves a LAN address, rejects nonsense, and can go back to the default', async () => {
-    const { findByLabelText, getByText, findByText } = render(<PlayerSheetsHost />);
-    show('server');
-    const field = await findByLabelText('Server address');
-    expect(getByText('Use default')).toBeTruthy();
-
-    fireEvent.changeText(field, 'not an address');
-    fireEvent.press(getByText('Save'));
-    expect(await findByText('Enter an address like 192.168.1.20:3010')).toBeTruthy();
-    expect(apiOrigin()).toBe('http://localhost:3010');
-
-    fireEvent.changeText(field, '192.168.1.20:3010');
-    await act(async () => fireEvent(field, 'submitEditing', { nativeEvent: { text: '192.168.1.20:3010' } }));
-    expect(apiOrigin()).toBe('http://192.168.1.20:3010');
-    expect(usePlayerSheets.getState().open).toBeNull();
-
-    show('server');
-    expect((await findByLabelText('Server address')).props.value).toBe('http://192.168.1.20:3010');
-    await act(async () => fireEvent.press(getByText('Use default')));
-    expect(apiOrigin()).toBe('http://localhost:3010');
-  });
 });
 
 describe('Settings rows', () => {
-  it('MOB-SETX-001 audio output, sleep timer, lyrics language and server address show their state and open their sheets', () => {
+  it('MOB-SETX-001 audio output, sleep timer and lyrics language show their state and open their sheets', () => {
     useSleepTimerStore.setState({ timer: { kind: 'endOfTrack' } });
     useDevicePrefsStore.setState({ lyricsScript: 'latin' });
     useOutputStore.setState({ current: buds });
@@ -193,22 +169,20 @@ describe('Settings rows', () => {
     expect(getByText('Galaxy Buds')).toBeTruthy();
     expect(getByText('At the end of this track')).toBeTruthy();
     expect(getByText('English / Romanised')).toBeTruthy();
-    expect(getByText('Default · http://localhost:3010')).toBeTruthy();
     for (const [label, sheet] of [
       ['Audio output', 'output'],
       ['Sleep timer', 'sleep'],
       ['Lyrics language', 'lyrics'],
-      ['Server address', 'server'],
     ] as const) {
       fireEvent.press(getByLabelText(label));
       expect(usePlayerSheets.getState().open).toBe(sheet);
     }
   });
 
-  it('MOB-SETX-002 a custom server address is shown on its row', async () => {
-    await setServerOrigin('http://192.168.1.20:3010');
-    const { getByText } = render(<SettingsScreen />);
-    expect(getByText('http://192.168.1.20:3010')).toBeTruthy();
+  it('MOB-SETX-002 there is no server address setting', () => {
+    const { queryByLabelText, queryByText } = render(<SettingsScreen />);
+    expect(queryByLabelText('Server address')).toBeNull();
+    expect(queryByText('Server')).toBeNull();
   });
 });
 
