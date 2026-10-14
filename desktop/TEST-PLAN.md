@@ -508,24 +508,24 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/dsp.test.ts`
 
-| ID            | Use case                                                                        |
-| :------------ | :------------------------------------------------------------------------------ |
-| `WEB-DSP-001` | starts flat, and restores a saved curve                                         |
-| `WEB-DSP-002` | a saved curve with the wrong number of bands, or unreadable, falls back to flat |
-| `WEB-DSP-003` | moving a band clamps it to ±12 dB, switches to Custom and is remembered         |
-| `WEB-DSP-004` | choosing a preset loads its curve and saves the preset to the account           |
-| `WEB-DSP-005` | an unknown preset name changes nothing                                          |
-| `WEB-DSP-006` | releasing a fader commits the current preset name                               |
-| `WEB-DSP-007` | adopts the account's preset after sign-in, unless the user has a custom curve   |
-| `WEB-DSP-008` | useDsp re-renders on changes                                                    |
-| `WEB-DSP-009` | playback speed reaches the element and keeps the pitch                          |
-| `WEB-DSP-010` | builds 8 EQ bands (low shelf, peaks, high shelf) and applies the curve          |
-| `WEB-DSP-011` | turning the EQ off flattens every stage without tearing the graph down          |
-| `WEB-DSP-012` | the virtualizer widens stereo: full width is 2.5x, zero is untouched            |
-| `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through            |
-| `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                              |
-| `WEB-DSP-015` | a suspended context is resumed on the next play                                 |
-| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                       |
+| ID            | Use case                                                                               |
+| :------------ | :------------------------------------------------------------------------------------- |
+| `WEB-DSP-001` | starts on the Sonare preset, and restores a saved curve                                |
+| `WEB-DSP-002` | a saved curve with the wrong number of bands, or unreadable, falls back to the default |
+| `WEB-DSP-003` | moving a band clamps it to ±12 dB, switches to Custom and is remembered                |
+| `WEB-DSP-004` | choosing a preset loads its curve and saves the preset to the account                  |
+| `WEB-DSP-005` | an unknown preset name changes nothing                                                 |
+| `WEB-DSP-006` | releasing a fader commits the current preset name                                      |
+| `WEB-DSP-007` | adopts the account's preset after sign-in, unless the user has a custom curve          |
+| `WEB-DSP-008` | useDsp re-renders on changes                                                           |
+| `WEB-DSP-009` | playback speed reaches the element and keeps the pitch                                 |
+| `WEB-DSP-010` | builds 8 EQ bands (low shelf, peaks, high shelf) and applies the curve                 |
+| `WEB-DSP-011` | turning the EQ off flattens every stage without tearing the graph down                 |
+| `WEB-DSP-012` | the virtualizer widens stereo: full width is 2.5x, zero is untouched                   |
+| `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through                   |
+| `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                                     |
+| `WEB-DSP-015` | a suspended context is resumed on the next play                                        |
+| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                              |
 
 ## `test/unit/waveform.test.tsx`
 
@@ -650,13 +650,17 @@ request a test did not mock (`test/helpers/server.ts`).
 | ID            | Use case                                                                      |
 | :------------ | :---------------------------------------------------------------------------- |
 | `WEB-SET-001` | starts from the documented defaults                                           |
-| `WEB-SET-002` | a guest change applies locally and is never sent                              |
+| `WEB-SET-002` | a guest change applies locally and sends nothing while signed out             |
 | `WEB-SET-003` | quick successive changes are sent once, with only the changed fields          |
 | `WEB-SET-004` | a failed save keeps the local value                                           |
 | `WEB-SET-005` | loading merges the account settings and drops values this build does not know |
 | `WEB-SET-006` | a guest does not ask for account settings, but signing in loads them          |
 | `WEB-SET-007` | a failed load is tried again on the next sign-in                              |
 | `WEB-SET-008` | useSettings re-renders with every change                                      |
+| `WEB-SET-009` | settings are kept on the device across restarts, for guests too               |
+| `WEB-SET-010` | a change made offline reaches the account when the network is back            |
+| `WEB-SET-011` | a guest's changes go to the account on sign-in and win over its copy          |
+| `WEB-SET-012` | changes waiting for one account are not sent to another                       |
 
 ## `test/unit/store.test.ts`
 

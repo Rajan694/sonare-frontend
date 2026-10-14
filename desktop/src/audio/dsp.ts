@@ -41,10 +41,11 @@ export interface DspState {
 
 const STORAGE_KEY = 'sonare_dsp';
 
+// The default preset is the settings' default (Sonare on both apps).
 const DEFAULT_STATE: DspState = {
   enabled: true,
-  preset: 'Flat',
-  gains: [...EQ_PRESETS.Flat],
+  preset: 'Sonare',
+  gains: [...EQ_PRESETS.Sonare],
   bassBoost: 0,
   virtualizer: 0,
   speed: 1,
