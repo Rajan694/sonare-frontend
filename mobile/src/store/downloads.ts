@@ -87,7 +87,37 @@ interface DownloadsStore {
   resetLocation: () => Promise<void>;
   /** Re-check that finished files are still where they were saved. */
   checkFiles: () => Promise<void>;
+  /** Downloads found on the phone (Music/Sonare) that the list doesn't have, e.g. after a reinstall. */
+  adoptFound: (found: FoundDownload[]) => void;
 }
+
+/** A file in the downloads folder whose name carries its YouTube id (`Artist - Title [id].ext`). */
+export interface FoundDownload {
+  id: string;
+  title: string;
+  artist: string;
+  album: string | null;
+  durationMs: number | null;
+  uri: string;
+  fileName: string;
+  size: number;
+  modifiedAt: number;
+}
+
+/** The YouTube id a download's file name ends with, as `downloadName` writes it; null for other files. */
+export const idInFileName = (fileName: string): string | null => {
+  const m = /\[([A-Za-z0-9_-]{11})\]\.[a-z0-9]+$/i.exec(fileName);
+  return m ? `yt:${m[1]}` : null;
+};
+
+/**
+ * `Artist - Title [videoId]`: the id in the name lets a reinstalled app, which has lost this
+ * list, find its downloads again and link them back to the songs (FoundDownload).
+ */
+export const downloadName = (item: { id: string; artist: string; title: string }): string => {
+  const base = safeName(`${item.artist} - ${item.title}`);
+  return `${base} [${item.id.replace(/^yt:/, '')}]`;
+};
 
 const ITEMS_KEY = 'sonare.downloads';
 const LOCATION_KEY = 'sonare.downloadLocation';
@@ -186,7 +216,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       await SonareDownloads.start({
         id,
         url: absoluteUrl(stream.url)!,
-        baseName: safeName(`${item.artist} - ${item.title}`),
+        baseName: downloadName(item),
         extension: extensionFor(mimeType),
         mimeType,
         totalBytes,
@@ -407,6 +437,39 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       const label = await SonareDownloads.defaultLocation().catch(() => 'Music/Sonare');
       set({ location: { label } });
       await AsyncStorage.removeItem(LOCATION_KEY);
+    },
+
+    adoptFound: (found) => {
+      const items = { ...get().items };
+      let changed = false;
+      for (const f of found) {
+        const known = items[f.id];
+        if (known && known.status === 'done' && !known.missing) continue;
+        const settings = useSettingsStore.getState();
+        items[f.id] = {
+          id: f.id,
+          title: known?.title ?? f.title,
+          artist: known?.artist ?? f.artist,
+          artistId: known?.artistId ?? '',
+          album: known?.album ?? f.album,
+          albumId: known?.albumId ?? null,
+          durationMs: known?.durationMs ?? f.durationMs,
+          thumbnail: known?.thumbnail,
+          status: 'done',
+          quality: known?.quality ?? settings.downloadQuality,
+          format: known?.format ?? (/\.m4a$/i.test(f.fileName) ? 'm4a' : 'opus'),
+          totalBytes: f.size,
+          receivedBytes: f.size,
+          uri: f.uri,
+          fileName: f.fileName,
+          addedAt: known?.addedAt ?? f.modifiedAt,
+          completedAt: known?.completedAt ?? f.modifiedAt,
+        };
+        changed = true;
+      }
+      if (!changed) return;
+      set({ items });
+      persist(true);
     },
 
     checkFiles: async () => {

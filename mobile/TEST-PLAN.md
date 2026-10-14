@@ -428,3 +428,13 @@ navigation mock live in `test-utils/`.
 | ID              | Use case                                                            |
 | :-------------- | :------------------------------------------------------------------ |
 | `MOB-CACHE-001` | Settings shows how much the stream cache holds and Clear empties it |
+
+## `__tests__/local-music.test.ts`
+
+| ID              | Use case                                                                          |
+| :-------------- | :-------------------------------------------------------------------------------- |
+| `MOB-LOCAL-001` | without the music permission nothing is read; allowing it scans                   |
+| `MOB-LOCAL-002` | songs are grouped by folder, and a hidden folder leaves the list and stays hidden |
+| `MOB-LOCAL-003` | a download names its file with the song id, so it can be found again              |
+| `MOB-LOCAL-004` | downloads the list lost (a reinstall) come back from Music/Sonare, shown once     |
+| `MOB-LOCAL-005` | a song on the phone plays from its content uri                                    |

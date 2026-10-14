@@ -7,6 +7,7 @@ import { LyricsScreen } from '../screens/Lyrics';
 import { QueueScreen } from '../screens/Queue';
 import { EqualizerScreen } from '../screens/Equalizer';
 import { useDownloadsStore } from '../store/downloads';
+import { useLocalMusicStore } from '../store/localMusic';
 import { useSettingsStore } from '../data/settings';
 import { ModeSwitchScreen } from '../screens/ModeSwitch';
 import { SignInScreen } from '../screens/SignIn';
@@ -118,8 +119,12 @@ export const RootNavigator = () => {
   useEffect(() => {
     useDevicePrefsStore.getState().hydrate();
     hydrate();
-    // Picks up downloads that were running when the app last closed.
-    useDownloadsStore.getState().hydrate();
+    // Picks up downloads that were running when the app last closed; then the phone's music,
+    // whose scan also finds downloads the list lost (a reinstall).
+    useDownloadsStore
+      .getState()
+      .hydrate()
+      .then(() => useLocalMusicStore.getState().hydrate());
   }, [hydrate]);
   useSessionEffects(status);
 

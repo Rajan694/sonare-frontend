@@ -10,6 +10,7 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.mobile.buildinfo.SonareBuildPackage
 import com.mobile.updates.SonareUpdatesPackage
 import com.mobile.downloads.SonareDownloadsPackage
+import com.mobile.library.SonareLibraryPackage
 import com.mobile.player.SonarePlayerPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -23,6 +24,7 @@ class MainApplication : Application(), ReactApplication {
           // add(MyReactNativePackage())
           add(SonarePlayerPackage())
           add(SonareDownloadsPackage())
+          add(SonareLibraryPackage())
           add(SonareBuildPackage())
           add(SonareUpdatesPackage())
         },

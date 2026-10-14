@@ -10,6 +10,7 @@ import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
 import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
+import { deviceUriFor } from '../../store/localMusic';
 import { refreshInAppSession } from '../../youtube/inApp';
 import { noteLevel, saveWaveforms, watchWaveform } from '../../store/waveforms';
 import { watchPlayerPersistence } from '../../store/playerPersist';
@@ -74,9 +75,11 @@ const fetchStream = (track: Track): Promise<StreamInfo> => {
   return pending;
 };
 
-/** Downloaded songs play from the phone, online or not; everything else streams. */
+/** Songs on the phone (downloads, music folders) play from it, online or not; everything else streams. */
+const onPhone = (trackId: string): string | null => localUriFor(trackId) ?? deviceUriFor(trackId);
+
 const streamUrl = async (track: Track): Promise<string> => {
-  const local = localUriFor(track.id);
+  const local = onPhone(track.id);
   if (local) return local;
   return absoluteUrl((knownStream(track.id) ?? (await fetchStream(track))).url)!;
 };
@@ -148,7 +151,7 @@ const prepareNext = async () => {
   const next = usePlayerStore.getState().upcomingTrack();
   const wanted =
     (useSettingsStore.getState().gapless || useAudioStore.getState().crossfade) &&
-    next?.source === 'server' &&
+    (next?.source === 'server' || (!!next && !!onPhone(next.id))) &&
     loadedId !== null &&
     loadedId === current()?.id;
   if (!wanted || !next) {
@@ -206,7 +209,7 @@ const loadCurrent = async () => {
     SonarePlayer.stop();
     return;
   }
-  if (track.source !== 'server') {
+  if (track.source !== 'server' && !onPhone(track.id)) {
     player.setError('This track is only on another device');
     return;
   }
