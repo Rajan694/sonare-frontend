@@ -120,10 +120,11 @@ export const useSearch = (
   query: string,
   type: 'songs' | 'albums' | 'artists' | 'playlists' | 'all' = 'all',
   cursor?: string,
+  enabled: boolean = true,
 ) => {
   const debouncedQuery = useDebounce(query.trim(), 300);
   return useAsync(() => api.search(debouncedQuery, type, cursor), [debouncedQuery, type, cursor], {
-    enabled: debouncedQuery.length > 0,
+    enabled: enabled && debouncedQuery.length > 0,
   });
 };
 

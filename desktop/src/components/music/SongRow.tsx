@@ -172,7 +172,7 @@ const SongRow = ({
       {/* Duration column */}
       <span className="flex-none text-mono-s text-t3 text-right">{formatDuration(track.durationMs)}</span>
 
-      {/* Actions: Heart hidden on phone (< 480px), menu visible */}
+      {/* Actions: the heart is always visible, only fading in on hover where there is room */}
       <div className="flex items-center justify-end gap-0.5 flex-none">
         <IconButton
           icon="heart"
@@ -180,8 +180,8 @@ const SongRow = ({
           size={28}
           active={favourite}
           className={cn(
-            'hidden @[480px]:inline-flex',
-            !favourite && 'opacity-0 group-hover:opacity-100 transition-opacity',
+            'inline-flex',
+            !favourite && 'opacity-100 @[480px]:opacity-0 @[480px]:group-hover:opacity-100 transition-opacity',
           )}
           onClick={(e) => {
             e.stopPropagation();

@@ -163,10 +163,13 @@ describe('playlist page', () => {
     const player = makePlayer();
     const { user } = openPlaylist('sonare:gym', player);
     await screen.findAllByRole('row');
+    const from = { kind: 'Playlist', name: 'Gym' };
     await user.click(screen.getByRole('button', { name: 'Play playlist' }));
-    expect(player.playTrack).toHaveBeenCalledWith(songs[0], songs);
+    expect(player.playTrack).toHaveBeenCalledWith(songs[0], songs, from);
+    await user.click(screen.getByRole('button', { name: 'Shuffle' }));
+    expect(player.playShuffled).toHaveBeenCalledWith(songs, from);
     await user.click(within(screen.getAllByRole('row')[2]).getByRole('button', { name: 'Play Three' }));
-    expect(player.playTrack).toHaveBeenLastCalledWith(songs[2], songs);
+    expect(player.playTrack).toHaveBeenLastCalledWith(songs[2], songs, from);
   });
 
   it('WEB-PLAYLIST-004 removing a song takes it out at once and tells the server its position', async () => {

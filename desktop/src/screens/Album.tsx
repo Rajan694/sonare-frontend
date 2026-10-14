@@ -19,7 +19,7 @@ import { formatDuration } from '../lib/format';
 const Album = () => {
   const { id } = useParams();
   const { mode } = useModeStore();
-  const { currentTrack, playTrack } = usePlayerStore();
+  const { currentTrack, playTrack, playShuffled } = usePlayerStore();
   const isOffline = mode === 'offline';
 
   const { data: album, loading: albumLoading, error: albumError } = useAlbum(id);
@@ -29,17 +29,17 @@ const Album = () => {
   const favourite = favouriteOverride ?? !!savedAlbums?.items.some((a) => a.id === id);
 
   const tracks = tracksData?.items || [];
+  const from = { kind: 'Album', name: album?.title ?? 'Album' };
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      playTrack(tracks[0], tracks);
+      playTrack(tracks[0], tracks, from);
     }
   };
 
   const handleShuffle = () => {
     if (tracks.length > 0) {
-      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
-      playTrack(shuffled[0], shuffled);
+      playShuffled(tracks, from);
     }
   };
 
@@ -194,7 +194,7 @@ const Album = () => {
                 track={track}
                 index={i + 1}
                 isActive={currentTrack?.id === track.id}
-                onClick={() => playTrack(track, tracks)}
+                onClick={() => playTrack(track, tracks, from)}
               />
             ))}
           </motion.div>

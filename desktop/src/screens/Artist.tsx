@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
-import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
 import { useArtist, useArtistTopTracks, useArtistAlbums } from '../api/hooks';
 import { api } from '../api/api';
@@ -19,9 +18,7 @@ import type { Track, Album } from '../types';
 
 const Artist = () => {
   const { id } = useParams();
-  const { mode } = useModeStore();
-  const { currentTrack, playTrack } = usePlayerStore();
-  const isOffline = mode === 'offline';
+  const { currentTrack, playTrack, playShuffled } = usePlayerStore();
 
   const { data: artist, loading: artistLoading, error: artistError } = useArtist(id);
   const { data: tracksData, loading: tracksLoading } = useArtistTopTracks(id);
@@ -32,17 +29,17 @@ const Artist = () => {
 
   const tracks: Track[] = tracksData?.items || [];
   const albums: Album[] = albumsData?.items || [];
+  const from = { kind: 'Artist', name: artist?.name ?? 'Artist' };
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      playTrack(tracks[0], tracks);
+      playTrack(tracks[0], tracks, from);
     }
   };
 
   const handleShuffle = () => {
     if (tracks.length > 0) {
-      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
-      playTrack(shuffled[0], shuffled);
+      playShuffled(tracks, from);
     }
   };
 
@@ -117,10 +114,6 @@ const Artist = () => {
           </span>
           <span className="text-display-m @[720px]:text-display text-t1 font-semibold truncate">{artist.name}</span>
           <span className="text-body-m text-t2 truncate">
-            {artist.monthlyListeners && !isOffline
-              ? `${artist.monthlyListeners.toLocaleString()} monthly listeners`
-              : ''}
-            {artist.monthlyListeners && (artist.albumCount || artist.localTrackCount) ? ' · ' : ''}
             {artist.albumCount ? `${artist.albumCount} albums` : ''}
             {artist.localTrackCount ? `${artist.albumCount ? ' · ' : ''}${artist.localTrackCount} local songs` : ''}
           </span>
@@ -179,7 +172,7 @@ const Artist = () => {
                     track={track}
                     index={i + 1}
                     isActive={currentTrack?.id === track.id}
-                    onClick={() => playTrack(track, tracks)}
+                    onClick={() => playTrack(track, tracks, from)}
                   />
                 ))}
               </motion.div>

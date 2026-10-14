@@ -7,6 +7,7 @@ import { useMyPlaylists, notifyPlaylistsChanged } from '../../api/hooks';
 import { api } from '../../api/api';
 import { requireAccount } from '../../api/accountGate';
 import { isAuthenticated } from '../../api/auth';
+import { useFavourite } from '../../api/favourites';
 import type { Track } from '../../types';
 import { CAPS } from '../../lib/caps';
 import { localLibrary } from '../../storage/local';
@@ -96,6 +97,7 @@ const OpenMenu = ({ target }: { target: MenuTarget }) => {
 
   const { tracks, playlist } = target;
   const single = tracks.length === 1 ? tracks[0] : null;
+  const { favourite, toggle: toggleFavourite } = useFavourite(single);
   const download = useDownload(single?.id ?? '');
 
   // Keep the menu on screen; anchor it to the left of the pointer near the right edge.
@@ -195,6 +197,11 @@ const OpenMenu = ({ target }: { target: MenuTarget }) => {
                 <MenuItem icon="list" onClick={run(() => enqueue(tracks))}>
                   Add to queue
                 </MenuItem>
+                {single && (
+                  <MenuItem icon="heart" onClick={run(toggleFavourite)}>
+                    {favourite ? 'Remove from favourites' : 'Add to favourites'}
+                  </MenuItem>
+                )}
                 <MenuItem
                   icon="playlist"
                   onClick={() => {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useDebounce, useGenres, usePlaylist, notifyPlaylistsChanged } from '../api/hooks';
+import { useDebounce, useGenres, usePlaylist, useSearch, notifyPlaylistsChanged } from '../api/hooks';
 import { api } from '../api/api';
 import { showToast } from '../store/toasts';
 import { useLocalLibrary } from '../storage/local';
@@ -31,6 +31,24 @@ const CHIPS: { id: ChipFilter; label: string }[] = [
   { id: 'artists', label: 'Artists' },
   { id: 'playlists', label: 'Playlists' },
 ];
+
+const SeeAll = ({ label, onClick }: { label: string; onClick: () => void }) => (
+  <button
+    className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1 inline-flex items-center gap-1"
+    aria-label={`See all ${label}`}
+    onClick={onClick}
+  >
+    <span>See all</span>
+    <Icon name="chevron-right" size={14} />
+  </button>
+);
+
+// A search hit for a playlist comes back album-shaped (`title`, with `artist` as the owner or
+// channel); a plain playlist fixture carries a `name`. Read whichever is there.
+const playlistTitle = (pl: Playlist | Album): string =>
+  'name' in pl && pl.name ? pl.name : 'title' in pl ? pl.title : 'Playlist';
+const playlistSubtitle = (pl: Playlist | Album): string =>
+  'artist' in pl && pl.artist ? `Playlist · ${pl.artist}` : 'Playlist';
 
 const Search = () => {
   const { mode, setMode } = useModeStore();
@@ -72,6 +90,7 @@ const Search = () => {
   const isOnline = mode === 'online';
   const hasQuery = query.trim().length > 0;
   const debouncedQuery = useDebounce(query.trim(), 300);
+  const allActive = activeChip === 'all';
 
   // Map activeChip to searchSlice SearchType (when All, fetch songs as primary)
   const querySearchType: SearchType = activeChip === 'all' ? 'songs' : activeChip;
@@ -96,6 +115,24 @@ const Search = () => {
 
   const { data: genres } = useGenres();
 
+  // All shows each kind from its own search, like the Android app. The extra searches only
+  // run while All is the active chip.
+  const extrasOn = isOnline && allActive && hasQuery;
+  const artistsSearch = useSearch(query, 'artists', undefined, extrasOn);
+  const albumsSearch = useSearch(query, 'albums', undefined, extrasOn);
+  const playlistsSearch = useSearch(query, 'playlists', undefined, extrasOn);
+
+  // Hits are told apart by the fields their own search returns. A playlist hit is album-shaped
+  // (a `title` with `artist` as the owner/channel), so it is the album tests that let it through.
+  const artistHits = (artistsSearch.data?.items ?? []).filter((item): item is Artist => 'albumCount' in item);
+  const albumHits = (albumsSearch.data?.items ?? []).filter(
+    (item): item is Album => 'trackCount' in item && 'title' in item,
+  );
+  const playlistHits = (playlistsSearch.data?.items ?? []).filter(
+    (item): item is Playlist => !('durationMs' in item) && !('albumCount' in item),
+  );
+  const extrasLoading = allActive && (artistsSearch.loading || albumsSearch.loading || playlistsSearch.loading);
+
   const serverItems = isOnline && current ? results : [];
   // Merge items
   const combinedTracks = isOnline
@@ -111,33 +148,29 @@ const Search = () => {
     ? combinedTracks.length + (activeChip !== 'all' && activeChip !== 'songs' ? serverItems.length : 0)
     : localMatches.length;
 
+  const from = { kind: 'Search', name: `“${query.trim()}”` };
+
   const handlePlay = (track: Track) => {
-    playTrack(track, combinedTracks.length > 0 ? combinedTracks : [track]);
+    playTrack(track, combinedTracks.length > 0 ? combinedTracks : [track], from);
+  };
+
+  // A section's "See all" opens the full results for that kind.
+  const seeAll = (type: SearchType) => {
+    setActiveChip(type);
+    dispatch(setType(type));
   };
 
   // Find top result (prefer first match: album, song, or artist)
   const topSong = combinedTracks[0];
 
-  // The artists of the matching songs, with the server's artwork for catalog artists
-  // (device files have no artist page or picture).
-  const resultArtists = (() => {
-    const seen = new Map<string, { key: string; id: string; name: string; thumbnail?: string; linkable: boolean }>();
-    for (const t of combinedTracks) {
-      if (!t.artist) continue;
-      const server = t.source === 'server' && t.artistId.startsWith('yt:') && t.artistId !== 'yt:unknown';
-      const key = server ? t.artistId : `name:${t.artist.toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.set(key, {
-        key,
-        id: t.artistId,
-        name: t.artist,
-        thumbnail: server ? `/api/v1/artists/${t.artistId}/artwork?size=140` : undefined,
-        linkable: server,
-      });
-      if (seen.size === 6) break;
-    }
-    return [...seen.values()];
-  })();
+  // Nothing matched: no songs and, on All, none of the three extra searches either.
+  const nothingFound =
+    combinedTracks.length === 0 &&
+    (!isOnline
+      ? true
+      : allActive
+        ? artistHits.length === 0 && albumHits.length === 0 && playlistHits.length === 0
+        : serverItems.length === 0);
 
   return (
     <div className="@container flex flex-col overflow-hidden h-full">
@@ -216,7 +249,7 @@ const Search = () => {
               transition={transition.normal}
               className="flex flex-col gap-6 pt-3"
             >
-              {searchLoading ? (
+              {searchLoading || extrasLoading ? (
                 <div className="flex flex-col gap-2 animate-pulse pt-2">
                   {Array.from({ length: 6 }).map((_, i) => (
                     <div key={i} className="srow h-14 bg-s2/30 rounded" />
@@ -234,7 +267,7 @@ const Search = () => {
                     Try again
                   </Button>
                 </div>
-              ) : combinedTracks.length === 0 && serverItems.length === 0 ? (
+              ) : nothingFound ? (
                 <EmptyState
                   icon="search"
                   title="No results found"
@@ -244,82 +277,93 @@ const Search = () => {
                 />
               ) : activeChip === 'all' ? (
                 <div className="flex flex-col gap-8">
-                  {/* Two column layout: Top Result card + Songs Table */}
-                  <div className="grid grid-cols-1 @4xl:grid-cols-[360px_minmax(0,1fr)] gap-7 items-start">
-                    {/* Top result card */}
-                    {topSong && (
-                      <div className="flex flex-col gap-3">
-                        <span className="text-overline text-t3 uppercase font-semibold">Top result</span>
-                        <div className="surf flex flex-col gap-4 p-5 rounded-xl">
-                          <Artwork
-                            src={topSong.thumbnail || `/api/v1/albums/${topSong.albumId}/artwork?size=240`}
-                            alt={topSong.title}
-                            variant="a2"
-                            size={168}
-                            radius="md"
-                            className="shadow-xl"
-                          />
-                          <div className="flex flex-col gap-1.5">
-                            <span className="text-heading-m text-t1 font-semibold">{topSong.title}</span>
-                            <span className="text-body-m text-t2">
-                              Song · {topSong.artist} {topSong.album ? `· ${topSong.album}` : ''}
-                            </span>
-                            <div className="flex items-center gap-2 mt-1">
-                              {topSong.source === 'local' || local.downloads.has(topSong.id) ? (
-                                <span className="badge bg-local inline-flex items-center gap-1">
-                                  <Icon name="smartphone" size={9} />
-                                  <span>On device</span>
-                                </span>
-                              ) : (
-                                <span className="badge bg-cloud inline-flex items-center gap-1">
-                                  <Icon name="cloud" size={9} />
-                                  <span>Server</span>
-                                </span>
-                              )}
+                  {/* Top result and Songs, both from the songs search */}
+                  {(topSong || combinedTracks.length > 0) && (
+                    <div className="grid grid-cols-1 @4xl:grid-cols-[360px_minmax(0,1fr)] gap-7 items-start">
+                      {topSong && (
+                        <div className="flex flex-col gap-3">
+                          <span className="text-overline text-t3 uppercase font-semibold">Top result</span>
+                          <div className="surf flex flex-col gap-4 p-5 rounded-xl">
+                            <Artwork
+                              src={topSong.thumbnail || `/api/v1/albums/${topSong.albumId}/artwork?size=240`}
+                              alt={topSong.title}
+                              variant="a2"
+                              size={168}
+                              radius="md"
+                              className="shadow-xl"
+                            />
+                            <div className="flex flex-col gap-1.5">
+                              <span className="text-heading-m text-t1 font-semibold">{topSong.title}</span>
+                              <span className="text-body-m text-t2">
+                                Song · {topSong.artist} {topSong.album ? `· ${topSong.album}` : ''}
+                              </span>
+                              <div className="flex items-center gap-2 mt-1">
+                                {topSong.source === 'local' || local.downloads.has(topSong.id) ? (
+                                  <span className="badge bg-local inline-flex items-center gap-1">
+                                    <Icon name="smartphone" size={9} />
+                                    <span>On device</span>
+                                  </span>
+                                ) : (
+                                  <span className="badge bg-cloud inline-flex items-center gap-1">
+                                    <Icon name="cloud" size={9} />
+                                    <span>Server</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2.5 mt-2">
+                              <button
+                                className="playbtn playbtn-48"
+                                aria-label={`Play ${topSong.title}`}
+                                onClick={() => handlePlay(topSong)}
+                              >
+                                <Icon name="play" size={21} />
+                              </button>
+                              <DownloadButton tracks={[topSong]} offline={!isOnline} />
                             </div>
                           </div>
-                          <div className="flex items-center gap-2.5 mt-2">
-                            <button
-                              className="playbtn playbtn-48"
-                              aria-label={`Play ${topSong.title}`}
-                              onClick={() => handlePlay(topSong)}
-                            >
-                              <Icon name="play" size={21} />
-                            </button>
-                            <DownloadButton tracks={[topSong]} offline={!isOnline} />
+                        </div>
+                      )}
+
+                      {combinedTracks.length > 0 && (
+                        <div className="@container flex flex-col gap-3 min-w-0">
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-overline text-t3 uppercase font-semibold">Songs</span>
+                            <SeeAll label="songs" onClick={() => seeAll('songs')} />
+                          </div>
+                          <div className="flex flex-col gap-0.5">
+                            {combinedTracks.slice(0, 4).map((track, i) => (
+                              <SongRow
+                                key={track.id}
+                                track={track}
+                                index={i + 1}
+                                isActive={currentTrack?.id === track.id}
+                                onClick={() => handlePlay(track)}
+                                onAdd={addTo ? () => void addTrack(track) : undefined}
+                                added={added.has(track.id)}
+                              />
+                            ))}
                           </div>
                         </div>
-                      </div>
-                    )}
-
-                    {/* Songs 4 rows table */}
-                    <div className="@container flex flex-col gap-3 min-w-0">
-                      <span className="text-overline text-t3 uppercase font-semibold">Songs</span>
-                      <div className="flex flex-col gap-0.5">
-                        {combinedTracks.slice(0, 4).map((track, i) => (
-                          <SongRow
-                            key={track.id}
-                            track={track}
-                            index={i + 1}
-                            isActive={currentTrack?.id === track.id}
-                            onClick={() => handlePlay(track)}
-                            onAdd={addTo ? () => void addTrack(track) : undefined}
-                            added={added.has(track.id)}
-                          />
-                        ))}
-                      </div>
+                      )}
                     </div>
-                  </div>
+                  )}
 
-                  {/* Artists row of avatars */}
-                  <div className="flex flex-col gap-3">
-                    <span className="text-overline text-t3 uppercase font-semibold">Artists</span>
-                    <div className="flex items-center gap-6 overflow-x-auto pb-2">
-                      {resultArtists.map((artist, i) => {
-                        const avatar = (
-                          <>
+                  {artistHits.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-overline text-t3 uppercase font-semibold">Artists</span>
+                        <SeeAll label="artists" onClick={() => seeAll('artists')} />
+                      </div>
+                      <div className="flex items-center gap-6 overflow-x-auto pb-2">
+                        {artistHits.map((artist, i) => (
+                          <Link
+                            key={artist.id}
+                            to={`/artist/${artist.id}`}
+                            className="flex flex-col items-center gap-2 w-[92px] flex-none text-center no-underline text-inherit"
+                          >
                             <Artwork
-                              src={artist.thumbnail}
+                              src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
                               alt={artist.name}
                               variant={`a${((i % 12) + 1) as 1}`}
                               size={92}
@@ -327,25 +371,53 @@ const Search = () => {
                             />
                             <span className="text-label-m text-t1 truncate w-full">{artist.name}</span>
                             <span className="text-label-s text-t3">Artist</span>
-                          </>
-                        );
-                        const cls = 'flex flex-col items-center gap-2 w-[92px] flex-none text-center';
-                        return artist.linkable ? (
-                          <Link
-                            key={artist.key}
-                            to={`/artist/${artist.id}`}
-                            className={cn(cls, 'no-underline text-inherit')}
-                          >
-                            {avatar}
                           </Link>
-                        ) : (
-                          <div key={artist.key} className={cls}>
-                            {avatar}
-                          </div>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {albumHits.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-overline text-t3 uppercase font-semibold">Albums</span>
+                        <SeeAll label="albums" onClick={() => seeAll('albums')} />
+                      </div>
+                      <div className="flex gap-4 flex-wrap">
+                        {albumHits.map((album, i) => (
+                          <Card
+                            key={album.id}
+                            title={album.title}
+                            subtitle={`Album · ${album.artist}`}
+                            artVariant={`a${(i % 12) + 1}` as any}
+                            thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
+                            to={`/album/${album.id}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {playlistHits.length > 0 && (
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-overline text-t3 uppercase font-semibold">Playlists</span>
+                        <SeeAll label="playlists" onClick={() => seeAll('playlists')} />
+                      </div>
+                      <div className="flex gap-4 flex-wrap">
+                        {playlistHits.map((pl, i) => (
+                          <Card
+                            key={pl.id}
+                            title={playlistTitle(pl)}
+                            subtitle={playlistSubtitle(pl)}
+                            artVariant={`a${(i % 12) + 1}` as any}
+                            thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
+                            to={`/playlist/${pl.id}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Offline Notice at the bottom (matching D04 Not on this device) */}
                   {!isOnline && (
@@ -388,7 +460,7 @@ const Search = () => {
                       <Card
                         key={album.id}
                         title={album.title}
-                        subtitle={album.artist}
+                        subtitle={`Album · ${album.artist}`}
                         artVariant={`a${(i % 12) + 1}` as any}
                         thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
                         to={`/album/${album.id}`}
@@ -420,12 +492,12 @@ const Search = () => {
               ) : (
                 <div className="flex gap-4 flex-wrap pt-2">
                   {serverItems
-                    .filter((item): item is Playlist => 'kind' in item && !('durationMs' in item))
+                    .filter((item): item is Playlist => !('durationMs' in item) && !('albumCount' in item))
                     .map((pl, i) => (
                       <Card
                         key={pl.id}
-                        title={pl.name}
-                        subtitle={pl.kind ? `Playlist · ${pl.kind}` : 'Playlist'}
+                        title={playlistTitle(pl)}
+                        subtitle={playlistSubtitle(pl)}
                         artVariant={`a${(i % 12) + 1}` as any}
                         thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
                         to={`/playlist/${pl.id}`}

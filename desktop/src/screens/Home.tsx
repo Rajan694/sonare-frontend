@@ -4,9 +4,10 @@ import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useTrending, useRecentlyPlayed, useAuth } from '../api/hooks';
+import { useTrending, useRecentlyPlayed, useMostPlayed, useAuth } from '../api/hooks';
 import { loadErrorMessage } from '../api/api';
 import { useLocalLibrary, resolveLocalRefs } from '../storage/local';
+import { useRecentPlays } from '../storage/recentPlays';
 import Icon from '../components/ui/Icon';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import { trackArtwork } from '../components/music/Artwork';
@@ -38,16 +39,28 @@ const Home = () => {
   const [allTrending, setAllTrending] = useState(false);
   const [allRecent, setAllRecent] = useState(false);
   const { data: recentData, error: recentError, refetch: refetchRecent } = useRecentlyPlayed(allRecent ? 50 : 10);
+  const { data: mostPlayedData } = useMostPlayed({ limit: 10 });
 
   const local = useLocalLibrary();
+  const recentPlays = useRecentPlays();
   const trendingTracks = isOnline ? trendingData?.items || [] : local.tracks;
 
   const hasRealRecent = !!(recentData?.items && recentData.items.length > 0);
-  const recentTracks = !isOnline
-    ? local.tracks.slice(6, 26)
-    : hasRealRecent
-      ? resolveLocalRefs(recentData.items, local).filter((t, i, all) => all.findIndex((x) => x.id === t.id) === i)
-      : [];
+  const serverRecent = hasRealRecent
+    ? resolveLocalRefs(recentData.items, local).filter((t, i, all) => all.findIndex((x) => x.id === t.id) === i)
+    : [];
+
+  // Offline, "recent" is what this device actually played: ids from the play log resolved back
+  // to the library file or download they came from, newest first.
+  const deviceRecent = recentPlays
+    .map((play) => {
+      const localId = play.id.startsWith('local:') ? play.id : local.downloads.get(play.id);
+      return localId ? local.tracks.find((t) => t.id === localId) : undefined;
+    })
+    .filter((t): t is Track => !!t);
+
+  const recentTracks = isOnline ? serverRecent : deviceRecent;
+  const mostPlayed = mostPlayedData?.items ?? [];
 
   const trendingFailed = isOnline && !!trendingError && trendingTracks.length === 0;
   // Signed in, online, the request failed and there is nothing from an earlier load to show.
@@ -63,7 +76,9 @@ const Home = () => {
     </Button>
   );
 
-  const tiles = trendingTracks.slice(0, 6).map((t, i) => ({
+  // Quick-access tiles prefer what you last played; a fresh listener gets trending instead.
+  const tileSource = recentTracks.length > 0 ? recentTracks : trendingTracks;
+  const tiles = tileSource.slice(0, 6).map((t, i) => ({
     title: t.title,
     subtitle: t.artist,
     artVariant: `a${(i % 12) + 1}` as const,
@@ -71,7 +86,11 @@ const Home = () => {
     track: t,
   }));
 
-  const trendingCards = trendingTracks.slice(0, allTrending ? undefined : 10).map((t, i) => ({
+  // The shelves skip the songs already shown as tiles above.
+  const recentShelf = tileSource === recentTracks ? recentTracks.slice(tiles.length) : recentTracks;
+  const tiledIds = new Set(tiles.map((tile) => tile.track.id));
+  const trendingShelf = trendingTracks.filter((t) => !tiledIds.has(t.id));
+  const trendingCards = trendingShelf.slice(0, allTrending ? undefined : 10).map((t, i) => ({
     id: t.id,
     title: t.title,
     artist: t.artist,
@@ -217,18 +236,18 @@ const Home = () => {
                   artVariant={tile.artVariant}
                   to={tile.to}
                   thumbnail={trackArtwork(tile.track, 64)}
-                  onPlay={() => handlePlay(tile.track, trendingTracks)}
+                  onPlay={() => handlePlay(tile.track, tileSource)}
                 />
               ))}
         </motion.div>
       )}
 
       {/* Recently played / Jump back in shelf */}
-      {(recentTracks.length > 0 || (!isOnline && local.tracks.length > 6) || recentFailed) && (
+      {(recentShelf.length > 0 || recentFailed) && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
             <span className="text-h2 text-t1 font-semibold">{!isOnline ? 'Jump back in' : 'Recently played'}</span>
-            {recentTracks.length > 6 && (
+            {recentShelf.length > 8 && (
               <button
                 className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1 inline-flex items-center gap-1"
                 onClick={() => setAllRecent((v) => !v)}
@@ -247,7 +266,7 @@ const Home = () => {
             />
           ) : (
             <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
-              {recentTracks.slice(0, allRecent ? undefined : 8).map((track, i) => (
+              {recentShelf.slice(0, allRecent ? undefined : 8).map((track, i) => (
                 <Card
                   key={track.id}
                   title={track.title}
@@ -268,7 +287,7 @@ const Home = () => {
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
             <span className="text-h2 text-t1 font-semibold">Trending locally this week</span>
-            {trendingTracks.length > 6 && (
+            {trendingShelf.length > 10 && (
               <button
                 className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1 inline-flex items-center gap-1"
                 onClick={() => setAllTrending((v) => !v)}
@@ -307,24 +326,47 @@ const Home = () => {
         </motion.div>
       )}
 
-      {/* Song Table */}
-      <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
-        <div className="shead">
-          <span className="text-h2 text-t1 font-semibold">{isOnline ? 'Trending tracks' : 'Songs on device'}</span>
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <SongTableHeader />
-          {trendingTracks.slice(0, 10).map((track, i) => (
-            <SongRow
-              key={track.id}
-              track={track}
-              index={i + 1}
-              isActive={currentTrack?.id === track.id}
-              onClick={() => handlePlay(track, trendingTracks)}
-            />
-          ))}
-        </div>
-      </motion.div>
+      {/* Song table: most-played when signed in, otherwise just this device's songs */}
+      {isOnline ? (
+        user &&
+        mostPlayed.length > 0 && (
+          <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
+            <div className="shead">
+              <span className="text-h2 text-t1 font-semibold">Most played</span>
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <SongTableHeader />
+              {mostPlayed.slice(0, 10).map((track, i) => (
+                <SongRow
+                  key={track.id}
+                  track={track}
+                  index={i + 1}
+                  isActive={currentTrack?.id === track.id}
+                  onClick={() => handlePlay(track, mostPlayed)}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )
+      ) : (
+        <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
+          <div className="shead">
+            <span className="text-h2 text-t1 font-semibold">Songs on device</span>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <SongTableHeader />
+            {trendingTracks.slice(0, 10).map((track, i) => (
+              <SongRow
+                key={track.id}
+                track={track}
+                index={i + 1}
+                isActive={currentTrack?.id === track.id}
+                onClick={() => handlePlay(track, trendingTracks)}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
     </motion.div>
   );
 };
@@ -429,7 +471,7 @@ const PhoneHome = ({
         </motion.button>
       )}
 
-      {isOnline && jumpBackIn.length > 1 && (
+      {jumpBackIn.length > 1 && (
         <motion.div className="flex flex-col gap-3" variants={staggerItem} transition={transition.normal}>
           <div className="shead">
             <span className="text-h2 text-t1 font-semibold">Jump back in</span>

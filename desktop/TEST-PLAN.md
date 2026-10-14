@@ -127,6 +127,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-MUSIC-030` | without a seek handler it is a picture, not a control                                        |
 | `WEB-MUSIC-031` | the table shows your play count, and the artist where a song has no album                    |
 | `WEB-MUSIC-032` | a guest who signs in from "Add to playlist" gets the playlist picker for that song           |
+| `WEB-MUSIC-033` | the menu adds and removes a single song as a favourite                                       |
+| `WEB-MUSIC-034` | the favourite heart is shown at every width                                                  |
 
 ## `test/components/ui.test.tsx`
 
@@ -217,26 +219,32 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/home-search.test.tsx`
 
-| ID               | Use case                                                                               |
-| :--------------- | :------------------------------------------------------------------------------------- |
-| `WEB-HOME-001`   | a guest is welcomed, invited to create an account, and sees trending music             |
-| `WEB-HOME-002`   | a signed-in user is greeted by name and sees their recently played, without duplicates |
-| `WEB-HOME-003`   | when the music service is down it explains why and can retry                           |
-| `WEB-HOME-004`   | with a song loaded the header button pauses or resumes it                              |
-| `WEB-HOME-005`   | playing a table row plays it within the trending list                                  |
-| `WEB-HOME-006`   | "See all" shows the full trending shelf                                                |
-| `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry          |
-| `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre searches for its query   |
-| `WEB-SEARCH-002` | shows a top result, songs and artists, with a result count                             |
-| `WEB-SEARCH-003` | the top result plays within the results                                                |
-| `WEB-SEARCH-004` | the chips search albums, artists and playlists and link to them                        |
-| `WEB-SEARCH-005` | says when nothing matches                                                              |
-| `WEB-SEARCH-006` | a failed search shows the error and can be retried                                     |
-| `WEB-SEARCH-007` | a shared ?q= link fills the search box and is removed from the address                 |
-| `WEB-SEARCH-008` | add-songs mode adds a result to the playlist and counts it                             |
-| `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                             |
-| `WEB-SEARCH-010` | a category without a query searches for its name                                       |
-| `WEB-SEARCH-011` | the Artists row shows each song's artist once, with their picture and page             |
+| ID               | Use case                                                                                     |
+| :--------------- | :------------------------------------------------------------------------------------------- |
+| `WEB-HOME-001`   | a guest gets trending tiles and cards                                                        |
+| `WEB-HOME-002`   | a signed-in user is greeted by name and gets their recent plays as tiles, without duplicates |
+| `WEB-HOME-003`   | when the music service is down it explains why and can retry                                 |
+| `WEB-HOME-004`   | with a song loaded the header button pauses or resumes it                                    |
+| `WEB-HOME-005`   | a trending shelf card plays within the trending list                                         |
+| `WEB-HOME-006`   | "See all" shows the full trending shelf                                                      |
+| `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry                |
+| `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre searches for its query         |
+| `WEB-SEARCH-002` | shows a top result and songs, with a result count                                            |
+| `WEB-SEARCH-003` | the top result plays within the results                                                      |
+| `WEB-SEARCH-004` | the chips search albums, artists and playlists and link to them                              |
+| `WEB-SEARCH-005` | says when nothing matches                                                                    |
+| `WEB-SEARCH-006` | a failed search shows the error and can be retried                                           |
+| `WEB-SEARCH-007` | a shared ?q= link fills the search box and is removed from the address                       |
+| `WEB-SEARCH-008` | add-songs mode adds a result to the playlist and counts it                                   |
+| `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                                   |
+| `WEB-SEARCH-010` | a category without a query searches for its name                                             |
+| `WEB-SEARCH-011` | the All tab shows artists from their own search, with a picture and page                     |
+
+## `test/screens/home-offline.test.tsx`
+
+| ID             | Use case                                             |
+| :------------- | :--------------------------------------------------- |
+| `WEB-HOME-008` | offline, the tiles come from what this device played |
 
 ## `test/screens/library-catalog.test.tsx`
 
@@ -249,9 +257,10 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LIBRARY-005` | grid view shows the songs as cards that play in the list                              |
 | `WEB-LIBRARY-006` | tabs are reflected in the address, and the address opens a tab                        |
 | `WEB-LIBRARY-007` | followed artists link to their pages; empty albums and artists say so                 |
-| `WEB-LIBRARY-008` | un-hearting a favourite removes it from the list at once                              |
-| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs still works                 |
+| `WEB-LIBRARY-008` | an old ?view=favourites link opens Songs                                              |
+| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs works                       |
 | `WEB-LIBRARY-010` | genres link to a search for that genre                                                |
+| `WEB-LIBRARY-014` | an empty Songs list shows the empty state, not a chart                                |
 | `WEB-ALBUM-001`   | shows the album, its artist link, year, size and total length                         |
 | `WEB-ALBUM-002`   | play and shuffle play the whole album                                                 |
 | `WEB-ALBUM-003`   | an unknown album shows "Album not found" with the reason                              |
@@ -259,7 +268,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-ALBUM-007`   | an album already saved in the library starts hearted                                  |
 | `WEB-ALBUM-005`   | a guest hearting an album is asked to sign up                                         |
 | `WEB-ALBUM-006`   | "More options" opens the menu for all the album's songs                               |
-| `WEB-ARTIST-001`  | shows listeners and albums, the top five songs and the discography                    |
+| `WEB-ARTIST-001`  | shows the album count and the top songs, without a listener figure                    |
 | `WEB-ARTIST-002`  | playing a popular song queues all of the artist's top songs                           |
 | `WEB-ARTIST-003`  | follow and unfollow, with the button following the saved state                        |
 | `WEB-ARTIST-004`  | a failed follow is undone                                                             |
@@ -745,6 +754,14 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PREFS-001` | start at the original lyrics and restore what was saved            |
 | `WEB-PREFS-002` | an unknown script or unreadable storage falls back to the defaults |
 | `WEB-PREFS-003` | every script offered is one the server accepts                     |
+
+## `test/unit/recentPlays.test.ts`
+
+| ID               | Use case                                                              |
+| ---------------- | --------------------------------------------------------------------- |
+| `WEB-RECENT-001` | starts empty and keeps the newest play first                          |
+| `WEB-RECENT-002` | a repeat moves the song back to the front instead of listing it twice |
+| `WEB-RECENT-003` | keeps the last 50, reads them back, and ignores unreadable storage    |
 
 ## `test/unit/sharedCatalog/catalog.test.ts`
 
