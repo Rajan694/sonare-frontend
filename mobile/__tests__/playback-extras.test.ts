@@ -15,7 +15,6 @@ const { mockEventEmitter } = require('../jest.setup');
 type Modules = {
   player: typeof import('../src/store/player');
   sleep: typeof import('../src/store/sleepTimer');
-  output: typeof import('../src/store/output');
   persist: typeof import('../src/store/playerPersist');
   prefs: typeof import('../src/store/devicePrefs');
   config: typeof import('../src/data/config');
@@ -28,7 +27,6 @@ const fresh = (): Modules => {
   return {
     player: require('../src/store/player'),
     sleep: require('../src/store/sleepTimer'),
-    output: require('../src/store/output'),
     persist: require('../src/store/playerPersist'),
     prefs: require('../src/store/devicePrefs'),
     config: require('../src/data/config'),
@@ -107,57 +105,6 @@ describe('sleep timer', () => {
     act(() => store.getState().setIsPlaying(false));
     expect(sleep.useSleepTimerStore.getState().timer.kind).toBe('off');
     expect(native.setPauseAtEndOfTrack).toHaveBeenLastCalledWith(false);
-  });
-});
-
-describe('audio output', () => {
-  const speaker = { id: 2, type: 'speaker', name: 'Phone speaker' };
-  const buds = { id: 7, type: 'bluetooth', name: 'Galaxy Buds' };
-
-  it('MOB-OUT-001 refresh lists the connected outputs and the one in use', async () => {
-    native.getOutputDevices.mockResolvedValueOnce([speaker, buds]);
-    native.getOutputDevice.mockResolvedValueOnce(buds);
-    const { output } = fresh();
-    await output.useOutputStore.getState().refresh();
-    expect(output.useOutputStore.getState()).toMatchObject({ devices: [speaker, buds], current: buds });
-    expect(output.outputDetail(buds as never)).toBe('Bluetooth');
-    expect(output.outputDetail(null)).toBe('Playing on this phone');
-  });
-
-  it('MOB-OUT-002 picking an output tells the player and is saved on the phone', async () => {
-    const { output } = fresh();
-    output.useOutputStore.getState().select(7);
-    expect(native.setOutputDevice).toHaveBeenLastCalledWith(7);
-    expect(output.useOutputStore.getState().preferredId).toBe(7);
-    await waitFor(async () => expect(await AsyncStorage.getItem('sonare.outputDevice')).toBe('7'));
-    output.useOutputStore.getState().select(-1);
-    expect(native.setOutputDevice).toHaveBeenLastCalledWith(-1);
-  });
-
-  it('MOB-OUT-003 on start the saved pick is applied again, and device changes are followed', async () => {
-    await AsyncStorage.setItem('sonare.outputDevice', '7');
-    native.getOutputDevices.mockResolvedValue([speaker, buds]);
-    native.getOutputDevice.mockResolvedValue(buds);
-    const { output } = fresh();
-    output.watchOutput();
-    await waitFor(() => expect(native.setOutputDevice).toHaveBeenCalledWith(7));
-    expect(output.useOutputStore.getState().preferredId).toBe(7);
-    await waitFor(() => expect(output.useOutputStore.getState().current).toEqual(buds));
-
-    // The buds disconnect: Android falls back to the speaker and says so.
-    native.getOutputDevices.mockResolvedValue([speaker]);
-    native.getOutputDevice.mockResolvedValue(speaker);
-    emit('output', speaker);
-    expect(output.useOutputStore.getState().current).toEqual(speaker);
-    await waitFor(() => expect(output.useOutputStore.getState().devices).toEqual([speaker]));
-  });
-
-  it('MOB-OUT-004 nothing saved leaves the choice to Android', async () => {
-    const { output } = fresh();
-    output.watchOutput();
-    await waitFor(() => expect(native.getOutputDevices).toHaveBeenCalled());
-    expect(native.setOutputDevice).not.toHaveBeenCalled();
-    expect(output.useOutputStore.getState().preferredId).toBe(-1);
   });
 });
 

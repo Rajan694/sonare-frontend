@@ -148,7 +148,7 @@ describe('now playing', () => {
     expect(await screen.findByRole('dialog', { name: 'Add to playlist' })).toHaveTextContent('Nude');
   });
 
-  it('WEB-NP-009 there is no output picker where the browser cannot switch outputs', () => {
+  it('WEB-NP-009 there is no output picker: Sonare plays on the system output', () => {
     open();
     expect(screen.queryByRole('button', { name: /^Audio output/ })).not.toBeInTheDocument();
   });

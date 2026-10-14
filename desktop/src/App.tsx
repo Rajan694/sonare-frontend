@@ -12,7 +12,6 @@ import * as player from './audio/player';
 import { maybeRecordPlay, resetPlay } from './api/plays';
 import { setSyncOnline, startBackgroundSync } from './api/sync';
 import { loadSettings, updateSettings, useSettings } from './storage/settings';
-import { watchOutput } from './audio/output';
 import { showToast } from './store/toasts';
 import { localLibrary } from './storage/local';
 import { downloads } from './storage/downloads';
@@ -130,8 +129,6 @@ const App = () => {
     startBackgroundSync();
     // Picks up downloads that were running when the app last closed.
     void downloads.init();
-    // Puts playback back on the speaker chosen last time.
-    watchOutput();
   }, []);
 
   // Plays held in Offline Mode upload in the background once the app is Online again.

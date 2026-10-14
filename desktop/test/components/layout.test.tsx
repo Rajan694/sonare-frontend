@@ -170,7 +170,7 @@ describe('bottom player', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('WEB-LAYOUT-038 no output button where the browser cannot choose the speaker', () => {
+  it('WEB-LAYOUT-038 there is no output button: Sonare plays on the system output', () => {
     renderWithProviders(<BottomPlayer />, { player: makePlayer({ queue: [song], index: 0 }) });
     expect(screen.queryByRole('button', { name: /^Audio output/ })).not.toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();

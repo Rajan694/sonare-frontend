@@ -24,8 +24,7 @@ import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
 import { useWaveform } from '../store/waveforms';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
-import { OUTPUT_ICON, usePlayerSheets } from '../components/music/PlayerSheets';
-import { outputDetail, useOutputStore } from '../store/output';
+import { usePlayerSheets } from '../components/music/PlayerSheets';
 import { useSleepTimerStore } from '../store/sleepTimer';
 
 const SWIPE_THRESHOLD = 50;
@@ -48,7 +47,6 @@ export const NowPlayingScreen = () => {
   const seekTo = usePlayerStore((state) => state.seekTo);
   const favourite = useLibraryStore((state) => !!currentTrack && !!state.favouriteIds[currentTrack.id]);
   const playingFrom = usePlayerStore((state) => state.playingFrom);
-  const output = useOutputStore((state) => state.current);
   const sleepOn = useSleepTimerStore((state) => state.timer.kind !== 'off');
   const showSheet = usePlayerSheets((state) => state.show);
   // A finished download plays from the phone too.
@@ -62,7 +60,7 @@ export const NowPlayingScreen = () => {
   const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
 
   const navigation = useNavigation<any>();
-  // The output card and the extra utility buttons need room on shorter phones.
+  // The extra utility buttons need room on shorter phones.
   const { width, height } = useWindowDimensions();
   const artSize = width - 44 >= 314 && height >= 780 ? 314 : width - 44 >= 240 && height >= 640 ? 240 : 200;
 
@@ -334,12 +332,6 @@ export const NowPlayingScreen = () => {
               accessibilityLabel="Equalizer"
             />
             <IconButton
-              icon={<Icon name="output" size={21} color="#9A9AA8" />}
-              size={44}
-              onPress={() => showSheet('output')}
-              accessibilityLabel="Audio output"
-            />
-            <IconButton
               icon={<Icon name="clock" size={21} color={sleepOn ? accent : '#9A9AA8'} />}
               size={44}
               onPress={() => showSheet('sleep')}
@@ -355,33 +347,6 @@ export const NowPlayingScreen = () => {
         </View>
 
         <View className="flex-1" />
-
-        {/* Audio output card (design M09) */}
-        <Pressable
-          onPress={() => showSheet('output')}
-          className="flex-row items-center gap-2.5 px-3 py-2.5 bg-[rgba(17,17,20,0.86)] border border-ln2 rounded-[14px]"
-          accessibilityRole="button"
-          accessibilityLabel={`Audio output: ${output?.name ?? 'Phone speaker'}`}
-        >
-          <View className="w-[30px] h-[30px] items-center justify-center">
-            <Icon name={output ? OUTPUT_ICON[output.type] : 'output'} size={18} color={accent} />
-          </View>
-          <View className="flex-1 gap-px min-w-0">
-            <Text className="text-ll text-t1" numberOfLines={1}>
-              {output?.name ?? 'Phone speaker'}
-            </Text>
-            <Text className="text-ls text-t3" numberOfLines={1}>
-              {output?.type === 'speaker' || !output
-                ? onDevice
-                  ? 'Playing locally · no network used'
-                  : 'Streaming to this phone'
-                : outputDetail(output)}
-            </Text>
-          </View>
-          <View className="w-8 h-8 items-center justify-center">
-            <Icon name="chevron-right" size={16} color="#9A9AA8" />
-          </View>
-        </Pressable>
       </View>
     </Screen>
   );

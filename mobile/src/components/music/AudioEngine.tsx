@@ -13,7 +13,6 @@ import { localUriFor } from '../../store/downloads';
 import { refreshInAppSession } from '../../youtube/inApp';
 import { noteLevel, saveWaveforms, watchWaveform } from '../../store/waveforms';
 import { sleepAtTrackEnd, watchSleepTimer } from '../../store/sleepTimer';
-import { watchOutput } from '../../store/output';
 import { watchPlayerPersistence } from '../../store/playerPersist';
 
 // A play counts once the listener has heard 30s, or half of anything shorter. Asking for
@@ -346,7 +345,6 @@ const startAudio = () => {
   });
 
   watchSleepTimer();
-  watchOutput();
   watchPlayerPersistence();
 
   // Audio settings -> native, now and whenever they change (including when the phone's saved

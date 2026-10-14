@@ -32,10 +32,4 @@ export interface PlayerState {
   index: number;
   shuffle: boolean;
   repeat: 'off' | 'all' | 'one';
-  output: {
-    id: string;
-    name: string;
-    kind: 'wired' | 'bluetooth' | 'cast' | 'speaker';
-    available: boolean;
-  };
 }

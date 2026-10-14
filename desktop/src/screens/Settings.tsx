@@ -5,8 +5,6 @@ import Button from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
 import { Segmented } from '../components/ui/Segmented';
 import { Select } from '../components/ui/Select';
-import { OutputCard } from '../components/music/OutputPicker';
-import { outputSupport } from '../audio/output';
 import { LYRICS_SCRIPTS, updateDevicePrefs, useDevicePrefs } from '../storage/devicePrefs';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
@@ -390,11 +388,6 @@ const Settings = () => {
           {chevron}
         </Row>
       </Link>
-      {outputSupport() !== 'none' && (
-        <Row icon="output" label="Audio output" desc="The speaker or headphones Sonare plays on">
-          <OutputCard className="min-w-[200px] max-w-[260px] py-2" />
-        </Row>
-      )}
       <Row
         icon="lyrics"
         label="Lyrics language"

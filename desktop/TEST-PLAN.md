@@ -84,7 +84,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-035` | shows toasts and lets them be dismissed                                            |
 | `WEB-LAYOUT-036` | "Add to playlist" opens the playlist picker for the playing song                   |
 | `WEB-LAYOUT-037` | a guest pressing "Add to playlist" is asked to create an account first             |
-| `WEB-LAYOUT-038` | no output button where the browser cannot choose the speaker                       |
+| `WEB-LAYOUT-038` | there is no output button: Sonare plays on the system output                       |
 | `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
 
 ## `test/components/music.test.tsx`
@@ -289,7 +289,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-005`     | gapless and normalization switches update the account settings                      |
 | `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                            |
 | `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in               |
-| `WEB-NP-009`     | there is no output picker where the browser cannot switch outputs                   |
+| `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                        |
 | `WEB-LYRICS-011` | asks for lyrics in the preferred script, and asks again when it changes             |
 | `WEB-LYRICS-012` | a guest who signs in to edit lyrics lands back in the editor                        |
 | `WEB-LYRICS-013` | a guest who signs in to fix the timing gets that change saved                       |
@@ -333,7 +333,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result                 |
 | `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                            |
 | `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                                       |
-| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch               |
+| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; there is no output row                            |
 | `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none                   |
 
 ## `test/screens/signin.test.tsx`
@@ -716,37 +716,13 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-051` | folders open from the Songs view only; the sidebar picks the view, so there are no tabs |
 | `DSK-052` | an old ?view=folders link opens the Songs tab                                           |
 
-## `test/desktop/output.test.tsx`
-
-| ID        | Use case                                                                         |
-| --------- | -------------------------------------------------------------------------------- |
-| `DSK-044` | lists the PulseAudio / PipeWire outputs with their kind                          |
-| `DSK-045` | choosing one moves only Sonare's own stream, and is remembered                   |
-| `DSK-046` | back to the system default sends the stream to the default sink                  |
-| `DSK-047` | the chosen output is applied again on start-up and whenever another track starts |
-| `DSK-048` | with the default output nothing is moved when tracks change                      |
-| `DSK-049` | without pactl only the system default is offered                                 |
-| `DSK-050` | the output button switches the speaker from the list                             |
-
 ## `test/unit/devicePrefs.test.ts`
 
-| ID              | Use case                                                                       |
-| --------------- | ------------------------------------------------------------------------------ |
-| `WEB-PREFS-001` | start at the original lyrics and the system output, and restore what was saved |
-| `WEB-PREFS-002` | an unknown script or unreadable storage falls back to the defaults             |
-| `WEB-PREFS-003` | every script offered is one the server accepts                                 |
-
-## `test/unit/output.test.tsx`
-
-| ID               | Use case                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| `WEB-OUTPUT-001` | without setSinkId there is nothing to choose, and no button                                |
-| `WEB-OUTPUT-002` | lists the output devices after the system default, with their kind                         |
-| `WEB-OUTPUT-003` | choosing a device routes the element, then the graph once it exists, and is remembered     |
-| `WEB-OUTPUT-004` | the output button lists the devices, marks the current one, and switches                   |
-| `WEB-OUTPUT-005` | a remembered device that is gone reads as the system default                               |
-| `WEB-OUTPUT-006` | the Now Playing card opens the same list and switches the device                           |
-| `WEB-OUTPUT-007` | before a media permission the blank placeholder output is the default, not a second device |
+| ID              | Use case                                                           |
+| --------------- | ------------------------------------------------------------------ |
+| `WEB-PREFS-001` | start at the original lyrics and restore what was saved            |
+| `WEB-PREFS-002` | an unknown script or unreadable storage falls back to the defaults |
+| `WEB-PREFS-003` | every script offered is one the server accepts                     |
 
 ## `test/unit/sharedCatalog/catalog.test.ts`
 

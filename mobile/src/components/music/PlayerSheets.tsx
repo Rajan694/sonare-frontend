@@ -1,18 +1,15 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { create } from 'zustand';
 import { OptionSheet } from '../ui/OptionSheet';
-import { type IconName } from '../ui/Icon';
 import { useModeStore } from '../../store/mode';
-import { useOutputStore, outputDetail } from '../../store/output';
 import { SLEEP_MINUTES, useSleepTimerStore } from '../../store/sleepTimer';
 import { LYRICS_SCRIPTS, useDevicePrefsStore } from '../../store/devicePrefs';
-import type { OutputDevice } from '../../native/SonarePlayer';
 
 /**
- * Sheets opened from Now Playing and Settings: audio output, sleep timer and lyrics
- * language. One host near the root (RootNavigator) renders them.
+ * Sheets opened from Now Playing and Settings: sleep timer and lyrics language. One host
+ * near the root (RootNavigator) renders them. Sonare plays on the phone's audio output.
  */
-type SheetName = 'output' | 'sleep' | 'lyrics';
+type SheetName = 'sleep' | 'lyrics';
 
 export const usePlayerSheets = create<{
   open: SheetName | null;
@@ -23,45 +20,6 @@ export const usePlayerSheets = create<{
   show: (open) => set({ open }),
   close: () => set({ open: null }),
 }));
-
-export const OUTPUT_ICON: Record<OutputDevice['type'], IconName> = {
-  speaker: 'speaker',
-  wired: 'headphones',
-  usb: 'usb',
-  bluetooth: 'bluetooth',
-};
-
-const AUTOMATIC = -1;
-
-const OutputSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
-  const devices = useOutputStore((s) => s.devices);
-  const current = useOutputStore((s) => s.current);
-  const preferredId = useOutputStore((s) => s.preferredId);
-  useEffect(() => {
-    if (visible) useOutputStore.getState().refresh();
-  }, [visible]);
-
-  return (
-    <OptionSheet
-      visible={visible}
-      onClose={onClose}
-      gold={gold}
-      title="Audio output"
-      description="Music stays on the one you pick while it's connected."
-      value={preferredId >= 0 && devices.some((d) => d.id === preferredId) ? preferredId : AUTOMATIC}
-      onSelect={(id) => useOutputStore.getState().select(id)}
-      options={[
-        {
-          value: AUTOMATIC,
-          label: 'Automatic',
-          detail: current ? `Now: ${current.name}` : 'The newest connected device',
-          icon: 'output',
-        },
-        ...devices.map((d) => ({ value: d.id, label: d.name, detail: outputDetail(d), icon: OUTPUT_ICON[d.type] })),
-      ]}
-    />
-  );
-};
 
 const SleepSheet = ({ visible, onClose, gold }: { visible: boolean; onClose: () => void; gold: boolean }) => {
   const timer = useSleepTimerStore((s) => s.timer);
@@ -111,7 +69,6 @@ export const PlayerSheetsHost = () => {
   const gold = useModeStore((s) => s.mode) === 'offline';
   return (
     <>
-      <OutputSheet visible={open === 'output'} onClose={close} gold={gold} />
       <SleepSheet visible={open === 'sleep'} onClose={close} gold={gold} />
       <LyricsSheet visible={open === 'lyrics'} onClose={close} gold={gold} />
     </>

@@ -9,7 +9,6 @@ import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Waveform from '../components/music/Waveform';
 import TrackDownloadButton from '../components/music/TrackDownloadButton';
-import { OutputButton, OutputCard } from '../components/music/OutputPicker';
 import { addCurrentToPlaylist } from '../components/layout/BottomPlayer';
 import { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
@@ -325,8 +324,6 @@ const NowPlaying = () => {
               <Icon name="sliders" size={20} />
             </Link>
 
-            <OutputButton size={40} className="text-t2" />
-
             {/* Volume */}
             <div className="hidden @md:flex items-center gap-2 flex-none w-[110px] @3xl:w-[130px] ml-auto @3xl:ml-2">
               <button
@@ -346,8 +343,6 @@ const NowPlaying = () => {
               />
             </div>
           </div>
-
-          <OutputCard className="self-start" />
 
           {/* UP NEXT Section (hidden on mobile single column if small, or displayed nicely) */}
           {upcomingQueue.length > 0 && (

@@ -34,7 +34,6 @@ import com.mobile.player.dsp.LevelMeter
  *  - `SonarePlayer.remote`   { command: "next" | "previous" } from notification / lock screen
  *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
  *                            (gapless or crossfade), sent before the state change it causes
- *  - `SonarePlayer.output`   { id, type, name } when the audio output changes (headphones, Bluetooth…)
  *  - `SonarePlayer.streamRefused` { mediaId, url } when the server refused a stream url (403) while
  *                            loading; JS answers with replaceUrl() and the retry carries on
  *  - `SonarePlayer.sleep`    {} when the sleep timer paused playback
@@ -266,32 +265,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     )
   }
 
-  /** Where audio is going right now: `{ id, type, name }`. */
-  @ReactMethod
-  fun getOutputDevice(promise: Promise) {
-    promise.resolve(outputs.current())
-  }
-
-  /** Every output music can go to right now: `[{ id, type, name }]`. */
-  @ReactMethod
-  fun getOutputDevices(promise: Promise) {
-    promise.resolve(outputs.list())
-  }
-
-  /**
-   * Plays on this output (an id from getOutputDevices) while it stays connected; -1 goes
-   * back to Android's choice. Android may still move a call or an alarm elsewhere.
-   */
-  @ReactMethod
-  fun setOutputDevice(id: Double) {
-    val deviceId = id.toInt()
-    PlaybackEngine.preferredDeviceId = deviceId
-    main.post {
-      PlaybackEngine.instance?.setPreferredDevice(if (deviceId >= 0) outputs.info(deviceId) else null)
-      outputs.refresh()
-    }
-  }
-
   private val sleepTick = Runnable {
     withController { it.pause() }
     emit(EVENT_SLEEP, Arguments.createMap())
@@ -336,15 +309,7 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
 
   @ReactMethod fun removeListeners(count: Double) {}
 
-  private val outputs = OutputDevices(context) { emit(EVENT_OUTPUT, it) }
-
-  override fun initialize() {
-    super.initialize()
-    outputs.start()
-  }
-
   override fun invalidate() {
-    outputs.stop()
     main.removeCallbacks(sleepTick)
     main.post {
       stopProgress()
@@ -365,7 +330,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     private const val EVENT_ERROR = "SonarePlayer.error"
     private const val EVENT_REMOTE = "SonarePlayer.remote"
     private const val EVENT_ADVANCE = "SonarePlayer.advance"
-    private const val EVENT_OUTPUT = "SonarePlayer.output"
     private const val EVENT_SLEEP = "SonarePlayer.sleep"
     private const val EVENT_REFUSED = "SonarePlayer.streamRefused"
   }

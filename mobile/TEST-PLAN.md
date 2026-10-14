@@ -227,7 +227,6 @@ navigation mock live in `test-utils/`.
 | `MOB-EQ-005`     | bass boost and virtualizer adjust and show their amount                                           |
 | `MOB-EQ-006`     | speed, crossfade and normalization change what the player gets                                    |
 | `MOB-EQ-007`     | switching the equalizer off freezes the effects but not speed or transitions                      |
-| `MOB-EQ-008`     | the output card shows the device in use and follows changes                                       |
 | `MOB-DL-S-001`   | with nothing downloaded it says so                                                                |
 | `MOB-DL-S-002`   | shows progress for running downloads and lets them be paused, resumed or retried                  |
 | `MOB-DL-S-003`   | finished songs play as a queue of downloads; a moved file is marked                               |
@@ -313,10 +312,6 @@ navigation mock live in `test-utils/`.
 | `MOB-SLEEP-002`   | "End of track" asks the player to stop at the end; switching away undoes it       |
 | `MOB-SLEEP-003`   | when the native timer fires, playback shows paused and the timer is off           |
 | `MOB-SLEEP-004`   | "End of track" turns itself off once the track stops at its end, not on a pause   |
-| `MOB-OUT-001`     | refresh lists the connected outputs and the one in use                            |
-| `MOB-OUT-002`     | picking an output tells the player and is saved on the phone                      |
-| `MOB-OUT-003`     | on start the saved pick is applied again, and device changes are followed         |
-| `MOB-OUT-004`     | nothing saved leaves the choice to Android                                        |
 | `MOB-RESTORE-001` | the queue, track, position, modes and source are saved as they change             |
 | `MOB-RESTORE-002` | on the next start it comes back paused where it was, and the player resumes there |
 | `MOB-RESTORE-003` | a damaged save, or one whose track is missing, is ignored                         |
@@ -331,23 +326,22 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/screens-extras.test.tsx`
 
-| ID              | Use case                                                                                   |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| `MOB-NPX-001`   | the header says where the queue is playing from, else the song’s album                     |
-| `MOB-NPX-002`   | + opens the playlist picker; a guest is asked to sign up first                             |
-| `MOB-NPX-003`   | the output and sleep-timer buttons open their sheets; the timer button shows when it is on |
-| `MOB-NPX-004`   | the output card names the device, and whether a song plays without the network             |
-| `MOB-SHEET-001` | the output sheet lists Automatic and every device; picking one keeps music there           |
-| `MOB-SHEET-002` | the sleep sheet starts, switches and stops the timer                                       |
-| `MOB-SHEET-003` | the lyrics sheet sets the language                                                         |
-| `MOB-SETX-001`  | audio output, sleep timer and lyrics language show their state and open their sheets       |
-| `MOB-SETX-002`  | there is no server address setting                                                         |
-| `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                                |
-| `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                  |
-| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                   |
-| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                         |
-| `MOB-LIBX-005`  | Favourites and Most played show those songs from the account and play them in order        |
-| `MOB-LIBX-006`  | offline, Favourites shows the liked songs downloaded to this phone, fetching nothing       |
+| ID              | Use case                                                                                    |
+| --------------- | ------------------------------------------------------------------------------------------- |
+| `MOB-NPX-001`   | the header says where the queue is playing from, else the song’s album                      |
+| `MOB-NPX-002`   | + opens the playlist picker; a guest is asked to sign up first                              |
+| `MOB-NPX-003`   | the sleep-timer button opens its sheet and shows when the timer is on                       |
+| `MOB-NPX-004`   | there is no audio output card or button: music plays on the phone's output                  |
+| `MOB-SHEET-002` | the sleep sheet starts, switches and stops the timer                                        |
+| `MOB-SHEET-003` | the lyrics sheet sets the language                                                          |
+| `MOB-SETX-001`  | sleep timer and lyrics language show their state and open their sheets; no audio output row |
+| `MOB-SETX-002`  | there is no server address setting                                                          |
+| `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                                 |
+| `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                   |
+| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                    |
+| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                          |
+| `MOB-LIBX-005`  | Favourites and Most played show those songs from the account and play them in order         |
+| `MOB-LIBX-006`  | offline, Favourites shows the liked songs downloaded to this phone, fetching nothing        |
 
 ## `__tests__/youtube.test.ts`
 

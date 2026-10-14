@@ -221,7 +221,7 @@ describe('settings', () => {
     expect(w.getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 
-  it("WEB-SETTINGS-011 audio: the lyrics language is chosen per device; no output row where it can't switch", async () => {
+  it('WEB-SETTINGS-011 audio: the lyrics language is chosen per device; there is no output row', async () => {
     const { user, w } = openSettings('/settings?section=audio');
     expect(w.getByRole('button', { name: 'Lyrics language' })).toHaveTextContent('Original (as released)');
     await user.click(w.getByRole('button', { name: 'Lyrics language' }));

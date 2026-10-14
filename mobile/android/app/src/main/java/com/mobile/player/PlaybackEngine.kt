@@ -1,8 +1,6 @@
 package com.mobile.player
 
 import android.content.Context
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.OptIn
@@ -101,11 +99,6 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     active.addAnalyticsListener(refusedStreams)
     standby.addAnalyticsListener(refusedStreams)
     setSpeed(speed)
-    // The service restarted while an output was picked: keep sending audio there.
-    if (preferredDeviceId >= 0) {
-      val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-      audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.id == preferredDeviceId }?.let(::setPreferredDevice)
-    }
   }
 
   private fun buildPlayer(): ExoPlayer {
@@ -192,12 +185,6 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   fun setTransitions(value: Transitions) {
     transitions = value
     syncQueuedNext()
-  }
-
-  /** Sends both players to this output, or back to Android's choice with null. */
-  fun setPreferredDevice(device: AudioDeviceInfo?) {
-    active.setPreferredAudioDevice(device)
-    standby.setPreferredAudioDevice(device)
   }
 
   /** "Sleep at end of track": stop when the current one finishes instead of moving on. */
@@ -333,9 +320,6 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     // JS sends these at start-up, possibly before the service exists; a new engine starts with them.
     @Volatile var pendingTransitions = Transitions()
     @Volatile var pendingSpeed = 1f
-
-    /** AudioDeviceInfo id picked in the app; -1 leaves it to Android. Read by [OutputDevices]. */
-    @Volatile var preferredDeviceId = -1
 
     private const val BUFFER_AHEAD_MS = 15 * 60_000
     private const val BUFFER_BYTES = 24 * 1024 * 1024

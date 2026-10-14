@@ -14,7 +14,6 @@ import { ApiError, api } from '../src/data/api';
 import { useAuthStore } from '../src/data/auth';
 import { EQ_PRESET_GAINS, useSettingsStore } from '../src/data/settings';
 import { useAudioStore } from '../src/store/audio';
-import { NativeModules } from 'react-native';
 import { useModeStore } from '../src/store/mode';
 import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
@@ -424,15 +423,6 @@ describe('Equalizer', () => {
     fireEvent.press(getByText('1.25×'));
     fireEvent.press(getByLabelText('Crossfade'));
     expect(useAudioStore.getState()).toMatchObject({ speed: 1.25, crossfade: true });
-  });
-
-  it('MOB-EQ-008 the output card shows the device in use and follows changes', async () => {
-    NativeModules.SonarePlayer.getOutputDevice.mockResolvedValueOnce({ type: 'wired', name: 'Wired headphones' });
-    const { findByText } = render(<EqualizerScreen />);
-    expect(await findByText('Wired headphones')).toBeTruthy();
-    const { mockEventEmitter } = require('../jest.setup');
-    act(() => mockEventEmitter.emit('SonarePlayer.output', { type: 'bluetooth', name: 'Pixel Buds' }));
-    expect(await findByText('Pixel Buds')).toBeTruthy();
   });
 });
 

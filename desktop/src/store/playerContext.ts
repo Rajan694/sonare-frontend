@@ -7,7 +7,6 @@ export const defaultPlayerState: PlayerState = {
   index: 0,
   shuffle: false,
   repeat: 'off',
-  output: { id: 'default', name: 'Built-in Speakers', kind: 'speaker', available: true },
 };
 
 /** Changes only with the track, queue, play state or settings - never on a position tick

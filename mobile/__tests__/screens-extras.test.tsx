@@ -13,7 +13,6 @@ import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
 import { useTrackMenuStore } from '../src/store/trackMenu';
-import { useOutputStore } from '../src/store/output';
 import { useSleepTimerStore } from '../src/store/sleepTimer';
 import { useDevicePrefsStore } from '../src/store/devicePrefs';
 import { alice, makeAlbum, makeArtist, makeDownload, makeTrack, nav, page, route } from '../test-utils';
@@ -27,8 +26,6 @@ const signIn = () => useAuthStore.setState({ status: 'signedIn', user: alice } a
 const guest = () => useAuthStore.setState({ status: 'guest', user: null } as never);
 
 const song = makeTrack({ title: 'Nude', artist: 'Radiohead', album: 'In Rainbows' });
-const speaker = { id: 2, type: 'speaker' as const, name: 'Phone speaker' };
-const buds = { id: 7, type: 'bluetooth' as const, name: 'Galaxy Buds' };
 
 beforeEach(async () => {
   jest.restoreAllMocks();
@@ -49,11 +46,8 @@ beforeEach(async () => {
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
   useTrackMenuStore.setState({ track: null });
   usePlayerSheets.setState({ open: null });
-  useOutputStore.setState({ current: speaker, devices: [speaker, buds], preferredId: -1 });
   useSleepTimerStore.setState({ timer: { kind: 'off' } });
   useDevicePrefsStore.setState({ lyricsScript: 'original' });
-  native.getOutputDevices.mockResolvedValue([speaker, buds]);
-  native.getOutputDevice.mockResolvedValue(speaker);
   jest.spyOn(api, 'peaks').mockResolvedValue({ peaks: [1, 2, 3] } as never);
 });
 
@@ -88,10 +82,8 @@ describe('Now Playing extras', () => {
     expect(useTrackMenuStore.getState()).toMatchObject({ track: song, view: 'playlists' });
   });
 
-  it('MOB-NPX-003 the output and sleep-timer buttons open their sheets; the timer button shows when it is on', () => {
+  it('MOB-NPX-003 the sleep-timer button opens its sheet and shows when the timer is on', () => {
     const { getByLabelText, queryByLabelText } = render(<NowPlayingScreen />);
-    fireEvent.press(getByLabelText('Audio output'));
-    expect(usePlayerSheets.getState().open).toBe('output');
     fireEvent.press(getByLabelText('Sleep timer'));
     expect(usePlayerSheets.getState().open).toBe('sleep');
     expect(queryByLabelText('Sleep timer on')).toBeNull();
@@ -99,41 +91,14 @@ describe('Now Playing extras', () => {
     expect(getByLabelText('Sleep timer on')).toBeTruthy();
   });
 
-  it('MOB-NPX-004 the output card names the device, and whether a song plays without the network', () => {
-    const first = render(<NowPlayingScreen />);
-    expect(first.getByLabelText('Audio output: Phone speaker')).toBeTruthy();
-    expect(first.getByText('Streaming to this phone')).toBeTruthy();
-    first.unmount();
-
-    useDownloadsStore.setState({ items: { [song.id]: makeDownload(song) } });
-    const second = render(<NowPlayingScreen />);
-    expect(second.getByText('Playing locally · no network used')).toBeTruthy();
-    act(() => useOutputStore.setState({ current: buds }));
-    expect(second.getByLabelText('Audio output: Galaxy Buds')).toBeTruthy();
-    expect(second.getByText('Bluetooth')).toBeTruthy();
-    fireEvent.press(second.getByLabelText('Audio output: Galaxy Buds'));
-    expect(usePlayerSheets.getState().open).toBe('output');
+  it("MOB-NPX-004 there is no audio output card or button: music plays on the phone's output", () => {
+    const { queryByLabelText } = render(<NowPlayingScreen />);
+    expect(queryByLabelText(/^Audio output/)).toBeNull();
   });
 });
 
 describe('player sheets', () => {
-  const show = (name: 'output' | 'sleep' | 'lyrics') => act(() => usePlayerSheets.getState().show(name));
-
-  it('MOB-SHEET-001 the output sheet lists Automatic and every device; picking one keeps music there', async () => {
-    const { getByLabelText, findByLabelText } = render(<PlayerSheetsHost />);
-    show('output');
-    expect(await findByLabelText('Automatic, Now: Phone speaker')).toBeTruthy();
-    expect(getByLabelText('Automatic, Now: Phone speaker').props.accessibilityState).toEqual({ selected: true });
-    fireEvent.press(getByLabelText('Galaxy Buds, Bluetooth'));
-    expect(native.setOutputDevice).toHaveBeenLastCalledWith(7);
-    expect(usePlayerSheets.getState().open).toBeNull();
-    expect(native.getOutputDevices).toHaveBeenCalled();
-
-    show('output');
-    expect((await findByLabelText('Galaxy Buds, Bluetooth')).props.accessibilityState).toEqual({ selected: true });
-    fireEvent.press(getByLabelText('Automatic, Now: Phone speaker'));
-    expect(native.setOutputDevice).toHaveBeenLastCalledWith(-1);
-  });
+  const show = (name: 'sleep' | 'lyrics') => act(() => usePlayerSheets.getState().show(name));
 
   it('MOB-SHEET-002 the sleep sheet starts, switches and stops the timer', async () => {
     const { findByLabelText, getByLabelText } = render(<PlayerSheetsHost />);
@@ -161,16 +126,14 @@ describe('player sheets', () => {
 });
 
 describe('Settings rows', () => {
-  it('MOB-SETX-001 audio output, sleep timer and lyrics language show their state and open their sheets', () => {
+  it('MOB-SETX-001 sleep timer and lyrics language show their state and open their sheets; no audio output row', () => {
     useSleepTimerStore.setState({ timer: { kind: 'endOfTrack' } });
     useDevicePrefsStore.setState({ lyricsScript: 'latin' });
-    useOutputStore.setState({ current: buds });
-    const { getByLabelText, getByText } = render(<SettingsScreen />);
-    expect(getByText('Galaxy Buds')).toBeTruthy();
+    const { getByLabelText, getByText, queryByLabelText } = render(<SettingsScreen />);
+    expect(queryByLabelText('Audio output')).toBeNull();
     expect(getByText('At the end of this track')).toBeTruthy();
     expect(getByText('English / Romanised')).toBeTruthy();
     for (const [label, sheet] of [
-      ['Audio output', 'output'],
       ['Sleep timer', 'sleep'],
       ['Lyrics language', 'lyrics'],
     ] as const) {

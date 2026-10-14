@@ -198,45 +198,11 @@ export const ensureGraph = async (): Promise<void> => {
 
     graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp };
     apply();
-    if (sinkId) await applySink();
     if (ctx.state === 'suspended') await ctx.resume();
   } catch {
     // Web Audio unavailable: playback continues unprocessed.
     graph = null;
   }
-};
-
-// ---- Output device (browsers / WebView2 with setSinkId) ----
-
-type SinkTarget = { setSinkId?: (id: string) => Promise<void> };
-let sinkId = '';
-
-/** Whether this browser can route audio to a chosen output device. */
-export const canSetSinkId = (): boolean => {
-  return (
-    typeof AudioContext !== 'undefined' &&
-    'setSinkId' in AudioContext.prototype &&
-    typeof HTMLMediaElement !== 'undefined' &&
-    'setSinkId' in HTMLMediaElement.prototype
-  );
-};
-
-const applySink = async (): Promise<boolean> => {
-  try {
-    // With the graph built, the element's sound leaves through the context.
-    const target = (graph?.ctx ?? element) as SinkTarget | null;
-    if (!target?.setSinkId) return false;
-    await target.setSinkId(sinkId);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-/** Route playback to an output device ('' = system default); kept for a graph built later. */
-export const setSinkId = async (id: string): Promise<boolean> => {
-  sinkId = id;
-  return applySink();
 };
 
 /** The graph's context and input node, building the graph if needed; null without Web Audio. */

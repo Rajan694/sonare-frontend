@@ -63,13 +63,6 @@ export interface Transitions {
   gapless: boolean;
 }
 
-export interface OutputDevice {
-  /** AudioDeviceInfo id; -1 when unknown. */
-  id: number;
-  type: 'speaker' | 'wired' | 'bluetooth' | 'usb';
-  name: string;
-}
-
 interface NativeSonarePlayer {
   load(options: LoadOptions): Promise<void>;
   play(): void;
@@ -81,9 +74,6 @@ interface NativeSonarePlayer {
   setTransitions(options: Transitions): void;
   setSpeed(speed: number): void;
   setAudioEffects(options: AudioEffects): void;
-  getOutputDevice(): Promise<OutputDevice>;
-  getOutputDevices(): Promise<OutputDevice[]>;
-  setOutputDevice(id: number): void;
   setSleepTimer(ms: number): void;
   setPauseAtEndOfTrack(value: boolean): void;
 }
@@ -119,12 +109,6 @@ export const SonarePlayer = {
   /** Pitch is preserved. */
   setSpeed: (speed: number) => native?.setSpeed(speed),
   setAudioEffects: (options: AudioEffects) => native?.setAudioEffects(options),
-  getOutputDevice: (): Promise<OutputDevice> =>
-    native?.getOutputDevice() ?? Promise.resolve({ id: -1, type: 'speaker', name: 'Phone speaker' }),
-  /** Every connected output, phone speaker first. */
-  getOutputDevices: (): Promise<OutputDevice[]> => native?.getOutputDevices?.() ?? Promise.resolve([]),
-  /** Play on this output while it stays connected; -1 leaves it to Android. */
-  setOutputDevice: (id: number) => native?.setOutputDevice?.(id),
   /** Pause after `ms`; 0 cancels. Kept natively, so it fires with the app in the background. */
   setSleepTimer: (ms: number) => native?.setSleepTimer?.(ms),
   /** Stop when the current track ends instead of moving on. */
@@ -137,8 +121,6 @@ export const SonarePlayer = {
   onRemote: (handler: (e: { command: 'next' | 'previous' }) => void) => on('remote', handler),
   /** The player moved on to the next track by itself; sent before the state change it causes. */
   onAdvance: (handler: (e: { mediaId: string }) => void) => on('advance', handler),
-  /** Audio output changed (headphones plugged in, Bluetooth connected…). */
-  onOutput: (handler: (e: OutputDevice) => void) => on('output', handler),
   /** The server refused a stream url (403) while loading; the player retries for a while. */
   onStreamRefused: (handler: (e: { mediaId: string | null; url: string }) => void) => on('streamRefused', handler),
   /** The sleep timer ran out and paused playback. */
