@@ -28,14 +28,29 @@ interface SongRowProps {
   onAdd?: () => void;
   added?: boolean;
   hideAlbum?: boolean;
+  /** The PLAYS column, for lists of the user's own songs (Library, Most played); catalog songs have no count. */
+  showPlays?: boolean;
 }
 
-export const SongTableHeader = ({ children, className }: { children?: React.ReactNode; className?: string }) => {
+// The wide layout's columns, with and without PLAYS. Whole class names, so Tailwind finds them.
+const WIDE_COLS = '@[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_58px_74px]';
+const WIDE_COLS_PLAYS = '@[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_48px_58px_74px]';
+
+export const SongTableHeader = ({
+  children,
+  className,
+  showPlays,
+}: {
+  children?: React.ReactNode;
+  className?: string;
+  showPlays?: boolean;
+}) => {
   return (
     <div
       className={cn(
         'hidden @[480px]:grid items-center gap-4 text-label-s text-t3 pb-2.5 px-3 border-b border-ln select-none shrink-0',
-        'grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_48px_58px_74px]',
+        'grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px]',
+        showPlays ? WIDE_COLS_PLAYS : WIDE_COLS,
         className,
       )}
     >
@@ -48,7 +63,7 @@ export const SongTableHeader = ({ children, className }: { children?: React.Reac
           <span>TITLE</span>
           <span className="hidden @[720px]:inline">ALBUM</span>
           <span>SOURCE</span>
-          <span className="hidden @[720px]:inline text-right">PLAYS</span>
+          {showPlays && <span className="hidden @[720px]:inline text-right">PLAYS</span>}
           <span className="text-right flex items-center justify-end">
             <Icon name="clock" size={13} />
           </span>
@@ -69,6 +84,7 @@ const SongRow = ({
   onAdd,
   added,
   hideAlbum,
+  showPlays,
 }: SongRowProps) => {
   const { favourite, toggle: toggleFavourite } = useFavourite(track);
   const { isPlaying } = usePlayerStore();
@@ -85,7 +101,7 @@ const SongRow = ({
         'group cursor-default select-none transition-colors duration-150 rounded-[10px] shrink-0',
         'flex items-center gap-3 p-2 min-h-[60px]',
         '@[480px]:grid @[480px]:grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[480px]:gap-4 @[480px]:px-3 @[480px]:py-[7px] @[480px]:min-h-[54px]',
-        '@[720px]:grid-cols-[30px_44px_minmax(0,2.4fr)_minmax(0,1.7fr)_116px_48px_58px_74px]',
+        showPlays ? WIDE_COLS_PLAYS : WIDE_COLS,
         isActive ? 'srow-on' : 'hover:bg-s1',
       )}
       variants={staggerItem}
@@ -162,12 +178,14 @@ const SongRow = ({
       </div>
 
       {/* Plays column: your own play count, >= 720px */}
-      <span
-        className="hidden @[720px]:block text-mono-s text-t3 text-right"
-        aria-label={`${track.playCount ?? 0} plays`}
-      >
-        {(track.playCount ?? 0).toLocaleString()}
-      </span>
+      {showPlays && (
+        <span
+          className="hidden @[720px]:block text-mono-s text-t3 text-right"
+          aria-label={`${track.playCount ?? 0} plays`}
+        >
+          {(track.playCount ?? 0).toLocaleString()}
+        </span>
+      )}
 
       {/* Duration column */}
       <span className="flex-none text-mono-s text-t3 text-right">{formatDuration(track.durationMs)}</span>

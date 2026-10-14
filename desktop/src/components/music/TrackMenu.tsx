@@ -14,7 +14,7 @@ import { localLibrary } from '../../storage/local';
 import { downloads, useDownload } from '../../storage/downloads';
 import { useModeStore } from '../../store/modeContext';
 import { deleteTrackDownload, startTrackDownload } from './TrackDownloadButton';
-import { addTracksWithToast, createPlaylistWithPrompt } from '../../api/newPlaylist';
+import { addTracksWithToast, createPlaylistWithPrompt, renamePlaylistWithPrompt } from '../../api/newPlaylist';
 import { addToPlaylistDialog, confirmDialog } from '../../store/dialogs';
 
 /**
@@ -255,6 +255,9 @@ const OpenMenu = ({ target }: { target: MenuTarget }) => {
             {playlist && (
               <>
                 {tracks.length > 0 && <hr className="hr mx-2 my-[5px]" />}
+                <MenuItem icon="edit" onClick={run(() => void renamePlaylistWithPrompt(playlist))}>
+                  Rename playlist…
+                </MenuItem>
                 <MenuItem icon="trash" danger onClick={() => void deletePlaylist(playlist)}>
                   Delete playlist
                 </MenuItem>

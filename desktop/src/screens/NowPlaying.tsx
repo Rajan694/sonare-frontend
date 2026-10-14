@@ -9,6 +9,7 @@ import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Waveform from '../components/music/Waveform';
 import TrackDownloadButton from '../components/music/TrackDownloadButton';
+import LyricsButton from '../components/music/LyricsButton';
 import { addCurrentToPlaylist } from '../components/layout/BottomPlayer';
 import { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
@@ -306,14 +307,11 @@ const NowPlaying = () => {
               className="text-t2"
             />
             <TrackDownloadButton track={currentTrack} size={40} className="text-t2" />
-            <Link
-              to="/lyrics"
+            <LyricsButton
+              track={currentTrack}
               className="ib ib-40 flex items-center justify-center text-t2 hover:text-t1 hover:bg-s3 rounded-full transition-colors"
-              aria-label="Lyrics"
-              data-tip="Lyrics"
-            >
-              <Icon name="lyrics" size={20} />
-            </Link>
+              iconSize={20}
+            />
             <Link
               to="/equalizer"
               className="ib ib-40 flex items-center justify-center text-t2 hover:text-t1 hover:bg-s3 rounded-full transition-colors"

@@ -4,8 +4,9 @@ import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { usePlaylist, usePlaylistTracks, useAuth, notifyPlaylistsChanged } from '../api/hooks';
+import { usePlaylist, usePlaylistTracks, useAuth, useLibraryAlbums, notifyPlaylistsChanged } from '../api/hooks';
 import { api } from '../api/api';
+import { requireAccount } from '../api/accountGate';
 import { showToast } from '../store/toasts';
 import { openTrackMenu } from '../components/music/TrackMenu';
 import DownloadButton from '../components/music/DownloadButton';
@@ -32,6 +33,27 @@ const PlaylistDetail = () => {
   const { data: tracksData, loading: tracksLoading, refetch: refetchTracks } = usePlaylistTracks(id);
 
   const isOwn = playlist?.kind === 'local' || (!!user && playlist?.kind === 'synced');
+  // A YouTube playlist can be saved to the library; it is kept like an album (Library → Albums).
+  const isYouTube = id.startsWith('yt:');
+  const { data: savedAlbums } = useLibraryAlbums();
+  const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
+  const saved = savedOverride ?? !!savedAlbums?.items.some((a) => a.id === id);
+  const toggleSaved = () =>
+    requireAccount('Create a free account to save playlists you love.', async () => {
+      const next = !saved;
+      setSavedOverride(next);
+      try {
+        await api.setPlaylistFavourite(id, next, playlist ?? undefined);
+        showToast({
+          title: next ? 'Saved to your library' : 'Removed from your library',
+          description: playlist?.name,
+          icon: next ? 'check' : 'trash',
+        });
+      } catch {
+        setSavedOverride(!next);
+        showToast({ title: next ? 'Could not save playlist' : 'Could not remove playlist', icon: 'info' });
+      }
+    });
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
@@ -179,6 +201,16 @@ const PlaylistDetail = () => {
               Shuffle
             </Button>
             <DownloadButton tracks={tracks} offline={isOffline} />
+            {isYouTube && !isOwn && (
+              <IconButton
+                icon="heart"
+                label={saved ? 'Remove from your library' : 'Save to your library'}
+                size={44}
+                bordered
+                active={saved}
+                onClick={toggleSaved}
+              />
+            )}
             {isOwn && (
               <Button
                 variant="out"

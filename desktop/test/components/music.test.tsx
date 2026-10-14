@@ -214,14 +214,15 @@ describe('song row', () => {
     expect(heart.className).not.toContain('@[480px]:inline-flex');
   });
 
-  it('WEB-MUSIC-031 the table shows your play count, and the artist where a song has no album', () => {
+  it('WEB-MUSIC-031 lists of your own songs show your play count, and the artist where a song has no album', () => {
     renderWithProviders(
       <>
-        <SongTableHeader />
-        <SongRow track={{ ...track, playCount: 1234 }} index={1} />
+        <SongTableHeader showPlays />
+        <SongRow track={{ ...track, playCount: 1234 }} index={1} showPlays />
         <SongRow
           track={makeTrack({ id: 'yt:single', title: 'Single', artist: 'Arijit Singh', album: null })}
           index={2}
+          showPlays
         />
       </>,
     );
@@ -233,6 +234,17 @@ describe('song row', () => {
     expect(within(withoutAlbum).queryByText('—')).not.toBeInTheDocument();
     expect(within(withoutAlbum).getAllByText('Arijit Singh')).toHaveLength(2);
     expect(within(withoutAlbum).getByLabelText('0 plays')).toHaveTextContent('0');
+  });
+
+  it('WEB-MUSIC-035 catalog lists (search, albums, artists) have no PLAYS column', () => {
+    renderWithProviders(
+      <>
+        <SongTableHeader />
+        <SongRow track={track} index={1} />
+      </>,
+    );
+    expect(screen.queryByText('PLAYS')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/plays$/)).not.toBeInTheDocument();
   });
 });
 

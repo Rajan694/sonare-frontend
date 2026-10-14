@@ -335,7 +335,7 @@ const Home = () => {
               <span className="text-h2 text-t1 font-semibold">Most played</span>
             </div>
             <div className="flex flex-col gap-0.5">
-              <SongTableHeader />
+              <SongTableHeader showPlays />
               {mostPlayed.slice(0, 10).map((track, i) => (
                 <SongRow
                   key={track.id}
@@ -343,6 +343,7 @@ const Home = () => {
                   index={i + 1}
                   isActive={currentTrack?.id === track.id}
                   onClick={() => handlePlay(track, mostPlayed)}
+                  showPlays
                 />
               ))}
             </div>

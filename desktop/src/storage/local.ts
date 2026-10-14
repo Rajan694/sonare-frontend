@@ -61,15 +61,18 @@ export interface LocalLyrics {
   lines: { atMs: number; text: string }[];
   plain?: string;
   offsetMs: number;
-  provider: 'user' | 'lrc';
+  provider: 'lrc';
 }
 
 interface LibraryIndex {
   version: 1;
   folders: Folder[];
   entries: LocalEntry[];
-  /** Lyrics typed or pasted for local files; the server cannot store them (it only knows YouTube ids). */
-  lyrics?: Record<string, LocalLyrics>;
+  /**
+   * The Earlier / Later timing fix for a local file's lyrics (the server only knows YouTube ids).
+   * Older versions also kept typed lyrics here; only `offsetMs` is read now.
+   */
+  lyrics?: Record<string, { offsetMs: number }>;
 }
 
 /** Parse LRC text: `[mm:ss.xx]` stamps (several per line allowed) and an optional `[offset:±ms]` tag. */
@@ -457,43 +460,26 @@ export const localLibrary = {
     void persist();
   },
 
-  /** Saved lyrics for a local file, else a sidecar `.lrc` next to it; null when neither exists. */
+  /** A local file's lyrics: the sidecar `.lrc` next to it, with the timing fix the user set; null without one. */
   async lyrics(trackId: string): Promise<LocalLyrics | null> {
     await load();
-    const saved = index.lyrics?.[trackId];
-    if (saved) return saved;
     const entry = index.entries.find((e) => e.id === trackId);
     if (!entry) return null;
+    const saved = index.lyrics?.[trackId]?.offsetMs;
     try {
       const text = await filesystem.readFile(entry.path.replace(/\.[^./]+$/, '.lrc'));
       const { lines, offsetMs } = parseLrc(text);
-      if (lines.length > 0) return { synced: true, lines, offsetMs, provider: 'lrc' };
+      if (lines.length > 0) return { synced: true, lines, offsetMs: saved ?? offsetMs, provider: 'lrc' };
       const plain = text.trim();
-      return plain ? { synced: false, lines: [], plain, offsetMs: 0, provider: 'lrc' } : null;
+      return plain ? { synced: false, lines: [], plain, offsetMs: saved ?? 0, provider: 'lrc' } : null;
     } catch {
       return null;
     }
   },
 
-  async saveLyrics(trackId: string, body: { lrc?: string; plain?: string }): Promise<void> {
-    await load();
-    const lyric: LocalLyrics = body.lrc
-      ? { synced: true, ...parseLrc(body.lrc), provider: 'user' }
-      : {
-          synced: false,
-          lines: (body.plain ?? '').split('\n').map((text) => ({ atMs: 0, text })),
-          plain: body.plain,
-          offsetMs: 0,
-          provider: 'user',
-        };
-    index = { ...index, lyrics: { ...index.lyrics, [trackId]: lyric } };
-    await persist();
-  },
-
   async setLyricsOffset(trackId: string, offsetMs: number): Promise<void> {
-    const current = await localLibrary.lyrics(trackId);
-    if (!current) return;
-    index = { ...index, lyrics: { ...index.lyrics, [trackId]: { ...current, offsetMs } } };
+    if (!(await localLibrary.lyrics(trackId))) return;
+    index = { ...index, lyrics: { ...index.lyrics, [trackId]: { offsetMs } } };
     await persist();
   },
 

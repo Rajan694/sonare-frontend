@@ -18,6 +18,32 @@ export const createPlaylistWithPrompt = async (
   return name ? createPlaylistNamed(name) : null;
 };
 
+/** Asks for a new name for one of the user's playlists and saves it; the new name, or null. */
+export const renamePlaylistWithPrompt = async (playlist: { id: string; name: string }): Promise<string | null> => {
+  const name = await promptDialog({
+    title: 'Rename playlist',
+    label: 'Name',
+    placeholder: 'My playlist',
+    initialValue: playlist.name,
+    confirmLabel: 'Rename',
+    maxLength: 100,
+  });
+  if (!name || name === playlist.name) return null;
+  try {
+    await api.updatePlaylist(playlist.id, { name });
+    notifyPlaylistsChanged();
+    showToast({ title: 'Playlist renamed', description: name, icon: 'check' });
+    return name;
+  } catch (e) {
+    showToast({
+      title: 'Could not rename playlist',
+      description: e instanceof Error ? e.message : undefined,
+      icon: 'info',
+    });
+    return null;
+  }
+};
+
 /** Creates a synced playlist; null (after a toast) when it failed. */
 export const createPlaylistNamed = async (name: string): Promise<Playlist | null> => {
   try {

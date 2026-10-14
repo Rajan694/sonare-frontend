@@ -274,7 +274,7 @@ const Library = () => {
 
         {/* Table header */}
         {isTrackTab && view === 'list' && (
-          <SongTableHeader>
+          <SongTableHeader showPlays>
             <span className="text-right">#</span>
             <span />
             {headerCell('title', 'TITLE')}
@@ -450,6 +450,7 @@ const Library = () => {
                 index={i + 1}
                 isActive={currentTrack?.id === track.id}
                 onClick={() => playTrack(track, tracks, from)}
+                showPlays
               />
             ))
           )}

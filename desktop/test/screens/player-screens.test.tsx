@@ -15,6 +15,8 @@ import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 import { chooseOption } from '../helpers/dialogs';
+import { resetLyricsCache } from '../../src/api/lyricsAvailability';
+import BottomPlayer from '../../src/components/layout/BottomPlayer';
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
@@ -26,7 +28,13 @@ vi.mock('../../src/storage/downloads', () => ({
 }));
 vi.mock('../../src/audio/player', () => ({ retry: vi.fn(async () => {}) }));
 
-useMockServer(http.get(`${API}/tracks/:id/peaks`, () => HttpResponse.json({ peaks: [0.2, 0.8] })));
+useMockServer(
+  http.get(`${API}/tracks/:id/peaks`, () => HttpResponse.json({ peaks: [0.2, 0.8] })),
+  // The Lyrics buttons ask once per song whether there are lyrics.
+  http.get(`${API}/tracks/:id/lyrics`, () =>
+    HttpResponse.json({ synced: false, provider: 'lrclib', offsetMs: 0, lines: [], plain: 'La' }),
+  ),
+);
 
 const song = makeTrack({
   id: 'yt:np',
@@ -42,6 +50,7 @@ const upNext = Array.from({ length: 6 }, (_, i) => makeTrack({ id: `yt:u${i}`, t
 
 beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
+  resetLyricsCache();
 });
 afterEach(() => {
   clearSession();
@@ -188,7 +197,7 @@ describe('lyrics', () => {
     expect(p.seek).toHaveBeenCalledWith(20_000);
   });
 
-  it('WEB-LYRICS-003 a signed-in user nudges the timing and it is saved', async () => {
+  it('WEB-LYRICS-003 a signed-in user nudges the timing: it moves at once and is saved once, after the taps', async () => {
     setSession('a', 'r', testUser);
     lyricsEndpoint();
     const offsets: unknown[] = [];
@@ -207,10 +216,15 @@ describe('lyrics', () => {
     expect(screen.getAllByText(/\+0\.3s/).length).toBeGreaterThan(0);
     await user.click(screen.getByRole('button', { name: 'Show lyrics earlier' }));
     await user.click(screen.getByRole('button', { name: 'Show lyrics earlier' }));
-    await waitFor(() => expect(offsets).toEqual([{ offsetMs: 250 }, { offsetMs: 0 }, { offsetMs: -250 }]));
+    expect(screen.getAllByText(/−0\.3s/).length).toBeGreaterThan(0);
+    // Nothing is sent while the taps keep coming; one save follows the last one.
+    expect(offsets).toEqual([]);
+    await waitFor(() => expect(offsets).toEqual([{ offsetMs: -250 }]));
+    await new Promise((r) => setTimeout(r, 700));
+    expect(offsets).toEqual([{ offsetMs: -250 }]);
   });
 
-  it('WEB-LYRICS-004 a guest fixing timing or text is asked to create an account', async () => {
+  it('WEB-LYRICS-004 a guest fixing the timing is asked to create an account', async () => {
     lyricsEndpoint();
     const navigate = vi.fn();
     bindAccountGateNavigator(navigate);
@@ -218,85 +232,64 @@ describe('lyrics', () => {
     const { user } = open();
     await screen.findByText('Second line');
     await user.click(screen.getByRole('button', { name: 'Show lyrics later' }));
-    await user.click(screen.getByRole('button', { name: 'Edit lyrics' }));
+    await new Promise((r) => setTimeout(r, 700));
     rec.stop();
-    expect(navigate).toHaveBeenCalledTimes(2);
+    expect(navigate).toHaveBeenCalledTimes(1);
     expect(navigate).toHaveBeenCalledWith('/signin', {
-      state: { reason: 'Create a free account to fix lyrics and their timing.', mode: 'signup' },
+      state: { reason: 'Create a free account to fix the timing of lyrics.', mode: 'signup' },
     });
     expect(rec.paths().filter((p) => !p.startsWith('GET'))).toEqual([]);
-    expect(screen.queryByRole('textbox', { name: 'Lyrics editor' })).not.toBeInTheDocument();
   });
 
-  it('WEB-LYRICS-005 editing opens the lyrics as LRC; saving LRC sends it as synced lyrics', async () => {
-    setSession('a', 'r', testUser);
-    lyricsEndpoint();
-    let saved: unknown;
-    server.use(
-      http.post(`${API}/tracks/:id/lyrics`, async ({ request }) => {
-        saved = await request.json();
-        return HttpResponse.json({ ok: true });
-      }),
-    );
-    const { user } = open();
-    await screen.findByText('Second line');
-    await user.click(screen.getByRole('button', { name: 'Edit lyrics' }));
-    const editor = screen.getByRole('textbox', { name: 'Lyrics editor' });
-    expect(editor).toHaveValue('[00:00.00]First line\n[00:10.00]Second line\n[00:20.00]Third line');
-    await user.click(screen.getByRole('button', { name: 'Save lyrics' }));
-    await waitFor(() =>
-      expect(saved).toEqual({ lrc: '[00:00.00]First line\n[00:10.00]Second line\n[00:20.00]Third line' }),
-    );
-    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Lyrics saved' }));
-    expect(screen.queryByRole('textbox', { name: 'Lyrics editor' })).not.toBeInTheDocument();
-  });
-
-  it('WEB-LYRICS-006 with no lyrics, typed plain text is saved as plain; a failed save keeps the editor', async () => {
-    setSession('a', 'r', testUser);
-    server.use(http.get(`${API}/tracks/:id/lyrics`, () => apiError(404, 'LYRICS_NOT_FOUND')));
-    let fail = true;
-    let saved: unknown;
-    server.use(
-      http.post(`${API}/tracks/:id/lyrics`, async ({ request }) => {
-        saved = await request.json();
-        return fail ? apiError(500, 'X') : HttpResponse.json({ ok: true });
-      }),
-    );
-    const { user } = open();
-    expect(await screen.findByText('No lyrics available for this track')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Add lyrics' }));
-    const save = screen.getByRole('button', { name: 'Save lyrics' });
-    expect(save).toBeDisabled();
-    await user.type(screen.getByRole('textbox', { name: 'Lyrics editor' }), 'la la la');
-    await user.click(save);
-    await waitFor(() =>
-      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Could not save lyrics' })),
-    );
-    expect(saved).toEqual({ plain: 'la la la' });
-    expect(screen.getByRole('textbox', { name: 'Lyrics editor' })).toBeInTheDocument();
-    fail = false;
-    await user.click(save);
-    await waitFor(() => expect(screen.queryByRole('textbox', { name: 'Lyrics editor' })).not.toBeInTheDocument());
-  });
-
-  it('WEB-LYRICS-007 an imported .lrc file opens in the editor to check before saving', async () => {
+  it('WEB-LYRICS-005 lyrics are read-only: no editing, adding or importing', async () => {
     setSession('a', 'r', testUser);
     lyricsEndpoint();
     const { container } = open();
     await screen.findByText('Second line');
-    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
-    const file = new File(['[00:01.00]Imported'], 'song.lrc', { type: 'text/plain' });
-    fireEvent.change(input, { target: { files: [file] } });
-    await waitFor(() =>
-      expect(screen.getByRole('textbox', { name: 'Lyrics editor' })).toHaveValue('[00:01.00]Imported'),
+    expect(screen.queryByRole('button', { name: /Edit lyrics|Add lyrics|Import/ })).not.toBeInTheDocument();
+    expect(container.querySelector('input[type="file"]')).toBeNull();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
+  it('WEB-LYRICS-006 a timing change still waiting is saved when the screen closes', async () => {
+    setSession('a', 'r', testUser);
+    lyricsEndpoint();
+    const offsets: unknown[] = [];
+    server.use(
+      http.patch(`${API}/tracks/:id/lyrics/offset`, async ({ request }) => {
+        offsets.push(await request.json());
+        return HttpResponse.json({ ok: true });
+      }),
     );
+    const { user, unmount } = open();
+    await screen.findByText('Second line');
+    await user.click(screen.getByRole('button', { name: 'Show lyrics later' }));
+    unmount();
+    await waitFor(() => expect(offsets).toEqual([{ offsetMs: 250 }]));
+  });
+
+  it('WEB-LYRICS-007 the auto-scroll switch is there for synced lyrics only', async () => {
+    lyricsEndpoint();
+    const first = open();
+    await screen.findByText('Second line');
+    expect(screen.getByRole('switch', { name: 'Toggle auto-scroll' })).toBeInTheDocument();
+    first.unmount();
+    resetLyricsCache();
+    server.use(
+      http.get(`${API}/tracks/:id/lyrics`, () =>
+        HttpResponse.json({ synced: false, provider: 'lrclib', offsetMs: 0, lines: [], plain: 'Verse one' }),
+      ),
+    );
+    open();
+    expect(await screen.findByText('Verse one')).toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: 'Toggle auto-scroll' })).not.toBeInTheDocument();
   });
 
   it('WEB-LYRICS-008 plain-text view drops timestamps; auto-scroll can be switched off and is remembered', async () => {
     lyricsEndpoint();
     const { user } = open();
     await screen.findByText('Second line');
-    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+    await waitFor(() => expect(Element.prototype.scrollIntoView).toHaveBeenCalled());
     await user.click(screen.getByRole('button', { name: 'Plain text' }));
     expect(screen.getByText(/First line\s+Second line\s+Third line/)).toBeInTheDocument();
     expect(active()).toBeUndefined();
@@ -314,6 +307,7 @@ describe('lyrics', () => {
     expect(await screen.findByText(/Verse one\s+Verse two/)).toBeInTheDocument();
     expect(screen.getByText('LRCLIB')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Show lyrics later' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch', { name: 'Toggle auto-scroll' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Synced' })).toBeDisabled();
   });
 
@@ -339,21 +333,36 @@ describe('lyrics', () => {
     await waitFor(() => expect(asked).toEqual(['latin', null]));
   });
 
-  it('WEB-LYRICS-012 a guest who signs in to edit lyrics lands back in the editor', async () => {
-    lyricsEndpoint();
-    const navigate = vi.fn();
-    bindAccountGateNavigator(navigate);
-    const first = open();
-    await screen.findByText('Second line');
-    await first.user.click(screen.getByRole('button', { name: 'Edit lyrics' }));
-    expect(navigate).toHaveBeenCalledWith('/signin', expect.anything());
-    // Off to /signin: the screen goes away, the sign-in finishes the action, the screen comes back.
-    first.unmount();
-    setSession('a', 'r', testUser);
-    await takePendingAction()?.();
-    open();
-    const editor = await screen.findByRole('textbox', { name: 'Lyrics editor' });
-    expect(editor).toHaveValue('[00:00.00]First line\n[00:10.00]Second line\n[00:20.00]Third line');
+  it("WEB-LYRICS-012 a song whose lyrics can't be found gets a disabled Lyrics button with a tooltip", async () => {
+    let answer!: () => void;
+    const gate = new Promise<void>((r) => (answer = r));
+    let asked = 0;
+    server.use(
+      http.get(`${API}/tracks/:id/lyrics`, async () => {
+        asked++;
+        await gate;
+        return apiError(404, 'NOT_FOUND', 'Lyrics not found');
+      }),
+    );
+    const p = makePlayer({ queue: [song], index: 0, positionMs: 1_000 });
+    renderWithProviders(
+      <>
+        <BottomPlayer />
+        <NowPlaying />
+      </>,
+      { player: p, route: '/now-playing' },
+    );
+    // Unknown while the one request is out: both buttons work.
+    for (const el of screen.getAllByLabelText('Lyrics')) expect(el).toHaveAttribute('href', '/lyrics');
+    answer();
+    await waitFor(() =>
+      expect(screen.getAllByLabelText('Lyrics').every((el) => el.getAttribute('aria-disabled') === 'true')).toBe(true),
+    );
+    for (const el of screen.getAllByLabelText('Lyrics')) {
+      expect(el).not.toHaveAttribute('href');
+      expect(el).toHaveAttribute('data-tip', "Lyrics aren't available for this song right now");
+    }
+    expect(asked).toBe(1);
   });
 
   it('WEB-LYRICS-013 a guest who signs in to fix the timing gets that change saved', async () => {

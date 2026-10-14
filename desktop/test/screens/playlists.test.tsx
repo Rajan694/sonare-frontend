@@ -20,7 +20,10 @@ vi.mock('../../src/storage/downloads', () => ({
   downloadProgress: () => null,
 }));
 
-useMockServer(http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))));
+useMockServer(
+  http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/me/favourites/ids`, () => HttpResponse.json({ ids: [] })),
+);
 
 afterEach(() => {
   act(() => closeTrackMenu());
@@ -246,5 +249,82 @@ describe('playlist page', () => {
   it('WEB-PLAYLIST-008 someone else\'s own-playlist link shows "Playlist not found" to a guest', async () => {
     openPlaylist('sonare:someone');
     expect(await screen.findByText('Playlist not found')).toBeInTheDocument();
+  });
+
+  it('WEB-PLAYLIST-009 an own playlist is renamed from its menu; the page shows the new name, a failure says so', async () => {
+    own();
+    let name = 'Gym';
+    const sent: unknown[] = [];
+    let fail = false;
+    server.use(
+      http.get(`${API}/me/playlists/:id`, () =>
+        HttpResponse.json(makePlaylist({ id: 'sonare:gym', name, kind: 'synced' })),
+      ),
+      http.patch(`${API}/me/playlists/:id`, async ({ request }) => {
+        const body = (await request.json()) as { name: string };
+        sent.push(body);
+        if (fail) return apiError(500, 'X', 'Database down');
+        name = body.name;
+        return HttpResponse.json(makePlaylist({ id: 'sonare:gym', name, kind: 'synced' }));
+      }),
+    );
+    const { user } = openPlaylist();
+    expect(await screen.findByText('Gym', { selector: '.text-display-m' })).toBeInTheDocument();
+    await user.click(screen.getAllByRole('button', { name: 'More options' })[0]);
+    await user.click(within(screen.getByRole('menu')).getByRole('button', { name: 'Rename playlist…' }));
+    await answerPrompt(user, 'Leg day');
+    await waitFor(() => expect(sent).toEqual([{ name: 'Leg day' }]));
+    expect(await screen.findByText('Leg day', { selector: '.text-display-m' })).toBeInTheDocument();
+    expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Playlist renamed' }));
+
+    fail = true;
+    await user.click(screen.getAllByRole('button', { name: 'More options' })[0]);
+    await user.click(within(screen.getByRole('menu')).getByRole('button', { name: 'Rename playlist…' }));
+    await answerPrompt(user, 'Arms');
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Could not rename playlist', description: 'Database down' }),
+      ),
+    );
+    expect(screen.getByText('Leg day', { selector: '.text-display-m' })).toBeInTheDocument();
+  });
+
+  it('WEB-PLAYLIST-010 a YouTube playlist is saved to the library like an album; a guest is asked to sign in', async () => {
+    const youtube = () =>
+      server.use(
+        http.get(`${API}/playlists/:id`, () =>
+          HttpResponse.json(makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online', trackCount: 3 })),
+        ),
+        http.get(`${API}/playlists/:id/tracks`, () => HttpResponse.json(page(songs))),
+      );
+    youtube();
+    const navigate = vi.fn();
+    bindAccountGateNavigator(navigate);
+    const guest = openPlaylist('yt:PL1');
+    await guest.user.click(await screen.findByRole('button', { name: 'Save to your library' }));
+    expect(navigate).toHaveBeenCalledWith('/signin', {
+      state: { reason: 'Create a free account to save playlists you love.', mode: 'signup' },
+    });
+    guest.unmount();
+
+    setSession('a', 'r', testUser);
+    youtube();
+    let saved: unknown;
+    server.use(
+      http.get(`${API}/me/library/albums`, () => HttpResponse.json(page([]))),
+      http.put(`${API}/me/favourites/albums/:id`, async ({ request, params }) => {
+        saved = { id: params.id, ...((await request.json()) as object) };
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { user } = openPlaylist('yt:PL1');
+    await user.click(await screen.findByRole('button', { name: 'Save to your library' }));
+    await waitFor(() =>
+      expect(saved).toEqual({
+        id: 'yt:PL1',
+        meta: expect.objectContaining({ title: 'Hits', trackCount: 3 }),
+      }),
+    );
+    expect(screen.getByRole('button', { name: 'Remove from your library' })).toBeInTheDocument();
   });
 });

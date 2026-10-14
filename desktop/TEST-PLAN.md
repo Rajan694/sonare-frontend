@@ -125,7 +125,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-MUSIC-028` | arrow keys jump 5 seconds, within the track                                                  |
 | `WEB-MUSIC-029` | scrubbing previews the time and seeks once on release                                        |
 | `WEB-MUSIC-030` | without a seek handler it is a picture, not a control                                        |
-| `WEB-MUSIC-031` | the table shows your play count, and the artist where a song has no album                    |
+| `WEB-MUSIC-031` | lists of your own songs show your play count, and the artist where a song has no album       |
+| `WEB-MUSIC-035` | catalog lists (search, albums, artists) have no PLAYS column                                 |
 | `WEB-MUSIC-032` | a guest who signs in from "Add to playlist" gets the playlist picker for that song           |
 | `WEB-MUSIC-033` | the menu adds and removes a single song as a favourite                                       |
 | `WEB-MUSIC-034` | the favourite heart is shown at every width                                                  |
@@ -167,7 +168,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-007` | a file that cannot be read is skipped without failing the folder                             |
 | `DSK-008` | a folder that disappeared scans as empty                                                     |
 | `DSK-009` | excluding a folder hides its songs; including it brings them back                            |
-| `DSK-010` | removing a folder forgets its songs and their saved lyrics, but leaves the files             |
+| `DSK-010` | removing a folder forgets its songs and their lyric timing, but leaves the files             |
 | `DSK-011` | the library is kept in Neutralino storage and restored at the next launch                    |
 | `DSK-012` | a corrupt stored library starts empty instead of crashing                                    |
 | `DSK-013` | "open folder" shows the file's folder in the file manager                                    |
@@ -175,7 +176,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-015` | the player's real duration is remembered for files the scan could not measure                |
 | `DSK-016` | server lists swap in this device's copy of a local song and drop ones it lacks               |
 | `DSK-017` | reads a sidecar .lrc next to the file, synced or plain                                       |
-| `DSK-018` | lyrics the user saves replace the sidecar, and their timing offset is kept                   |
+| `DSK-018` | the timing fix the user sets applies to the sidecar lyrics                                   |
 | `DSK-019` | a finished download joins the library under "Sonare downloads" and replaces the stream       |
 | `DSK-020` | downloading the same song again keeps one copy; forgetting it unlinks the stream             |
 | `DSK-021` | rescanning downloads drops files deleted outside Sonare                                      |
@@ -278,55 +279,57 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/player-screens.test.tsx`
 
-| ID               | Use case                                                                            |
-| :--------------- | :---------------------------------------------------------------------------------- |
-| `WEB-NP-001`     | with nothing playing it points back to Home                                         |
-| `WEB-NP-002`     | shows the song, its album, artist link, stream quality and time left                |
-| `WEB-NP-003`     | lists the next four songs, and clicking one plays it                                |
-| `WEB-NP-004`     | transport, shuffle, repeat and seek go to the player                                |
-| `WEB-NP-005`     | a playback error is shown with a retry                                              |
-| `WEB-NP-006`     | leaving goes home on a direct visit                                                 |
-| `WEB-LYRICS-001` | highlights the line at the current position, with its source                        |
-| `WEB-LYRICS-002` | clicking a line seeks there                                                         |
-| `WEB-LYRICS-003` | a signed-in user nudges the timing and it is saved                                  |
-| `WEB-LYRICS-004` | a guest fixing timing or text is asked to create an account                         |
-| `WEB-LYRICS-005` | editing opens the lyrics as LRC; saving LRC sends it as synced lyrics               |
-| `WEB-LYRICS-006` | with no lyrics, typed plain text is saved as plain; a failed save keeps the editor  |
-| `WEB-LYRICS-007` | an imported .lrc file opens in the editor to check before saving                    |
-| `WEB-LYRICS-008` | plain-text view drops timestamps; auto-scroll can be switched off and is remembered |
-| `WEB-LYRICS-009` | unsynced lyrics show as plain text with no timing controls                          |
-| `WEB-LYRICS-010` | with nothing playing it says so                                                     |
-| `WEB-QROUTE-001` | /queue opens the queue panel and returns to Home                                    |
-| `WEB-EQ-001`     | picking a preset moves the faders to its curve                                      |
-| `WEB-EQ-002`     | moving a fader makes a custom curve, and double-click resets it to 0 dB             |
-| `WEB-EQ-003`     | turning the equalizer off disables presets and faders                               |
-| `WEB-EQ-004`     | bass boost, virtualizer and speed apply and show their values                       |
-| `WEB-EQ-005`     | gapless and normalization switches update the account settings                      |
-| `WEB-EQ-006`     | the crossfade switch turns crossfade on; gapless then says it skips one album       |
-| `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                            |
-| `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in               |
-| `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                        |
-| `WEB-LYRICS-011` | asks for lyrics in the preferred script, and asks again when it changes             |
-| `WEB-LYRICS-012` | a guest who signs in to edit lyrics lands back in the editor                        |
-| `WEB-LYRICS-013` | a guest who signs in to fix the timing gets that change saved                       |
-| `WEB-LYRICS-014` | LRCLIB down says so and retries, instead of "No lyrics"                             |
+| ID               | Use case                                                                               |
+| :--------------- | :------------------------------------------------------------------------------------- |
+| `WEB-NP-001`     | with nothing playing it points back to Home                                            |
+| `WEB-NP-002`     | shows the song, its album, artist link, stream quality and time left                   |
+| `WEB-NP-003`     | lists the next four songs, and clicking one plays it                                   |
+| `WEB-NP-004`     | transport, shuffle, repeat and seek go to the player                                   |
+| `WEB-NP-005`     | a playback error is shown with a retry                                                 |
+| `WEB-NP-006`     | leaving goes home on a direct visit                                                    |
+| `WEB-LYRICS-001` | highlights the line at the current position, with its source                           |
+| `WEB-LYRICS-002` | clicking a line seeks there                                                            |
+| `WEB-LYRICS-003` | a signed-in user nudges the timing: it moves at once and is saved once, after the taps |
+| `WEB-LYRICS-004` | a guest fixing the timing is asked to create an account                                |
+| `WEB-LYRICS-005` | lyrics are read-only: no editing, adding or importing                                  |
+| `WEB-LYRICS-006` | a timing change still waiting is saved when the screen closes                          |
+| `WEB-LYRICS-007` | the auto-scroll switch is there for synced lyrics only                                 |
+| `WEB-LYRICS-008` | plain-text view drops timestamps; auto-scroll can be switched off and is remembered    |
+| `WEB-LYRICS-009` | unsynced lyrics show as plain text with no timing controls                             |
+| `WEB-LYRICS-010` | with nothing playing it says so                                                        |
+| `WEB-QROUTE-001` | /queue opens the queue panel and returns to Home                                       |
+| `WEB-EQ-001`     | picking a preset moves the faders to its curve                                         |
+| `WEB-EQ-002`     | moving a fader makes a custom curve, and double-click resets it to 0 dB                |
+| `WEB-EQ-003`     | turning the equalizer off disables presets and faders                                  |
+| `WEB-EQ-004`     | bass boost, virtualizer and speed apply and show their values                          |
+| `WEB-EQ-005`     | gapless and normalization switches update the account settings                         |
+| `WEB-EQ-006`     | the crossfade switch turns crossfade on; gapless then says it skips one album          |
+| `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                               |
+| `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in                  |
+| `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                           |
+| `WEB-LYRICS-011` | asks for lyrics in the preferred script, and asks again when it changes                |
+| `WEB-LYRICS-012` | a song whose lyrics can't be found gets a disabled Lyrics button with a tooltip        |
+| `WEB-LYRICS-013` | a guest who signs in to fix the timing gets that change saved                          |
+| `WEB-LYRICS-014` | LRCLIB down says so and retries, instead of "No lyrics"                                |
 
 ## `test/screens/playlists.test.tsx`
 
-| ID                  | Use case                                                                       |
-| :------------------ | :----------------------------------------------------------------------------- |
-| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one |
-| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                       |
-| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                            |
-| `WEB-PLAYLISTS-004` | in Offline Mode only playlists available on the device are shown               |
-| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link |
-| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                             |
-| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                             |
-| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position         |
-| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                |
-| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order |
-| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu |
-| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest         |
+| ID                  | Use case                                                                                 |
+| :------------------ | :--------------------------------------------------------------------------------------- |
+| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one           |
+| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                 |
+| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                      |
+| `WEB-PLAYLISTS-004` | in Offline Mode only playlists available on the device are shown                         |
+| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link           |
+| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                       |
+| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                       |
+| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position                   |
+| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                          |
+| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order           |
+| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu           |
+| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest                   |
+| `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so |
+| `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in    |
 
 ## `test/screens/settings-downloads.test.tsx`
 
@@ -555,18 +558,21 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/favourites.test.tsx`
 
-| ID            | Use case                                                                           |
-| :------------ | :--------------------------------------------------------------------------------- |
-| `WEB-FAV-001` | the heart flips before the server answers                                          |
-| `WEB-FAV-002` | a failed save rolls the heart back to the server value and rethrows                |
-| `WEB-FAV-003` | a failed un-heart returns to the previous local choice, not the stale server value |
-| `WEB-FAV-004` | tells saved-listeners only after the server accepted the change                    |
-| `WEB-FAV-005` | without a local change, the server value is used as is                             |
-| `WEB-FAV-006` | every heart for the same song updates together                                     |
-| `WEB-FAV-007` | a guest is sent to sign up, and the heart is saved after signing in                |
-| `WEB-FAV-008` | a toggle that fails on the server shows the old state again                        |
-| `WEB-FAV-009` | no track id means not favourite and a no-op toggle                                 |
-| `WEB-FAV-010` | useFavouriteLookup re-renders lists when any heart changes                         |
+| ID            | Use case                                                                                        |
+| :------------ | :---------------------------------------------------------------------------------------------- |
+| `WEB-FAV-001` | the heart flips before the server answers                                                       |
+| `WEB-FAV-002` | a failed save rolls the heart back to the server value and rethrows                             |
+| `WEB-FAV-003` | a failed un-heart returns to the previous local choice, not the stale server value              |
+| `WEB-FAV-004` | tells saved-listeners only after the server accepted the change                                 |
+| `WEB-FAV-005` | without a local change, the server value is used as is                                          |
+| `WEB-FAV-006` | every heart for the same song updates together                                                  |
+| `WEB-FAV-007` | a guest is sent to sign up, and the heart is saved after signing in                             |
+| `WEB-FAV-008` | a toggle that fails on the server shows the old state again                                     |
+| `WEB-FAV-009` | no track id means not favourite and a no-op toggle                                              |
+| `WEB-FAV-010` | useFavouriteLookup re-renders lists when any heart changes                                      |
+| `WEB-FAV-011` | a song from search shows a filled heart when the account likes it                               |
+| `WEB-FAV-012` | un-hearting a liked song empties every heart for it; signing out forgets the list               |
+| `WEB-FAV-013` | a token refresh for the same account loads nothing again; a failed load keeps the old behaviour |
 
 ## `test/unit/hooks.test.tsx`
 

@@ -4,7 +4,7 @@ import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo
 import type { LyricsScript } from '../storage/devicePrefs';
 import { inAppYoutube, isInAppYoutubeAllowed, loadCachedConfig, setAppConfig, type AppConfig } from '../youtube/inApp';
 import { trackThumbUrl } from '../../../shared/catalog/images';
-import { albumMeta, artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
+import { albumMeta, artistMeta, playlistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
 
 type Catalog = Awaited<ReturnType<typeof inAppYoutube.getCatalog>>;
 
@@ -389,23 +389,10 @@ export const api = {
     return request<any[]>('/lyrics/search', { params });
   },
 
-  saveLyrics(id: string, body: { lrc?: string; plain?: string }) {
-    return request<{ ok: boolean }>(`/tracks/${encodeURIComponent(id)}/lyrics`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-  },
-
   updateLyricsOffset(id: string, offsetMs: number) {
     return request<{ ok: boolean }>(`/tracks/${encodeURIComponent(id)}/lyrics/offset`, {
       method: 'PATCH',
       body: JSON.stringify({ offsetMs }),
-    });
-  },
-
-  deleteLyrics(id: string) {
-    return request<{ ok: boolean }>(`/tracks/${encodeURIComponent(id)}/lyrics`, {
-      method: 'DELETE',
     });
   },
 
@@ -441,6 +428,11 @@ export const api = {
     return request<Page<Track>>('/me/favourites/tracks', { params: { cursor } });
   },
 
+  /** Every liked id, newest first: enough for the hearts on catalog tracks, which come with `favourite: false`. */
+  getFavouriteIds() {
+    return request<{ ids: string[] }>('/me/favourites/ids');
+  },
+
   // Saving one sends what the app knows about it (`meta`): the backend may never have seen
   // an item found in-app.
   setTrackFavourite(id: string, favourite: boolean, track?: Track) {
@@ -454,6 +446,14 @@ export const api = {
     return request<{ ok: boolean }>(`/me/favourites/albums/${encodeURIComponent(id)}`, {
       method: favourite ? 'PUT' : 'DELETE',
       ...(favourite && album && { body: JSON.stringify({ meta: albumMeta(album) }) }),
+    });
+  },
+
+  /** A saved YouTube playlist is stored like an album, so it shows up in Library → Albums. */
+  setPlaylistFavourite(id: string, favourite: boolean, playlist?: Playlist) {
+    return request<{ ok: boolean }>(`/me/favourites/albums/${encodeURIComponent(id)}`, {
+      method: favourite ? 'PUT' : 'DELETE',
+      ...(favourite && playlist && { body: JSON.stringify({ meta: playlistMeta(playlist) }) }),
     });
   },
 
@@ -497,7 +497,7 @@ export const api = {
     return request<Page<Track>>(`/me/playlists/${encodeURIComponent(id)}/tracks`);
   },
 
-  updateMyPlaylist(id: string, body: { name?: string; description?: string }) {
+  updatePlaylist(id: string, body: { name?: string; description?: string }) {
     return request<Playlist>(`/me/playlists/${encodeURIComponent(id)}`, {
       method: 'PATCH',
       body: JSON.stringify(body),

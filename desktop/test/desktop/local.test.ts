@@ -151,12 +151,14 @@ describe('managing folders', () => {
     expect(getLocalSnapshot().tracks).toHaveLength(2);
   });
 
-  it('DSK-010 removing a folder forgets its songs and their saved lyrics, but leaves the files', async () => {
+  it('DSK-010 removing a folder forgets its songs and their lyric timing, but leaves the files', async () => {
     writeFile(`${MUSIC}/a.mp3`, new Uint8Array(10));
+    writeFile(`${MUSIC}/a.lrc`, '[00:01.00]Words');
     const { localLibrary, getLocalSnapshot } = await launch();
     const folder = await localLibrary.addFolder(MUSIC);
     const id = getLocalSnapshot().tracks[0].id;
-    await localLibrary.saveLyrics(id, { plain: 'words' });
+    await localLibrary.setLyricsOffset(id, 500);
+    expect(JSON.parse(store.get('sonare_library')!).lyrics).toEqual({ [id]: { offsetMs: 500 } });
     await localLibrary.removeFolder(folder!.id);
     expect(getLocalSnapshot().folders).toEqual([]);
     expect(getLocalSnapshot().tracks).toEqual([]);
@@ -256,19 +258,18 @@ describe('lyrics for local files', () => {
     expect(await localLibrary.lyrics(id('none'))).toBeNull();
   });
 
-  it('DSK-018 lyrics the user saves replace the sidecar, and their timing offset is kept', async () => {
+  it('DSK-018 the timing fix the user sets applies to the sidecar lyrics', async () => {
     writeFile(`${MUSIC}/song.mp3`, new Uint8Array(8));
     writeFile(`${MUSIC}/song.lrc`, '[00:01.00]From file');
     const { localLibrary, getLocalSnapshot } = await launch();
     await localLibrary.addFolder(MUSIC);
     const id = getLocalSnapshot().tracks[0].id;
-    await localLibrary.saveLyrics(id, { lrc: '[00:02.00]Mine' });
     await localLibrary.setLyricsOffset(id, 750);
     expect(await localLibrary.lyrics(id)).toEqual({
       synced: true,
-      lines: [{ atMs: 2000, text: 'Mine' }],
+      lines: [{ atMs: 1000, text: 'From file' }],
       offsetMs: 750,
-      provider: 'user',
+      provider: 'lrc',
     });
     // No lyrics at all: the offset has nothing to attach to.
     await localLibrary.setLyricsOffset('local:nothing', 100);

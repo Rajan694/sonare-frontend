@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { api } from './api';
 import { onFavouritesSaved } from './favourites';
+import { fetchLyrics } from './lyricsAvailability';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
 import type { Track, User } from '../types';
 import { useDevicePrefs } from '../storage/devicePrefs';
@@ -183,7 +184,7 @@ export const useArtistAlbums = (id: string | undefined, cursor?: string) => {
 const isOwnPlaylist = (id: string) => id.startsWith('sonare:');
 
 export const usePlaylist = (id: string | undefined) => {
-  return useAuthAsync(
+  const result = useAuthAsync(
     () =>
       !id
         ? Promise.reject(new Error('Missing playlist id'))
@@ -193,6 +194,15 @@ export const usePlaylist = (id: string | undefined) => {
     [id],
     { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) },
   );
+  // Renamed (or changed) elsewhere, e.g. from the sidebar's menu: show the new name.
+  const { refetch } = result;
+  const own = !!id && isOwnPlaylist(id);
+  useEffect(() => {
+    if (!own) return;
+    window.addEventListener(PLAYLISTS_CHANGED, refetch);
+    return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch);
+  }, [refetch, own]);
+  return result;
 };
 
 export const usePlaylistTracks = (id: string | undefined, cursor?: string) => {
@@ -270,10 +280,10 @@ export const useLyrics = (
   const { lyricsScript } = useDevicePrefs();
   const trackId = track?.id;
   return useAsync(
-    () =>
-      track ? api.getLyrics(track.id, prefer, lyricsScript, track) : Promise.reject(new Error('Missing track id')),
+    // The same request the Lyrics buttons made when the song started, if there was one.
+    () => (track ? fetchLyrics(track, prefer, lyricsScript) : Promise.reject(new Error('Missing track id'))),
     [trackId, prefer, lyricsScript],
-    // Local files are unknown to the server; their lyrics come from the editor only.
+    // Local files are unknown to the server; their lyrics come from the file (tags or a .lrc).
     { enabled: !!trackId && !trackId.startsWith('local:') },
   );
 };
