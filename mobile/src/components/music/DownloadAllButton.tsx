@@ -7,6 +7,7 @@ import { useDownloadsStore, type DownloadItem } from '../../store/downloads';
 import { useModeStore } from '../../store/mode';
 import { confirmRemoveDownloads } from '../../lib/confirmRemoveDownloads';
 import type { Track } from '../../data/types';
+import { offerMusicAccess } from '../../lib/musicAccess';
 
 /**
  * Download every song of an album or playlist. While any are downloading it opens the
@@ -34,6 +35,7 @@ export const DownloadAllButton = ({ tracks }: { tracks: Track[] }) => {
     Alert.alert(
       'Added to downloads',
       `${left} ${left === 1 ? 'song' : 'songs'} will be saved to ${useDownloadsStore.getState().location.label}.`,
+      [{ text: 'OK', onPress: () => offerMusicAccess('download') }],
     );
   };
 

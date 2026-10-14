@@ -425,7 +425,11 @@ describe('download buttons', () => {
     const { getByLabelText, rerender, toJSON } = render(<DownloadAllButton tracks={tracks} />);
     fireEvent.press(getByLabelText('Download all'));
     expect(dl.enqueue).toHaveBeenCalledWith([song, later]);
-    expect(alert).toHaveBeenCalledWith('Added to downloads', '2 songs will be saved to Music/Sonare.');
+    expect(alert).toHaveBeenCalledWith(
+      'Added to downloads',
+      '2 songs will be saved to Music/Sonare.',
+      expect.any(Array),
+    );
 
     downloadsWith({ [song.id]: makeDownload(song, { status: 'downloading' }) });
     rerender(<DownloadAllButton tracks={tracks} />);

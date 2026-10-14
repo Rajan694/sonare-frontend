@@ -23,7 +23,8 @@ import { songCount } from '../lib/format';
 import { cn } from '../lib/cn';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useNavigation } from '@react-navigation/native';
-import { downloadedTracks, useDownloadsStore } from '../store/downloads';
+import { useDownloadsStore } from '../store/downloads';
+import { usePhoneTracks } from '../store/localMusic';
 import { playShuffled } from '../lib/playShuffled';
 
 type Tab = 'songs' | 'liked' | 'mostPlayed' | 'albums' | 'artists' | 'genres';
@@ -105,8 +106,8 @@ export const LibraryScreen = () => {
   const tracksQuery = trackTab === 'liked' ? liked : trackTab === 'mostPlayed' ? mostPlayed : library;
   const serverTracks = (tracksQuery.data?.items ?? []).filter((t) => t.source === 'server');
   const isDownloaded = (id: string) => downloads[id]?.status === 'done';
-  // Offline, the library is what's been downloaded to this phone.
-  const offlineTracks = React.useMemo(() => downloadedTracks(downloads), [downloads]);
+  // Offline, the library is what's on this phone: downloads and the music folders' songs.
+  const offlineTracks = usePhoneTracks();
   const displayTracks = !online
     ? trackTab === 'songs'
       ? offlineTracks

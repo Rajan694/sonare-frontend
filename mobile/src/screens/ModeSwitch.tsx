@@ -8,7 +8,8 @@ import { Switch } from '../components/ui/Switch';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useModeStore } from '../store/mode';
 import { useSettingsStore } from '../data/settings';
-import { downloadedTracks, useDownloadsStore } from '../store/downloads';
+import { usePhoneTracks } from '../store/localMusic';
+import { offerMusicAccess } from '../lib/musicAccess';
 import { songCount } from '../lib/format';
 import Animated, { FadeIn, FadeOut, Layout, ReduceMotion, SlideInDown } from 'react-native-reanimated';
 import Icon, { type IconName } from '../components/ui/Icon';
@@ -31,8 +32,7 @@ export const ModeSwitchScreen = () => {
   const route = useRoute<any>();
   const insets = useSafeAreaInsets();
   const { setMode } = useModeStore();
-  const downloads = useDownloadsStore((s) => s.items);
-  const onPhone = React.useMemo(() => downloadedTracks(downloads).length, [downloads]);
+  const onPhone = usePhoneTracks().length;
   // Starts from the saved choice; saved again when the switch to Offline is confirmed.
   const [stayOffline, setStayOffline] = React.useState(() => useSettingsStore.getState().stayOffline);
   // This screen only exists for the Online -> Offline confirmation (AGENTS.md
@@ -45,6 +45,8 @@ export const ModeSwitchScreen = () => {
     if (offline) useSettingsStore.getState().update({ stayOffline });
     setMode(localMode);
     navigation.goBack();
+    // The offline player can also play the music folders, with the permission.
+    if (offline) offerMusicAccess('offline');
   };
 
   return (

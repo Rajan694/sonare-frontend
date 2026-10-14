@@ -1,8 +1,9 @@
+import { useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { SonareLibrary, type DeviceSong } from '../native/SonareLibrary';
 import { hasMusicPermission, requestMusicPermission, type MusicPermission } from '../lib/musicPermission';
-import { idInFileName, useDownloadsStore, type FoundDownload } from './downloads';
+import { downloadedTracks, idInFileName, useDownloadsStore, type FoundDownload } from './downloads';
 import type { Track } from '../data/types';
 
 /**
@@ -172,4 +173,15 @@ export const deviceUriFor = (trackId: string): string | null => {
   if (!trackId.startsWith('local:')) return null;
   const song = useLocalMusicStore.getState().songs.find((s) => localId(s) === trackId);
   return song?.uri ?? null;
+};
+
+/** Everything that plays without a network: downloads (newest first), then the music folders' songs. */
+export const usePhoneTracks = (): Track[] => {
+  const downloads = useDownloadsStore((state) => state.items);
+  const songs = useLocalMusicStore((state) => state.songs);
+  const hidden = useLocalMusicStore((state) => state.hidden);
+  return useMemo(
+    () => [...downloadedTracks(downloads), ...deviceTracks({ songs, hidden })],
+    [downloads, songs, hidden],
+  );
 };

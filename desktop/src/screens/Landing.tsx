@@ -59,7 +59,7 @@ const FEATURES = [
   {
     icon: FolderOpen,
     title: 'Your own music too',
-    body: 'On Linux and Windows, add your music folders and play your files next to the catalogue.',
+    body: 'On Android, Linux and Windows, play the music already on your device next to the catalogue.',
     tone: 'gold',
   },
   {

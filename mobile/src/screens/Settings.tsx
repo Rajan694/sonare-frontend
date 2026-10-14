@@ -24,10 +24,21 @@ import { parseReleaseNotes } from '../../../shared/releaseNotes';
 import { SonarePlayer } from '../native/SonarePlayer';
 import { formatBytes } from '../lib/format';
 import type { AppRelease } from '../data/types';
+import { musicFolders, useLocalMusicStore } from '../store/localMusic';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
 
 export const SettingsScreen = () => {
+  // Music folders: how many, or that Sonare may not read them yet.
+  const musicPermission = useLocalMusicStore((state) => state.permission);
+  const phoneSongs = useLocalMusicStore((state) => state.songs);
+  const hiddenFolders = useLocalMusicStore((state) => state.hidden);
+  const foldersSummary = React.useMemo(() => {
+    if (musicPermission !== 'granted') return 'Allow access to play the music on this phone';
+    const folders = musicFolders({ songs: phoneSongs, hidden: hiddenFolders });
+    const shown = folders.filter((f) => !f.hidden).length;
+    return folders.length === 0 ? 'No music on this phone yet' : `${shown} of ${folders.length} folders shown`;
+  }, [musicPermission, phoneSongs, hiddenFolders]);
   const sync = useSyncStatus();
   const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
@@ -277,7 +288,7 @@ export const SettingsScreen = () => {
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Music folders</Text>
-                <Text className="text-bs text-t3 truncate">Not available on this phone yet</Text>
+                <Text className="text-bs text-t3 truncate">{foldersSummary}</Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>

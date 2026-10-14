@@ -15,7 +15,7 @@ import { Artwork } from '../components/music/Artwork';
 import { StateView } from '../components/ui/StateView';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
-import { useDownloadsStore, downloadedTracks } from '../store/downloads';
+import { usePhoneTracks } from '../store/localMusic';
 import { useRecentSearchesStore } from '../store/recentSearches';
 import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
@@ -153,7 +153,6 @@ export const SearchScreen = () => {
   const setMode = useModeStore((state) => state.setMode);
   const playTrack = usePlayerStore((state) => state.playTrack);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
-  const downloads = useDownloadsStore((state) => state.items);
   const recent = useRecentSearchesStore((state) => state.searches);
 
   // A genre opened elsewhere (Library → Genres) arrives as `q`.
@@ -219,8 +218,8 @@ export const SearchScreen = () => {
   const firstItem: SearchItem | undefined = items[0];
   const topResult = pickTopResult(firstAlbum, firstItem);
 
-  // The songs on the phone, searched with the same query while offline.
-  const deviceTracks = useMemo(() => downloadedTracks(downloads), [downloads]);
+  // The songs on the phone (downloads and music folders), searched with the same query while offline.
+  const deviceTracks = usePhoneTracks();
   const localMatches = useMemo(() => (online ? [] : searchLocalTracks(deviceTracks, q)), [online, deviceTracks, q]);
   const localAlbumGroups = useMemo(() => groupLocalByAlbum(localMatches), [localMatches]);
   const localArtistGroups = useMemo(() => groupLocalByArtist(localMatches), [localMatches]);

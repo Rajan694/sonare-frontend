@@ -459,3 +459,12 @@ navigation mock live in `test-utils/`.
 | `MOB-LOCAL-003` | a download names its file with the song id, so it can be found again              |
 | `MOB-LOCAL-004` | downloads the list lost (a reinstall) come back from Music/Sonare, shown once     |
 | `MOB-LOCAL-005` | a song on the phone plays from its content uri                                    |
+
+## `__tests__/music-folders.test.tsx`
+
+| ID             | Use case                                                                                  |
+| :------------- | :---------------------------------------------------------------------------------------- |
+| `MOB-FOLD-002` | without the permission it explains and asks; allowed, it lists the folders and hides one  |
+| `MOB-FOLD-003` | when Android will not ask again, the button opens the app settings                        |
+| `MOB-FOLD-004` | Offline Mode lists the downloads, then the songs of shown folders                         |
+| `MOB-FOLD-005` | the offline player and downloading offer the permission once each; blocked opens settings |

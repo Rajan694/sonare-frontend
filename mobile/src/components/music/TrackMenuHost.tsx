@@ -18,6 +18,7 @@ import { useDownloadsStore } from '../../store/downloads';
 import { useModeStore } from '../../store/mode';
 import { confirmRemoveDownloads } from '../../lib/confirmRemoveDownloads';
 import type { Track } from '../../data/types';
+import { offerMusicAccess } from '../../lib/musicAccess';
 
 const MenuItem = ({
   icon,
@@ -181,7 +182,10 @@ const Menu = ({ track }: { track: Track }) => {
           <MenuItem
             icon="download"
             label="Download"
-            onPress={run(() => useDownloadsStore.getState().enqueue([track]))}
+            onPress={run(() => {
+              useDownloadsStore.getState().enqueue([track]);
+              offerMusicAccess('download');
+            })}
           />
         ) : null)}
       {track.albumId && <MenuItem icon="disc" label="Go to album" onPress={run(() => goTo('Album', track.albumId!))} />}
