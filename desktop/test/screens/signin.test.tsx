@@ -120,6 +120,46 @@ describe('create account', () => {
   });
 });
 
+describe('verifying a new account', () => {
+  it('WEB-SIGNIN-011 after signing up, the emailed code can be entered before going on, or skipped', async () => {
+    const unverified = { ...tokens, user: { ...testUser, emailVerified: false } };
+    let typed: unknown;
+    server.use(
+      http.post(`${API}/auth/register`, () => HttpResponse.json(unverified, { status: 201 })),
+      http.post(`${API}/auth/verify-email-code`, async ({ request }) => {
+        typed = ((await request.json()) as { code: string }).code;
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { user, location } = open({ mode: 'signup' });
+    await user.type(email(), 'nova@sonare.test');
+    await user.type(password(), 'longpass1');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    expect(await screen.findByText('Verify your email')).toBeInTheDocument();
+    expect(location()).toBe('/signin');
+    await user.type(screen.getByRole('textbox', { name: 'Verification code' }), '123456');
+    await user.click(screen.getByRole('button', { name: 'Verify' }));
+    await waitFor(() => expect(location()).toBe('/home'));
+    expect(typed).toBe('123456');
+    expect(getCurrentUser()?.emailVerified).toBe(true);
+  });
+
+  it('WEB-SIGNIN-012 "Skip for now" goes on unverified', async () => {
+    server.use(
+      http.post(`${API}/auth/register`, () =>
+        HttpResponse.json({ ...tokens, user: { ...testUser, emailVerified: false } }, { status: 201 }),
+      ),
+    );
+    const { user, location } = open({ mode: 'signup' });
+    await user.type(email(), 'nova@sonare.test');
+    await user.type(password(), 'longpass1');
+    await user.click(screen.getByRole('button', { name: 'Create account' }));
+    await user.click(await screen.findByRole('button', { name: 'Skip for now' }));
+    await waitFor(() => expect(location()).toBe('/home'));
+    expect(getCurrentUser()?.emailVerified).toBe(false);
+  });
+});
+
 describe('arriving from the account gate', () => {
   it("WEB-SIGNIN-007 shows why the account is needed and finishes the guest's action after signing up", async () => {
     server.use(http.post(`${API}/auth/register`, () => HttpResponse.json(tokens, { status: 201 })));

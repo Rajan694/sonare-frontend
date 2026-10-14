@@ -5,6 +5,7 @@ import { Field } from '../components/ui/Field';
 import { requestPasswordReset, signIn, signUp } from '../api/auth';
 import { clearPendingAction, takePendingAction } from '../api/accountGate';
 import { showToast } from '../store/toasts';
+import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
@@ -39,6 +40,8 @@ const SignIn = () => {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resetSent, setResetSent] = useState(false);
+  // A new account's email gets a code; it can be typed here before carrying on.
+  const [verifying, setVerifying] = useState<string | null>(null);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -62,17 +65,41 @@ const SignIn = () => {
           : await signIn(email.trim(), password);
       succeeded.current = true;
       showToast({ title: `Welcome, ${user.displayName}`, icon: 'check', variant: 'acc' });
-      // Back to where they were (a direct visit has nowhere to go back to), then finish
-      // whatever they tried as a guest — the like, the new playlist.
-      if (window.history.state?.idx > 0) navigate(-1);
-      else navigate('/home', { replace: true });
-      await takePendingAction()?.();
+      if (mode === 'signup' && user.emailVerified === false) setVerifying(user.email);
+      else await carryOn();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign in');
     } finally {
       setBusy(false);
     }
   };
+
+  // Back to where they were (a direct visit has nowhere to go back to), then finish
+  // whatever they tried as a guest — the like, the new playlist.
+  const carryOn = async () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/home', { replace: true });
+    await takePendingAction()?.();
+  };
+
+  if (verifying) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="surf flex flex-col gap-4 p-8 w-full max-w-[400px]">
+          <div className="flex flex-col gap-1">
+            <span className="text-h1 text-t1">Verify your email</span>
+            <span className="text-body-m text-t2">
+              We sent a 6-digit code to {verifying}. Enter it here, or open the link in that email.
+            </span>
+          </div>
+          <VerifyEmailCode email={verifying} onVerified={() => void carryOn()} />
+          <Button variant="ghost" onClick={() => void carryOn()}>
+            Skip for now
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const subtitle =
     mode === 'forgot'

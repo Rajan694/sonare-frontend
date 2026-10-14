@@ -565,22 +565,32 @@ describe('Settings', () => {
     expect(alert).toHaveBeenLastCalledWith('Could not change the folder', 'No write access');
   });
 
-  it('MOB-SET-S-006 an unverified account can resend the link; verified accounts see no prompt', async () => {
+  it('MOB-SET-S-006 an unverified account enters the emailed code or sends a new one; verified accounts see no prompt', async () => {
     const resendVerification = jest.fn(async () => {});
+    const verifyEmailCode = jest.fn(async (code: string) => {
+      if (code !== '123456') throw new Error("That code isn't right.");
+      useAuthStore.setState({ user: { ...alice, emailVerified: true } } as never);
+    });
     useAuthStore.setState({
       status: 'signedIn',
       user: { ...alice, emailVerified: false },
       resendVerification,
+      verifyEmailCode,
     } as never);
     const alert = jest.spyOn(Alert, 'alert');
-    const { getByText, queryByText, rerender } = render(<SettingsScreen />);
+    const { getByText, getByLabelText, findByText, queryByText } = render(<SettingsScreen />);
     expect(getByText('Email not verified')).toBeTruthy();
-    await act(async () => fireEvent.press(getByText('Resend link')));
+    await act(async () => fireEvent.press(getByLabelText('Send a new code')));
     expect(resendVerification).toHaveBeenCalledTimes(1);
-    expect(alert).toHaveBeenLastCalledWith('Verification email sent', 'Check alice@sonare.test.');
+    expect(await findByText(/A new code is on its way to alice@sonare.test/)).toBeTruthy();
 
-    useAuthStore.setState({ user: { ...alice, emailVerified: true } } as never);
-    rerender(<SettingsScreen />);
+    fireEvent.changeText(getByLabelText('Verification code'), '654321');
+    await act(async () => fireEvent.press(getByText('Verify')));
+    expect(await findByText("That code isn't right.")).toBeTruthy();
+    fireEvent.changeText(getByLabelText('Verification code'), '123 456');
+    await act(async () => fireEvent.press(getByText('Verify')));
+    expect(verifyEmailCode).toHaveBeenLastCalledWith('123456');
+    expect(alert).toHaveBeenLastCalledWith('Email verified', 'alice@sonare.test is verified.');
     expect(queryByText('Email not verified')).toBeNull();
   });
 });
@@ -686,6 +696,41 @@ describe('Sign in', () => {
     fireEvent.press(getByText('Sign in'));
     expect(queryByText('Too many attempts. Try again in 60 min.')).toBeNull();
     expect(getByLabelText('Password')).toBeTruthy();
+  });
+});
+
+describe('Verifying a new account', () => {
+  it('MOB-SIGNIN-008 after signing up, the emailed code can be entered before going back, or skipped', async () => {
+    const verifyEmailCode = jest.fn(async () => {});
+    useAuthStore.setState({
+      signUp: jest.fn(async () => {
+        useAuthStore.setState({ status: 'signedIn', user: { ...alice, emailVerified: false } } as never);
+      }),
+      verifyEmailCode,
+    } as never);
+    route.params = { mode: 'signup' };
+    const first = render(<SignInScreen />);
+    fireEvent.changeText(first.getByLabelText('Your name'), 'Alice');
+    fireEvent.changeText(first.getByLabelText('Email'), 'alice@sonare.test');
+    fireEvent.changeText(first.getByLabelText('Password'), 'longpass1');
+    await act(async () => fireEvent.press(first.getByLabelText('Create account')));
+    expect(await first.findByText('Verify your email')).toBeTruthy();
+    expect(nav.goBack).not.toHaveBeenCalled();
+    fireEvent.changeText(first.getByLabelText('Verification code'), '123456');
+    await act(async () => fireEvent.press(first.getByText('Verify')));
+    expect(verifyEmailCode).toHaveBeenCalledWith('123456');
+    expect(nav.goBack).toHaveBeenCalledTimes(1);
+    first.unmount();
+
+    nav.goBack.mockClear();
+    const second = render(<SignInScreen />);
+    fireEvent.changeText(second.getByLabelText('Your name'), 'Alice');
+    fireEvent.changeText(second.getByLabelText('Email'), 'alice@sonare.test');
+    fireEvent.changeText(second.getByLabelText('Password'), 'longpass1');
+    await act(async () => fireEvent.press(second.getByLabelText('Create account')));
+    fireEvent.press(await second.findByLabelText('Skip for now'));
+    expect(nav.goBack).toHaveBeenCalledTimes(1);
+    route.params = {};
   });
 });
 

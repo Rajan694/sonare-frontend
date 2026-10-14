@@ -31,7 +31,10 @@ interface AuthStore {
   refresh: () => Promise<string | null>;
   /** Emails a reset link; the server answers ok whether or not the account exists. */
   requestPasswordReset: (email: string) => Promise<void>;
+  /** Emails a new verification code and link. */
   resendVerification: () => Promise<void>;
+  /** The 6-digit code from the verification email; marks the account verified. */
+  verifyEmailCode: (code: string) => Promise<void>;
 }
 
 class AuthError extends Error {
@@ -64,6 +67,18 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       service: KEYCHAIN_SERVICE,
     });
     set({ status: 'signedIn', ...session });
+  };
+
+  /** An /auth call as the signed-in account; an expired access token is refreshed once. */
+  const asAccount = async <T>(path: string, body: unknown): Promise<T> => {
+    try {
+      return await authRequest<T>(path, body, get().accessToken);
+    } catch (e) {
+      if (!(e instanceof AuthError) || e.status !== 401) throw e;
+      const token = await get().refresh();
+      if (!token) throw e;
+      return authRequest<T>(path, body, token);
+    }
   };
 
   const endSession = async () => {
@@ -163,7 +178,15 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     },
 
     resendVerification: async () => {
-      await authRequest('resend-verification', {}, get().accessToken);
+      await asAccount('resend-verification', {});
+    },
+
+    verifyEmailCode: async (code) => {
+      await asAccount('verify-email-code', { code });
+      const { accessToken, refreshToken, user } = get();
+      if (accessToken && refreshToken && user) {
+        await startSession({ accessToken, refreshToken, user: { ...user, emailVerified: true } });
+      }
     },
   };
 });

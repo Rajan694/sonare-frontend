@@ -196,57 +196,58 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/screens-player.test.tsx`
 
-| ID               | Use case                                                                                   |
-| :--------------- | :----------------------------------------------------------------------------------------- |
-| `MOB-NP-001`     | shows the song, where it plays from, its quality and the time left                         |
-| `MOB-NP-002`     | a downloaded song is shown as on this device                                               |
-| `MOB-NP-003`     | transport buttons drive the player                                                         |
-| `MOB-NP-004`     | tapping the waveform seeks to that point                                                   |
-| `MOB-NP-005`     | a guest hearting the song is asked to sign up; a signed-in user saves it                   |
-| `MOB-NP-006`     | playback errors are shown; lyrics, queue, equalizer and the song menu are one tap away     |
-| `MOB-NP-007`     | with nothing playing it says so and can be closed                                          |
-| `MOB-Q-001`      | shows what is next, counts server songs, and plays a tapped song                           |
-| `MOB-Q-002`      | "Clear queue" keeps only the current song; then it says the queue has ended                |
-| `MOB-Q-003`      | a song's menu can remove it from the queue                                                 |
-| `MOB-Q-004`      | saving the queue creates a playlist with every queued song                                 |
-| `MOB-Q-005`      | a failed save says why; shuffle and repeat work from here                                  |
-| `MOB-Q-006`      | an empty queue says so                                                                     |
-| `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                |
-| `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                     |
-| `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                |
-| `MOB-LYR-003`    | plain text view shows the words without timing                                             |
-| `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files |
-| `MOB-LYR-005`    | LRCLIB down shows the reason and a retry, not "No lyrics found"                            |
-| `MOB-EQ-001`     | presets and switches respond to taps                                                       |
-| `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                          |
-| `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                    |
-| `MOB-EQ-004`     | bands stop at ±12 dB                                                                       |
-| `MOB-EQ-005`     | bass boost and virtualizer adjust and show their amount                                    |
-| `MOB-EQ-006`     | speed, crossfade and normalization change what the player gets                             |
-| `MOB-EQ-007`     | switching the equalizer off freezes the effects but not speed or transitions               |
-| `MOB-EQ-008`     | the output card shows the device in use and follows changes                                |
-| `MOB-DL-S-001`   | with nothing downloaded it says so                                                         |
-| `MOB-DL-S-002`   | shows progress for running downloads and lets them be paused, resumed or retried           |
-| `MOB-DL-S-003`   | finished songs play as a queue of downloads; a moved file is marked                        |
-| `MOB-DL-S-004`   | deleting asks first and deletes the file; a moved file is only taken off the list          |
-| `MOB-DL-S-005`   | "Delete all" removes every finished download after asking                                  |
-| `MOB-SET-S-001`  | a guest is offered sign-in and sign-up                                                     |
-| `MOB-SET-S-002`  | signing out asks first                                                                     |
-| `MOB-SET-S-003`  | the download format changes the quality description and is saved                           |
-| `MOB-SET-S-004`  | the download location can be changed or reset                                              |
-| `MOB-SET-S-005`  | a folder that cannot be used is reported                                                   |
-| `MOB-SET-S-006`  | an unverified account can resend the verification link; verified accounts see no prompt    |
-| `MOB-SIGNIN-001` | checks the form before sending anything                                                    |
-| `MOB-SIGNIN-002` | signs in with a normalised email and goes back                                             |
-| `MOB-SIGNIN-003` | a gate visit opens on sign-up, needs a name and 8+ character password                      |
-| `MOB-SIGNIN-004` | server and network failures are shown plainly                                              |
-| `MOB-SIGNIN-005` | "keep listening" leaves without an account                                                 |
-| `MOB-SIGNIN-006` | "Forgot password?" emails a reset link for the normalised email and says so                |
-| `MOB-SIGNIN-007` | a reset request error shows, and "Sign in" goes back to the form                           |
-| `MOB-MODE-001`   | confirming switches to Offline Mode and goes back                                          |
-| `MOB-MODE-002`   | cancelling keeps the current mode                                                          |
-| `MOB-MODE-003`   | turning off "stay offline automatically" is remembered                                     |
-| `MOB-FOLD-001`   | a phone with no scanned folders shows no made-up folders                                   |
+| ID               | Use case                                                                                          |
+| :--------------- | :------------------------------------------------------------------------------------------------ |
+| `MOB-NP-001`     | shows the song, where it plays from, its quality and the time left                                |
+| `MOB-NP-002`     | a downloaded song is shown as on this device                                                      |
+| `MOB-NP-003`     | transport buttons drive the player                                                                |
+| `MOB-NP-004`     | tapping the waveform seeks to that point                                                          |
+| `MOB-NP-005`     | a guest hearting the song is asked to sign up; a signed-in user saves it                          |
+| `MOB-NP-006`     | playback errors are shown; lyrics, queue, equalizer and the song menu are one tap away            |
+| `MOB-NP-007`     | with nothing playing it says so and can be closed                                                 |
+| `MOB-Q-001`      | shows what is next, counts server songs, and plays a tapped song                                  |
+| `MOB-Q-002`      | "Clear queue" keeps only the current song; then it says the queue has ended                       |
+| `MOB-Q-003`      | a song's menu can remove it from the queue                                                        |
+| `MOB-Q-004`      | saving the queue creates a playlist with every queued song                                        |
+| `MOB-Q-005`      | a failed save says why; shuffle and repeat work from here                                         |
+| `MOB-Q-006`      | an empty queue says so                                                                            |
+| `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                       |
+| `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                            |
+| `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                       |
+| `MOB-LYR-003`    | plain text view shows the words without timing                                                    |
+| `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files        |
+| `MOB-LYR-005`    | LRCLIB down shows the reason and a retry, not "No lyrics found"                                   |
+| `MOB-EQ-001`     | presets and switches respond to taps                                                              |
+| `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                                 |
+| `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                           |
+| `MOB-EQ-004`     | bands stop at ±12 dB                                                                              |
+| `MOB-EQ-005`     | bass boost and virtualizer adjust and show their amount                                           |
+| `MOB-EQ-006`     | speed, crossfade and normalization change what the player gets                                    |
+| `MOB-EQ-007`     | switching the equalizer off freezes the effects but not speed or transitions                      |
+| `MOB-EQ-008`     | the output card shows the device in use and follows changes                                       |
+| `MOB-DL-S-001`   | with nothing downloaded it says so                                                                |
+| `MOB-DL-S-002`   | shows progress for running downloads and lets them be paused, resumed or retried                  |
+| `MOB-DL-S-003`   | finished songs play as a queue of downloads; a moved file is marked                               |
+| `MOB-DL-S-004`   | deleting asks first and deletes the file; a moved file is only taken off the list                 |
+| `MOB-DL-S-005`   | "Delete all" removes every finished download after asking                                         |
+| `MOB-SET-S-001`  | a guest is offered sign-in and sign-up                                                            |
+| `MOB-SET-S-002`  | signing out asks first                                                                            |
+| `MOB-SET-S-003`  | the download format changes the quality description and is saved                                  |
+| `MOB-SET-S-004`  | the download location can be changed or reset                                                     |
+| `MOB-SET-S-005`  | a folder that cannot be used is reported                                                          |
+| `MOB-SET-S-006`  | an unverified account enters the emailed code or sends a new one; verified accounts see no prompt |
+| `MOB-SIGNIN-001` | checks the form before sending anything                                                           |
+| `MOB-SIGNIN-002` | signs in with a normalised email and goes back                                                    |
+| `MOB-SIGNIN-003` | a gate visit opens on sign-up, needs a name and 8+ character password                             |
+| `MOB-SIGNIN-004` | server and network failures are shown plainly                                                     |
+| `MOB-SIGNIN-005` | "keep listening" leaves without an account                                                        |
+| `MOB-SIGNIN-006` | "Forgot password?" emails a reset link for the normalised email and says so                       |
+| `MOB-SIGNIN-007` | a reset request error shows, and "Sign in" goes back to the form                                  |
+| `MOB-SIGNIN-008` | after signing up, the emailed code can be entered before going back, or skipped                   |
+| `MOB-MODE-001`   | confirming switches to Offline Mode and goes back                                                 |
+| `MOB-MODE-002`   | cancelling keeps the current mode                                                                 |
+| `MOB-MODE-003`   | turning off "stay offline automatically" is remembered                                            |
+| `MOB-FOLD-001`   | a phone with no scanned folders shows no made-up folders                                          |
 
 ## `__tests__/store.test.ts`
 

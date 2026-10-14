@@ -20,6 +20,7 @@ import { sleepTimerLabel, useSleepTimerStore } from '../store/sleepTimer';
 import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
 import { useAppUpdateStore } from '../store/appUpdate';
 import { appVersion } from '../native/SonareBuild';
+import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
 
@@ -28,16 +29,6 @@ export const SettingsScreen = () => {
   const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
-  const resendVerification = useAuthStore((s) => s.resendVerification);
-
-  const resendLink = async () => {
-    try {
-      await resendVerification();
-      Alert.alert('Verification email sent', `Check ${user?.email}.`);
-    } catch (e: any) {
-      Alert.alert('Could not send the email', e?.message);
-    }
-  };
   const mode = useModeStore((s) => s.mode);
   const setMode = useModeStore((s) => s.setMode);
 
@@ -159,14 +150,18 @@ export const SettingsScreen = () => {
         ) : null}
 
         {user?.emailVerified === false && (
-          <View className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3">
-            <View className="flex-1 gap-0.5">
+          <View className="bg-s1 border border-ln rounded-lg p-3.5 gap-3">
+            <View className="gap-0.5">
               <Text className="text-tm font-semibold text-t1">Email not verified</Text>
-              <Text className="text-bs text-t3">Verify it so you can reset your password if you forget it.</Text>
+              <Text className="text-bs text-t3">
+                Enter the 6-digit code we emailed to {user.email}. A verified email lets you reset your password if you
+                forget it.
+              </Text>
             </View>
-            <Button variant="outline" size="sm" onPress={resendLink}>
-              Resend link
-            </Button>
+            <VerifyEmailCode
+              email={user.email}
+              onVerified={() => Alert.alert('Email verified', `${user.email} is verified.`)}
+            />
           </View>
         )}
 

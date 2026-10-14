@@ -314,27 +314,27 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/settings-downloads.test.tsx`
 
-| ID                 | Use case                                                                               |
-| :----------------- | :------------------------------------------------------------------------------------- |
-| `WEB-SETTINGS-001` | a guest is offered to create an account or sign in                                     |
-| `WEB-SETTINGS-002` | a signed-in user sees their profile and can sign out                                   |
-| `WEB-SETTINGS-003` | the web build shows no desktop-only sections, on either layout                         |
-| `WEB-SETTINGS-004` | playback: streaming quality and the two switches change the settings                   |
-| `WEB-SETTINGS-005` | choosing a section updates the address and shows it                                    |
-| `WEB-SETTINGS-006` | download quality choices follow the file format                                        |
-| `WEB-SETTINGS-007` | shows download progress counts and links to the Downloads page                         |
-| `WEB-SETTINGS-008` | choosing a download folder confirms it; cancelling says nothing; a failure is reported |
-| `WEB-SETTINGS-009` | a picked folder shows its name and can be reset to the default                         |
-| `WEB-SETTINGS-010` | an unverified user can resend the verification link; verified users see no prompt      |
-| `WEB-DLPAGE-001`   | with nothing downloaded it says so and where files go                                  |
-| `WEB-DLPAGE-002`   | in-progress rows show their state, size and progress, with the right control           |
-| `WEB-DLPAGE-003`   | finished downloads are counted, and play as a queue of downloads                       |
-| `WEB-DLPAGE-004`   | "Save again" re-saves the kept copy, and explains when there is none                   |
-| `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result     |
-| `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                |
-| `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                           |
-| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch   |
-| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none       |
+| ID                 | Use case                                                                                           |
+| :----------------- | :------------------------------------------------------------------------------------------------- |
+| `WEB-SETTINGS-001` | a guest is offered to create an account or sign in                                                 |
+| `WEB-SETTINGS-002` | a signed-in user sees their profile and can sign out                                               |
+| `WEB-SETTINGS-003` | the web build shows no desktop-only sections, on either layout                                     |
+| `WEB-SETTINGS-004` | playback: streaming quality and the two switches change the settings                               |
+| `WEB-SETTINGS-005` | choosing a section updates the address and shows it                                                |
+| `WEB-SETTINGS-006` | download quality choices follow the file format                                                    |
+| `WEB-SETTINGS-007` | shows download progress counts and links to the Downloads page                                     |
+| `WEB-SETTINGS-008` | choosing a download folder confirms it; cancelling says nothing; a failure is reported             |
+| `WEB-SETTINGS-009` | a picked folder shows its name and can be reset to the default                                     |
+| `WEB-SETTINGS-010` | an unverified user verifies with the emailed code or sends a new one; verified users see no prompt |
+| `WEB-DLPAGE-001`   | with nothing downloaded it says so and where files go                                              |
+| `WEB-DLPAGE-002`   | in-progress rows show their state, size and progress, with the right control                       |
+| `WEB-DLPAGE-003`   | finished downloads are counted, and play as a queue of downloads                                   |
+| `WEB-DLPAGE-004`   | "Save again" re-saves the kept copy, and explains when there is none                               |
+| `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result                 |
+| `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                            |
+| `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                                       |
+| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch               |
+| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none                   |
 
 ## `test/screens/signin.test.tsx`
 
@@ -350,6 +350,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                 |
 | `WEB-SIGNIN-009` | "Forgot password?" sends a reset link for the trimmed email and says it is on its way |
 | `WEB-SIGNIN-010` | a forgot-password error shows, and switching back to sign in clears it                |
+| `WEB-SIGNIN-011` | after signing up, the emailed code can be entered before going on                     |
+| `WEB-SIGNIN-012` | "Skip for now" goes on unverified                                                     |
 
 ## `test/screens/landing.test.tsx`
 

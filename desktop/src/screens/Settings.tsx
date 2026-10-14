@@ -23,7 +23,8 @@ import {
 } from '../storage/downloadTargets';
 import { useDownloads } from '../storage/downloads';
 import { useAuth } from '../api/hooks';
-import { resendVerification, signOut } from '../api/auth';
+import { signOut } from '../api/auth';
+import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { formatBytes } from '../lib/format';
 import { version as APP_VERSION } from '../../neutralino.config.json';
 import { useAppDispatch, useAppSelector } from '../store';
@@ -177,15 +178,6 @@ const Settings = () => {
     setSearchParams({ section: id });
   };
 
-  const handleResendVerification = async () => {
-    try {
-      await resendVerification();
-      showToast({ title: 'Verification email sent', description: `Check ${user?.email}`, icon: 'check' });
-    } catch (err) {
-      showToast({ title: 'Could not send the email', description: err instanceof Error ? err.message : undefined });
-    }
-  };
-
   const handleSignOut = async () => {
     await signOut();
     showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' });
@@ -232,14 +224,15 @@ const Settings = () => {
         )}
       </div>
       {user?.emailVerified === false && (
-        <div className="surf flex items-center gap-4 p-5 rounded-2xl">
-          <span className="flex flex-col grow min-w-0">
+        <div className="surf flex flex-col gap-4 p-5 rounded-2xl">
+          <span className="flex flex-col min-w-0 gap-0.5">
             <span className="text-body-m text-t1 font-medium">Email not verified</span>
-            <span className="text-body-s text-t3">Verify it so you can reset your password if you forget it.</span>
+            <span className="text-body-s text-t3">
+              Enter the 6-digit code we emailed to {user.email}, or open the link in that email. A verified email lets
+              you reset your password if you forget it.
+            </span>
           </span>
-          <Button variant="out" onClick={handleResendVerification}>
-            Resend link
-          </Button>
+          <VerifyEmailCode email={user.email} />
         </div>
       )}
     </div>

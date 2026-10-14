@@ -105,6 +105,15 @@ export const clearSession = () => {
   notifyListeners();
 };
 
+class AuthRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
 /** POSTs to /auth/<path>; throws the server's message on an error status. */
 const postAuth = async <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> => {
   const res = await fetch(`${API_BASE}/auth/${path}`, {
@@ -114,9 +123,21 @@ const postAuth = async <T>(path: string, body: unknown, accessToken?: string | n
   });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(json?.error?.message || `Request failed with status ${res.status}`);
+    throw new AuthRequestError(json?.error?.message || `Request failed with status ${res.status}`, res.status);
   }
   return json as T;
+};
+
+/** postAuth as the signed-in account; an expired access token is refreshed once. */
+const postAsAccount = async <T>(path: string, body: unknown): Promise<T> => {
+  try {
+    return await postAuth<T>(path, body, currentAccessToken);
+  } catch (err) {
+    if (!(err instanceof AuthRequestError) || err.status !== 401) throw err;
+    const token = await refreshAccessToken();
+    if (!token) throw err;
+    return postAuth<T>(path, body, token);
+  }
 };
 
 interface SessionResponse {
@@ -148,9 +169,8 @@ export const resetPassword = async (token: string, password: string): Promise<vo
   clearSession();
 };
 
-export const verifyEmail = async (token: string): Promise<void> => {
-  await postAuth('verify-email', { token });
-  // The link may belong to another account than the one signed in here, so ask the server.
+/** Reads the signed-in account again, e.g. after its email was verified. */
+const refreshCurrentUser = async (): Promise<void> => {
   if (!currentAccessToken) return;
   const res = await fetch(`${API_BASE}/me`, {
     headers: { ...JSON_HEADERS, Authorization: `Bearer ${currentAccessToken}` },
@@ -158,8 +178,20 @@ export const verifyEmail = async (token: string): Promise<void> => {
   if (res?.ok) setCurrentUser(await res.json());
 };
 
+export const verifyEmail = async (token: string): Promise<void> => {
+  await postAuth('verify-email', { token });
+  // The link may belong to another account than the one signed in here, so ask the server.
+  await refreshCurrentUser();
+};
+
+/** The 6-digit code from the verification email, for the signed-in account. */
+export const verifyEmailCode = async (code: string): Promise<void> => {
+  await postAsAccount('verify-email-code', { code });
+  if (currentUser) setCurrentUser({ ...currentUser, emailVerified: true });
+};
+
 export const resendVerification = async (): Promise<void> => {
-  await postAuth('resend-verification', {}, currentAccessToken);
+  await postAsAccount('resend-verification', {});
 };
 
 const setCurrentUser = (user: User) => {
