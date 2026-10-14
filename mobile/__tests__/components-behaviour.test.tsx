@@ -223,6 +223,33 @@ describe('song menu', () => {
     expect(usePlayerStore.getState().queue[1].id).toBe(song.id);
   });
 
+  it('MOB-COMP-044 "Go to album" and "Go to artist" open those pages, closing Now Playing first', () => {
+    const withAlbum = makeTrack({ albumId: 'yt:alb', artistId: 'yt:art' });
+    const navigate = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
+    const dispatch = jest.spyOn(navigationRef, 'dispatch').mockImplementation(() => {});
+    jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
+    jest
+      .spyOn(navigationRef, 'getRootState')
+      .mockReturnValue({ index: 1, routes: [{ name: 'Tabs' }, { name: 'NowPlaying' }] } as never);
+    const { getByLabelText, queryByLabelText } = render(<TrackMenuHost />);
+    act(() => useTrackMenuStore.getState().open(withAlbum));
+    fireEvent.press(getByLabelText('Go to album'));
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'POP_TO_TOP' }));
+    expect(navigate).toHaveBeenLastCalledWith(
+      'Tabs',
+      expect.objectContaining({ params: { screen: 'Album', params: { id: 'yt:alb' } } }),
+    );
+    act(() => useTrackMenuStore.getState().open(withAlbum));
+    fireEvent.press(getByLabelText('Go to artist'));
+    expect(navigate).toHaveBeenLastCalledWith(
+      'Tabs',
+      expect.objectContaining({ params: { screen: 'Artist', params: { id: 'yt:art' } } }),
+    );
+    // A song without an album has no "Go to album".
+    act(() => useTrackMenuStore.getState().open(makeTrack()));
+    expect(queryByLabelText('Go to album')).toBeNull();
+  });
+
   it('MOB-COMP-038 a guest choosing favourites or playlists is asked to create an account', () => {
     const navigate = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
     jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);

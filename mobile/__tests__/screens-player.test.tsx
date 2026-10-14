@@ -245,7 +245,8 @@ describe('Lyrics', () => {
     jest.spyOn(api, 'lyrics').mockResolvedValue({
       synced: true,
       lines,
-      offsetMs: -15_000,
+      // Like the desktop app: positive shows each line later.
+      offsetMs: 15_000,
       provider: 'lrclib',
     } as never);
     const { findByText, getByText } = render(<LyricsScreen />);
@@ -300,6 +301,40 @@ describe('Lyrics', () => {
     fireEvent.press(getByText('Try again'));
     expect(await findByText('Back again')).toBeTruthy();
     expect(lyrics).toHaveBeenCalledTimes(2);
+  });
+
+  it('MOB-LYR-006 "Earlier" and "Later" move the timing and save it to the account', async () => {
+    useAuthStore.setState({ status: 'signedIn', user: alice } as never);
+    jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: true, lines, offsetMs: 0, provider: 'lrclib' } as never);
+    const save = jest.spyOn(api, 'updateLyricsOffset').mockResolvedValue({ ok: true });
+    const { findByText, getByText } = render(<LyricsScreen />);
+    expect(await findByText('Timing 0.00s')).toBeTruthy();
+    fireEvent.press(getByText('Later'));
+    fireEvent.press(getByText('Later'));
+    expect(getByText('Timing +0.50s')).toBeTruthy();
+    expect(save).toHaveBeenLastCalledWith(expect.any(String), 500);
+    fireEvent.press(getByText('Earlier'));
+    expect(save).toHaveBeenLastCalledWith(expect.any(String), 250);
+  });
+
+  it('MOB-LYR-007 lyrics can be edited: timed lines save as LRC, anything else as plain text', async () => {
+    useAuthStore.setState({ status: 'signedIn', user: alice } as never);
+    const lyricsCall = jest
+      .spyOn(api, 'lyrics')
+      .mockResolvedValue({ synced: true, lines, offsetMs: 0, provider: 'lrclib' } as never);
+    const save = jest.spyOn(api, 'saveLyrics').mockResolvedValue({ ok: true });
+    const lrc = '[00:00.00]First line\n[00:50.00]Second line\n[01:30.00]Third line';
+    const { findByText, getByText, getByLabelText } = render(<LyricsScreen />);
+    fireEvent.press(await findByText('Edit'));
+    expect(getByLabelText('Lyrics text').props.value).toBe(lrc);
+    await act(async () => fireEvent.press(getByText('Save')));
+    expect(save).toHaveBeenLastCalledWith(expect.any(String), { lrc });
+    expect(lyricsCall.mock.calls.length).toBeGreaterThan(1);
+
+    fireEvent.press(getByText('Edit'));
+    fireEvent.changeText(getByLabelText('Lyrics text'), 'Just words\nNo times');
+    await act(async () => fireEvent.press(getByText('Save')));
+    expect(save).toHaveBeenLastCalledWith(expect.any(String), { plain: 'Just words\nNo times' });
   });
 });
 
@@ -525,6 +560,16 @@ describe('Settings', () => {
     useSettingsStore.setState({ downloadFormat: 'm4a' });
     rerender(<SettingsScreen />);
     expect(getByText('Low ≈ 50 kbps · Normal and High = 128 kbps (AAC has two steps)')).toBeTruthy();
+  });
+
+  it('MOB-SET-S-007 streaming quality is picked in Playback and saved', () => {
+    const update = jest.fn();
+    useSettingsStore.setState({ streamQuality: 'high', update } as never);
+    const { getByText, getAllByText } = render(<SettingsScreen />);
+    expect(getByText('Streaming quality')).toBeTruthy();
+    // The first Low/Normal/High is streaming's; the download quality has its own.
+    fireEvent.press(getAllByText('Low')[0]);
+    expect(update).toHaveBeenCalledWith({ streamQuality: 'low' });
   });
 
   it('MOB-SET-S-004 the download location can be changed or reset', async () => {

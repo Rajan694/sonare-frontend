@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
@@ -26,10 +26,12 @@ import Icon from '../components/ui/Icon';
 import { Select } from '../components/ui/Select';
 import { staggerContainer } from '../lib/motion';
 import { cn } from '../lib/cn';
+import { useLayout } from '../lib/layout';
 import type { Track } from '../types';
 
 // Folders are a screen of their own (/folders), opened from the Songs tab's Folders button.
-const TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Favourites', 'Most played'] as const;
+// The song views first: on a phone only the first few tabs fit without scrolling.
+const TABS = ['Songs', 'Favourites', 'Most played', 'Albums', 'Artists', 'Genres'] as const;
 type Tab = (typeof TABS)[number];
 
 const SOURCE_FILTERS: { value: 'all' | 'local' | 'server'; label: string }[] = [
@@ -61,9 +63,18 @@ const sortTracks = (list: Track[], key: SortKey, desc: boolean): Track[] => {
 const Library = () => {
   const { mode } = useModeStore();
   const { currentTrack, playTrack } = usePlayerStore();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const slug = (t: Tab) => t.toLowerCase().replace(' ', '-');
   const activeTab: Tab = TABS.find((t) => slug(t) === params.get('view')) ?? 'Songs';
+  const setActiveTab = (t: Tab) => setParams(t === 'Songs' ? {} : { view: slug(t) }, { replace: true });
+  // The full sidebar links every view (?view=); phones and tablets have no sidebar, so they get tabs.
+  const layout = useLayout();
+  const showTabs = layout === 'phone' || layout === 'tablet';
+  // A view opened by link may be off to the side of the tabs row: bring its tab into sight.
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [activeTab, showTabs]);
 
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(null);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'local' | 'server'>('all');
@@ -214,6 +225,21 @@ const Library = () => {
             )}
           </div>
         </div>
+
+        {showTabs && (
+          <div className="tabs overflow-x-auto no-scrollbar flex items-center">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                className={cn('tab flex-none', activeTab === tab && 'on')}
+                onClick={() => setActiveTab(tab)}
+                ref={activeTab === tab ? activeTabRef : undefined}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Filter chips & list/grid toggle row */}
         {isTrackTab && (

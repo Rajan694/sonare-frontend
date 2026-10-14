@@ -4,7 +4,7 @@ import { api } from '../../data/api';
 import { absoluteUrl, artworkUrl } from '../../data/config';
 import { useAuthStore } from '../../data/auth';
 import { queuePlay } from '../../data/sync';
-import { useSettingsStore } from '../../data/settings';
+import { API_QUALITY, useSettingsStore } from '../../data/settings';
 import type { StreamInfo, Track } from '../../data/types';
 import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
 import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
@@ -54,11 +54,16 @@ const knownStream = (id: string): StreamInfo | undefined => {
   return info && info.expiresAt > Date.now() + 60_000 ? info : undefined;
 };
 
+// A new streaming quality applies from the next track: looked-up urls are for the old one.
+useSettingsStore.subscribe((state, prev) => {
+  if (state.streamQuality !== prev.streamQuality) streams.clear();
+});
+
 const fetchStream = (track: Track): Promise<StreamInfo> => {
   let pending = pendingStreams.get(track.id);
   if (!pending) {
     pending = api
-      .stream(track.id)
+      .stream(track.id, API_QUALITY[useSettingsStore.getState().streamQuality] ?? 'auto')
       .then((info) => {
         streams.delete(track.id);
         streams.set(track.id, info);

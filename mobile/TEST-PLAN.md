@@ -27,6 +27,7 @@ navigation mock live in `test-utils/`.
 | `MOB-COMP-042` | a screen can add its own action, e.g. "Remove from playlist"                                |
 | `MOB-COMP-021` | tapping seeks to that fraction; played bars are coloured by mode                            |
 | `MOB-COMP-043` | without a seek handler the waveform cannot be tapped                                        |
+| `MOB-COMP-044` | "Go to album" and "Go to artist" open those pages, closing Now Playing first                |
 | `MOB-COMP-025` | one song: download, pause while running, resume, delete once saved; nothing for local files |
 | `MOB-COMP-024` | a whole album: download the server songs, show progress, offer delete when all are saved    |
 
@@ -217,6 +218,8 @@ navigation mock live in `test-utils/`.
 | `MOB-LYR-003`    | plain text view shows the words without timing                                                    |
 | `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files        |
 | `MOB-LYR-005`    | LRCLIB down shows the reason and a retry, not "No lyrics found"                                   |
+| `MOB-LYR-006`    | "Earlier" and "Later" move the timing and save it to the account                                  |
+| `MOB-LYR-007`    | lyrics can be edited: timed lines save as LRC, anything else as plain text                        |
 | `MOB-EQ-001`     | presets and switches respond to taps                                                              |
 | `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                                 |
 | `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                           |
@@ -236,6 +239,7 @@ navigation mock live in `test-utils/`.
 | `MOB-SET-S-004`  | the download location can be changed or reset                                                     |
 | `MOB-SET-S-005`  | a folder that cannot be used is reported                                                          |
 | `MOB-SET-S-006`  | an unverified account enters the emailed code or sends a new one; verified accounts see no prompt |
+| `MOB-SET-S-007`  | streaming quality is picked in Playback and saved                                                 |
 | `MOB-SIGNIN-001` | checks the form before sending anything                                                           |
 | `MOB-SIGNIN-002` | signs in with a normalised email and goes back                                                    |
 | `MOB-SIGNIN-003` | a gate visit opens on sign-up, needs a name and 8+ character password                             |
@@ -342,6 +346,8 @@ navigation mock live in `test-utils/`.
 | `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts                  |
 | `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                   |
 | `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                         |
+| `MOB-LIBX-005`  | Favourites and Most played show those songs from the account and play them in order        |
+| `MOB-LIBX-006`  | offline, Favourites shows the liked songs downloaded to this phone, fetching nothing       |
 
 ## `__tests__/youtube.test.ts`
 

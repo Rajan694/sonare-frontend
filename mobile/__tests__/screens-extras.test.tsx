@@ -242,4 +242,33 @@ describe('Library tabs', () => {
     act(() => useModeStore.setState({ mode: 'offline' }));
     await waitFor(() => expect(getByText('Your artists come from your account. Go online to see them.')).toBeTruthy());
   });
+
+  it('MOB-LIBX-005 Favourites and Most played show those songs from the account and play them in order', async () => {
+    const liked = [makeTrack({ title: 'Loved one' }), makeTrack({ title: 'Loved two' })];
+    const top = [makeTrack({ title: 'On repeat' })];
+    jest.spyOn(api, 'favourites').mockResolvedValue(page(liked) as never);
+    const mostPlayed = jest.spyOn(api, 'mostPlayed').mockResolvedValue(page(top) as never);
+    const { getByText, findByText } = render(<LibraryScreen />);
+    fireEvent.press(getByText('Favourites'));
+    expect(await findByText('Loved two')).toBeTruthy();
+    fireEvent.press(getByText('Play all'));
+    expect(usePlayerStore.getState().queue.map((t) => t.title)).toEqual(['Loved one', 'Loved two']);
+    fireEvent.press(getByText('Most played'));
+    expect(await findByText('On repeat')).toBeTruthy();
+    expect(mostPlayed).toHaveBeenCalledWith(50);
+  });
+
+  it('MOB-LIBX-006 offline, Favourites shows the liked songs downloaded to this phone, fetching nothing', async () => {
+    const saved = makeTrack({ title: 'Saved and liked' });
+    const other = makeTrack({ title: 'Saved only' });
+    useLibraryStore.setState({ favouriteIds: { [saved.id]: true } });
+    useDownloadsStore.setState({ items: { [saved.id]: makeDownload(saved), [other.id]: makeDownload(other) } });
+    const favourites = jest.spyOn(api, 'favourites');
+    act(() => useModeStore.setState({ mode: 'offline' }));
+    const { getByText, findByText, queryByText } = render(<LibraryScreen />);
+    fireEvent.press(getByText('Favourites'));
+    expect(await findByText('Saved and liked')).toBeTruthy();
+    expect(queryByText('Saved only')).toBeNull();
+    expect(favourites).not.toHaveBeenCalled();
+  });
 });

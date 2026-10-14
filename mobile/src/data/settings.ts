@@ -43,6 +43,8 @@ const STORAGE_KEY = 'sonare.settings';
 const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
 
 interface SettingsStore {
+  /** Streaming quality, from the next track (Settings → Playback; the desktop app's too). */
+  streamQuality: AudioQuality;
   downloadQuality: AudioQuality;
   downloadFormat: DownloadFormat;
   eqPreset: string;
@@ -54,7 +56,13 @@ interface SettingsStore {
     patch: Partial<
       Pick<
         SettingsStore,
-        'downloadQuality' | 'downloadFormat' | 'eqPreset' | 'gapless' | 'normalization' | 'stayOffline'
+        | 'streamQuality'
+        | 'downloadQuality'
+        | 'downloadFormat'
+        | 'eqPreset'
+        | 'gapless'
+        | 'normalization'
+        | 'stayOffline'
       >
     >,
   ) => void;
@@ -62,6 +70,9 @@ interface SettingsStore {
 
 const pick = (s: Record<string, unknown>) => {
   return {
+    ...(QUALITIES.includes(s.streamQuality as AudioQuality) && {
+      streamQuality: s.streamQuality as AudioQuality,
+    }),
     ...(QUALITIES.includes(s.downloadQuality as AudioQuality) && {
       downloadQuality: s.downloadQuality as AudioQuality,
     }),
@@ -83,6 +94,7 @@ const pickStored = (s: Record<string, unknown>) => {
 /** What the phone keeps in AsyncStorage. */
 const stored = (s: SettingsStore) => {
   return JSON.stringify({
+    streamQuality: s.streamQuality,
     downloadQuality: s.downloadQuality,
     downloadFormat: s.downloadFormat,
     eqPreset: s.eqPreset,
@@ -97,6 +109,7 @@ let saveTimer: ReturnType<typeof setTimeout> | undefined;
 let unsaved: Record<string, unknown> = {};
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
+  streamQuality: 'high',
   downloadQuality: 'high',
   downloadFormat: 'opus',
   eqPreset: 'Sonare',
@@ -132,7 +145,7 @@ export const useSettingsStore = create<SettingsStore>((set, get) => ({
     if (Object.keys(unsaved).length === 0) return;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      // Just what changed here, so the desktop's EQ / gapless / streaming choices are left alone.
+      // Just what changed here, so the desktop's other choices are left alone.
       const body = unsaved;
       unsaved = {};
       api.saveSettings(body).catch(() => {});

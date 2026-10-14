@@ -238,6 +238,12 @@ export const api = {
         ...(track?.durationMs && { durationMs: track.durationMs }),
       },
     }),
+  /** The account's own lyrics for a song: LRC (timed) or plain text. */
+  saveLyrics: (id: string, body: { lrc?: string; plain?: string }) =>
+    request<{ ok: boolean }>(`/tracks/${enc(id)}/lyrics`, { method: 'POST', body }),
+  /** Shifts the account's lyric timing for a song; positive shows each line later. */
+  updateLyricsOffset: (id: string, offsetMs: number) =>
+    request<{ ok: boolean }>(`/tracks/${enc(id)}/lyrics/offset`, { method: 'PATCH', body: { offsetMs } }),
   /** App builds uploaded on the admin page: the newest of each platform and format. */
   releases: () => request<{ items: AppRelease[] }>('/releases'),
   releaseDownloadUrl: (id: string) => `${apiBase()}/releases/${enc(id)}/download`,

@@ -711,10 +711,10 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/library.test.tsx`
 
-| ID        | Use case                                                      |
-| --------- | ------------------------------------------------------------- |
-| `DSK-051` | folders open from the Songs tab only; there is no Folders tab |
-| `DSK-052` | an old ?view=folders link opens the Songs tab                 |
+| ID        | Use case                                                                                |
+| --------- | --------------------------------------------------------------------------------------- |
+| `DSK-051` | folders open from the Songs view only; the sidebar picks the view, so there are no tabs |
+| `DSK-052` | an old ?view=folders link opens the Songs tab                                           |
 
 ## `test/desktop/output.test.tsx`
 

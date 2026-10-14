@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Pressable, ScrollView, LayoutChangeEvent } from 'react-native';
+import { View, Pressable, ScrollView, LayoutChangeEvent, TextInput, Alert, Dimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -22,6 +22,24 @@ import Icon from '../components/ui/Icon';
 import { cn } from '../lib/cn';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 import { useWaveform } from '../store/waveforms';
+import { Sheet } from '../components/ui/Sheet';
+import { Button } from '../components/ui/Button';
+import { requireAccount } from '../data/accountGate';
+
+/** One tap of "earlier" / "later" (the desktop app's step too). */
+const OFFSET_STEP_MS = 250;
+
+const toLrc = (lines: { atMs: number; text: string }[]): string => {
+  return lines
+    .map((l) => {
+      const m = Math.floor(l.atMs / 60000);
+      const s = ((l.atMs % 60000) / 1000).toFixed(2).padStart(5, '0');
+      return `[${String(m).padStart(2, '0')}:${s}]${l.text}`;
+    })
+    .join('\n');
+};
+
+const offsetLabel = (ms: number) => `${ms > 0 ? '+' : ms < 0 ? '−' : ''}${(Math.abs(ms) / 1000).toFixed(2)}s`;
 
 const stamp = (ms: number) => {
   return `${Math.floor(ms / 60000)}:${(Math.floor(ms / 1000) % 60).toString().padStart(2, '0')}`;
@@ -57,7 +75,43 @@ export const LyricsScreen = () => {
   const showSynced = hasSynced && view === 'synced';
   const plain = data?.plain || lines.map((l) => l.text).join('\n');
 
-  const at = positionMs + (data?.offsetMs ?? 0);
+  // The account's timing fix for this song, like the desktop app: positive shows each line later.
+  const [offsetMs, setOffsetMs] = useState(0);
+  useEffect(() => setOffsetMs(data?.offsetMs ?? 0), [data]);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const changeOffset = (delta: number) =>
+    requireAccount('Create a free account to fix lyrics and their timing.', () => {
+      const next = offsetMs + delta;
+      setOffsetMs(next);
+      api.updateLyricsOffset(currentTrack!.id, next).catch(() => Alert.alert('Could not save the lyric timing'));
+    });
+
+  const startEditing = () =>
+    requireAccount('Create a free account to fix lyrics and their timing.', () => {
+      setDraft(hasSynced ? toLrc(lines) : plain);
+      setEditing(true);
+    });
+
+  const saveEdit = async () => {
+    const text = draft.trim();
+    if (!text || !currentTrack) return;
+    setSaving(true);
+    try {
+      // Timestamps like [01:23.45] make it synced lyrics; anything else is plain text.
+      await api.saveLyrics(currentTrack.id, /^\[\d{1,2}:\d{2}(\.\d+)?\]/m.test(text) ? { lrc: text } : { plain: text });
+      setEditing(false);
+      lyrics.refetch();
+    } catch (e: any) {
+      Alert.alert('Could not save the lyrics', e?.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const at = positionMs - offsetMs;
   let activeIndex = -1;
   for (let i = 0; i < lines.length && lines[i].atMs <= at; i++) activeIndex = i;
 
@@ -139,9 +193,28 @@ export const LyricsScreen = () => {
               />
             )}
             <Chip size="sm" label="Plain text" active={!showSynced} onPress={() => setView('plain')} />
+            <Chip size="sm" label="Edit" icon={<Icon name="edit" size={13} color="#7E7E8C" />} onPress={startEditing} />
             {userScrolling && showSynced && (
               <Chip size="sm" label="Follow playback" onPress={() => setUserScrolling(false)} />
             )}
+          </View>
+        )}
+
+        {showSynced && (
+          <View className="flex-row items-center gap-2 mt-3">
+            <Text className="text-bs text-t3 flex-1">Timing {offsetLabel(offsetMs)}</Text>
+            <Chip
+              size="sm"
+              label="Earlier"
+              icon={<Icon name="minus" size={13} color="#7E7E8C" />}
+              onPress={() => changeOffset(-OFFSET_STEP_MS)}
+            />
+            <Chip
+              size="sm"
+              label="Later"
+              icon={<Icon name="plus" size={13} color="#7E7E8C" />}
+              onPress={() => changeOffset(OFFSET_STEP_MS)}
+            />
           </View>
         )}
       </View>
@@ -154,6 +227,13 @@ export const LyricsScreen = () => {
             onRetry={lyrics.refetch}
             empty="No lyrics found for this song."
           />
+          {!lyrics.loading && currentTrack.source === 'server' && (
+            <View className="items-center pb-10">
+              <Button variant="outline" size="sm" onPress={startEditing}>
+                Add lyrics
+              </Button>
+            </View>
+          )}
         </View>
       ) : (
         <ScrollView
@@ -175,11 +255,11 @@ export const LyricsScreen = () => {
                   }}
                 >
                   <Text className={`w-[30px] pt-1.5 text-mono-s font-mono ${isActive ? 'text-acc' : 'text-t4'}`}>
-                    {stamp(item.atMs)}
+                    {stamp(Math.max(0, item.atMs + offsetMs))}
                   </Text>
                   <Pressable
                     onPress={() => {
-                      seekTo(Math.max(0, item.atMs - (data.offsetMs ?? 0)));
+                      seekTo(Math.max(0, item.atMs + offsetMs));
                       setUserScrolling(false);
                     }}
                     className="flex-1"
@@ -210,6 +290,38 @@ export const LyricsScreen = () => {
           )}
         </ScrollView>
       )}
+
+      {/* Fix or add the words: LRC lines ([01:23.45] …) stay synced, anything else is plain text. */}
+      <Sheet visible={editing} onClose={() => setEditing(false)}>
+        <View className="px-6 pb-6 gap-3">
+          <Text className="text-h2 font-semibold text-t1">Edit lyrics</Text>
+          <Text className="text-bs text-t3">
+            Lines starting with a time like [01:23.45] stay synced; without times they are saved as plain text. Saved to
+            your account.
+          </Text>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            multiline
+            textAlignVertical="top"
+            autoCapitalize="none"
+            autoCorrect={false}
+            placeholder="[00:12.00] First line…"
+            placeholderTextColor="#7E7E8C"
+            accessibilityLabel="Lyrics text"
+            className="bg-s2 border border-ln2 rounded-md p-3 text-t1 text-bm font-mono"
+            style={{ height: Dimensions.get('window').height * 0.4 }}
+          />
+          <View className="flex-row gap-2.5">
+            <Button variant="outline" className="flex-1" onPress={() => setEditing(false)}>
+              Cancel
+            </Button>
+            <Button variant="accent" className="flex-1" onPress={saveEdit} disabled={saving || !draft.trim()}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </View>
+        </View>
+      </Sheet>
 
       {/* The design's player bar under the lyrics: small waveform, time and transport. */}
       <View

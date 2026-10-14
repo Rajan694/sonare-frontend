@@ -50,6 +50,7 @@ export const SettingsScreen = () => {
   const output = useOutputStore((st) => st.current);
   const sleepTimer = useSleepTimerStore((st) => st.timer);
   const lyricsScript = useDevicePrefsStore((st) => st.lyricsScript);
+  const streamQuality = useSettingsStore((s) => s.streamQuality);
   const downloadQuality = useSettingsStore((s) => s.downloadQuality);
   const downloadFormat = useSettingsStore((s) => s.downloadFormat);
   const updateSettings = useSettingsStore((s) => s.update);
@@ -216,6 +217,21 @@ export const SettingsScreen = () => {
         <View className="gap-2">
           <Text className="text-ov font-semibold text-t3 uppercase pl-1">Playback</Text>
           <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
+            <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
+              <View className="gap-0.5">
+                <Text className="text-tm font-medium text-t1">Streaming quality</Text>
+                <Text className="text-bs text-t3">Applies from the next song · Low saves mobile data</Text>
+              </View>
+              <SegmentedControl
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'high', label: 'High' },
+                ]}
+                value={streamQuality}
+                onChange={(v) => updateSettings({ streamQuality: v as AudioQuality })}
+              />
+            </View>
             <Pressable
               onPress={() => navigation.navigate('Equalizer')}
               className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"

@@ -204,6 +204,8 @@ describe('streaming ahead', () => {
     await playFrom(a, [a, b, c]);
     const asked = () => stream.mock.calls.map((call) => call[0]);
     await waitFor(() => expect(asked()).toContain(b.id));
+    // In the quality picked in Settings.
+    expect(stream).toHaveBeenCalledWith(b.id, 'high');
     stream.mockClear();
     act(() => usePlayerStore.getState().playNext());
     await waitFor(() => expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ id: b.id })));

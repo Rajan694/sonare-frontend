@@ -7,7 +7,9 @@ import { Button } from '../ui/Button';
 import { Field } from '../ui/Field';
 import Icon from '../ui/Icon';
 import { artworkUrl } from '../../data/config';
-import { requireAccount } from '../../data/accountGate';
+import { StackActions } from '@react-navigation/native';
+import { navigationRef, requireAccount } from '../../data/accountGate';
+import { openInCurrentTab } from '../../navigation/openInCurrentTab';
 import { songCount } from '../../lib/format';
 import { usePlayerStore } from '../../store/player';
 import { useLibraryStore } from '../../store/library';
@@ -34,6 +36,15 @@ const MenuItem = ({
       <Text className="text-t1 text-tm">{label}</Text>
     </Button>
   );
+};
+
+/** Opens an album or artist page; from Now Playing, Queue or Lyrics (above the tabs) those close first. */
+const goTo = (screen: 'Album' | 'Artist', id: string) => {
+  if (navigationRef.isReady()) {
+    const root = navigationRef.getRootState();
+    if (root && root.routes[root.index]?.name !== 'Tabs') navigationRef.dispatch(StackActions.popToTop());
+  }
+  openInCurrentTab(screen, { id });
 };
 
 const PlaylistPicker = ({ track }: { track: Track }) => {
@@ -173,6 +184,10 @@ const Menu = ({ track }: { track: Track }) => {
             onPress={run(() => useDownloadsStore.getState().enqueue([track]))}
           />
         ) : null)}
+      {track.albumId && <MenuItem icon="disc" label="Go to album" onPress={run(() => goTo('Album', track.albumId!))} />}
+      {track.artistId && (
+        <MenuItem icon="user" label="Go to artist" onPress={run(() => goTo('Artist', track.artistId))} />
+      )}
       {extraAction && <MenuItem icon="more" label={extraAction.label} onPress={run(extraAction.onPress)} />}
     </View>
   );
