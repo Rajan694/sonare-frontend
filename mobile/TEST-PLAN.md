@@ -389,3 +389,12 @@ navigation mock live in `test-utils/`.
 | `MOB-UPD-004` | a finished download from before a restart is offered for install straight away            |
 | `MOB-UPD-005` | Settings → About shows the version, the update, what's new and, once allowed, installs it |
 | `MOB-UPD-006` | Offline mode does not check                                                               |
+
+## `__tests__/sync-batches.test.ts`
+
+| ID             | Use case                                                                            |
+| :------------- | :---------------------------------------------------------------------------------- |
+| `MOB-SYNC-001` | a long offline stretch uploads in batches of at most 100 plays                      |
+| `MOB-SYNC-002` | a refused batch is split: too large goes up in halves, only the bad play is dropped |
+| `MOB-SYNC-003` | a server error keeps only the plays not yet confirmed                               |
+| `MOB-SYNC-004` | each uploaded play carries the song details the app had                             |

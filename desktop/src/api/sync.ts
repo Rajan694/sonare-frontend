@@ -2,7 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { api, ApiError } from './api';
 import { getCurrentUser, onAuthChange } from './auth';
 import { notifyPlaylistsChanged } from './hooks';
-import { pendingPlaysFor, removePendingPlays } from './plays';
+import { pendingPlaysFor, removePendingPlays, type PendingPlay } from './plays';
 
 /**
  * Background sync. There is no "Sync now": plays queue on the device (plays.ts) and go up
@@ -16,6 +16,8 @@ import { pendingPlaysFor, removePendingPlays } from './plays';
  */
 
 const RETRY_FIRST_MS = 5_000;
+/** Plays per request: a long offline stretch must not become one body the server refuses. */
+const UPLOAD_BATCH = 100;
 const RETRY_MAX_MS = 5 * 60_000;
 
 export interface SyncStatus {
@@ -60,6 +62,23 @@ const rejected = (e: unknown): boolean => {
   return e instanceof ApiError && e.status >= 400 && e.status < 500 && ![401, 403, 408, 429].includes(e.status);
 };
 
+/**
+ * Uploads one batch. A batch the server refuses (too large, or one bad play) is split until
+ * the play it won't take is found; only that one is dropped.
+ */
+const uploadBatch = async (batch: PendingPlay[]): Promise<void> => {
+  try {
+    await api.sync({ since: 0, plays: batch, favourites: [], playlists: [] });
+    removePendingPlays(batch);
+  } catch (e) {
+    if (!rejected(e)) throw e;
+    if (batch.length === 1) return removePendingPlays(batch);
+    const half = Math.ceil(batch.length / 2);
+    await uploadBatch(batch.slice(0, half));
+    await uploadBatch(batch.slice(half));
+  }
+};
+
 const flush = async (): Promise<void> => {
   const user = getCurrentUser();
   if (!onlineMode || !user || networkDown()) return setStatus({});
@@ -68,17 +87,16 @@ const flush = async (): Promise<void> => {
 
   setStatus({ syncing: true });
   try {
-    if (plays.length) await api.sync({ since: 0, plays, favourites: [], playlists: [] });
-    removePendingPlays(plays);
+    for (let i = 0; i < plays.length; i += UPLOAD_BATCH) await uploadBatch(plays.slice(i, i + UPLOAD_BATCH));
     window.clearTimeout(retryTimer);
     retryDelay = RETRY_FIRST_MS;
     if (refreshAfter) {
       refreshAfter = false;
       notifyPlaylistsChanged();
     }
-  } catch (e) {
-    if (rejected(e)) removePendingPlays(plays);
-    else scheduleRetry();
+  } catch {
+    // Batches already confirmed are gone from the queue; the rest wait for the retry.
+    scheduleRetry();
   } finally {
     setStatus({ syncing: false });
   }

@@ -616,26 +616,28 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/plays-sync.test.ts`
 
-| ID             | Use case                                                                           |
-| :------------- | :--------------------------------------------------------------------------------- |
-| `WEB-PLAY-001` | a guest listening records nothing                                                  |
-| `WEB-PLAY-002` | a long song counts after 30 seconds, not before                                    |
-| `WEB-PLAY-003` | a short song counts at half its length; an unknown length waits 30 seconds         |
-| `WEB-PLAY-004` | one listen counts once; a replay counts again                                      |
-| `WEB-PLAY-005` | local files are sent by fingerprint and server tracks by bare id                   |
-| `WEB-PLAY-006` | each account only uploads its own plays (plus untagged older ones)                 |
-| `WEB-PLAY-007` | removing uploaded plays keeps ones recorded meanwhile                              |
-| `WEB-PLAY-008` | unreadable stored plays are treated as none                                        |
-| `WEB-PLAY-009` | a play carries what the app knows about the song, for one the backend never saw    |
-| `WEB-SYNC-001` | a counted play uploads straight away in Online Mode and leaves the queue           |
-| `WEB-SYNC-002` | Offline Mode holds plays, and switching to Online uploads them and refreshes lists |
-| `WEB-SYNC-003` | with the network down nothing is sent; the online event sends it                   |
-| `WEB-SYNC-004` | a server error keeps the plays and retries with backoff                            |
-| `WEB-SYNC-005` | plays the server rejects outright (4xx) are dropped instead of retried forever     |
-| `WEB-SYNC-006` | an auth failure (401) keeps the plays for later                                    |
-| `WEB-SYNC-007` | plays counted during an upload go up in one follow-up request                      |
-| `WEB-SYNC-008` | useSyncStatus reports waiting plays for the signed-in account                      |
-| `WEB-SYNC-009` | signing in uploads what that account has waiting                                   |
+| ID             | Use case                                                                            |
+| :------------- | :---------------------------------------------------------------------------------- |
+| `WEB-PLAY-001` | a guest listening records nothing                                                   |
+| `WEB-PLAY-002` | a long song counts after 30 seconds, not before                                     |
+| `WEB-PLAY-003` | a short song counts at half its length; an unknown length waits 30 seconds          |
+| `WEB-PLAY-004` | one listen counts once; a replay counts again                                       |
+| `WEB-PLAY-005` | local files are sent by fingerprint and server tracks by bare id                    |
+| `WEB-PLAY-006` | each account only uploads its own plays (plus untagged older ones)                  |
+| `WEB-PLAY-007` | removing uploaded plays keeps ones recorded meanwhile                               |
+| `WEB-PLAY-008` | unreadable stored plays are treated as none                                         |
+| `WEB-PLAY-009` | a play carries what the app knows about the song, for one the backend never saw     |
+| `WEB-SYNC-001` | a counted play uploads straight away in Online Mode and leaves the queue            |
+| `WEB-SYNC-002` | Offline Mode holds plays, and switching to Online uploads them and refreshes lists  |
+| `WEB-SYNC-003` | with the network down nothing is sent; the online event sends it                    |
+| `WEB-SYNC-004` | a server error keeps the plays and retries with backoff                             |
+| `WEB-SYNC-005` | plays the server rejects outright (4xx) are dropped instead of retried forever      |
+| `WEB-SYNC-006` | an auth failure (401) keeps the plays for later                                     |
+| `WEB-SYNC-007` | plays counted during an upload go up in one follow-up request                       |
+| `WEB-SYNC-008` | useSyncStatus reports waiting plays for the signed-in account                       |
+| `WEB-SYNC-009` | signing in uploads what that account has waiting                                    |
+| `WEB-SYNC-010` | a long offline stretch uploads in batches of at most 100 plays                      |
+| `WEB-SYNC-011` | a refused batch is split: too large goes up in halves, only the bad play is dropped |
 
 ## `test/unit/settings.test.ts`
 

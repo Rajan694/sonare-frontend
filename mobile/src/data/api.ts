@@ -16,6 +16,7 @@ import type {
   SearchItem,
   StreamInfo,
   Track,
+  TrackMeta,
   User,
 } from './types';
 
@@ -313,12 +314,14 @@ export const api = {
       trackRef: { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string };
       at: number;
       ms: number;
+      meta?: TrackMeta;
     }[],
   ) =>
     request<{ ok: boolean }>('/me/sync', {
       method: 'POST',
       body: {
-        plays: plays.map(({ trackRef, at, ms }) => ({ trackRef, at, ms })),
+        // The song details matter: the backend may never have seen a song found in-app.
+        plays: plays.map(({ trackRef, at, ms, meta }) => ({ trackRef, at, ms, meta })),
       },
       // A hung upload would hold the whole queue; time out and let sync.ts retry.
       timeoutMs: 15_000,

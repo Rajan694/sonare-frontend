@@ -34,6 +34,8 @@ export type PendingPlay = {
 
 const QUEUE_KEY = 'sonare.pendingPlays';
 const RETRY_FIRST_MS = 5_000;
+/** Plays per request: a long offline stretch must not become one body the server refuses. */
+const UPLOAD_BATCH = 100;
 const RETRY_MAX_MS = 5 * 60_000;
 
 /** Split a namespaced id (contract 8.1) into a TrackRef; the backend stores the bare id. */
@@ -121,6 +123,23 @@ const drop = (done: PendingPlay[]) => {
   save();
 };
 
+/**
+ * Uploads one batch. A batch the server refuses (too large, or one bad play) is split until
+ * the play it won't take is found; only that one is dropped.
+ */
+const uploadBatch = async (batch: PendingPlay[]): Promise<void> => {
+  try {
+    await api.reportPlays(batch);
+    drop(batch);
+  } catch (e) {
+    if (!rejected(e)) throw e;
+    if (batch.length === 1) return drop(batch);
+    const half = Math.ceil(batch.length / 2);
+    await uploadBatch(batch.slice(0, half));
+    await uploadBatch(batch.slice(half));
+  }
+};
+
 const flush = async (): Promise<void> => {
   await load();
   const auth = useAuthStore.getState();
@@ -130,13 +149,12 @@ const flush = async (): Promise<void> => {
   }
   publish(true);
   try {
-    await api.reportPlays(plays);
-    drop(plays);
+    for (let i = 0; i < plays.length; i += UPLOAD_BATCH) await uploadBatch(plays.slice(i, i + UPLOAD_BATCH));
     clearTimeout(retryTimer);
     retryDelay = RETRY_FIRST_MS;
-  } catch (e) {
-    if (rejected(e)) drop(plays);
-    else scheduleRetry();
+  } catch {
+    // Batches already confirmed are gone from the queue; the rest wait for the retry.
+    scheduleRetry();
   } finally {
     publish(false);
   }
