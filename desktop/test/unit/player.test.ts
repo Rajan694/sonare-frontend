@@ -296,3 +296,83 @@ describe('volume', () => {
     expect((await freshPlayer()).getVolume()).toBe(1);
   });
 });
+
+describe('the next song', () => {
+  /** Plays yt:a, names yt:b as next, and moves 10 s into yt:a, where the next one is prepared. */
+  const intoFirstSong = async (player: Awaited<ReturnType<typeof freshPlayer>>) => {
+    await player.playTrackId('yt:a');
+    player.setNext({ id: 'yt:b', album: null }, null);
+    const first = audio();
+    first.duration = 200;
+    first.currentTime = 10;
+    first.fire('timeupdate');
+    return first;
+  };
+
+  it('WEB-PLAYER-020 gapless: the next song waits ready in a second element and starts as this one ends', async () => {
+    streamEndpoint();
+    const player = await freshPlayer();
+    const advanced = vi.fn();
+    const ended = vi.fn();
+    player.onAdvance(advanced);
+    player.onEnded(ended);
+    const first = await intoFirstSong(player);
+    await vi.waitFor(() => expect(created[1]?.src).toContain('yt:b'));
+    const second = created[1];
+    expect(second.play).not.toHaveBeenCalled();
+    second.fire('canplaythrough');
+    first.fire('ended');
+    expect(second.play).toHaveBeenCalled();
+    expect(advanced).toHaveBeenCalledWith('yt:b');
+    expect(ended).not.toHaveBeenCalled();
+    expect(player.getStatus().trackId).toBe('yt:b');
+    expect(first.getAttribute('src')).toBeNull();
+  });
+
+  it('WEB-PLAYER-021 with gapless and crossfade off, the next stream is looked up ahead and used', async () => {
+    streamEndpoint();
+    const player = await freshPlayer();
+    (await import('../../src/storage/settings')).updateSettings({ gapless: false });
+    const rec = recordRequests();
+    await intoFirstSong(player);
+    await vi.waitFor(() => expect(rec.paths()).toContain('GET /tracks/yt%3Ab/stream?quality=high'));
+    await player.playTrackId('yt:b');
+    rec.stop();
+    expect(rec.paths().filter((p) => p.includes('yt%3Ab'))).toHaveLength(1);
+    expect(created).toHaveLength(1);
+    expect(audio().src).toContain('yt:b');
+  });
+
+  it('WEB-PLAYER-022 skipping to the prepared song takes it over without loading it again', async () => {
+    streamEndpoint();
+    const player = await freshPlayer();
+    await intoFirstSong(player);
+    await vi.waitFor(() => expect(created[1]?.src).toContain('yt:b'));
+    created[1].fire('canplaythrough');
+    const rec = recordRequests();
+    await player.playTrackId('yt:b');
+    rec.stop();
+    expect(rec.seen).toHaveLength(0);
+    expect(created[1].play).toHaveBeenCalled();
+    expect(player.getStatus().trackId).toBe('yt:b');
+  });
+
+  it('WEB-PLAYER-023 a prepared song that is no longer next is dropped; one that fails loads at its turn', async () => {
+    streamEndpoint();
+    const player = await freshPlayer();
+    const ended = vi.fn();
+    player.onEnded(ended);
+    const first = await intoFirstSong(player);
+    await vi.waitFor(() => expect(created[1]?.src).toContain('yt:b'));
+    player.setNext({ id: 'yt:c', album: null }, null);
+    expect(created[1].getAttribute('src')).toBeNull();
+
+    server.use(http.get(`${API}/tracks/yt%3Ac/stream`, () => apiError(502, 'UPSTREAM_UNAVAILABLE')));
+    first.fire('timeupdate');
+    await new Promise((r) => setTimeout(r, 30));
+    first.fire('timeupdate');
+    first.fire('ended');
+    expect(ended).toHaveBeenCalledTimes(1);
+    expect(player.getStatus().trackId).toBe('yt:a');
+  });
+});

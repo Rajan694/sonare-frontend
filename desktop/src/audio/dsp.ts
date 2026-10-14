@@ -2,10 +2,11 @@ import { useSyncExternalStore } from 'react';
 import { getSettings, subscribeSettings, updateSettings } from '../storage/settings';
 
 /**
- * Web Audio DSP chain for the single <audio> element (contract §1: on web the equalizer
+ * Web Audio DSP chain for the player's <audio> elements (contract §1: on web the equalizer
  * is a BiquadFilter chain).
  *
- *   element → 7 × EQ band → bass low-shelf → stereo upmix → mid/side widener → compressor → out
+ *   element → fader → 8 × EQ band → bass low-shelf → stereo upmix → mid/side widener → compressor
+ *     → limiter → out
  *
  * The graph is built on the first user-initiated play, because an AudioContext created
  * outside a gesture starts suspended — and once an element is routed through a context,
@@ -37,7 +38,12 @@ export interface DspState {
   /** 0..100 → stereo width 1× .. 2.5×. */
   virtualizer: number;
   speed: number;
+  /** Fade songs into each other over the last CROSSFADE_MS (Android has the same switch). */
+  crossfade: boolean;
 }
+
+/** Fixed, like the Android app's. */
+export const CROSSFADE_MS = 6000;
 
 const STORAGE_KEY = 'sonare_dsp';
 
@@ -49,6 +55,7 @@ const DEFAULT_STATE: DspState = {
   bassBoost: 0,
   virtualizer: 0,
   speed: 1,
+  crossfade: false,
 };
 
 const loadState = (): DspState => {
@@ -85,7 +92,10 @@ interface Graph {
 }
 
 let graph: Graph | null = null;
-let element: HTMLAudioElement | null = null;
+/** The player's elements: two, so the next song can be ready (gapless) or fade in (crossfade). */
+const elements = new Set<HTMLAudioElement>();
+/** Each element's level in the chain, which crossfades ramp; volume stays on the element. */
+const faders = new Map<HTMLAudioElement, GainNode>();
 
 const persist = () => {
   try {
@@ -96,7 +106,7 @@ const persist = () => {
 };
 
 const apply = () => {
-  if (element) {
+  for (const element of elements) {
     element.defaultPlaybackRate = state.speed;
     element.playbackRate = state.speed;
     element.preservesPitch = true;
@@ -128,22 +138,34 @@ const emit = () => {
   for (const l of listeners) l();
 };
 
-/** Remember the element so playback-rate settings apply before the graph exists. */
+/** Remember an element so playback-rate settings apply before the graph exists. */
 export const bindElement = (a: HTMLAudioElement): void => {
-  element = a;
+  elements.add(a);
   apply();
+  if (graph) routeElement(graph, a);
 };
 
-/** Route the element through the DSP graph. Safe to call on every play. */
+/** An element can be routed into one context only, once: do it the first time the graph exists. */
+const routeElement = (g: Graph, a: HTMLAudioElement) => {
+  if (faders.has(a)) return;
+  const fader = g.ctx.createGain();
+  g.ctx.createMediaElementSource(a).connect(fader);
+  fader.connect(g.input);
+  faders.set(a, fader);
+};
+
+/** The element's crossfade level in the chain; null without Web Audio. */
+export const faderFor = (a: HTMLAudioElement): GainNode | null => faders.get(a) ?? null;
+
+/** Route the elements through the DSP graph. Safe to call on every play. */
 export const ensureGraph = async (): Promise<void> => {
-  if (!element) return;
+  if (!elements.size) return;
   if (graph) {
     if (graph.ctx.state === 'suspended') await graph.ctx.resume();
     return;
   }
   try {
     const ctx = new AudioContext();
-    const source = ctx.createMediaElementSource(element);
     const bands = EQ_BANDS.map((hz, i) => {
       const f = ctx.createBiquadFilter();
       f.type = i === 0 ? 'lowshelf' : i === EQ_BANDS.length - 1 ? 'highshelf' : 'peaking';
@@ -185,7 +207,6 @@ export const ensureGraph = async (): Promise<void> => {
     const level = ctx.createAnalyser();
     level.fftSize = 8192;
     input.connect(level);
-    source.connect(input);
 
     let node: AudioNode = input;
     for (const f of bands) {
@@ -208,6 +229,7 @@ export const ensureGraph = async (): Promise<void> => {
     limiter.connect(ctx.destination);
 
     graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp, limiter };
+    for (const a of elements) routeElement(graph, a);
     apply();
     if (ctx.state === 'suspended') await ctx.resume();
   } catch {

@@ -161,11 +161,29 @@ const Equalizer = () => {
           <div className="surf flex flex-col divide-y divide-ln">
             <label className="lrow cursor-pointer flex items-center justify-between p-4">
               <span className="icobox">
+                <Icon name="sync" size={16} />
+              </span>
+              <span className="flex flex-col grow min-w-0 pr-2">
+                <span className="text-body-m font-medium text-t1 truncate">Crossfade</span>
+                <span className="text-body-s text-t3 truncate">6 seconds between tracks</span>
+              </span>
+              <Switch
+                variant={variant}
+                checked={dsp.crossfade}
+                onCheckedChange={(crossfade) => setDsp({ crossfade })}
+                aria-label="Toggle crossfade"
+              />
+            </label>
+
+            <label className="lrow cursor-pointer flex items-center justify-between p-4">
+              <span className="icobox">
                 <Icon name="music" size={16} />
               </span>
               <span className="flex flex-col grow min-w-0 pr-2">
                 <span className="text-body-m font-medium text-t1 truncate">Gapless playback</span>
-                <span className="text-body-s text-t3 truncate">Seamless album transitions</span>
+                <span className="text-body-s text-t3 truncate">
+                  {dsp.crossfade ? 'No crossfade between tracks of one album' : 'Seamless album transitions'}
+                </span>
               </span>
               <Switch
                 variant={variant}

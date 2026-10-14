@@ -451,9 +451,18 @@ describe('equalizer', () => {
   });
 
   it('WEB-EQ-005 gapless and normalization switches update the account settings', async () => {
+    updateSettings({ gapless: false, normalization: true });
     const { user } = renderWithProviders(<Equalizer />);
     await user.click(screen.getByRole('switch', { name: 'Toggle gapless playback' }));
     await user.click(screen.getByRole('switch', { name: 'Toggle volume normalization' }));
     expect(getSettings()).toMatchObject({ gapless: true, normalization: false });
+  });
+
+  it('WEB-EQ-006 the crossfade switch turns crossfade on; gapless then says it skips one album', async () => {
+    const { user } = renderWithProviders(<Equalizer />);
+    expect(screen.getByText('Seamless album transitions')).toBeInTheDocument();
+    await user.click(screen.getByRole('switch', { name: 'Toggle crossfade' }));
+    expect(getDsp().crossfade).toBe(true);
+    expect(screen.getByText('No crossfade between tracks of one album')).toBeInTheDocument();
   });
 });

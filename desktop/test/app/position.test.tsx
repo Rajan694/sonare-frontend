@@ -40,6 +40,8 @@ vi.mock('../../src/audio/player', () => ({
   },
   onEnded: () => () => {},
   playTrackId: vi.fn(async () => {}),
+  setNext: vi.fn(),
+  onAdvance: () => () => {},
   play: vi.fn(async () => {}),
   toggle: vi.fn(),
   seek: vi.fn(),

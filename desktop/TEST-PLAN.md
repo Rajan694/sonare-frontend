@@ -17,33 +17,35 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/app/queue.test.tsx`
 
-| ID              | Use case                                                                          |
-| :-------------- | :-------------------------------------------------------------------------------- |
-| `WEB-QUEUE-001` | playing a song from a list queues the list and starts that song                   |
-| `WEB-QUEUE-002` | playing a single song jumps to it if queued, otherwise puts it first              |
-| `WEB-QUEUE-003` | counts a play from the live playback position                                     |
-| `WEB-QUEUE-004` | the web app always syncs in Online Mode                                           |
-| `WEB-QUEUE-005` | next walks forward and stops at the end when repeat is off                        |
-| `WEB-QUEUE-006` | repeat all wraps from the last song to the first                                  |
-| `WEB-QUEUE-007` | repeat cycles off → all → one → off                                               |
-| `WEB-QUEUE-008` | previous restarts the song after 3 seconds, and goes back before that             |
-| `WEB-QUEUE-009` | skip-to-previous always changes song, however far in                              |
-| `WEB-QUEUE-010` | a finished song advances to the next one                                          |
-| `WEB-QUEUE-011` | with repeat one, a finished song plays again from the start                       |
-| `WEB-QUEUE-012` | seeking by fraction clamps to the track and uses the live duration                |
-| `WEB-QUEUE-013` | shuffle reorders the queue: the current song first, then every other song once    |
-| `WEB-QUEUE-014` | turning shuffle off keeps the shuffled order and carries on from the current song |
-| `WEB-QUEUE-015` | play next puts a song right after the current one                                 |
-| `WEB-QUEUE-016` | play next moves a song that is already queued instead of duplicating it           |
-| `WEB-QUEUE-017` | add to queue appends new songs and skips ones already there                       |
-| `WEB-QUEUE-018` | removing a song before the current one keeps the same song playing                |
-| `WEB-QUEUE-019` | removing the playing song hands over to the one after it                          |
-| `WEB-QUEUE-020` | removing the playing last song falls back to the new last song                    |
-| `WEB-QUEUE-021` | reordering keeps the playing song playing and ignores invalid moves               |
-| `WEB-QUEUE-022` | clear upcoming keeps everything up to the current song                            |
-| `WEB-QUEUE-023` | play next on an empty queue makes it the only song                                |
-| `WEB-QUEUE-024` | an album or playlist Shuffle button turns shuffle on and starts the list shuffled |
-| `WEB-QUEUE-025` | the same song twice in a list plays twice, from the start each time               |
+| ID              | Use case                                                                             |
+| :-------------- | :----------------------------------------------------------------------------------- |
+| `WEB-QUEUE-001` | playing a song from a list queues the list and starts that song                      |
+| `WEB-QUEUE-002` | playing a single song jumps to it if queued, otherwise puts it first                 |
+| `WEB-QUEUE-003` | counts a play from the live playback position                                        |
+| `WEB-QUEUE-004` | the web app always syncs in Online Mode                                              |
+| `WEB-QUEUE-005` | next walks forward and stops at the end when repeat is off                           |
+| `WEB-QUEUE-006` | repeat all wraps from the last song to the first                                     |
+| `WEB-QUEUE-007` | repeat cycles off → all → one → off                                                  |
+| `WEB-QUEUE-008` | previous restarts the song after 3 seconds, and goes back before that                |
+| `WEB-QUEUE-009` | skip-to-previous always changes song, however far in                                 |
+| `WEB-QUEUE-010` | a finished song advances to the next one                                             |
+| `WEB-QUEUE-011` | with repeat one, a finished song plays again from the start                          |
+| `WEB-QUEUE-012` | seeking by fraction clamps to the track and uses the live duration                   |
+| `WEB-QUEUE-013` | shuffle reorders the queue: the current song first, then every other song once       |
+| `WEB-QUEUE-014` | turning shuffle off keeps the shuffled order and carries on from the current song    |
+| `WEB-QUEUE-015` | play next puts a song right after the current one                                    |
+| `WEB-QUEUE-016` | play next moves a song that is already queued instead of duplicating it              |
+| `WEB-QUEUE-017` | add to queue appends new songs and skips ones already there                          |
+| `WEB-QUEUE-018` | removing a song before the current one keeps the same song playing                   |
+| `WEB-QUEUE-019` | removing the playing song hands over to the one after it                             |
+| `WEB-QUEUE-020` | removing the playing last song falls back to the new last song                       |
+| `WEB-QUEUE-021` | reordering keeps the playing song playing and ignores invalid moves                  |
+| `WEB-QUEUE-022` | clear upcoming keeps everything up to the current song                               |
+| `WEB-QUEUE-023` | play next on an empty queue makes it the only song                                   |
+| `WEB-QUEUE-024` | an album or playlist Shuffle button turns shuffle on and starts the list shuffled    |
+| `WEB-QUEUE-025` | the same song twice in a list plays twice, from the start each time                  |
+| `WEB-QUEUE-026` | the engine is told what plays next by itself, and that nothing does on repeat one    |
+| `WEB-QUEUE-027` | when the engine moves on by itself, the queue follows without loading the song again |
 
 ## `test/components/layout.test.tsx`
 
@@ -210,6 +212,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-041` | choosing another song stops and releases the previous decoded one               |
 | `DSK-042` | a downloaded song plays from disk, never from the server                        |
 | `DSK-043` | a blocked start asks the user to press play                                     |
+| `DSK-076` | the next song fades in over the last 6 seconds while this one fades out         |
+| `DSK-077` | songs of one album join without a crossfade while gapless is on                 |
 
 ## `test/screens/home-search.test.tsx`
 
@@ -289,6 +293,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-003`     | turning the equalizer off disables presets and faders                               |
 | `WEB-EQ-004`     | bass boost, virtualizer and speed apply and show their values                       |
 | `WEB-EQ-005`     | gapless and normalization switches update the account settings                      |
+| `WEB-EQ-006`     | the crossfade switch turns crossfade on; gapless then says it skips one album       |
 | `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                            |
 | `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in               |
 | `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                        |
@@ -599,27 +604,31 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/player.test.ts`
 
-| ID               | Use case                                                                         |
-| :--------------- | :------------------------------------------------------------------------------- |
-| `WEB-PLAYER-001` | resolves a stream at the chosen quality, points the element at it and plays      |
-| `WEB-PLAYER-002` | keeps an absolute stream url as it is                                            |
-| `WEB-PLAYER-003` | reuses a fresh url for the same track, and re-resolves one about to expire       |
-| `WEB-PLAYER-004` | a slow answer for a track the user already skipped does not replace the new one  |
-| `WEB-PLAYER-005` | a stream that cannot be resolved surfaces the server message                     |
-| `WEB-PLAYER-006` | reports buffering between waiting and playing                                    |
-| `WEB-PLAYER-007` | flags a muxed (video) fallback stream                                            |
-| `WEB-PLAYER-008` | a media error re-resolves the url once without showing an error                  |
-| `WEB-PLAYER-009` | a second media error on the same track shows "Playback failed"                   |
-| `WEB-PLAYER-010` | retry fetches a fresh url and plays again, even after giving up                  |
-| `WEB-PLAYER-011` | a blocked autoplay asks the user to press play instead of reporting a failure    |
-| `WEB-PLAYER-012` | toggle plays when paused and pauses when playing; does nothing with no track     |
-| `WEB-PLAYER-013` | seek clamps to the track and waits for a known duration                          |
-| `WEB-PLAYER-014` | notifies ended-listeners when a track finishes                                   |
-| `WEB-PLAYER-015` | a playback listener gets the current state at once and stops after unsubscribing |
-| `WEB-PLAYER-016` | clamps, applies and remembers the volume                                         |
-| `WEB-PLAYER-017` | mute goes to 0 and unmute restores the previous level                            |
-| `WEB-PLAYER-018` | unmuting after muting by dragging to 0 goes back to full volume                  |
-| `WEB-PLAYER-019` | starts at the remembered volume; bad or out-of-range values fall back safely     |
+| ID               | Use case                                                                            |
+| :--------------- | :---------------------------------------------------------------------------------- |
+| `WEB-PLAYER-001` | resolves a stream at the chosen quality, points the element at it and plays         |
+| `WEB-PLAYER-002` | keeps an absolute stream url as it is                                               |
+| `WEB-PLAYER-003` | reuses a fresh url for the same track, and re-resolves one about to expire          |
+| `WEB-PLAYER-004` | a slow answer for a track the user already skipped does not replace the new one     |
+| `WEB-PLAYER-005` | a stream that cannot be resolved surfaces the server message                        |
+| `WEB-PLAYER-006` | reports buffering between waiting and playing                                       |
+| `WEB-PLAYER-007` | flags a muxed (video) fallback stream                                               |
+| `WEB-PLAYER-008` | a media error re-resolves the url once without showing an error                     |
+| `WEB-PLAYER-009` | a second media error on the same track shows "Playback failed"                      |
+| `WEB-PLAYER-010` | retry fetches a fresh url and plays again, even after giving up                     |
+| `WEB-PLAYER-011` | a blocked autoplay asks the user to press play instead of reporting a failure       |
+| `WEB-PLAYER-012` | toggle plays when paused and pauses when playing; does nothing with no track        |
+| `WEB-PLAYER-013` | seek clamps to the track and waits for a known duration                             |
+| `WEB-PLAYER-014` | notifies ended-listeners when a track finishes                                      |
+| `WEB-PLAYER-015` | a playback listener gets the current state at once and stops after unsubscribing    |
+| `WEB-PLAYER-016` | clamps, applies and remembers the volume                                            |
+| `WEB-PLAYER-017` | mute goes to 0 and unmute restores the previous level                               |
+| `WEB-PLAYER-018` | unmuting after muting by dragging to 0 goes back to full volume                     |
+| `WEB-PLAYER-019` | starts at the remembered volume; bad or out-of-range values fall back safely        |
+| `WEB-PLAYER-020` | gapless: the next song waits ready in a second element and starts as this one ends  |
+| `WEB-PLAYER-021` | with gapless and crossfade off, the next stream is looked up ahead and used         |
+| `WEB-PLAYER-022` | skipping to the prepared song takes it over without loading it again                |
+| `WEB-PLAYER-023` | a prepared song that is no longer next is dropped; one that fails loads at its turn |
 
 ## `test/unit/plays-sync.test.ts`
 

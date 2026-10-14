@@ -130,6 +130,8 @@ const App = () => {
   /** When the queue shown was saved, to tell whether the account's copy is newer. */
   const queueSavedAt = useRef(0);
   const lastPositionSave = useRef(0);
+  /** The playId of an entry the engine already started by itself (gapless / crossfade). */
+  const adopted = useRef<number | null>(null);
 
   // Everything about playback except the position, which lives in store/playbackPosition so
   // a position tick doesn't re-render the app (see there).
@@ -242,8 +244,28 @@ const App = () => {
     const startedAt = Date.now();
     playStartedAt.current = startedAt;
     resetPlay(currentTrack.id, startedAt);
+    // Already playing: the engine moved on to it by itself.
+    if (adopted.current === playerState.playId) {
+      adopted.current = null;
+      return;
+    }
     void player.playTrackId(currentTrack.id, true);
   }, [currentTrack?.id, playerState.playId]);
+
+  // The engine started the next song by itself (gapless or crossfade): move the queue along.
+  useEffect(() => {
+    return player.onAdvance((trackId) => {
+      const prev = playerStateRef.current;
+      const moved = stepQueue(prev, 1);
+      if (moved !== prev && moved.queue[moved.index]?.id === trackId) {
+        adopted.current = moved.playId;
+        setPlayerState(moved);
+      } else {
+        // The queue changed under the engine: play what the queue says is current.
+        setPlayerState((p) => ({ ...p, playId: p.playId + 1 }));
+      }
+    });
+  }, []);
 
   // Advance the queue when a track finishes.
   useEffect(() => {
@@ -289,6 +311,14 @@ const App = () => {
   const next = () => {
     setPlayerState((prev) => stepQueue(prev, 1));
   };
+
+  // What plays after this by itself, so the engine can prepare it (gapless, crossfade, or just
+  // its stream looked up ahead).
+  const following = playerState.repeat === 'one' ? null : stepQueue(playerState, 1);
+  const upcoming = following && following !== playerState ? following.queue[following.index] : null;
+  useEffect(() => {
+    player.setNext(upcoming ? { id: upcoming.id, album: upcoming.album ?? null } : null, currentTrack?.album ?? null);
+  }, [upcoming?.id, upcoming?.album, currentTrack?.album]);
 
   const toggleShuffle = () => {
     setPlayerState((prev) => queueOps.toggleShuffle(prev));

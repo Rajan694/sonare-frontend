@@ -37,6 +37,8 @@ vi.mock('../../src/audio/player', () => ({
     return () => h.ended.delete(fn);
   },
   playTrackId: vi.fn(async () => {}),
+  setNext: vi.fn(),
+  onAdvance: () => () => {},
   play: vi.fn(),
   toggle: vi.fn(),
   seek: vi.fn(),

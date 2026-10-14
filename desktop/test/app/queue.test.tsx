@@ -24,6 +24,7 @@ const h = vi.hoisted(() => {
     status,
     playbackListeners: new Set<(s: PlaybackStatus) => void>(),
     endedListeners: new Set<() => void>(),
+    advanceListeners: new Set<(id: string) => void>(),
     store: { current: null as PlayerStore | null },
   };
 });
@@ -40,6 +41,11 @@ vi.mock('../../src/audio/player', () => ({
     return () => h.endedListeners.delete(fn);
   },
   playTrackId: vi.fn(async () => {}),
+  setNext: vi.fn(),
+  onAdvance: (fn: (id: string) => void) => {
+    h.advanceListeners.add(fn);
+    return () => h.advanceListeners.delete(fn);
+  },
   play: vi.fn(async () => {}),
   toggle: vi.fn(),
   seek: vi.fn(),
@@ -252,6 +258,33 @@ describe('shuffle', () => {
     expect(store().state.index).toBe(2);
     expect(player.playTrackId).toHaveBeenLastCalledWith('yt:a', true);
     expect(vi.mocked(player.playTrackId).mock.calls.filter(([id]) => id === 'yt:a')).toHaveLength(2);
+  });
+});
+
+describe('the engine and the next song', () => {
+  it('WEB-QUEUE-026 the engine is told what plays next by itself, and that nothing does on repeat one', () => {
+    run(() => store().playTrack(a, [a, { ...b, album: 'Second' }, c]));
+    expect(player.setNext).toHaveBeenLastCalledWith({ id: 'yt:b', album: 'Second' }, null);
+    run(() => store().next());
+    run(() => store().next());
+    expect(player.setNext).toHaveBeenLastCalledWith(null, null);
+    run(() => store().cycleRepeat());
+    expect(player.setNext).toHaveBeenLastCalledWith({ id: 'yt:a', album: null }, null);
+    run(() => store().cycleRepeat());
+    expect(player.setNext).toHaveBeenLastCalledWith(null, null);
+  });
+
+  it('WEB-QUEUE-027 when the engine moves on by itself, the queue follows without loading the song again', () => {
+    run(() => store().playTrack(a, [a, b, c]));
+    vi.mocked(player.playTrackId).mockClear();
+    act(() => h.advanceListeners.forEach((fn) => fn('yt:b')));
+    expect(store().currentTrack?.id).toBe('yt:b');
+    expect(player.playTrackId).not.toHaveBeenCalled();
+    expect(plays.resetPlay).toHaveBeenLastCalledWith('yt:b', expect.any(Number));
+    // An engine out of step with the queue is put back on what the queue says.
+    act(() => h.advanceListeners.forEach((fn) => fn('yt:zzz')));
+    expect(store().currentTrack?.id).toBe('yt:b');
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:b', true);
   });
 });
 

@@ -60,6 +60,7 @@ const h = vi.hoisted(() => {
     setRate(r: number) {
       this.rate = r;
     }
+    fadeTo() {}
     dispose() {
       this.disposed = true;
     }
@@ -92,8 +93,10 @@ vi.mock('../../src/audio/dsp', () => ({
   bindElement: () => {},
   ensureGraph: async () => {},
   graphInput: async () => ({ ctx: h.ctx, input: {} }),
-  getDsp: () => ({ speed: 1 }),
+  getDsp: () => ({ speed: 1, crossfade: false }),
   subscribeDsp: () => () => {},
+  faderFor: () => null,
+  CROSSFADE_MS: 6000,
 }));
 
 useMockServer();

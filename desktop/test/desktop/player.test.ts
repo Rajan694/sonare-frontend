@@ -46,6 +46,10 @@ const h = vi.hoisted(() => {
     setRate(r: number) {
       this.rate = r;
     }
+    fades: [number, number][] = [];
+    fadeTo(level: number, seconds: number) {
+      this.fades.push([level, seconds]);
+    }
     dispose() {
       this.disposed = true;
     }
@@ -58,7 +62,7 @@ const h = vi.hoisted(() => {
       return { duration: ctx.decodedSeconds };
     }),
   };
-  return { FakePlayback, ctx, canStream: true };
+  return { FakePlayback, ctx, canStream: true, dsp: { speed: 1, crossfade: false } };
 });
 
 vi.mock('../../src/audio/bufferPlayback', () => ({
@@ -80,8 +84,10 @@ vi.mock('../../src/audio/dsp', () => ({
   bindElement: () => {},
   ensureGraph: async () => {},
   graphInput: async () => ({ ctx: h.ctx, input: {} }),
-  getDsp: () => ({ speed: 1 }),
+  getDsp: () => h.dsp,
   subscribeDsp: () => () => {},
+  faderFor: () => null,
+  CROSSFADE_MS: 6000,
 }));
 
 // Any request to the server fails the test: local files must never be streamed.
@@ -106,6 +112,7 @@ beforeEach(() => {
   h.ctx.decodedSeconds = 180;
   h.ctx.decodeFails = false;
   h.canStream = true;
+  h.dsp = { speed: 1, crossfade: false };
   elements = [];
   vi.stubGlobal(
     'Audio',
@@ -219,5 +226,54 @@ describe('local files on Linux', () => {
     h.FakePlayback.made[0].playError = Object.assign(new Error('blocked'), { name: 'NotAllowedError' });
     await player.play();
     expect(player.getStatus().error).toBe('Press play to start audio');
+  });
+});
+
+describe('crossfade on Linux', () => {
+  it('DSK-076 the next song fades in over the last 6 seconds while this one fades out', async () => {
+    writeFile(`${MUSIC}/one.mp3`, mp3Frames(20));
+    writeFile(`${MUSIC}/two.mp3`, mp3Frames(20));
+    h.dsp = { speed: 1, crossfade: true };
+    const { player, byTitle } = await launch();
+    const advanced = vi.fn();
+    player.onAdvance(advanced);
+    await player.playTrackId(byTitle('one').id);
+    player.setNext({ id: byTitle('two').id, album: 'B' }, 'A');
+    const [first] = h.FakePlayback.made;
+    first.currentTime = 30;
+    // The ticker prepares the next song in the standby slot...
+    await vi.waitFor(() => expect(h.FakePlayback.made).toHaveLength(2), { timeout: 2000 });
+    const second = h.FakePlayback.made[1];
+    expect(second.paused).toBe(true);
+    // ...and starts it 6 s before the end.
+    first.currentTime = 175;
+    await vi.waitFor(() => expect(advanced).toHaveBeenCalledWith(byTitle('two').id), { timeout: 2000 });
+    expect(second.paused).toBe(false);
+    expect(first.fades.at(-1)).toEqual([0, 5]);
+    expect(second.fades.at(-1)).toEqual([1, 5]);
+    expect(player.getStatus().trackId).toBe(byTitle('two').id);
+    // A pause during the fade ends it: the old song stops, the new one is at full level.
+    player.toggle();
+    expect(first.disposed).toBe(true);
+    expect(second.fades.at(-1)).toEqual([1, 0.01]);
+  });
+
+  it('DSK-077 songs of one album join without a crossfade while gapless is on', async () => {
+    writeFile(`${MUSIC}/one.mp3`, mp3Frames(20));
+    writeFile(`${MUSIC}/two.mp3`, mp3Frames(20));
+    h.dsp = { speed: 1, crossfade: true };
+    const { player, byTitle } = await launch();
+    const advanced = vi.fn();
+    player.onAdvance(advanced);
+    await player.playTrackId(byTitle('one').id);
+    player.setNext({ id: byTitle('two').id, album: 'Same' }, 'Same');
+    const [first] = h.FakePlayback.made;
+    first.currentTime = 175;
+    await vi.waitFor(() => expect(h.FakePlayback.made).toHaveLength(2), { timeout: 2000 });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(advanced).not.toHaveBeenCalled();
+    first.onEnded();
+    expect(advanced).toHaveBeenCalledWith(byTitle('two').id);
+    expect(h.FakePlayback.made[1].paused).toBe(false);
   });
 });

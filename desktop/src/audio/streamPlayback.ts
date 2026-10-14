@@ -175,6 +175,8 @@ class Run {
 /** Same surface as BufferPlayback, so player.ts can drive either. */
 export class StreamPlayback {
   private readonly gain: GainNode;
+  /** Crossfades ramp this one; `gain` is the user's volume. */
+  private readonly fader: GainNode;
   /** The file's id in the worker, which holds its packets. */
   private readonly mediaId = ++nextId;
   private readonly length: number;
@@ -195,7 +197,9 @@ export class StreamPlayback {
     private readonly onError: (message: string) => void,
   ) {
     this.gain = ctx.createGain();
-    this.gain.connect(input);
+    this.fader = ctx.createGain();
+    this.gain.connect(this.fader);
+    this.fader.connect(input);
     this.length = media.duration;
     const data: StreamMedia = {
       config: decoderConfig(media),
@@ -293,6 +297,14 @@ export class StreamPlayback {
     this.gain.gain.value = v;
   }
 
+  /** Ramps the crossfade level (0..1) over `seconds`. */
+  fadeTo(level: number, seconds: number): void {
+    const t = this.ctx.currentTime;
+    this.fader.gain.cancelScheduledValues(t);
+    this.fader.gain.setValueAtTime(this.fader.gain.value, t);
+    this.fader.gain.linearRampToValueAtTime(level, t + Math.max(0.01, seconds));
+  }
+
   /** Playback speed. Unlike the element's, this also shifts pitch. */
   setRate(rate: number): void {
     if (rate === this.rate) return;
@@ -308,6 +320,7 @@ export class StreamPlayback {
     this.run?.stop();
     this.run = null;
     this.gain.disconnect();
+    this.fader.disconnect();
     send({ type: 'close', media: this.mediaId });
   }
 }
