@@ -369,7 +369,7 @@ describe('in-app YouTube desktop transport and integration', () => {
     expect(p1).toBe(p2);
   });
 
-  it('DSK-062 streamCache evicts oldest accessed files when total size exceeds 500 MB limit', async () => {
+  it('DSK-062 streamCache evicts oldest accessed files when total size exceeds 300 MB limit', async () => {
     const cacheDir = await getStreamCacheDir();
     const oldPath = `${cacheDir}/old-251.webm`;
     writeFile(oldPath, new Uint8Array(10));
@@ -378,7 +378,7 @@ describe('in-app YouTube desktop transport and integration', () => {
       videoId: 'old',
       itag: 251,
       path: oldPath,
-      size: 300 * 1024 * 1024,
+      size: 200 * 1024 * 1024,
       ext: 'webm',
       mimeType: 'audio/webm',
       lastAccessed: 1000,
@@ -388,7 +388,7 @@ describe('in-app YouTube desktop transport and integration', () => {
     lib.filesystem.getStats.mockImplementation(async (path: string) => {
       if (path.includes('new-251')) {
         return {
-          size: 250 * 1024 * 1024,
+          size: 150 * 1024 * 1024,
           modifiedAt: Date.now(),
           createdAt: Date.now(),
           isFile: true,
@@ -416,6 +416,29 @@ describe('in-app YouTube desktop transport and integration', () => {
     } finally {
       lib.filesystem.getStats.mockImplementation(origGetStats!);
     }
+  });
+
+  it('DSK-078 streamCache reports how much it holds, and clear empties it from disk', async () => {
+    const cacheDir = await getStreamCacheDir();
+    for (const [id, size] of [
+      ['a', 1000],
+      ['b', 2500],
+    ] as const) {
+      writeFile(`${cacheDir}/${id}-251.webm`, new Uint8Array(10));
+      streamCache._getIndex().set(`${id}-251`, {
+        videoId: id,
+        itag: 251,
+        path: `${cacheDir}/${id}-251.webm`,
+        size,
+        ext: 'webm',
+        mimeType: 'audio/webm',
+        lastAccessed: 1,
+      });
+    }
+    expect(await streamCache.bytes()).toBe(3500);
+    await streamCache.clear();
+    expect(await streamCache.bytes()).toBe(0);
+    expect(files.has(`${cacheDir}/a-251.webm`)).toBe(false);
   });
 
   it('DSK-063 streamCache detects deleted files on disk and removes them from the cached index', async () => {

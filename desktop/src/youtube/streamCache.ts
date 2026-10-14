@@ -8,7 +8,8 @@ export { StreamDownloadError } from './curlFetch';
 // webview can't read googlevideo (no CORS) and the <audio> element goes through the EQ graph.
 // Always with a Range header: without one googlevideo sends ~35 KB/s, with one a song takes ~1 s.
 
-export const MAX_STREAM_CACHE_BYTES = 500 * 1024 * 1024;
+// The same size as the Android app's stream cache.
+export const MAX_STREAM_CACHE_BYTES = 300 * 1024 * 1024;
 const STORAGE_KEY = 'sonare_yt_stream_index';
 
 export interface CachedStreamEntry {
@@ -165,6 +166,12 @@ export const streamCache = {
     streamIndex.delete(key);
     await filesystem.remove(entry.path).catch(() => {});
     await saveIndex();
+  },
+
+  /** What the cache holds, in bytes. */
+  bytes: async (): Promise<number> => {
+    await loadIndex();
+    return [...streamIndex.values()].reduce((sum, e) => sum + e.size, 0);
   },
 
   clear: async (): Promise<void> => {

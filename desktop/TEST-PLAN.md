@@ -879,8 +879,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-059` | loadCachedConfig and setAppConfig sync config with Neutralino storage and re-create catalog on client change |
 | `DSK-060` | streamCache downloads stream via curl with Range: bytes=0- into .part file and renames on success            |
 | `DSK-061` | streamCache deduplicates concurrent in-flight downloads for the same video and itag                          |
-| `DSK-062` | streamCache evicts oldest accessed files when total size exceeds 500 MB limit                                |
+| `DSK-062` | streamCache evicts oldest accessed files when total size exceeds 300 MB limit                                |
 | `DSK-063` | streamCache detects deleted files on disk and removes them from the cached index                             |
+| `DSK-078` | streamCache reports how much it holds, and clear empties it from disk                                        |
 | `DSK-064` | player downloads direct YouTube stream into streamCache and decodes via Web Audio on Linux                   |
 | `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
 | `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |

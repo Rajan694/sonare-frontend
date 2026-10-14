@@ -1,4 +1,4 @@
-import React, { useEffect, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon, { type IconName } from '../components/ui/Icon';
 import Button from '../components/ui/Button';
@@ -24,6 +24,8 @@ import { useAuth } from '../api/hooks';
 import { signOut } from '../api/auth';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { formatBytes } from '../lib/format';
+import { isInAppYoutubeAllowed } from '../youtube/inApp';
+import { MAX_STREAM_CACHE_BYTES, streamCache } from '../youtube/streamCache';
 import { version as APP_VERSION } from '../../neutralino.config.json';
 import { useAppDispatch, useAppSelector } from '../store';
 import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
@@ -70,6 +72,38 @@ interface SectionDef {
   description: string;
   available: boolean;
 }
+
+/** The Linux window keeps the songs it streamed (300 MB, least recently played out first). */
+const StreamCacheRow = () => {
+  const [bytes, setBytes] = useState<number | null>(null);
+  const [clearing, setClearing] = useState(false);
+  useEffect(() => {
+    void streamCache
+      .bytes()
+      .then(setBytes)
+      .catch(() => setBytes(null));
+  }, []);
+  const clear = async () => {
+    setClearing(true);
+    try {
+      await streamCache.clear();
+      setBytes(await streamCache.bytes());
+    } catch {
+      showToast({ title: 'Could not clear the stream cache', icon: 'info' });
+    } finally {
+      setClearing(false);
+    }
+  };
+  const held =
+    bytes === null ? '' : bytes > 0 ? `${formatBytes(bytes)} of ${formatBytes(MAX_STREAM_CACHE_BYTES)} · ` : 'Empty · ';
+  return (
+    <Row icon="download" label="Stream cache" desc={`${held}songs you played recently, so they play again at once`}>
+      <Button variant="out" size="sm" onClick={() => void clear()} disabled={clearing || !bytes}>
+        Clear
+      </Button>
+    </Row>
+  );
+};
 
 const Row = ({
   icon,
@@ -273,6 +307,7 @@ const Settings = () => {
           />
         </Row>
       </label>
+      {isInAppYoutubeAllowed() && <StreamCacheRow />}
     </div>
   );
 
