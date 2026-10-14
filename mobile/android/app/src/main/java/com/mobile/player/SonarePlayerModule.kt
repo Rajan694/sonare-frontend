@@ -190,8 +190,25 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     return MediaItem.Builder()
       .setMediaId(if (options.hasKey("id")) options.getString("id") ?: url else url)
       .setUri(url)
+      // The stream cache's key: the track and its format, since the url changes every time.
+      .setCustomCacheKey(if (options.hasKey("cacheKey")) options.getString("cacheKey") else null)
       .setMediaMetadata(metadata)
       .build()
+  }
+
+  /** How much the stream cache holds, in bytes. */
+  @ReactMethod
+  fun streamCacheBytes(promise: Promise) {
+    Thread { promise.resolve(StreamCache.bytes(context).toDouble()) }.start()
+  }
+
+  /** Empties the stream cache (downloads are kept). */
+  @ReactMethod
+  fun clearStreamCache(promise: Promise) {
+    Thread {
+      StreamCache.clear(context)
+      promise.resolve(StreamCache.bytes(context).toDouble())
+    }.start()
   }
 
   /** Replace whatever is loaded with one track; the lock screen shows its metadata. */

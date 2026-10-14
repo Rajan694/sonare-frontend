@@ -11,6 +11,7 @@ import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.mobile.MainActivity
@@ -51,7 +52,15 @@ class SonarePlaybackService : MediaSessionService() {
         dataSpec
       }
     }
-    val dataSource = DefaultDataSource.Factory(this, resolvingHttp)
+    // Streams go through the stream cache (files on the phone don't: DefaultDataSource only
+    // uses this factory for http).
+    val cachedHttp =
+      CacheDataSource.Factory()
+        .setCache(StreamCache.get(this))
+        .setUpstreamDataSourceFactory(resolvingHttp)
+        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+    val dataSource = DefaultDataSource.Factory(this, cachedHttp)
+    val artworkSource = DefaultDataSource.Factory(this, resolvingHttp)
 
     val engine = PlaybackEngine(this, dataSource)
     this.engine = engine
@@ -68,7 +77,7 @@ class SonarePlaybackService : MediaSessionService() {
     session =
       MediaSession.Builder(this, QueueForwardingPlayer(engine.active, engine))
         .setSessionActivity(openApp)
-        .setBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), dataSource))
+        .setBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkSource))
         .build()
     // A crossfade hands playback to the other player; the session (notification, lock
     // screen, the app's controller) follows it.

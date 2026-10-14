@@ -7,6 +7,7 @@ import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { Artwork } from '../components/music/Artwork';
+import { formatBytes } from '../lib/format';
 import Icon from '../components/ui/Icon';
 import { artworkUrl } from '../data/config';
 import { usePlayerStore } from '../store/player';
@@ -26,12 +27,6 @@ import { confirmRemoveDownloads } from '../lib/confirmRemoveDownloads';
  * the phone. Deleting a finished song deletes its file from the folder it was saved to; if
  * the file has moved (or can't be deleted), it is only taken off this list.
  */
-
-const formatBytes = (bytes: number): string => {
-  if (bytes >= 1e9) return `${(bytes / 1e9).toFixed(1)} GB`;
-  if (bytes >= 1e6) return `${(bytes / 1e6).toFixed(1)} MB`;
-  return `${Math.max(1, Math.round(bytes / 1e3))} KB`;
-};
 
 const statusLine = (d: DownloadItem): string => {
   const pct = downloadProgress(d);

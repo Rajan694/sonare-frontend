@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, ScrollView, Alert, Pressable, Dimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
@@ -21,6 +21,8 @@ import { appVersion } from '../native/SonareBuild';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { Sheet } from '../components/ui/Sheet';
 import { parseReleaseNotes } from '../../../shared/releaseNotes';
+import { SonarePlayer } from '../native/SonarePlayer';
+import { formatBytes } from '../lib/format';
 import type { AppRelease } from '../data/types';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
@@ -334,7 +336,7 @@ export const SettingsScreen = () => {
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('Downloads')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5"
+              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
               accessibilityRole="button"
               accessibilityLabel="Manage downloads"
             >
@@ -349,6 +351,7 @@ export const SettingsScreen = () => {
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>
+            <StreamCacheRow />
           </View>
         </View>
 
@@ -385,6 +388,50 @@ export const SettingsScreen = () => {
 const formatSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
 /** The app's version, and the update check against the builds uploaded on the admin page. */
+/** Songs played recently stay on the phone (300 MB, oldest first out), so a replay doesn't download. */
+const StreamCacheRow = () => {
+  const [bytes, setBytes] = useState<number | null>(null);
+  const [clearing, setClearing] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      SonarePlayer.streamCacheBytes()
+        .then(setBytes)
+        .catch(() => setBytes(null));
+    }, []),
+  );
+  const clear = () => {
+    setClearing(true);
+    SonarePlayer.clearStreamCache()
+      .then(setBytes)
+      .catch(() => {})
+      .finally(() => setClearing(false));
+  };
+  return (
+    <View className="flex-row items-center gap-3.5 px-4 py-3.5">
+      <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+        <Icon name="history" size={18} color="#9A9AA8" />
+      </View>
+      <View className="flex-1 gap-0.5 min-w-0">
+        <Text className="text-tm font-medium text-t1">Stream cache</Text>
+        <Text className="text-bs text-t3" numberOfLines={2}>
+          {bytes === null
+            ? 'Songs you played recently'
+            : `${bytes > 0 ? `${formatBytes(bytes)} of 300 MB` : 'Empty'} · songs you played recently`}
+        </Text>
+      </View>
+      <Button
+        variant="outline"
+        size="sm"
+        onPress={clear}
+        disabled={clearing || !bytes}
+        accessibilityLabel="Clear stream cache"
+      >
+        Clear
+      </Button>
+    </View>
+  );
+};
+
 const AboutSection = ({ online }: { online: boolean }) => {
   const { status, release, progress, error, check, download, install } = useAppUpdateStore();
   const [notesOpen, setNotesOpen] = React.useState(false);

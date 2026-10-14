@@ -124,9 +124,12 @@ const swapRefusedStream = ({ mediaId, url }: { mediaId: string | null; url: stri
 };
 
 const loadOptions = (track: Track, url: string): LoadOptions => {
+  const info = streams.get(track.id);
   return {
     id: track.id,
     url,
+    // Streams are cached per track and format; files on the phone aren't cached.
+    ...(/^https?:/.test(url) && { cacheKey: `${track.id}:${info?.itag ?? useSettingsStore.getState().streamQuality}` }),
     title: track.title,
     artist: track.artist,
     album: track.album ?? undefined,

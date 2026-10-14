@@ -19,6 +19,8 @@ export interface LoadOptions {
   artworkUrl?: string;
   startMs?: number;
   autoplay?: boolean;
+  /** The stream cache's key for a streamed track (its id and format; the url changes every time). */
+  cacheKey?: string;
 }
 
 export interface PlayerStateEvent {
@@ -71,6 +73,8 @@ interface NativeSonarePlayer {
   stop(): void;
   setNext(options: LoadOptions | null): void;
   replaceUrl(url: string, fresh: string): void;
+  streamCacheBytes(): Promise<number>;
+  clearStreamCache(): Promise<number>;
   setTransitions(options: Transitions): void;
   setSpeed(speed: number): void;
   setAudioEffects(options: AudioEffects): void;
@@ -101,6 +105,10 @@ export const SonarePlayer = {
    * so the player's retry carries on without reloading the track.
    */
   replaceUrl: (url: string, fresh: string) => native?.replaceUrl?.(url, fresh),
+  /** Bytes held by the stream cache (songs played recently, so a replay needn't download). */
+  streamCacheBytes: (): Promise<number> => native?.streamCacheBytes?.() ?? Promise.resolve(0),
+  /** Empties the stream cache; resolves with what's left (a song being played stays). */
+  clearStreamCache: (): Promise<number> => native?.clearStreamCache?.() ?? Promise.resolve(0),
   /** The track after the current one; the player starts it by itself (gapless or crossfade). */
   setNext: (options: LoadOptions | null) => native?.setNext(options),
   setTransitions: (options: Transitions) => native?.setTransitions(options),

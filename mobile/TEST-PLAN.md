@@ -306,6 +306,7 @@ navigation mock live in `test-utils/`.
 | `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                       |
 | `MOB-AUD-010`          | the next song's stream is looked up while this one plays, so skipping starts it without asking again |
 | `MOB-AUD-011`          | a url refused mid-song is swapped for a fresh one of the same file, without reloading the song       |
+| `MOB-AUD-012`          | a streamed song is cached under its id and format, since its url changes every time                  |
 | `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                      |
 
 ## `__tests__/playback-extras.test.ts`
@@ -421,3 +422,9 @@ navigation mock live in `test-utils/`.
 | `MOB-SETS-002` | a change made offline reaches the account when the network is back             |
 | `MOB-SETS-003` | a guest's changes go to the account on sign-in and win over the account's copy |
 | `MOB-SETS-004` | changes waiting for one account are not sent to another                        |
+
+## `__tests__/stream-cache.test.tsx`
+
+| ID              | Use case                                                            |
+| :-------------- | :------------------------------------------------------------------ |
+| `MOB-CACHE-001` | Settings shows how much the stream cache holds and Clear empties it |

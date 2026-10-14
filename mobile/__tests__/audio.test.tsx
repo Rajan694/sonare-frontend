@@ -95,6 +95,11 @@ describe('AudioEngine and the native player', () => {
     expect(native.setNext).toHaveBeenLastCalledWith(null);
   });
 
+  it('MOB-AUD-012 a streamed song is cached under its id and format, since its url changes every time', async () => {
+    await playFrom(a, [a]);
+    expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ id: a.id, cacheKey: `${a.id}:high` }));
+  });
+
   it('MOB-AUD-005 at the end of the queue the player is told there is nothing next', async () => {
     await playFrom(c, [a, b, c]);
     await waitFor(() => expect(native.setNext).toHaveBeenLastCalledWith(null));

@@ -7,6 +7,8 @@ const mockSonarePlayerNative = {
   stop: jest.fn(),
   setNext: jest.fn(),
   replaceUrl: jest.fn(),
+  streamCacheBytes: jest.fn().mockResolvedValue(0),
+  clearStreamCache: jest.fn().mockResolvedValue(0),
   setTransitions: jest.fn(),
   setSpeed: jest.fn(),
   setAudioEffects: jest.fn(),
