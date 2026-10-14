@@ -6,8 +6,8 @@ import {
   Download,
   FolderOpen,
   HardDriveDownload,
+  AudioLines,
   Languages,
-  Moon,
   RefreshCw,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -63,9 +63,9 @@ const FEATURES = [
     tone: 'gold',
   },
   {
-    icon: Moon,
-    title: 'Sleep timer',
-    body: 'On Android, stop after 15 to 90 minutes or at the end of the song.',
+    icon: AudioLines,
+    title: 'Gapless and crossfade',
+    body: 'Albums play without a gap, and songs can fade into each other over six seconds.',
     tone: 'acc',
   },
 ] as const;
