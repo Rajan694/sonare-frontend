@@ -373,6 +373,23 @@ export const SettingsScreen = () => {
             <Text className="text-ov font-semibold text-t3 uppercase pl-1">Account</Text>
             <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
               <Pressable
+                onPress={() => navigation.navigate('Account')}
+                className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
+                accessibilityRole="button"
+                accessibilityLabel="Account details"
+              >
+                <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                  <Icon name="user" size={18} color="#9A9AA8" />
+                </View>
+                <View className="flex-1 gap-0.5 min-w-0">
+                  <Text className="text-tm font-medium text-t1">Account details</Text>
+                  <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                    Name, password, delete account
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={16} color="#7E7E8C" />
+              </Pressable>
+              <Pressable
                 onPress={confirmSignOut}
                 className="flex-row items-center gap-3.5 px-4 py-3.5"
                 accessibilityRole="button"

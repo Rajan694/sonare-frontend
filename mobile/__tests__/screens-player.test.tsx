@@ -775,38 +775,59 @@ describe('Sign in', () => {
     expect(nav.goBack).toHaveBeenCalled();
   });
 
-  it('MOB-SIGNIN-006 "Forgot password?" emails a reset link and says so', async () => {
+  it('MOB-SIGNIN-006 "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in', async () => {
     const requestPasswordReset = jest.fn(async () => {});
+    const verifyResetCode = jest.fn(async () => 'reset-token-1');
+    const resetPassword = jest.fn(async () => {});
     const signInFn = jest.fn();
-    useAuthStore.setState({ requestPasswordReset, signIn: signInFn } as never);
+    useAuthStore.setState({ requestPasswordReset, verifyResetCode, resetPassword, signIn: signInFn } as never);
     const { getByText, getByLabelText, queryByLabelText, findByText } = render(<SignInScreen />);
     fireEvent.press(getByText('Forgot password?'));
     expect(getByText('Reset your password')).toBeTruthy();
     expect(queryByLabelText('Password')).toBeNull();
     fireEvent.changeText(getByLabelText('Email'), 'nope');
-    fireEvent.press(getByLabelText('Send reset link'));
+    fireEvent.press(getByLabelText('Send code'));
     expect(getByText('Enter a valid email address')).toBeTruthy();
     fireEvent.changeText(getByLabelText('Email'), ' Alice@Sonare.test ');
-    await act(async () => fireEvent.press(getByLabelText('Send reset link')));
+    await act(async () => fireEvent.press(getByLabelText('Send code')));
     expect(requestPasswordReset).toHaveBeenCalledWith('alice@sonare.test');
-    expect(await findByText(/If an account exists for Alice@Sonare.test/)).toBeTruthy();
+    expect(await findByText(/If an account exists for alice@sonare.test, a 6-digit code is on its way/)).toBeTruthy();
+
+    fireEvent.changeText(getByLabelText('Reset code'), '123 456');
+    await act(async () => fireEvent.press(getByLabelText('Check code')));
+    expect(verifyResetCode).toHaveBeenCalledWith('alice@sonare.test', '123456');
+
+    fireEvent.changeText(getByLabelText('New password'), 'brandnew1');
+    fireEvent.changeText(getByLabelText('Repeat new password'), 'brandnew2');
+    fireEvent.press(getByLabelText('Set new password'));
+    expect(getByText("The passwords don't match")).toBeTruthy();
+    fireEvent.changeText(getByLabelText('Repeat new password'), 'brandnew1');
+    await act(async () => fireEvent.press(getByLabelText('Set new password')));
+    expect(resetPassword).toHaveBeenCalledWith('reset-token-1', 'brandnew1');
+
+    expect(await findByText('Password changed. Sign in with your new password.')).toBeTruthy();
+    expect(getByLabelText('Email').props.value).toBe('alice@sonare.test');
+    expect(getByLabelText('Password')).toBeTruthy();
     expect(signInFn).not.toHaveBeenCalled();
     expect(nav.goBack).not.toHaveBeenCalled();
   });
 
-  it('MOB-SIGNIN-007 a reset request error shows, and "Sign in" goes back to the form', async () => {
+  it('MOB-SIGNIN-007 a wrong code or a failed request shows why, and "Back to sign in" returns to the form', async () => {
     useAuthStore.setState({
-      requestPasswordReset: jest.fn(async () => {
-        throw new Error('Too many attempts. Try again in 60 min.');
+      requestPasswordReset: jest.fn(async () => {}),
+      verifyResetCode: jest.fn(async () => {
+        throw new Error("That code isn't right. Check the email and try again.");
       }),
     } as never);
     const { getByText, getByLabelText, findByText, queryByText } = render(<SignInScreen />);
     fireEvent.press(getByText('Forgot password?'));
     fireEvent.changeText(getByLabelText('Email'), 'alice@sonare.test');
-    await act(async () => fireEvent.press(getByLabelText('Send reset link')));
-    expect(await findByText('Too many attempts. Try again in 60 min.')).toBeTruthy();
-    fireEvent.press(getByText('Sign in'));
-    expect(queryByText('Too many attempts. Try again in 60 min.')).toBeNull();
+    await act(async () => fireEvent.press(getByLabelText('Send code')));
+    fireEvent.changeText(getByLabelText('Reset code'), '000000');
+    await act(async () => fireEvent.press(getByLabelText('Check code')));
+    expect(await findByText("That code isn't right. Check the email and try again.")).toBeTruthy();
+    fireEvent.press(getByText('Back to sign in'));
+    expect(queryByText("That code isn't right. Check the email and try again.")).toBeNull();
     expect(getByLabelText('Password')).toBeTruthy();
   });
 });

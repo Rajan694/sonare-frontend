@@ -113,6 +113,8 @@ navigation mock live in `test-utils/`.
 | `MOB-DATA-056` | signing in keeps the phone's Custom EQ but takes the account's other settings                     |
 | `MOB-DATA-057` | favouriteIds asks only for the ids, so the heart state needs no metadata                          |
 | `MOB-DATA-058` | updatePlaylist PATCHes the name and description and returns the playlist                          |
+| `MOB-DATA-059` | removeFromPlaylist sends the row id when the list knows it, else the position                     |
+| `MOB-DATA-060` | reorderPlaylist PATCHes a row to its new position                                                 |
 
 ## `__tests__/lib.test.tsx`
 
@@ -267,8 +269,8 @@ navigation mock live in `test-utils/`.
 | `MOB-SIGNIN-003` | a gate visit opens on sign-up, needs a name and 8+ character password                             |
 | `MOB-SIGNIN-004` | server and network failures are shown plainly                                                     |
 | `MOB-SIGNIN-005` | "keep listening" leaves without an account                                                        |
-| `MOB-SIGNIN-006` | "Forgot password?" emails a reset link for the normalised email and says so                       |
-| `MOB-SIGNIN-007` | a reset request error shows, and "Sign in" goes back to the form                                  |
+| `MOB-SIGNIN-006` | "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in           |
+| `MOB-SIGNIN-007` | a wrong code or a failed request shows why, and "Back to sign in" returns to the form             |
 | `MOB-SIGNIN-008` | after signing up, the emailed code can be entered before going back, or skipped                   |
 | `MOB-MODE-001`   | confirming switches to Offline Mode and goes back                                                 |
 | `MOB-MODE-002`   | cancelling keeps the current mode                                                                 |
@@ -475,3 +477,12 @@ navigation mock live in `test-utils/`.
 | :------------- | :--------------------------------------------------------------------------------------------------- |
 | `MOB-WAKE-001` | backend requests give up after the wake-up time; other requests and explicit timeouts are left alone |
 | `MOB-WAKE-002` | a slow first backend request shows "waking up" until the server answers                              |
+
+## `__tests__/account.test.tsx`
+
+| ID             | Use case                                                                                             |
+| :------------- | :--------------------------------------------------------------------------------------------------- |
+| `MOB-ACCT-001` | the reset code is swapped for a token, and the token sets the new password; an expired token says so |
+| `MOB-ACCT-002` | changing the password keeps this phone signed in with the new session; name and delete go to /me     |
+| `MOB-ACCT-003` | the Account screen saves a new name, and changes the password after checking the fields              |
+| `MOB-ACCT-004` | deleting asks for the password and a confirmation, then leaves; a refusal is shown                   |
