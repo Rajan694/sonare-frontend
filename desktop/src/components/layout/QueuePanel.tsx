@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
@@ -15,6 +15,7 @@ import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
 import { cn } from '../../lib/cn';
 import { formatDuration } from '../../lib/format';
+import { useVirtualRows } from '../../lib/useVirtualRows';
 
 interface QueuePanelProps {
   onClose: () => void;
@@ -45,12 +46,16 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  // Only the upcoming rows in view are drawn; the queue can be long.
+  const listRef = useRef<HTMLDivElement>(null);
 
   const rows = state.queue
     .map((track, index) => ({ track, index }))
     .filter((r) => !isOffline || !!localLibrary.localIdFor(r.track.id));
   const upcoming = rows.filter((r) => r.index > state.index);
   const serverCount = rows.filter((r) => r.track.source === 'server').length;
+
+  const virtual = useVirtualRows({ count: upcoming.length, rowHeight: 48, gap: 2, scrollRef: listRef });
 
   const effectiveDurationMs = durationMs || currentTrack?.durationMs || 1;
   const remainingMs = Math.max(0, effectiveDurationMs - positionMs);
@@ -119,7 +124,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
       </div>
 
       {/* Content */}
-      <div className="flex flex-col grow p-4 gap-3.5 overflow-y-auto">
+      <div className="flex flex-col grow min-h-0 p-4 gap-3.5 overflow-hidden">
         {/* Badge & count summary */}
         <div className="flex items-center gap-2 flex-none">
           <span
@@ -200,8 +205,9 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
             No upcoming songs in queue
           </div>
         ) : (
-          <div className="flex flex-col gap-0.5">
-            {upcoming.map(({ track, index }) => (
+          <div ref={listRef} className="flex flex-col gap-0.5 overflow-y-auto grow min-h-0">
+            {virtual.topPad > 0 && <div style={{ height: virtual.topPad }} aria-hidden />}
+            {upcoming.slice(virtual.start, virtual.end).map(({ track, index }) => (
               <div
                 key={`${track.id}-${index}`}
                 draggable
@@ -253,6 +259,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
                 />
               </div>
             ))}
+            {virtual.bottomPad > 0 && <div style={{ height: virtual.bottomPad }} aria-hidden />}
           </div>
         )}
       </div>

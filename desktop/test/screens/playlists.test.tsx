@@ -28,6 +28,7 @@ useMockServer(
 afterEach(() => {
   act(() => closeTrackMenu());
   clearSession();
+  localStorage.clear();
   toast.mockClear();
   vi.restoreAllMocks();
 });
@@ -91,24 +92,37 @@ describe('playlists page', () => {
     );
   });
 
-  it('WEB-PLAYLISTS-004 in Offline Mode only playlists available on the device are shown', async () => {
-    setSession('a', 'r', testUser);
-    server.use(
-      http.get(`${API}/me/playlists`, () =>
-        HttpResponse.json(
-          page([
-            makePlaylist({ name: 'Downloaded', kind: 'synced', downloadedCount: 3 }),
-            makePlaylist({ name: 'Cloud only', kind: 'online', downloadedCount: 0 }),
-            makePlaylist({ name: 'Local mix', kind: 'local' }),
-          ]),
-        ),
-      ),
-    );
+  it('WEB-PLAYLISTS-004 in Offline Mode the stored own playlists are shown with device counts; no server call', async () => {
+    // Seed the offline store: two sonare: playlists (one with songs on device, one without) +
+    // a yt: playlist the filter must drop entirely.
+    const stored = {
+      userId: testUser.id,
+      playlists: [
+        makePlaylist({ id: 'sonare:gym', name: 'Gym', kind: 'synced', trackCount: 5 }),
+        makePlaylist({ id: 'sonare:chill', name: 'Chill', kind: 'synced', trackCount: 3 }),
+        makePlaylist({ id: 'yt:PL123', name: 'YouTube', kind: 'online', trackCount: 10 }),
+      ],
+      songs: {
+        'sonare:gym': { updatedAt: 1_700_000_000_000, songs: [] },
+        'sonare:chill': { updatedAt: 1_700_000_000_000, songs: [] },
+      },
+    };
+    localStorage.setItem('sonare_offline_playlists', JSON.stringify(stored));
+    // Fire auth-change so the store re-reads from localStorage.
+    act(() => setSession('a', 'r', testUser));
     renderWithProviders(<Playlists />, { mode: 'offline' });
-    expect(await screen.findByRole('link', { name: /Downloaded/ })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Local mix/ })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: /Cloud only/ })).not.toBeInTheDocument();
+    // Both sonare: playlists appear.
+    expect(await screen.findByRole('link', { name: /Gym/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Chill/ })).toBeInTheDocument();
+    // The yt: playlist is filtered out.
+    expect(screen.queryByRole('link', { name: /YouTube/ })).not.toBeInTheDocument();
+    // Counter: 2 own + 1 Liked Songs.
     expect(screen.getByText('3 playlists available offline')).toBeInTheDocument();
+    // No New playlist button in offline mode.
+    expect(screen.queryByRole('button', { name: 'New playlist' })).not.toBeInTheDocument();
+    // Playlists with no songs on device are shown dimmed.
+    const gymLink = screen.getByRole('link', { name: /Gym/ });
+    expect(gymLink).toHaveClass('opacity-60');
   });
 });
 

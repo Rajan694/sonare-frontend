@@ -3,6 +3,7 @@ import { api } from './api';
 import { onFavouritesSaved } from './favourites';
 import { fetchLyrics } from './lyricsAvailability';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
+import { saveOfflinePlaylists } from '../storage/offlinePlaylists';
 import type { Page, Track, User } from '../types';
 import { useDevicePrefs } from '../storage/devicePrefs';
 
@@ -366,9 +367,13 @@ export const notifyPlaylistsChanged = (): void => {
   window.dispatchEvent(new Event(PLAYLISTS_CHANGED));
 };
 
-export const useMyPlaylists = () => {
-  const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true });
-  const { refetch } = result;
+export const useMyPlaylists = (enabled: boolean = true) => {
+  const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true, enabled });
+  const { data, refetch } = result;
+  // Keep the server's list for Offline Mode (storage/offlinePlaylists.ts).
+  useEffect(() => {
+    if (data) saveOfflinePlaylists(data.items);
+  }, [data]);
   useEffect(() => {
     window.addEventListener(PLAYLISTS_CHANGED, refetch);
     return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch);

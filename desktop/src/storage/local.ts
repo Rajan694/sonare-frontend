@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { filesystem, os, storage } from '@neutralinojs/lib';
 import { CAPS } from '../lib/caps';
 import { clean, readTags, tagsFromFileName } from './tags';
+import { idInFileName } from '../../../shared/downloads/fileNames';
 import type { Folder, Track } from '../types';
 
 /**
@@ -116,6 +117,12 @@ let snapshot: LocalSnapshot = {
   scanning: null,
 };
 const listeners = new Set<() => void>();
+/** Called after a scan refreshes the index, so other stores can adopt files it found. */
+const scanListeners = new Set<() => void>();
+export const onLibraryScanned = (fn: () => void): (() => void) => {
+  scanListeners.add(fn);
+  return () => scanListeners.delete(fn);
+};
 let loadPromise: Promise<void> | null = null;
 
 const hash = (s: string): string => {
@@ -207,7 +214,15 @@ const rangeReader = (path: string, fileSize: number) => {
 
 const indexFile = async (path: string, folderId: string, previous?: LocalEntry): Promise<LocalEntry | null> => {
   const stats = await filesystem.getStats(path);
-  if (previous && previous.size === stats.size && previous.mtime === stats.modifiedAt) return previous;
+  // A file Sonare downloaded is named `Artist - Title [videoId].ext`; the id in the name
+  // links a file found by a scan (a folder re-added after a reinstall) back to its song.
+  const name = path.split(/[\\/]/).pop() ?? path;
+  const fromFileName = idInFileName(name);
+  if (previous && previous.size === stats.size && previous.mtime === stats.modifiedAt) {
+    // An index from before this rule: learn the id from the name it already had.
+    if (!previous.serverId && fromFileName) return { ...previous, serverId: fromFileName };
+    return previous;
+  }
   const tags = await readTags(path, stats.size, rangeReader(path, stats.size));
   const fromName = tagsFromFileName(path);
   return {
@@ -225,7 +240,7 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
     codec: tags.codec,
     bitrateKbps: tags.bitrateKbps,
     addedAt: previous?.addedAt ?? stats.createdAt ?? Date.now(),
-    serverId: previous?.serverId,
+    serverId: previous?.serverId ?? fromFileName ?? undefined,
     thumbnail: previous?.thumbnail,
   };
 };
@@ -400,6 +415,7 @@ export const localLibrary = {
     const after = new Set(index.entries.map((e) => e.id));
     rebuild({ scanning: null });
     await persist();
+    for (const l of scanListeners) l();
     return {
       added: [...after].filter((x) => !before.has(x)).length,
       removed: [...before].filter((x) => !after.has(x)).length,

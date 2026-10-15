@@ -16,6 +16,7 @@ import Icon from '../components/ui/Icon';
 import { Select } from '../components/ui/Select';
 import { staggerContainer } from '../lib/motion';
 import { cn } from '../lib/cn';
+import { useVirtualRows } from '../lib/useVirtualRows';
 import { useLayout } from '../lib/layout';
 import type { Track } from '../types';
 
@@ -65,6 +66,8 @@ const Library = () => {
   useEffect(() => {
     activeTabRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
   }, [activeTab, showTabs]);
+  // The song list scrolls here; only the rows in view are drawn (lib/useVirtualRows.ts).
+  const listRef = useRef<HTMLDivElement>(null);
 
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(null);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'local' | 'server'>('all');
@@ -113,6 +116,14 @@ const Library = () => {
   if (sort) tracks = sortTracks(tracks, sort.key, sort.desc);
   const isTrackTab = activeTab === 'Songs' || activeTab === 'Most played';
   const from = { kind: 'Library', name: activeTab };
+  // Songs rows are ~54px; the container is remounted (and its scroll reset) by the key below.
+  const virtual = useVirtualRows({
+    count: tracks.length,
+    rowHeight: 54,
+    gap: 2,
+    scrollRef: listRef,
+    deps: [activeTab, mode, view, sourceFilter, downloadedOnly],
+  });
 
   const sortBy = (key: SortKey) => {
     const preset = SORTS.find((s) => s.key === key)!;
@@ -293,6 +304,7 @@ const Library = () => {
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab + mode + view + sourceFilter + downloadedOnly}
+          ref={listRef}
           className="flex flex-col gap-0.5 px-4 @[480px]:px-8 pb-8 overflow-auto"
           variants={staggerContainer}
           initial="hidden"
@@ -443,16 +455,20 @@ const Library = () => {
               ))}
             </div>
           ) : (
-            tracks.map((track, i) => (
-              <SongRow
-                key={track.id}
-                track={track}
-                index={i + 1}
-                isActive={currentTrack?.id === track.id}
-                onClick={() => playTrack(track, tracks, from)}
-                showPlays
-              />
-            ))
+            <>
+              {virtual.topPad > 0 && <div style={{ height: virtual.topPad }} aria-hidden />}
+              {tracks.slice(virtual.start, virtual.end).map((track, i) => (
+                <SongRow
+                  key={track.id}
+                  track={track}
+                  index={virtual.start + i + 1}
+                  isActive={currentTrack?.id === track.id}
+                  onClick={() => playTrack(track, tracks, from)}
+                  showPlays
+                />
+              ))}
+              {virtual.bottomPad > 0 && <div style={{ height: virtual.bottomPad }} aria-hidden />}
+            </>
           )}
         </motion.div>
       </AnimatePresence>

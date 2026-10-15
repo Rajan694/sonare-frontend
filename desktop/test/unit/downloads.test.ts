@@ -202,7 +202,7 @@ describe('queueing downloads', () => {
 });
 
 describe('downloading', () => {
-  it('WEB-DL-003 fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title.webm"', async () => {
+  it('WEB-DL-003 fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm"', async () => {
     const bytes = audioBytes(5 * MB);
     streamInfo({ contentLength: bytes.length });
     const ranges = relay(bytes);
@@ -211,7 +211,7 @@ describe('downloading', () => {
     await waitForStatus(dl, 'yt:big', 'done');
     expect(ranges).toEqual([`bytes=0-${2 * MB - 1}`, `bytes=${2 * MB}-${4 * MB - 1}`, `bytes=${4 * MB}-${6 * MB - 1}`]);
     const file = h.files.get('yt:big')!;
-    expect(file.name).toBe('Radiohead - Reckoner.webm');
+    expect(file.name).toBe('Radiohead - Reckoner [big].webm');
     expect(sameBytes(file.bytes, bytes)).toBe(true);
     expect(item(dl, 'yt:big')).toMatchObject({
       receivedBytes: bytes.length,
@@ -228,7 +228,7 @@ describe('downloading', () => {
     const dl = await fresh();
     await dl.downloads.enqueue([song({ id: 'yt:n', artist: 'AC/DC', title: 'What?  Is: "This"' })]);
     await waitForStatus(dl, 'yt:n', 'done');
-    expect(h.files.get('yt:n')!.name).toBe('AC_DC - What_ Is_ _This_.m4a');
+    expect(h.files.get('yt:n')!.name).toBe('AC_DC - What_ Is_ _This_ [n].m4a');
   });
 
   it('WEB-DL-005 with no size from the server, a short final range ends the download', async () => {
@@ -528,7 +528,7 @@ describe('managing finished downloads', () => {
   it('WEB-DL-019 deleting a finished download removes its file and the list entry', async () => {
     const dl = await finished('yt:del');
     await expect(dl.downloads.remove('yt:del')).resolves.toEqual({ fileDeleted: true });
-    expect(h.state.removed).toEqual(['Radiohead - Reckoner.webm']);
+    expect(h.state.removed).toEqual(['Radiohead - Reckoner [del].webm']);
     expect(item(dl, 'yt:del')).toBeUndefined();
     expect(JSON.parse(localStorage.getItem('sonare_downloads')!)).toEqual([]);
   });
@@ -568,7 +568,7 @@ describe('managing finished downloads', () => {
   it('WEB-DL-023 "save again" hands the kept copy to the browser, and reports when there is none', async () => {
     const dl = await finished('yt:again2');
     await expect(dl.downloads.saveAgain('yt:again2')).resolves.toBe(true);
-    expect(h.state.savedAgain).toEqual(['Radiohead - Reckoner.webm']);
+    expect(h.state.savedAgain).toEqual(['Radiohead - Reckoner [again2].webm']);
     h.files.delete('yt:again2');
     await expect(dl.downloads.saveAgain('yt:again2')).resolves.toBe(false);
     expect(item(dl, 'yt:again2')!.copyKept).toBe(false);

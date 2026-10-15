@@ -322,7 +322,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one           |
 | `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                 |
 | `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                      |
-| `WEB-PLAYLISTS-004` | in Offline Mode only playlists available on the device are shown                         |
+| `WEB-PLAYLISTS-004` | in Offline Mode the stored own playlists are shown with device counts; no server call    |
 | `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link           |
 | `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                       |
 | `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                       |
@@ -333,6 +333,31 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest                   |
 | `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so |
 | `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in    |
+
+## `test/screens/offline-playlists.test.tsx`
+
+| ID             | Use case                                                                                             |
+| :------------- | :--------------------------------------------------------------------------------------------------- |
+| `WEB-OFPL-001` | saveOfflinePlaylists persists the list for the signed-in user and is readable by getOfflinePlaylists |
+| `WEB-OFPL-002` | saveOfflinePlaylistSongs saves songs per playlist id and tracks updatedAt                            |
+| `WEB-OFPL-003` | signing in as a different user shows nothing until that user has data                                |
+| `WEB-OFPL-004` | signing out clears the view (another user or guest sees nothing)                                     |
+| `WEB-OFPL-005` | saveOfflinePlaylists drops songs for playlists no longer in the list                                 |
+| `WEB-OFPL-006` | offline Playlists lists only sonare: playlists from the offline store                                |
+| `WEB-OFPL-007` | offline Playlists dims playlists with no songs on this device                                        |
+| `WEB-OFPL-008` | offline Playlists does not show the New playlist button                                              |
+| `WEB-OFPL-009` | offline own playlist shows meta from the offline store and no Add songs button                       |
+| `WEB-OFPL-010` | offline own playlist shows empty-state message when songs aren't on device                           |
+
+## `test/screens/virtual-rows.test.tsx`
+
+| ID             | Use case                                                                                    |
+| :------------- | :------------------------------------------------------------------------------------------ |
+| `WEB-VIRT-001` | with a measured container (clientHeight > 0) only a visible window of rows is returned      |
+| `WEB-VIRT-002` | without a measured container (clientHeight = 0) every row is returned (null-state fallback) |
+| `WEB-VIRT-003` | scrolling the element fires a scroll event and shifts the rendered window                   |
+| `WEB-VIRT-004` | the Library screen renders a bottom spacer when virtualisation is active                    |
+| `WEB-VIRT-005` | without layout (clientHeight = 0) all rows are rendered and no large spacer appears         |
 
 ## `test/screens/load-more.test.tsx`
 
@@ -782,6 +807,18 @@ request a test did not mock (`test/helpers/server.ts`).
 | --------- | --------------------------------------------------------------------------------------- |
 | `DSK-051` | folders open from the Songs view only; the sidebar picks the view, so there are no tabs |
 | `DSK-052` | an old ?view=folders link opens the Songs tab                                           |
+
+## `test/desktop/relink.test.ts`
+
+| ID               | Use case                                                                                          |
+| :--------------- | :------------------------------------------------------------------------------------------------ |
+| `WEB-RELINK-001` | idInFileName extracts the YouTube id from a file name and null for other files                    |
+| `WEB-RELINK-002` | a file named with the Sonare pattern gets serverId set in the index                               |
+| `WEB-RELINK-003` | localIdFor finds a relinked file so the player uses the local copy                                |
+| `WEB-RELINK-004` | an unchanged file keeps its serverId across a rescan without re-reading tags                      |
+| `WEB-RELINK-005` | downloadedEntries returns all files whose names embed a server id                                 |
+| `WEB-RELINK-006` | a file without a Sonare id in its name is not returned by downloadedEntries                       |
+| `WEB-RELINK-007` | a scan that finds a download the list forgot adds it to Downloads once, and a rescan adds nothing |
 
 ## `test/unit/devicePrefs.test.ts`
 
