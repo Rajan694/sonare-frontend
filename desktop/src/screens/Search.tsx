@@ -19,7 +19,18 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { fadeRise, transition } from '../lib/motion';
 import { cn } from '../lib/cn';
 import { useAppDispatch, useAppSelector } from '../store';
-import { runSearch, searchKey, setQuery, setType, type SearchType } from '../store/searchSlice';
+import {
+  addRecent,
+  clearRecent,
+  loadMoreSearch,
+  removeRecent,
+  runSearch,
+  searchKey,
+  setQuery,
+  setType,
+  type SearchType,
+} from '../store/searchSlice';
+import LoadMore from '../components/ui/LoadMore';
 import type { Track, Album, Artist, Playlist } from '../types';
 
 type ChipFilter = 'all' | SearchType;
@@ -54,7 +65,8 @@ const Search = () => {
   const { mode, setMode } = useModeStore();
   const { currentTrack, playTrack } = usePlayerStore();
   const dispatch = useAppDispatch();
-  const { query, results, resultsFor, requested, status, error } = useAppSelector((s) => s.search);
+  const { query, results, resultsFor, requested, status, error, nextCursor, loadingMore, loadMoreError, recent } =
+    useAppSelector((s) => s.search);
   const [params, setParams] = useSearchParams();
   const addTo = params.get('addTo');
   const [activeChip, setActiveChip] = useState<ChipFilter>('all');
@@ -160,6 +172,12 @@ const Search = () => {
     dispatch(setType(type));
   };
 
+  // A recent query fills the field and searches again; the field is what drives the search.
+  const runRecent = (entry: string) => dispatch(setQuery(entry));
+
+  const canLoadMore = isOnline && current && !!nextCursor;
+  const loadMore = () => dispatch(loadMoreSearch({ query: debouncedQuery, type: querySearchType }));
+
   // Find top result (prefer first match: album, song, or artist)
   const topSong = combinedTracks[0];
 
@@ -248,6 +266,11 @@ const Search = () => {
               exit="exit"
               transition={transition.normal}
               className="flex flex-col gap-6 pt-3"
+              // Searches run as you type, so a query is remembered once one of its results is
+              // used (played, opened, added), not on every pause in typing.
+              onClickCapture={(e) => {
+                if ((e.target as HTMLElement).closest('a, button')) dispatch(addRecent(debouncedQuery));
+              }}
             >
               {searchLoading || extrasLoading ? (
                 <div className="flex flex-col gap-2 animate-pulse pt-2">
@@ -438,76 +461,123 @@ const Search = () => {
                   )}
                 </div>
               ) : activeChip === 'songs' ? (
-                <div className="flex flex-col gap-2">
-                  <SongTableHeader />
-                  {combinedTracks.map((track, i) => (
-                    <SongRow
-                      key={track.id}
-                      track={track}
-                      index={i + 1}
-                      isActive={currentTrack?.id === track.id}
-                      onClick={() => handlePlay(track)}
-                      onAdd={addTo ? () => void addTrack(track) : undefined}
-                      added={added.has(track.id)}
-                    />
-                  ))}
-                </div>
+                <>
+                  <div className="flex flex-col gap-2">
+                    <SongTableHeader />
+                    {combinedTracks.map((track, i) => (
+                      <SongRow
+                        key={track.id}
+                        track={track}
+                        index={i + 1}
+                        isActive={currentTrack?.id === track.id}
+                        onClick={() => handlePlay(track)}
+                        onAdd={addTo ? () => void addTrack(track) : undefined}
+                        added={added.has(track.id)}
+                      />
+                    ))}
+                  </div>
+                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                </>
               ) : activeChip === 'albums' ? (
-                <div className="flex gap-4 flex-wrap pt-2">
-                  {serverItems
-                    .filter((item): item is Album => 'trackCount' in item)
-                    .map((album, i) => (
-                      <Card
-                        key={album.id}
-                        title={album.title}
-                        subtitle={`Album · ${album.artist}`}
-                        artVariant={`a${(i % 12) + 1}` as any}
-                        thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
-                        to={`/album/${album.id}`}
-                      />
-                    ))}
-                </div>
-              ) : activeChip === 'artists' ? (
-                <div className="flex gap-4 flex-wrap pt-2">
-                  {serverItems
-                    .filter((item): item is Artist => 'albumCount' in item || 'following' in item)
-                    .map((artist, i) => (
-                      <Link
-                        key={artist.id}
-                        to={`/artist/${artist.id}`}
-                        className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
-                      >
-                        <Artwork
-                          src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
-                          alt={artist.name}
-                          variant={`a${(i % 12) + 1}` as any}
-                          size={110}
-                          radius="circ"
+                <>
+                  <div className="flex gap-4 flex-wrap pt-2">
+                    {serverItems
+                      .filter((item): item is Album => 'trackCount' in item)
+                      .map((album, i) => (
+                        <Card
+                          key={album.id}
+                          title={album.title}
+                          subtitle={`Album · ${album.artist}`}
+                          artVariant={`a${(i % 12) + 1}` as any}
+                          thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
+                          to={`/album/${album.id}`}
                         />
-                        <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
-                        <span className="text-label-s text-t3 truncate">Artist</span>
-                      </Link>
-                    ))}
-                </div>
+                      ))}
+                  </div>
+                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                </>
+              ) : activeChip === 'artists' ? (
+                <>
+                  <div className="flex gap-4 flex-wrap pt-2">
+                    {serverItems
+                      .filter((item): item is Artist => 'albumCount' in item || 'following' in item)
+                      .map((artist, i) => (
+                        <Link
+                          key={artist.id}
+                          to={`/artist/${artist.id}`}
+                          className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
+                        >
+                          <Artwork
+                            src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
+                            alt={artist.name}
+                            variant={`a${(i % 12) + 1}` as any}
+                            size={110}
+                            radius="circ"
+                          />
+                          <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
+                          <span className="text-label-s text-t3 truncate">Artist</span>
+                        </Link>
+                      ))}
+                  </div>
+                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                </>
               ) : (
-                <div className="flex gap-4 flex-wrap pt-2">
-                  {serverItems
-                    .filter((item): item is Playlist => !('durationMs' in item) && !('albumCount' in item))
-                    .map((pl, i) => (
-                      <Card
-                        key={pl.id}
-                        title={playlistTitle(pl)}
-                        subtitle={playlistSubtitle(pl)}
-                        artVariant={`a${(i % 12) + 1}` as any}
-                        thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
-                        to={`/playlist/${pl.id}`}
-                      />
-                    ))}
-                </div>
+                <>
+                  <div className="flex gap-4 flex-wrap pt-2">
+                    {serverItems
+                      .filter((item): item is Playlist => !('durationMs' in item) && !('albumCount' in item))
+                      .map((pl, i) => (
+                        <Card
+                          key={pl.id}
+                          title={playlistTitle(pl)}
+                          subtitle={playlistSubtitle(pl)}
+                          artVariant={`a${(i % 12) + 1}` as any}
+                          thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
+                          to={`/playlist/${pl.id}`}
+                        />
+                      ))}
+                  </div>
+                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                </>
               )}
             </motion.div>
           ) : (
             <div className="flex flex-col gap-6">
+              {recent.length > 0 && (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-title-l text-t1 font-semibold">Recent searches</span>
+                    <button
+                      className="text-label-l text-t3 bg-transparent border-0 cursor-pointer hover:text-t1"
+                      onClick={() => dispatch(clearRecent())}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    {recent.map((entry) => (
+                      <div key={entry} className="flex items-center gap-1">
+                        <button
+                          className="flex items-center gap-3 grow h-11 px-3 rounded-lg bg-transparent border-0 cursor-pointer text-left hover:bg-s2"
+                          aria-label={`Search for ${entry}`}
+                          onClick={() => runRecent(entry)}
+                        >
+                          <Icon name="clock" size={15} className="text-t3 flex-none" />
+                          <span className="grow text-body-m text-t2 truncate">{entry}</span>
+                        </button>
+                        <button
+                          className="ib ib-28 flex-none"
+                          aria-label={`Remove ${entry} from recent searches`}
+                          data-tip="Remove"
+                          onClick={() => dispatch(removeRecent(entry))}
+                        >
+                          <Icon name="close" size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
               <span className="text-title-l text-t1 font-semibold">Browse categories</span>
               <div className="grid grid-cols-2 @md:grid-cols-4 gap-3">
                 {(genres ?? DEFAULT_GENRES).map((g, i) => (

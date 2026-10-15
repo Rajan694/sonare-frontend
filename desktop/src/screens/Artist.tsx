@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { usePlayerStore } from '../store/playerContext';
-import { useArtist, useArtistTopTracks, useArtistAlbums } from '../api/hooks';
+import { useArtist, useArtistTopTracks, usePagedList } from '../api/hooks';
 import { api } from '../api/api';
 import { requireAccount } from '../api/accountGate';
 import { openTrackMenu } from '../components/music/TrackMenu';
@@ -11,6 +11,7 @@ import SongRow from '../components/music/SongRow';
 import Artwork from '../components/music/Artwork';
 import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
+import LoadMore from '../components/ui/LoadMore';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Card } from '../components/ui/Card';
 import { staggerContainer } from '../lib/motion';
@@ -22,13 +23,20 @@ const Artist = () => {
 
   const { data: artist, loading: artistLoading, error: artistError } = useArtist(id);
   const { data: tracksData, loading: tracksLoading } = useArtistTopTracks(id);
-  const { data: albumsData } = useArtistAlbums(id);
+  const {
+    items: albums,
+    hasMore,
+    loadingMore,
+    moreError,
+    loadMore,
+  } = usePagedList<Album>((cursor) => (id ? api.getArtistAlbums(id, cursor) : Promise.resolve({ items: [] })), [id], {
+    enabled: !!id,
+  });
 
   const [followingOverride, setFollowing] = useState<boolean | null>(null);
   const isFollowing = followingOverride ?? (artist?.following || false);
 
   const tracks: Track[] = tracksData?.items || [];
-  const albums: Album[] = albumsData?.items || [];
   const from = { kind: 'Artist', name: artist?.name ?? 'Artist' };
 
   const handlePlayAll = () => {
@@ -211,6 +219,7 @@ const Artist = () => {
                 />
               ))}
             </div>
+            {hasMore && <LoadMore loading={loadingMore} error={moreError} onClick={loadMore} />}
           </div>
         )}
       </div>

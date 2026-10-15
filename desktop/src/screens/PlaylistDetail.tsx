@@ -4,7 +4,14 @@ import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { usePlaylist, usePlaylistTracks, useAuth, useLibraryAlbums, notifyPlaylistsChanged } from '../api/hooks';
+import {
+  usePlaylist,
+  usePlaylistTracks,
+  useAuth,
+  useLibraryAlbums,
+  usePagedList,
+  notifyPlaylistsChanged,
+} from '../api/hooks';
 import { api } from '../api/api';
 import { requireAccount } from '../api/accountGate';
 import { showToast } from '../store/toasts';
@@ -14,6 +21,7 @@ import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import Artwork from '../components/music/Artwork';
 import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
+import LoadMore from '../components/ui/LoadMore';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer } from '../lib/motion';
 import { cn } from '../lib/cn';
@@ -30,11 +38,24 @@ const PlaylistDetail = () => {
 
   const id = rawId || '';
   const { data: playlist, loading: playlistLoading } = usePlaylist(id);
-  const { data: tracksData, loading: tracksLoading, refetch: refetchTracks } = usePlaylistTracks(id);
+  // A YouTube playlist can be saved to the library; it is kept like an album (Library → Albums).
+  // Its songs come in pages; the user's own playlists always come whole.
+  const isYouTube = id.startsWith('yt:');
+  const {
+    data: tracksData,
+    loading: ownTracksLoading,
+    refetch: refetchTracks,
+  } = usePlaylistTracks(id, undefined, !isYouTube);
+  const {
+    items: pagedTracks,
+    loading: pagedLoading,
+    hasMore,
+    loadingMore,
+    moreError,
+    loadMore,
+  } = usePagedList<Track>((cursor) => api.getPlaylistTracks(id, cursor), [id], { enabled: !!id && isYouTube });
 
   const isOwn = playlist?.kind === 'local' || (!!user && playlist?.kind === 'synced');
-  // A YouTube playlist can be saved to the library; it is kept like an album (Library → Albums).
-  const isYouTube = id.startsWith('yt:');
   const { data: savedAlbums } = useLibraryAlbums();
   const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
   const saved = savedOverride ?? !!savedAlbums?.items.some((a) => a.id === id);
@@ -59,7 +80,8 @@ const PlaylistDetail = () => {
   const [dropAt, setDropAt] = useState<number | null>(null);
   const [localTracks, setLocalTracks] = useState<Track[] | null>(null);
 
-  const tracks = localTracks ?? tracksData?.items ?? [];
+  const tracks = localTracks ?? (isYouTube ? pagedTracks : (tracksData?.items ?? []));
+  const tracksLoading = isYouTube ? pagedLoading : ownTracksLoading;
   const from = { kind: 'Playlist', name: playlist?.name ?? 'Playlist' };
 
   const handlePlayAll = () => {
@@ -245,64 +267,72 @@ const PlaylistDetail = () => {
         ) : tracks.length === 0 ? (
           <EmptyState icon="music" title="Empty playlist" description="Add tracks to this playlist to get started" />
         ) : (
-          <motion.div className="flex flex-col gap-0.5" variants={staggerContainer} initial="hidden" animate="visible">
-            {tracks.map((track, i) => {
-              const row = (
-                <SongRow
-                  key={track.id}
-                  track={track}
-                  index={i + 1}
-                  isActive={currentTrack?.id === track.id}
-                  onClick={() => playTrack(track, tracks, from)}
-                  onRemove={isOwn ? () => void removeAt(i) : undefined}
-                />
-              );
-              if (!isOwn) return row;
-              return (
-                <div
-                  key={track.id}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.effectAllowed = 'move';
-                    setDragFrom(i);
-                  }}
-                  onDragOver={(e) => {
-                    if (dragFrom === null) return;
-                    e.preventDefault();
-                    setDropAt(i);
-                  }}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    if (dragFrom !== null) void reorder(dragFrom, i);
-                    setDragFrom(null);
-                    setDropAt(null);
-                  }}
-                  onDragEnd={() => {
-                    setDragFrom(null);
-                    setDropAt(null);
-                  }}
-                  className={cn(
-                    'flex items-center gap-1 rounded border-t-2 border-transparent',
-                    dragFrom === i && 'opacity-40',
-                    dropAt === i && dragFrom !== i && 'border-acc',
-                  )}
-                >
-                  <span className="flex-none text-t4 cursor-grab px-1 select-none" aria-hidden>
-                    <Icon name="menu" size={14} />
-                  </span>
-                  <div className="grow min-w-0">
-                    <SongRow
-                      track={track}
-                      index={i + 1}
-                      isActive={currentTrack?.id === track.id}
-                      onClick={() => playTrack(track, tracks, from)}
-                      onRemove={isOwn ? () => void removeAt(i) : undefined}
-                    />
+          <>
+            <motion.div
+              className="flex flex-col gap-0.5"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
+              {tracks.map((track, i) => {
+                const row = (
+                  <SongRow
+                    key={track.id}
+                    track={track}
+                    index={i + 1}
+                    isActive={currentTrack?.id === track.id}
+                    onClick={() => playTrack(track, tracks, from)}
+                    onRemove={isOwn ? () => void removeAt(i) : undefined}
+                  />
+                );
+                if (!isOwn) return row;
+                return (
+                  <div
+                    key={track.id}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'move';
+                      setDragFrom(i);
+                    }}
+                    onDragOver={(e) => {
+                      if (dragFrom === null) return;
+                      e.preventDefault();
+                      setDropAt(i);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragFrom !== null) void reorder(dragFrom, i);
+                      setDragFrom(null);
+                      setDropAt(null);
+                    }}
+                    onDragEnd={() => {
+                      setDragFrom(null);
+                      setDropAt(null);
+                    }}
+                    className={cn(
+                      'flex items-center gap-1 rounded border-t-2 border-transparent',
+                      dragFrom === i && 'opacity-40',
+                      dropAt === i && dragFrom !== i && 'border-acc',
+                    )}
+                  >
+                    <span className="flex-none text-t4 cursor-grab px-1 select-none" aria-hidden>
+                      <Icon name="menu" size={14} />
+                    </span>
+                    <div className="grow min-w-0">
+                      <SongRow
+                        track={track}
+                        index={i + 1}
+                        isActive={currentTrack?.id === track.id}
+                        onClick={() => playTrack(track, tracks, from)}
+                        onRemove={isOwn ? () => void removeAt(i) : undefined}
+                      />
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </motion.div>
+                );
+              })}
+            </motion.div>
+            {isYouTube && hasMore && <LoadMore loading={loadingMore} error={moreError} onClick={loadMore} />}
+          </>
         )}
       </div>
     </div>

@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Field } from '../ui/Field';
 import Icon from '../ui/Icon';
 import { useAppDispatch, useAppSelector } from '../../store';
-import { setQuery } from '../../store/searchSlice';
+import { addRecent, setQuery } from '../../store/searchSlice';
 import { useModeStore } from '../../store/modeContext';
 import { useSearchSuggestions } from '../../api/hooks';
 import { cn } from '../../lib/cn';
@@ -52,6 +52,7 @@ const SearchField = ({
 
   const pick = (s: string) => {
     dispatch(setQuery(s));
+    dispatch(addRecent(s));
     setSuggesting(false);
     if (!onSearchPage) navigate('/search');
   };
@@ -69,6 +70,7 @@ const SearchField = ({
       if (open && active >= 0) pick(suggestions[active]);
       else {
         setSuggesting(false);
+        if (query.trim()) dispatch(addRecent(query));
         if (!onSearchPage) navigate('/search');
       }
     } else if (e.key === 'Escape') {

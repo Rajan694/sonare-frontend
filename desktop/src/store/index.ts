@@ -3,9 +3,11 @@ import { useDispatch, useSelector } from 'react-redux';
 import search, { initialSearchState, type SearchState, type SearchType } from './searchSlice';
 import ui from './uiSlice';
 import update from './updateSlice';
+import { sanitizeRecentSearches } from '../../../shared/search/recentSearches';
 
 const SAVED_SEARCH_KEY = 'sonare_search';
 const SIDEBAR_KEY = 'sonare_sidebar_collapsed';
+const RECENT_SEARCHES_KEY = 'sonare_recent_searches';
 const SEARCH_TYPES: SearchType[] = ['songs', 'albums', 'artists', 'playlists'];
 
 /** The query and chip survive a reload (dev-server reloads included); results are refetched. */
@@ -22,6 +24,15 @@ const savedSearch = (): SearchState => {
   }
 };
 
+/** The recent searches are a preference and survive restarts. */
+const savedRecentSearches = (): string[] => {
+  try {
+    return sanitizeRecentSearches(JSON.parse(localStorage.getItem(RECENT_SEARCHES_KEY) ?? 'null'));
+  } catch {
+    return [];
+  }
+};
+
 /** Unlike the search, the sidebar choice is a preference and survives restarts. */
 const savedSidebarCollapsed = (): boolean => {
   try {
@@ -33,7 +44,10 @@ const savedSidebarCollapsed = (): boolean => {
 
 export const store = configureStore({
   reducer: { search, ui, update },
-  preloadedState: { search: savedSearch(), ui: { queueOpen: false, sidebarCollapsed: savedSidebarCollapsed() } },
+  preloadedState: {
+    search: { ...savedSearch(), recent: savedRecentSearches() },
+    ui: { queueOpen: false, sidebarCollapsed: savedSidebarCollapsed() },
+  },
 });
 
 let lastSidebar = store.getState().ui.sidebarCollapsed;
@@ -45,6 +59,18 @@ store.subscribe(() => {
     localStorage.setItem(SIDEBAR_KEY, String(collapsed));
   } catch {
     // Blocked storage: the sidebar reopens expanded next launch.
+  }
+});
+
+let lastRecent: string[] | null = null;
+store.subscribe(() => {
+  const { recent } = store.getState().search;
+  if (lastRecent === recent) return;
+  lastRecent = recent;
+  try {
+    localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(recent));
+  } catch {
+    // Blocked storage: the recent searches won't survive a restart.
   }
 });
 

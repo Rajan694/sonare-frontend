@@ -334,6 +334,31 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so |
 | `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in    |
 
+## `test/screens/load-more.test.tsx`
+
+| ID             | Use case                                                  |
+| :------------- | :-------------------------------------------------------- |
+| `WEB-PAGE-001` | Load more asks for the next page and appends it           |
+| `WEB-PAGE-002` | no cursor from the server means no Load more              |
+| `WEB-PAGE-003` | a failed next page keeps the list and offers a retry      |
+| `WEB-PAGE-004` | a new query replaces the pages instead of adding to them  |
+| `WEB-PAGE-005` | an album appends its next page of songs                   |
+| `WEB-PAGE-006` | a YouTube playlist appends its next page of songs         |
+| `WEB-PAGE-007` | an own playlist comes whole, so it never offers Load more |
+
+## `test/screens/recent-searches.test.tsx`
+
+| ID                     | Use case                                                                            |
+| :--------------------- | :---------------------------------------------------------------------------------- |
+| `WEB-RECENTSEARCH-001` | a query whose result was used is offered again, and picking it searches for it      |
+| `WEB-RECENTSEARCH-002` | pressing Enter remembers the typed query at once                                    |
+| `WEB-RECENTSEARCH-003` | picking a suggestion remembers the completed query                                  |
+| `WEB-RECENTSEARCH-004` | keeps the newest first, only ten, and moves a repeat to the front whatever its case |
+| `WEB-RECENTSEARCH-005` | the × forgets just that query                                                       |
+| `WEB-RECENTSEARCH-006` | Clear forgets them all                                                              |
+| `WEB-RECENTSEARCH-007` | the list survives a restart                                                         |
+| `WEB-RECENTSEARCH-008` | unreadable or junk saved searches are ignored                                       |
+
 ## `test/screens/settings-downloads.test.tsx`
 
 | ID                 | Use case                                                                                           |
