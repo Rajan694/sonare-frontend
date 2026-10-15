@@ -17,6 +17,7 @@ import { maybeRecordPlay, resetPlay } from './api/plays';
 import { setSyncOnline, startBackgroundSync } from './api/sync';
 import { loadSettings, updateSettings, useSettings } from './storage/settings';
 import { showToast } from './store/toasts';
+import { ServerWakeNotice } from './components/ui/ServerWakeNotice';
 import { localLibrary } from './storage/local';
 import { downloads } from './storage/downloads';
 import AppShell from './components/layout/AppShell';
@@ -508,6 +509,7 @@ const App = () => {
     <ModeContext.Provider value={{ mode: effectiveMode, setMode }}>
       <PlayerContext.Provider value={playerValue}>
         <BrowserRouter>
+          <ServerWakeNotice />
           <Routes>
             {CAPS.landing ? (
               <Route

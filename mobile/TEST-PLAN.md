@@ -468,3 +468,10 @@ navigation mock live in `test-utils/`.
 | `MOB-FOLD-003` | when Android will not ask again, the button opens the app settings                        |
 | `MOB-FOLD-004` | Offline Mode lists the downloads, then the songs of shown folders                         |
 | `MOB-FOLD-005` | the offline player and downloading offer the permission once each; blocked opens settings |
+
+## `__tests__/server-wake.test.tsx`
+
+| ID             | Use case                                                                                             |
+| :------------- | :--------------------------------------------------------------------------------------------------- |
+| `MOB-WAKE-001` | backend requests give up after the wake-up time; other requests and explicit timeouts are left alone |
+| `MOB-WAKE-002` | a slow first backend request shows "waking up" until the server answers                              |

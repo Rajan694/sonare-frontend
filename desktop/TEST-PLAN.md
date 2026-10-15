@@ -904,3 +904,12 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-RESTORE-005` | a queue from the account arriving after something was played changes nothing |
 | `WEB-RESTORE-006` | an account queue older than the device's changes nothing                     |
 | `WEB-MEDIA-001`   | lock-screen and media-key controls drive the player and show the song        |
+
+## `test/unit/serverWake.test.tsx`
+
+| ID             | Use case                                                                                     |
+| :------------- | :------------------------------------------------------------------------------------------- |
+| `WEB-WAKE-001` | a slow first request says the server is waking up until it answers                           |
+| `WEB-WAKE-002` | a slow request to an awake server says nothing; after a long quiet spell it does again       |
+| `WEB-WAKE-003` | a backend request that never answers gives up with a clear error; a caller's abort passes on |
+| `WEB-WAKE-004` | the notice shows while the server wakes up and goes away after                               |

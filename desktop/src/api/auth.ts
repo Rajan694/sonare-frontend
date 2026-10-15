@@ -1,3 +1,4 @@
+import { serverFetch } from './serverFetch';
 import type { User } from '../types';
 import { CLIENT } from '../lib/caps';
 import { API_BASE } from './server';
@@ -116,7 +117,7 @@ class AuthRequestError extends Error {
 
 /** POSTs to /auth/<path>; throws the server's message on an error status. */
 const postAuth = async <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> => {
-  const res = await fetch(`${API_BASE}/auth/${path}`, {
+  const res = await serverFetch(`${API_BASE}/auth/${path}`, {
     method: 'POST',
     headers: accessToken ? { ...JSON_HEADERS, Authorization: `Bearer ${accessToken}` } : JSON_HEADERS,
     body: JSON.stringify(body),
@@ -172,7 +173,7 @@ export const resetPassword = async (token: string, password: string): Promise<vo
 /** Reads the signed-in account again, e.g. after its email was verified. */
 const refreshCurrentUser = async (): Promise<void> => {
   if (!currentAccessToken) return;
-  const res = await fetch(`${API_BASE}/me`, {
+  const res = await serverFetch(`${API_BASE}/me`, {
     headers: { ...JSON_HEADERS, Authorization: `Bearer ${currentAccessToken}` },
   }).catch(() => null);
   if (res?.ok) setCurrentUser(await res.json());
@@ -203,7 +204,7 @@ const setCurrentUser = (user: User) => {
 export const signOut = async (): Promise<void> => {
   try {
     if (currentAccessToken) {
-      await fetch(`${API_BASE}/auth/logout`, {
+      await serverFetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: {
           ...JSON_HEADERS,
@@ -268,7 +269,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     // Renewed (or signed out) by another tab while this one waited.
     if (adoptStoredSession() || !currentRefreshToken) return currentAccessToken;
     try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
+      const res = await serverFetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({ refreshToken: currentRefreshToken }),

@@ -1,3 +1,4 @@
+import { serverFetch } from './serverFetch';
 import { API_BASE, getAccessToken, onAuthChange, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
 import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo } from '../types';
@@ -136,7 +137,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     }
   }
 
-  let res = await fetch(url.toString(), {
+  let res = await serverFetch(url.toString(), {
     ...init,
     headers,
   });
@@ -146,7 +147,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     const newToken = await refreshAccessToken();
     if (newToken) {
       headers.set('Authorization', `Bearer ${newToken}`);
-      res = await fetch(url.toString(), {
+      res = await serverFetch(url.toString(), {
         ...init,
         headers,
       });

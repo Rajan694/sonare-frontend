@@ -25,6 +25,7 @@ import { PlayerSheetsHost } from '../components/music/PlayerSheets';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 import { useRecentSearchesStore } from '../store/recentSearches';
 import { cn } from '../lib/cn';
+import { ServerWakeNotice } from '../components/ui/ServerWakeNotice';
 
 const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
 
@@ -134,6 +135,7 @@ export const RootNavigator = () => {
     return (
       <View className="flex-1 bg-bg items-center justify-center">
         <ActivityIndicator color="#00E28A" />
+        <ServerWakeNotice />
       </View>
     );
   }
@@ -141,6 +143,7 @@ export const RootNavigator = () => {
   return (
     <NavigationContainer ref={navigationRef}>
       <ModeToast />
+      <ServerWakeNotice />
       <Stack.Navigator
         id={undefined}
         screenOptions={{

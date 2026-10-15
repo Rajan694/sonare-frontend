@@ -14,6 +14,7 @@ export interface HttpResponse {
 }
 
 import { apiOrigin } from './config';
+import { REQUEST_TIMEOUT_MS, trackServerRequest } from '../../../shared/net/serverWake';
 
 export class NetworkError extends Error {
   constructor(message = 'Network request failed') {
@@ -27,34 +28,40 @@ export const httpRequest = (
     method = 'GET',
     headers = {},
     body,
-    timeoutMs = 0,
+    timeoutMs,
   }: {
     method?: string;
     headers?: Record<string, string>;
     body?: string;
-    /** 0 waits forever (the default); without one, a request sent as the network comes back can hang. */
+    /**
+     * 0 waits forever. Backend requests default to REQUEST_TIMEOUT_MS (long enough for the server
+     * to wake up), others to 0; without one, a request sent as the network comes back can hang.
+     */
     timeoutMs?: number;
   } = {},
 ): Promise<HttpResponse> => {
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open(method, url);
-    xhr.timeout = timeoutMs;
-    // Tells the backend's admin analytics which app the request came from.
-    if (url.startsWith(apiOrigin())) xhr.setRequestHeader('X-Sonare-Client', 'mobile');
-    for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
-    xhr.onload = () => {
-      let json: any = null;
-      try {
-        json = xhr.responseText ? JSON.parse(xhr.responseText) : null;
-      } catch {
-        // Not JSON; callers look at status.
-      }
-      resolve({ status: xhr.status, json });
-    };
-    // Same message fetch uses, so existing "can't reach the server" checks keep working.
-    xhr.onerror = () => reject(new NetworkError());
-    xhr.ontimeout = () => reject(new NetworkError('Network request timed out'));
-    xhr.send(body ?? null);
-  });
+  const toBackend = url.startsWith(apiOrigin());
+  const send = () =>
+    new Promise<HttpResponse>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open(method, url);
+      xhr.timeout = timeoutMs ?? (toBackend ? REQUEST_TIMEOUT_MS : 0);
+      // Tells the backend's admin analytics which app the request came from.
+      if (toBackend) xhr.setRequestHeader('X-Sonare-Client', 'mobile');
+      for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
+      xhr.onload = () => {
+        let json: any = null;
+        try {
+          json = xhr.responseText ? JSON.parse(xhr.responseText) : null;
+        } catch {
+          // Not JSON; callers look at status.
+        }
+        resolve({ status: xhr.status, json });
+      };
+      // Same message fetch uses, so existing "can't reach the server" checks keep working.
+      xhr.onerror = () => reject(new NetworkError());
+      xhr.ontimeout = () => reject(new NetworkError('Network request timed out'));
+      xhr.send(body ?? null);
+    });
+  return toBackend ? trackServerRequest(send) : send();
 };
