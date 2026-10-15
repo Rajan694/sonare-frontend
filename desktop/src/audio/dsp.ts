@@ -13,20 +13,12 @@ import { getSettings, subscribeSettings, updateSettings } from '../storage/setti
  * a suspended context means silence.
  */
 
-export const EQ_BANDS = [32, 64, 150, 400, 1000, 2400, 6000, 14000] as const;
+import { CUSTOM_PRESET, EQ_BANDS, EQ_PRESETS } from '../../../shared/settings';
+
+export { CUSTOM_PRESET, EQ_BANDS, EQ_PRESETS };
 export const EQ_LABELS = ['32', '64', '150', '400', '1k', '2.4k', '6k', '14k'] as const;
 export const EQ_MIN_DB = -12;
 export const EQ_MAX_DB = 12;
-
-export const EQ_PRESETS: Record<string, number[]> = {
-  Flat: [0, 0, 0, 0, 0, 0, 0, 0],
-  Sonare: [1, 4, 0, -1, 2, 5, 3, 0],
-  Bass: [6, 5, 3.5, 1, 0, 0, 0, 0],
-  Vocal: [-3, -2, -1, 1.5, 3.5, 3, 1, 0],
-  Acoustic: [1, 2.5, 1.5, 0.5, 1, 2, 2.5, 2],
-  'Late night': [-3, -2.5, -1, 0, 1, 0.5, -1.5, -3],
-};
-export const CUSTOM_PRESET = 'Custom';
 
 export interface DspState {
   /** Master bypass — off leaves the signal flat without tearing down the graph. */

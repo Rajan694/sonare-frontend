@@ -3,6 +3,15 @@ import NetInfo from '@react-native-community/netinfo';
 import { create } from 'zustand';
 import { api } from './api';
 import { useAuthStore } from './auth';
+import {
+  API_QUALITY,
+  CUSTOM_PRESET,
+  DEFAULT_SETTINGS,
+  EQ_PRESETS as SHARED_EQ_PRESETS,
+  sanitizeSettings,
+  type AudioQuality,
+  type DownloadFormat,
+} from '../../../shared/settings';
 
 /**
  * Account settings the phone uses (GET/PUT /me/settings): download quality and format, the
@@ -14,38 +23,20 @@ import { useAuthStore } from './auth';
  * folder is per device and lives in store/downloads.ts instead.
  */
 
-export type AudioQuality = 'low' | 'normal' | 'high';
-export type DownloadFormat = 'opus' | 'm4a';
-
-/** Settings quality → the backend's `quality` parameter for /tracks/:id/stream. */
-export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = {
-  low: 'low',
-  normal: 'normal',
-  high: 'high',
-};
+export type { AudioQuality, DownloadFormat };
+export { API_QUALITY, CUSTOM_PRESET };
 
 /**
- * Equalizer presets: gains in dB for the 32, 64, 150, 400, 1k, 2.4k, 6k and 14k Hz bands.
- * The same names and values as the desktop app (desktop/src/audio/dsp.ts), because the
- * chosen preset follows the account from one device to the other.
+ * Equalizer presets: gains in dB for the 32, 64, 150, 400, 1k, 2.4k, 6k and 14k Hz bands,
+ * shared with the desktop app because the chosen preset follows the account.
  */
-export const EQ_PRESET_GAINS: Record<string, number[]> = {
-  Flat: [0, 0, 0, 0, 0, 0, 0, 0],
-  Sonare: [1, 4, 0, -1, 2, 5, 3, 0],
-  Bass: [6, 5, 3.5, 1, 0, 0, 0, 0],
-  Vocal: [-3, -2, -1, 1.5, 3.5, 3, 1, 0],
-  Acoustic: [1, 2.5, 1.5, 0.5, 1, 2, 2.5, 2],
-  'Late night': [-3, -2.5, -1, 0, 1, 0.5, -1.5, -3],
-};
+export const EQ_PRESET_GAINS = SHARED_EQ_PRESETS;
 /** The presets the Audio screen offers. */
 export const EQ_PRESETS = Object.keys(EQ_PRESET_GAINS);
-/** Bands moved by hand. Kept on the phone only: the gains themselves aren't in the account. */
-export const CUSTOM_PRESET = 'Custom';
 
 const STORAGE_KEY = 'sonare.settings';
 /** Changes the account doesn't have yet, and whose they are (null: made as a guest). */
 const UNSYNCED_KEY = 'sonare.settingsUnsynced';
-const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
 
 interface SettingsStore {
   /** Streaming quality, from the next track (Settings → Playback; the desktop app's too). */
@@ -73,28 +64,11 @@ interface SettingsStore {
   ) => void;
 }
 
-const pick = (s: Record<string, unknown>) => {
-  return {
-    ...(QUALITIES.includes(s.streamQuality as AudioQuality) && {
-      streamQuality: s.streamQuality as AudioQuality,
-    }),
-    ...(QUALITIES.includes(s.downloadQuality as AudioQuality) && {
-      downloadQuality: s.downloadQuality as AudioQuality,
-    }),
-    ...((s.downloadFormat === 'opus' || s.downloadFormat === 'm4a') && {
-      downloadFormat: s.downloadFormat as DownloadFormat,
-    }),
-    ...(typeof s.eqPreset === 'string' && EQ_PRESETS.includes(s.eqPreset) && { eqPreset: s.eqPreset }),
-    ...(typeof s.gapless === 'boolean' && { gapless: s.gapless }),
-    ...(typeof s.normalization === 'boolean' && { normalization: s.normalization }),
-    ...(typeof s.stayOffline === 'boolean' && { stayOffline: s.stayOffline }),
-  };
-};
+/** The account's fields (a hand-made Custom EQ stays on the phone). */
+const pick = (s: Record<string, unknown>) => sanitizeSettings(s);
 
 /** What the phone saved: like the account's fields, plus a hand-made (Custom) EQ. */
-const pickStored = (s: Record<string, unknown>) => {
-  return { ...pick(s), ...(s.eqPreset === CUSTOM_PRESET && { eqPreset: CUSTOM_PRESET }) };
-};
+const pickStored = (s: Record<string, unknown>) => sanitizeSettings(s, { allowCustom: true });
 
 /** What the phone keeps in AsyncStorage. */
 const stored = (s: SettingsStore) => {
@@ -168,14 +142,8 @@ const sendUnsynced = async (): Promise<void> => {
 };
 
 export const useSettingsStore = create<SettingsStore>((set, get) => ({
-  streamQuality: 'high',
-  downloadQuality: 'high',
-  downloadFormat: 'opus',
   // The same defaults on both apps and the backend.
-  eqPreset: 'Sonare',
-  gapless: true,
-  normalization: true,
-  stayOffline: false,
+  ...DEFAULT_SETTINGS,
 
   hydrate: async () => {
     if (!watchingNetwork) {

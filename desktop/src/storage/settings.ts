@@ -1,6 +1,14 @@
 import { useSyncExternalStore } from 'react';
 import { api } from '../api/api';
 import { getCurrentUser, isAuthenticated, onAuthChange, onAuthReady } from '../api/auth';
+import {
+  API_QUALITY,
+  DEFAULT_SETTINGS,
+  sanitizeSettings,
+  type AudioQuality,
+  type DownloadFormat,
+  type UserSettings,
+} from '../../../shared/settings';
 
 /**
  * Preferences, kept on this device (guests and offline included) and, signed in, in the
@@ -11,29 +19,8 @@ import { getCurrentUser, isAuthenticated, onAuthChange, onAuthReady } from '../a
  * it can. Only changed fields are sent: the backend keeps the ones it isn't sent, so a change
  * made on the phone since this app loaded its copy isn't overwritten.
  */
-export type AudioQuality = 'low' | 'normal' | 'high';
-export type DownloadFormat = 'opus' | 'm4a';
-
-export interface UserSettings {
-  eqPreset: string;
-  gapless: boolean;
-  normalization: boolean;
-  streamQuality: AudioQuality;
-  downloadQuality: AudioQuality;
-  downloadFormat: DownloadFormat;
-  stayOffline: boolean;
-}
-
-/** The same defaults on both apps and the backend. */
-export const DEFAULT_SETTINGS: UserSettings = {
-  eqPreset: 'Sonare',
-  gapless: true,
-  normalization: true,
-  streamQuality: 'high',
-  downloadQuality: 'high',
-  downloadFormat: 'opus',
-  stayOffline: false,
-};
+export type { AudioQuality, DownloadFormat, UserSettings };
+export { API_QUALITY, DEFAULT_SETTINGS };
 
 const STORE_KEY = 'sonare_settings';
 /** Changes the account doesn't have yet, and whose they are (null: made as a guest). */
@@ -57,28 +44,9 @@ const writeJson = (key: string, value: unknown) => {
   }
 };
 
-const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
-
-/** Settings quality → the backend's `quality` parameter for /tracks/:id/stream. */
-export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = {
-  low: 'low',
-  normal: 'normal',
-  high: 'high',
-};
-
-/** Known fields with usable values only (the server may send ones this build retired, e.g. 'lossless'). */
-const sanitize = (s: Record<string, unknown> | null | undefined): Partial<UserSettings> => {
-  if (!s) return {};
-  const out: Partial<UserSettings> = {};
-  if (typeof s.eqPreset === 'string' && s.eqPreset) out.eqPreset = s.eqPreset;
-  if (typeof s.gapless === 'boolean') out.gapless = s.gapless;
-  if (typeof s.normalization === 'boolean') out.normalization = s.normalization;
-  if (typeof s.stayOffline === 'boolean') out.stayOffline = s.stayOffline;
-  if (QUALITIES.includes(s.streamQuality as AudioQuality)) out.streamQuality = s.streamQuality as AudioQuality;
-  if (QUALITIES.includes(s.downloadQuality as AudioQuality)) out.downloadQuality = s.downloadQuality as AudioQuality;
-  if (s.downloadFormat === 'opus' || s.downloadFormat === 'm4a') out.downloadFormat = s.downloadFormat;
-  return out;
-};
+// A hand-made (Custom) EQ is kept too: dsp.ts reads its gains from this device.
+const sanitize = (s: Record<string, unknown> | null | undefined): Partial<UserSettings> =>
+  sanitizeSettings(s, { allowCustom: true });
 
 let settings: UserSettings = { ...DEFAULT_SETTINGS, ...sanitize(readJson(STORE_KEY)) };
 
