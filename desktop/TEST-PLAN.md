@@ -353,13 +353,15 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/virtual-rows.test.tsx`
 
-| ID             | Use case                                                                                    |
-| :------------- | :------------------------------------------------------------------------------------------ |
-| `WEB-VIRT-001` | with a measured container (clientHeight > 0) only a visible window of rows is returned      |
-| `WEB-VIRT-002` | without a measured container (clientHeight = 0) every row is returned (null-state fallback) |
-| `WEB-VIRT-003` | scrolling the element fires a scroll event and shifts the rendered window                   |
-| `WEB-VIRT-004` | the Library screen renders a bottom spacer when virtualisation is active                    |
-| `WEB-VIRT-005` | without layout (clientHeight = 0) all rows are rendered and no large spacer appears         |
+| ID             | Use case                                                                                             |
+| :------------- | :--------------------------------------------------------------------------------------------------- |
+| `WEB-VIRT-001` | with a measured container (clientHeight > 0) only a visible window of rows is returned               |
+| `WEB-VIRT-002` | without a measured container (clientHeight = 0) every row is returned (null-state fallback)          |
+| `WEB-VIRT-003` | scrolling the element fires a scroll event and shifts the rendered window                            |
+| `WEB-VIRT-004` | the Library screen draws a slice of rows in a box as tall as every row when virtualisation is active |
+| `WEB-VIRT-005` | without layout (clientHeight = 0) all rows are rendered and no large spacer appears                  |
+| `WEB-VIRT-006` | scrolling moves the drawn rows inside the box but never changes its height                           |
+| `WEB-VIRT-007` | the height of a drawn row replaces the guessed one                                                   |
 
 ## `test/screens/load-more.test.tsx`
 

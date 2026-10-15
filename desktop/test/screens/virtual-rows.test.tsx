@@ -1,6 +1,6 @@
-import React, { createRef } from 'react';
+import React, { createRef, useRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, renderHook, screen } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { clearSession, setSession } from '../../src/api/auth';
 import { renderWithProviders } from '../helpers/render';
 import { API, http, HttpResponse, useMockServer } from '../helpers/server';
@@ -71,6 +71,8 @@ describe('useVirtualRows hook', () => {
     // Spacers cover the rest.
     expect(result.current.topPad).toBe(start * 56);
     expect(result.current.bottomPad).toBe(Math.max(0, (MANY - end) * 56));
+    // The rows box is as tall as every row, the drawn ones pushed down to their place.
+    expect(result.current.style).toEqual({ height: MANY * 56 - 2, paddingTop: start * 56 });
   });
 
   it('WEB-VIRT-002 without a measured container (clientHeight = 0) every row is returned (null-state fallback)', () => {
@@ -81,6 +83,7 @@ describe('useVirtualRows hook', () => {
     expect(result.current.end).toBe(MANY);
     expect(result.current.topPad).toBe(0);
     expect(result.current.bottomPad).toBe(0);
+    expect(result.current.style).toBeUndefined();
   });
 
   it('WEB-VIRT-003 scrolling the element fires a scroll event and shifts the rendered window', async () => {
@@ -106,6 +109,54 @@ describe('useVirtualRows hook', () => {
     expect(result.current.start).toBeLessThanOrEqual(50);
     expect(result.current.end).toBeGreaterThan(initialEnd);
   });
+
+  it('WEB-VIRT-006 scrolling moves the drawn rows inside the box but never changes its height', () => {
+    // WebKitGTK pulled the scroll position back near the end when the list was briefly shorter mid-update.
+    let scrollTop = 0;
+    const { ref, el } = makeRef(600);
+    Object.defineProperty(el, 'scrollTop', { configurable: true, get: () => scrollTop });
+    const { result } = renderHook(() => useVirtualRows({ count: MANY, rowHeight: 54, gap: 2, scrollRef: ref }));
+    const heights = [result.current.style?.height];
+    for (const row of [50, 120, MANY - 1]) {
+      scrollTop = row * 56;
+      act(() => fireEvent.scroll(el));
+      heights.push(result.current.style?.height);
+      expect(result.current.style?.paddingTop).toBe(result.current.start * 56);
+    }
+    expect(result.current.end).toBe(MANY);
+    expect(new Set(heights)).toEqual(new Set([MANY * 56 - 2]));
+  });
+
+  it('WEB-VIRT-007 the height of a drawn row replaces the guessed one', () => {
+    const List = () => {
+      const ref = useRef<HTMLDivElement>(null);
+      const v = useVirtualRows({ count: MANY, rowHeight: 54, gap: 2, scrollRef: ref });
+      return (
+        <div ref={ref}>
+          <div data-virtual-rows data-testid="box" style={v.style}>
+            {Array.from({ length: v.end - v.start }, (_, i) => (
+              <div key={v.start + i} className="row" />
+            ))}
+          </div>
+        </div>
+      );
+    };
+    Object.defineProperty(HTMLElement.prototype, 'clientHeight', { configurable: true, get: () => 600 });
+    Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+      configurable: true,
+      get() {
+        return (this as HTMLElement).classList.contains('row') ? 60 : 0;
+      },
+    });
+    try {
+      render(<List />);
+      // Rows are 60 px, not the 54 guessed: the box is sized from what was drawn.
+      expect(screen.getByTestId('box').style.height).toBe(`${MANY * 62 - 2}px`);
+    } finally {
+      delete (HTMLElement.prototype as Record<string, unknown>).clientHeight;
+      delete (HTMLElement.prototype as Record<string, unknown>).offsetHeight;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -128,18 +179,23 @@ describe('Library screen virtualisation integration', () => {
     delete (HTMLElement.prototype as Record<string, unknown>).clientHeight;
   });
 
-  it('WEB-VIRT-004 the Library screen renders a bottom spacer when virtualisation is active', async () => {
+  it('WEB-VIRT-004 the Library screen draws a slice of rows in a box as tall as every row when virtualisation is active', async () => {
     setSession('a', 'r', testUser);
     enableLayout(600);
     renderWithProviders(<Library />, { route: '/library' });
 
     await screen.findByText(`${MANY} songs in your library`);
 
-    // When virtualisation is active the hook produces a non-zero bottomPad for
-    // the rows that are off-screen. The div is aria-hidden and has an inline style.
-    const spacers = document.querySelectorAll('[aria-hidden="true"][style*="height"]');
-    const hasSpacer = Array.from(spacers).some((s) => parseInt((s as HTMLElement).style.height) > 0);
-    expect(hasSpacer).toBe(true);
+    // The list shown before the songs came may still be leaving (AnimatePresence "wait").
+    const box = await waitFor(() => {
+      const found = [...document.querySelectorAll<HTMLElement>('[data-virtual-rows]')].find((b) => b.children.length);
+      expect(found).toBeDefined();
+      return found!;
+    });
+    expect(box.children.length).toBeLessThan(MANY);
+    // 58 px rows guessed until measured (jsdom has no layout), 2 px apart.
+    expect(box.style.height).toBe(`${MANY * 60 - 2}px`);
+    expect(box.style.paddingTop).toBe('0px');
   });
 
   it('WEB-VIRT-005 without layout (clientHeight = 0) all rows are rendered and no large spacer appears', async () => {

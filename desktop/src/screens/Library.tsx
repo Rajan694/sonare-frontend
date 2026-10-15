@@ -116,10 +116,10 @@ const Library = () => {
   if (sort) tracks = sortTracks(tracks, sort.key, sort.desc);
   const isTrackTab = activeTab === 'Songs' || activeTab === 'Most played';
   const from = { kind: 'Library', name: activeTab };
-  // Songs rows are ~54px; the container is remounted (and its scroll reset) by the key below.
+  // Songs rows are ~58px (measured once drawn); the container is remounted (and its scroll reset) by the key below.
   const virtual = useVirtualRows({
     count: tracks.length,
-    rowHeight: 54,
+    rowHeight: 58,
     gap: 2,
     scrollRef: listRef,
     deps: [activeTab, mode, view, sourceFilter, downloadedOnly],
@@ -455,8 +455,7 @@ const Library = () => {
               ))}
             </div>
           ) : (
-            <>
-              {virtual.topPad > 0 && <div style={{ height: virtual.topPad }} aria-hidden />}
+            <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
               {tracks.slice(virtual.start, virtual.end).map((track, i) => (
                 <SongRow
                   key={track.id}
@@ -467,8 +466,7 @@ const Library = () => {
                   showPlays
                 />
               ))}
-              {virtual.bottomPad > 0 && <div style={{ height: virtual.bottomPad }} aria-hidden />}
-            </>
+            </div>
           )}
         </motion.div>
       </AnimatePresence>

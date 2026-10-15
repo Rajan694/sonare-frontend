@@ -1,12 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
-import type { RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import type { CSSProperties, RefObject } from 'react';
 
 /**
  * Draw only the rows a scrolling list is showing (plus a few either side). A library of
- * thousands of songs scrolls smoothly instead of laying out every row at once. The list
- * keeps its natural markup structure: the caller renders the slice between two spacer
- * elements sized to stand in for the rows that are not drawn. Until the container has been
- * measured (before the first paint, or in a test with no layout) every row is drawn.
+ * thousands of songs scrolls smoothly instead of laying out every row at once. The caller
+ * puts the drawn slice in one element marked `data-virtual-rows`, styled with `style`: it is
+ * as tall as every row together, with the drawn ones pushed down to where they belong. Its
+ * height never changes while the slice does, so the browser never sees a shorter list
+ * mid-update and pulls the scroll position back (WebKitGTK did, near the end of the list).
+ * Until the container has been measured (before the first paint, or in a test with no
+ * layout) every row is drawn.
  */
 
 export interface VirtualRows {
@@ -14,16 +17,21 @@ export interface VirtualRows {
   start: number;
   /** One past the last row to draw. */
   end: number;
-  /** Height of the spacer above the drawn rows. */
+  /** Space above the drawn rows, where the rows before them would be. */
   topPad: number;
-  /** Height of the spacer below the drawn rows. */
+  /** Space below the drawn rows. */
   bottomPad: number;
+  /** For the `data-virtual-rows` element; undefined while every row is drawn. */
+  style: CSSProperties | undefined;
 }
 
 export interface VirtualRowsOptions {
   /** How many rows there are. */
   count: number;
-  /** The height of one row, in pixels. */
+  /**
+   * The height of one row, in pixels, until a drawn row has been measured (the children of
+   * the `data-virtual-rows` element); their real height depends on the layout.
+   */
   rowHeight: number;
   /** Space between rows, in pixels; part of the stride. */
   gap?: number;
@@ -46,7 +54,9 @@ export const useVirtualRows = ({
   scrollRef,
   deps = [],
 }: VirtualRowsOptions): VirtualRows => {
-  const stride = rowHeight + gap;
+  // A drawn row's height once there is layout; spacers sized from a guess drift off the rows.
+  const [drawnHeight, setDrawnHeight] = useState<number | null>(null);
+  const stride = (drawnHeight ?? rowHeight) + gap;
   // null until the container has a height: then the whole list is drawn.
   const [range, setRange] = useState<{ start: number; end: number } | null>(null);
 
@@ -63,6 +73,15 @@ export const useVirtualRows = ({
     const end = Math.min(count, first + visible + overscan);
     setRange((prev) => (prev && prev.start === start && prev.end === end ? prev : { start, end }));
   }, [scrollRef, stride, count, overscan]);
+
+  // After each render, the drawn rows' real height; only when they are all there, so a loading
+  // or empty state is never taken for a row.
+  useLayoutEffect(() => {
+    const rows = scrollRef.current?.querySelector(':scope > [data-virtual-rows]')?.children;
+    if (!rows || !range || rows.length === 0 || rows.length !== range.end - range.start) return;
+    const height = (rows[0] as HTMLElement).offsetHeight;
+    if (height > 0 && height !== drawnHeight) setDrawnHeight(height);
+  }, [scrollRef, range, drawnHeight]);
 
   // The dependency list is the caller's list of "the container changed" values.
   const depKey = deps.join('\u0001');
@@ -84,5 +103,6 @@ export const useVirtualRows = ({
     end,
     topPad: start * stride,
     bottomPad: Math.max(0, (count - end) * stride),
+    style: range ? { height: Math.max(0, count * stride - gap), paddingTop: start * stride } : undefined,
   };
 };

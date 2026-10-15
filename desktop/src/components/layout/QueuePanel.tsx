@@ -206,60 +206,60 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
           </div>
         ) : (
           <div ref={listRef} className="flex flex-col gap-0.5 overflow-y-auto grow min-h-0">
-            {virtual.topPad > 0 && <div style={{ height: virtual.topPad }} aria-hidden />}
-            {upcoming.slice(virtual.start, virtual.end).map(({ track, index }) => (
-              <div
-                key={`${track.id}-${index}`}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = 'move';
-                  setDragFrom(index);
-                }}
-                onDragOver={(e) => {
-                  if (dragFrom === null) return;
-                  e.preventDefault();
-                  setDropAt(index);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  onDrop(index);
-                }}
-                onDragEnd={() => {
-                  setDragFrom(null);
-                  setDropAt(null);
-                }}
-                className={cn(
-                  'srow p-1.5 sm:px-2 gap-2 rounded-md hover:bg-s2 transition-colors cursor-pointer group',
-                  dragFrom === index && 'opacity-40',
-                  dropAt === index && dragFrom !== index && 'border-t-2 border-acc',
-                )}
-                onClick={() => playAt(index)}
-              >
-                <span className="flex-none text-t4 cursor-grab hover:text-t2 p-1" aria-hidden>
-                  <Icon name="menu" size={14} />
-                </span>
-                <Artwork src={trackArtwork(track, 64)} alt={track.title} variant="a2" size={36} radius="sm" />
-                <div className="flex flex-col grow gap-0.5 min-w-0">
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-label-l text-t1 truncate">{track.title}</span>
-                    <SourceGlyph source={playsFrom(track, local)} />
-                  </span>
-                  <span className="text-label-s text-t3 truncate">{track.artist}</span>
-                </div>
-                <span className="text-mono-s text-t3 flex-none">{formatDuration(track.durationMs)}</span>
-                <IconButton
-                  icon="close"
-                  label="Remove from queue"
-                  size={28}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFromQueue(index);
+            <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
+              {upcoming.slice(virtual.start, virtual.end).map(({ track, index }) => (
+                <div
+                  key={`${track.id}-${index}`}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDragFrom(index);
                   }}
-                  className="opacity-70 group-hover:opacity-100 flex-none"
-                />
-              </div>
-            ))}
-            {virtual.bottomPad > 0 && <div style={{ height: virtual.bottomPad }} aria-hidden />}
+                  onDragOver={(e) => {
+                    if (dragFrom === null) return;
+                    e.preventDefault();
+                    setDropAt(index);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    onDrop(index);
+                  }}
+                  onDragEnd={() => {
+                    setDragFrom(null);
+                    setDropAt(null);
+                  }}
+                  className={cn(
+                    'srow p-1.5 sm:px-2 gap-2 rounded-md hover:bg-s2 transition-colors cursor-pointer group',
+                    dragFrom === index && 'opacity-40',
+                    dropAt === index && dragFrom !== index && 'border-t-2 border-acc',
+                  )}
+                  onClick={() => playAt(index)}
+                >
+                  <span className="flex-none text-t4 cursor-grab hover:text-t2 p-1" aria-hidden>
+                    <Icon name="menu" size={14} />
+                  </span>
+                  <Artwork src={trackArtwork(track, 64)} alt={track.title} variant="a2" size={36} radius="sm" />
+                  <div className="flex flex-col grow gap-0.5 min-w-0">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-label-l text-t1 truncate">{track.title}</span>
+                      <SourceGlyph source={playsFrom(track, local)} />
+                    </span>
+                    <span className="text-label-s text-t3 truncate">{track.artist}</span>
+                  </div>
+                  <span className="text-mono-s text-t3 flex-none">{formatDuration(track.durationMs)}</span>
+                  <IconButton
+                    icon="close"
+                    label="Remove from queue"
+                    size={28}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromQueue(index);
+                    }}
+                    className="opacity-70 group-hover:opacity-100 flex-none"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
