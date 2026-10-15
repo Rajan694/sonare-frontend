@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
-import { addRecentSearch, removeRecentSearch, sanitizeRecentSearches } from '../lib/recentSearches';
+import { addRecentSearch, removeRecentSearch, sanitizeRecentSearches } from '../../../shared/search/recentSearches';
 
 /**
  * The last searches made on this phone, shared online and offline. Kept in AsyncStorage so they

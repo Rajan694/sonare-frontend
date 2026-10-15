@@ -17,7 +17,7 @@ import {
   addRecentSearch,
   removeRecentSearch,
   sanitizeRecentSearches,
-} from '../src/lib/recentSearches';
+} from '../../shared/search/recentSearches';
 import { nextQueuePlaylistName } from '../../shared/player/playlistNames';
 import { durations, easings, springConfig, springs, AnimatedView, FadeView } from '../src/lib/motion';
 import { useLibraryStore } from '../src/store/library';

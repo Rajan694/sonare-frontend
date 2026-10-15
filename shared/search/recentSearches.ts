@@ -1,4 +1,4 @@
-/** How many recent queries the phone keeps. */
+/** How many recent queries each app keeps (Android and desktop share this logic). */
 export const MAX_RECENT_SEARCHES = 10;
 
 /**
