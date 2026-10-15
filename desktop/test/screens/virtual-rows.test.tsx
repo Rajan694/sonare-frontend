@@ -1,8 +1,8 @@
 import React, { createRef } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, renderHook, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, renderHook, screen } from '@testing-library/react';
 import { clearSession, setSession } from '../../src/api/auth';
-import { makePlayer, renderWithProviders } from '../helpers/render';
+import { renderWithProviders } from '../helpers/render';
 import { API, http, HttpResponse, useMockServer } from '../helpers/server';
 import { makeTrack, page, testUser } from '../helpers/fixtures';
 import Library from '../../src/screens/Library';
@@ -152,5 +152,6 @@ describe('Library screen virtualisation integration', () => {
     // All MANY song-title buttons should be in the document.
     const songButtons = document.querySelectorAll('[aria-label^="Play Track "]');
     expect(songButtons.length).toBe(MANY);
-  });
+    // Drawing every row takes about a second alone, and several when the whole suite runs at once.
+  }, 15_000);
 });
