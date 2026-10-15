@@ -5,6 +5,7 @@ import { SonareLibrary, type DeviceSong } from '../native/SonareLibrary';
 import { hasMusicPermission, requestMusicPermission, type MusicPermission } from '../lib/musicPermission';
 import { downloadedTracks, idInFileName, useDownloadsStore, type FoundDownload } from './downloads';
 import type { Track } from '../data/types';
+import { parseDownloadName } from '../../../shared/downloads/fileNames';
 
 /**
  * Music folders: the songs on the phone (MediaStore), grouped by folder, each folder shown or
@@ -60,17 +61,22 @@ const localId = (s: DeviceSong) => `local:${hash(`${s.folder}/${s.fileName}`)}`;
 /** A Sonare download, recognised by the id in its name. */
 const isOwnDownload = (s: DeviceSong) => s.folder === DOWNLOADS_FOLDER && idInFileName(s.fileName) !== null;
 
-const toFound = (s: DeviceSong): FoundDownload => ({
-  id: idInFileName(s.fileName)!,
-  title: s.title,
-  artist: s.artist ?? 'Unknown artist',
-  album: s.album,
-  durationMs: s.durationMs || null,
-  uri: s.uri,
-  fileName: s.fileName,
-  size: s.size,
-  modifiedAt: s.modifiedAt,
-});
+const toFound = (s: DeviceSong): FoundDownload => {
+  // Without tags Android shows the file name as the title: take the parts back out of it.
+  const named = parseDownloadName(s.fileName)!;
+  const untagged = !s.title || s.title === s.fileName.replace(/\.[^.]+$/, '');
+  return {
+    id: named.id,
+    title: untagged ? named.title : s.title,
+    artist: s.artist ?? named.artist ?? 'Unknown artist',
+    album: s.album,
+    durationMs: s.durationMs || null,
+    uri: s.uri,
+    fileName: s.fileName,
+    size: s.size,
+    modifiedAt: s.modifiedAt,
+  };
+};
 
 export const deviceTrack = (s: DeviceSong): Track => ({
   id: localId(s),

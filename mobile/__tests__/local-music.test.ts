@@ -105,6 +105,25 @@ describe('music on the phone', () => {
     expect(deviceTracks(useLocalMusicStore.getState()).map((t) => t.title)).toEqual(['A song']);
   });
 
+  it('MOB-LOCAL-006 an untagged download found again takes its artist and title from its file name', async () => {
+    permissions.check.mockResolvedValue(true);
+    native.scan.mockResolvedValue([
+      song({
+        mediaId: '7',
+        folder: 'Music/Sonare',
+        fileName: 'Radiohead - Karma Police [1uYWYWPc9HU].webm',
+        // What Android shows for a file without tags.
+        title: 'Radiohead - Karma Police [1uYWYWPc9HU]',
+        artist: null,
+      }),
+    ]);
+    await useLocalMusicStore.getState().hydrate();
+    expect(useDownloadsStore.getState().items['yt:1uYWYWPc9HU']).toMatchObject({
+      title: 'Karma Police',
+      artist: 'Radiohead',
+    });
+  });
+
   it('MOB-LOCAL-005 a song on the phone plays from its content uri', async () => {
     permissions.check.mockResolvedValue(true);
     native.scan.mockResolvedValue([song({ uri: 'content://media/external/audio/media/42' })]);

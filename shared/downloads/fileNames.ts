@@ -28,3 +28,19 @@ export const idInFileName = (fileName: string): string | null => {
   const m = /\[([A-Za-z0-9_-]{11})\]\.[a-z0-9]+$/i.exec(fileName);
   return m ? `yt:${m[1]}` : null;
 };
+
+/**
+ * Artist, title and id back out of a name `downloadName` wrote, for a file whose tags say
+ * nothing (the system then shows the file name as its title). Null for other files.
+ */
+export const parseDownloadName = (fileName: string): { id: string; artist: string | null; title: string } | null => {
+  const m = /^(.*?)\s*\[([A-Za-z0-9_-]{11})\](?:\.[a-z0-9]+)?$/i.exec(fileName);
+  if (!m) return null;
+  const base = m[1];
+  const dash = base.indexOf(' - ');
+  return {
+    id: `yt:${m[2]}`,
+    artist: dash > 0 ? base.slice(0, dash) : null,
+    title: dash > 0 ? base.slice(dash + 3) : base,
+  };
+};

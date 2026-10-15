@@ -757,6 +757,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                           |
 | `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing              |
 | `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                            |
+| `WEB-TAG-022` | a Sonare download without tags names its artist and title, not its id              |
 
 ## `test/components/dialogs-select.test.tsx`
 

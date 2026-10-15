@@ -461,6 +461,7 @@ navigation mock live in `test-utils/`.
 | `MOB-LOCAL-003` | a download names its file with the song id, so it can be found again              |
 | `MOB-LOCAL-004` | downloads the list lost (a reinstall) come back from Music/Sonare, shown once     |
 | `MOB-LOCAL-005` | a song on the phone plays from its content uri                                    |
+| `MOB-LOCAL-006` | an untagged download found again takes its artist and title from its file name    |
 
 ## `__tests__/music-folders.test.tsx`
 

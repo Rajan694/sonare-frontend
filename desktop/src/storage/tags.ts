@@ -330,6 +330,8 @@ export const tagsFromFileName = (path: string): { title: string; artist?: string
   const file = parts.pop() ?? path;
   const base = file
     .replace(/\.[^.]+$/, '')
+    // A Sonare download ends in its YouTube id (`Artist - Title [id]`), not part of the title.
+    .replace(/\s*\[[A-Za-z0-9_-]{11}\]$/, '')
     .replace(/_/g, ' ')
     .trim();
   const parent = parts.pop();
