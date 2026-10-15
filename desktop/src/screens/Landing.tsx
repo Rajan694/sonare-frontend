@@ -170,6 +170,18 @@ const Landing = () => {
     };
   }, []);
 
+  // The header and hero links jump to #features / #screenshots / #download: glide there instead.
+  // Scoped to this page so the app's own scroll restoration stays instant.
+  useEffect(() => {
+    if (reduce) return;
+    const root = document.documentElement;
+    const previous = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'smooth';
+    return () => {
+      root.style.scrollBehavior = previous;
+    };
+  }, [reduce]);
+
   // Version and size labels only: the buttons work without them.
   useEffect(() => {
     let live = true;

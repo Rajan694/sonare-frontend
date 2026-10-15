@@ -31,6 +31,26 @@ const neutralinoGlobalsPort = (): Plugin => {
   };
 };
 
+/**
+ * The same build ships in the desktop window (served by Neutralino on localhost) and on
+ * sonare.vip. A public page that requests localhost makes Chrome ask the visitor to allow
+ * "access to other apps and services on this device", so the built page only loads the
+ * globals script when it is itself on localhost. Build only: in dev `neu run` still finds
+ * and rewrites the plain tag.
+ */
+const neutralinoGlobalsLocalOnly = (): Plugin => ({
+  name: 'neutralino-globals-local-only',
+  apply: 'build',
+  transformIndexHtml(html) {
+    return html.replace(
+      /<script src="(http:\/\/localhost:\d+\/__neutralino_globals\.js)"><\/script>/,
+      (_, src: string) =>
+        `<script>if (/^(localhost|127\\.0\\.0\\.1)$/.test(location.hostname)) ` +
+        `document.write('<script src="${src}"><\\/script>');</script>`,
+    );
+  },
+});
+
 // `./runFE.sh web` serves on 5183: `neu run` waits for exactly that port
 // (cli.frontendLibrary.devUrl), so it must not silently shift. `./runFE.sh linux` passes
 // 5184 so both can run side by side - with its own dependency cache, or the two dev
@@ -67,7 +87,7 @@ const apiEnvironment = (mode: string): Record<string, string> => {
 // public/ (icons/) is copied there too, which keeps the tray and window icon paths in
 // neutralino.config.json valid.
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), tailwindcss(), neutralinoGlobalsPort()],
+  plugins: [react(), tailwindcss(), neutralinoGlobalsPort(), neutralinoGlobalsLocalOnly()],
   define: apiEnvironment(mode),
   cacheDir: port === 5183 ? undefined : `node_modules/.vite-${port}`,
   server: {
