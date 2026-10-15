@@ -301,6 +301,15 @@ const Settings = () => {
         </Row>
       </label>
       <label className="cursor-pointer">
+        <Row icon="radio" label="Autoplay" desc="When the queue ends, keep playing similar songs">
+          <Switch
+            checked={devicePrefs.autoplaySimilar}
+            onCheckedChange={(autoplaySimilar) => updateDevicePrefs({ autoplaySimilar })}
+            aria-label="Toggle autoplay"
+          />
+        </Row>
+      </label>
+      <label className="cursor-pointer">
         <Row icon="volume" label="Volume normalization" desc="Evens out loud and quiet tracks">
           <Switch
             checked={settings.normalization}

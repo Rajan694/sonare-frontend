@@ -222,6 +222,12 @@ export const api = {
     );
   },
 
+  /** Songs like this one, played when the queue runs out (backend only). */
+  async getRelatedTracks(id: string, limit: number = 20) {
+    const res = await request<Page<Track>>(`/tracks/${encodeURIComponent(id)}/related`, { params: { limit } });
+    return res.items;
+  },
+
   getTrending(region: string = 'IN', limit: number = 50) {
     return localFirst<Page<Track>>(
       'trending',

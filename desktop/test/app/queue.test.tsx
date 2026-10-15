@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import type { PlayerStore } from '../../src/store/playerContext';
 import type { PlaybackStatus } from '../../src/audio/player';
 import { makeTrack } from '../helpers/fixtures';
@@ -69,6 +69,8 @@ import App from '../../src/App';
 import * as player from '../../src/audio/player';
 import * as plays from '../../src/api/plays';
 import * as sync from '../../src/api/sync';
+import { api } from '../../src/api/api';
+import { updateDevicePrefs } from '../../src/storage/devicePrefs';
 
 const store = () => h.store.current!;
 const ids = () => store().state.queue.map((t) => t.id);
@@ -352,5 +354,56 @@ describe('editing the queue', () => {
     run(() => store().playNext(d));
     expect(ids()).toEqual(['yt:d']);
     expect(current()).toBe('yt:d');
+  });
+});
+
+describe('when the queue runs out', () => {
+  const [e, f] = ['e', 'f'].map((id) => makeTrack({ id: `yt:${id}`, title: id.toUpperCase(), durationMs: 200_000 }));
+  afterEach(() => updateDevicePrefs({ autoplaySimilar: true }));
+
+  it('WEB-QUEUE-028 the last song asks once for similar songs, adds the new ones, and they play next', async () => {
+    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue([a, e, makeTrack({ id: 'local:x' }), f]);
+    run(() => store().playTrack(b, [a, b]));
+    await waitFor(() => expect(ids()).toEqual(['yt:a', 'yt:b', 'yt:e', 'yt:f']));
+    expect(related).toHaveBeenCalledTimes(1);
+    expect(related).toHaveBeenCalledWith('yt:b');
+    trackEnds();
+    expect(current()).toBe('yt:e');
+    expect(related).toHaveBeenCalledTimes(1);
+  });
+
+  it('WEB-QUEUE-029 nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device', async () => {
+    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue([e]);
+    updateDevicePrefs({ autoplaySimilar: false });
+    run(() => store().playTrack(c, [c]));
+    await act(async () => {});
+    expect(related).not.toHaveBeenCalled();
+
+    updateDevicePrefs({ autoplaySimilar: true });
+    run(() => store().cycleRepeat());
+    expect(store().state.repeat).toBe('all');
+    run(() => store().playTrack(d, [d]));
+    await act(async () => {});
+    expect(related).not.toHaveBeenCalled();
+
+    // Turning repeat off on the last song is the queue running out again.
+    run(() => store().cycleRepeat());
+    run(() => store().cycleRepeat());
+    expect(store().state.repeat).toBe('off');
+    await waitFor(() => expect(related).toHaveBeenCalledWith('yt:d'));
+    related.mockClear();
+
+    run(() => store().playTrack(makeTrack({ id: 'local:song' }), [makeTrack({ id: 'local:song' })]));
+    await act(async () => {});
+    expect(related).not.toHaveBeenCalled();
+  });
+
+  it('WEB-QUEUE-030 an answer that arrives after another song was picked is dropped', async () => {
+    let answer!: (tracks: (typeof a)[]) => void;
+    vi.spyOn(api, 'getRelatedTracks').mockReturnValue(new Promise((res) => (answer = res)));
+    run(() => store().playTrack(b, [a, b]));
+    run(() => store().playTrack(a));
+    await act(async () => answer([e, f]));
+    expect(ids()).toEqual(['yt:a', 'yt:b']);
   });
 });

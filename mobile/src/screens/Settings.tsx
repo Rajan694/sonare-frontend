@@ -7,6 +7,7 @@ import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { Button } from '../components/ui/Button';
+import { Switch } from '../components/ui/Switch';
 import { useModeStore } from '../store/mode';
 import { useAuthStore } from '../data/auth';
 import { useSyncStatus } from '../data/sync';
@@ -59,6 +60,8 @@ export const SettingsScreen = () => {
   const isGold = mode === 'offline';
   const showSheet = usePlayerSheets((st) => st.show);
   const lyricsScript = useDevicePrefsStore((st) => st.lyricsScript);
+  const autoplaySimilar = useDevicePrefsStore((st) => st.autoplaySimilar);
+  const setAutoplaySimilar = useDevicePrefsStore((st) => st.setAutoplaySimilar);
   const streamQuality = useSettingsStore((s) => s.streamQuality);
   const downloadQuality = useSettingsStore((s) => s.downloadQuality);
   const downloadFormat = useSettingsStore((s) => s.downloadFormat);
@@ -240,6 +243,13 @@ export const SettingsScreen = () => {
                 value={streamQuality}
                 onChange={(v) => updateSettings({ streamQuality: v as AudioQuality })}
               />
+            </View>
+            <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Autoplay</Text>
+                <Text className="text-bs text-t3">When the queue ends, keep playing similar songs</Text>
+              </View>
+              <Switch value={autoplaySimilar} onValueChange={setAutoplaySimilar} accessibilityLabel="Autoplay" />
             </View>
             <Pressable
               onPress={() => navigation.navigate('Equalizer')}

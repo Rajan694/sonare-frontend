@@ -500,3 +500,10 @@ navigation mock live in `test-utils/`.
 | `MOB-ACCT-002` | changing the password keeps this phone signed in with the new session; name and delete go to /me     |
 | `MOB-ACCT-003` | the Account screen saves a new name, and changes the password after checking the fields              |
 | `MOB-ACCT-004` | deleting asks for the password and a confirmation, then leaves; a refusal is shown                   |
+
+## `__tests__/autoplay.test.ts`
+
+| ID             | Use case                                                                                 |
+| :------------- | :--------------------------------------------------------------------------------------- |
+| `MOB-AUTO-001` | the queue's last song asks once for similar songs and adds the new ones, which play next |
+| `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                |

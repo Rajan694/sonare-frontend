@@ -192,6 +192,10 @@ export const api = {
       (cur) => request(`/artists/${enc(id)}/albums`, { params: { cursor: cur } }),
       id,
     ),
+  /** Songs like this one, played when the queue runs out (backend only). */
+  relatedTracks: (id: string, limit = 20) =>
+    request<Page<Track>>(`/tracks/${enc(id)}/related`, { params: { limit } }).then((page) => page.items),
+
   /** YouTube playlists; the user's own ones go through the `my*` calls below. */
   playlist: (id: string) =>
     localFirst<Playlist>(

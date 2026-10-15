@@ -8,6 +8,9 @@ import { PlayerContext, defaultPlayerState, type PlayerStore } from './store/pla
 import { getPlaybackPosition, setPlaybackPosition } from './store/playbackPosition';
 import type { PlayerState, PlayingFrom } from './types';
 import * as queueOps from '../../shared/player/queue';
+import { createAutoplay } from '../../shared/player/autoplay';
+import { getDevicePrefs } from './storage/devicePrefs';
+import { api } from './api/api';
 import { getCurrentUser, initDevAuth, onAuthChange } from './api/auth';
 import { accountQueue, queueChanged, savedQueue, setQueueSource } from './storage/playerPersist';
 import { bindMediaSession, showInMediaSession, showPositionInMediaSession } from './audio/mediaSession';
@@ -320,6 +323,19 @@ const App = () => {
   useEffect(() => {
     player.setNext(upcoming ? { id: upcoming.id, album: upcoming.album ?? null } : null, currentTrack?.album ?? null);
   }, [upcoming?.id, upcoming?.album, currentTrack?.album]);
+
+  // When the queue is about to run out, similar songs are added (audit I11).
+  const [autoplay] = useState(() =>
+    createAutoplay<Track>({
+      fetchRelated: (id) => api.getRelatedTracks(id),
+      getState: () => playerStateRef.current,
+      append: (tracks) => setPlayerState((prev) => queueOps.append(prev, tracks)),
+      enabled: () => getDevicePrefs().autoplaySimilar && modeRef.current === 'online',
+    }),
+  );
+  useEffect(() => {
+    void autoplay.check();
+  }, [autoplay, playerState.index, playerState.queue, playerState.repeat]);
 
   const toggleShuffle = () => {
     setPlayerState((prev) => queueOps.toggleShuffle(prev));
