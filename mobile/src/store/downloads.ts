@@ -6,6 +6,9 @@ import { API_QUALITY, useSettingsStore, type AudioQuality, type DownloadFormat }
 import type { StreamInfo, Track } from '../data/types';
 import { SonareDownloads } from '../native/SonareDownloads';
 import { refreshInAppSession } from '../youtube/inApp';
+import { downloadName, idInFileName } from '../../../shared/downloads/fileNames';
+
+export { downloadName, idInFileName };
 
 /**
  * Download manager for the phone.
@@ -104,21 +107,6 @@ export interface FoundDownload {
   modifiedAt: number;
 }
 
-/** The YouTube id a download's file name ends with, as `downloadName` writes it; null for other files. */
-export const idInFileName = (fileName: string): string | null => {
-  const m = /\[([A-Za-z0-9_-]{11})\]\.[a-z0-9]+$/i.exec(fileName);
-  return m ? `yt:${m[1]}` : null;
-};
-
-/**
- * `Artist - Title [videoId]`: the id in the name lets a reinstalled app, which has lost this
- * list, find its downloads again and link them back to the songs (FoundDownload).
- */
-export const downloadName = (item: { id: string; artist: string; title: string }): string => {
-  const base = safeName(`${item.artist} - ${item.title}`);
-  return `${base} [${item.id.replace(/^yt:/, '')}]`;
-};
-
 const ITEMS_KEY = 'sonare.downloads';
 const LOCATION_KEY = 'sonare.downloadLocation';
 const MAX_PARALLEL = 2;
@@ -131,12 +119,6 @@ let persistTimer: ReturnType<typeof setTimeout> | undefined;
 let hydrated: Promise<void> | null = null;
 let listening = false;
 
-const safeName = (s: string) =>
-  s
-    .replace(/[\\/:*?"<>|\x00-\x1f]/g, '_')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .slice(0, 120) || 'track';
 const extensionFor = (mimeType: string) => (/mp4|m4a|aac/i.test(mimeType) ? 'm4a' : 'webm');
 /** "audio/webm; codecs=opus" -> "audio/webm", which is what MediaStore and SAF want. */
 const bareMime = (mimeType: string) => mimeType.split(';')[0].trim() || 'audio/webm';
