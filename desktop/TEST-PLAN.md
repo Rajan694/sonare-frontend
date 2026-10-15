@@ -956,6 +956,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-063` | streamCache detects deleted files on disk and removes them from the cached index                             |
 | `DSK-078` | streamCache reports how much it holds, and clear empties it from disk                                        |
 | `DSK-079` | on Linux an in-app song starts from the first part of its download and grows to the whole file               |
+| `DSK-080` | runCommand gathers output and exit code, also from events sent before spawnProcess answers                   |
 | `DSK-064` | player downloads direct YouTube stream into streamCache and decodes via Web Audio on Linux                   |
 | `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
 | `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |

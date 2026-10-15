@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { commands, files, lib, resetFs, store, writeFile } from '../helpers/fakeNeutralino';
+import { commands, emitNativeEvent, files, lib, resetFs, store, writeFile } from '../helpers/fakeNeutralino';
 import { mp3Frames, webmOpus } from '../helpers/audioFixtures';
 import { makeTrack } from '../helpers/fixtures';
 import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';
-import { curlFetch, escapeCurlConfigValue } from '../../src/youtube/curlFetch';
+import { curlFetch, escapeCurlConfigValue, runCommand } from '../../src/youtube/curlFetch';
 import {
   inAppYoutube,
   isInAppYoutubeAllowed,
@@ -266,6 +266,21 @@ describe('in-app YouTube desktop transport and integration', () => {
     );
   });
 
+  it('DSK-080 runCommand gathers output and exit code, also from events sent before spawnProcess answers', async () => {
+    vi.mocked(lib.os.spawnProcess).mockImplementationOnce(async (cmd: string) => {
+      commands.ran.push(cmd);
+      emitNativeEvent('spawnedProcess', { id: 42, pid: 42, action: 'stdOut', data: 'out ' });
+      // Another process ending changes nothing.
+      emitNativeEvent('spawnedProcess', { id: 7, pid: 7, action: 'exit', data: 1 });
+      emitNativeEvent('spawnedProcess', { id: 42, pid: 42, action: 'stdErr', data: 'warn' });
+      emitNativeEvent('spawnedProcess', { id: 42, pid: 42, action: 'exit', data: 3 });
+      return { id: 42, pid: 42 };
+    });
+    await expect(runCommand('curl --version')).resolves.toEqual({ exitCode: 3, stdOut: 'out ', stdErr: 'warn' });
+    expect(commands.ran).toEqual(['curl --version']);
+    expect(lib.events.off).toHaveBeenCalledWith('spawnedProcess', expect.any(Function));
+  });
+
   it('DSK-058 isInAppYoutubeAllowed returns true only in Neutralino window mode and respects admin kill-switch', async () => {
     const win = window as unknown as { NL_MODE?: string };
     win.NL_MODE = 'window';
@@ -514,19 +529,19 @@ describe('in-app YouTube desktop transport and integration', () => {
       mimeType: 'audio/webm; codecs="opus"',
       expiresAt: Date.now() + 3600000,
     });
-    // 10 s of audio; curl has written the first 6 s when the test lets it finish.
+    // 10 s of audio; curl has written the first 6 s when the test lets it finish. The fake, like
+    // Neutralino, holds file calls while an execCommand runs, so the download must not be one.
     const file = webmOpus(500);
     let finish!: () => void;
     const finished = new Promise<void>((resolve) => (finish = resolve));
-    vi.mocked(lib.os.execCommand).mockImplementationOnce(async (cmd: string) => {
+    commands.answer = async (cmd: string) => {
       const cfg = new TextDecoder().decode(files.get(/-K "([^"]+)"/.exec(cmd)![1])!.bytes);
       const out = /output = "([^"\r\n]+)"/.exec(cfg)![1];
       writeFile(out, file.slice(0, Math.floor(file.length * 0.6)));
       await finished;
       writeFile(out, file);
-      fakeCurlDone(cmd, 206);
-      return { pid: 1, stdOut: '', stdErr: '', exitCode: 0 };
-    });
+      return fakeCurlDone(cmd, 206);
+    };
 
     await player.playTrackId('yt:progressive');
 

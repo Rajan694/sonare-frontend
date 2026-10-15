@@ -1,4 +1,4 @@
-import { filesystem, os } from '@neutralinojs/lib';
+import { events, filesystem, os } from '@neutralinojs/lib';
 
 // A `fetch` for youtubei.js (and stream checks) that goes through curl, because the webview
 // can't make cross-site requests to YouTube. Nothing but the config file's path reaches a shell:
@@ -24,6 +24,54 @@ export const curlTempDir = (): Promise<string> => {
     return dir;
   })();
   return tempDirPromise;
+};
+
+interface CommandResult {
+  exitCode: number;
+  stdOut: string;
+  stdErr: string;
+}
+
+interface ProcessEvent {
+  id: number;
+  action: 'stdOut' | 'stdErr' | 'exit';
+  data: unknown;
+}
+
+/**
+ * Runs `command` and waits for it to exit. Not os.execCommand: Neutralino answers native calls
+ * one at a time, so while an execCommand runs every file read waits, and a song couldn't be
+ * read while curl was still downloading it (audit I3).
+ */
+export const runCommand = async (command: string): Promise<CommandResult> => {
+  let id: number | null = null;
+  // Events that came before spawnProcess answered with the id.
+  const early: ProcessEvent[] = [];
+  const result = { exitCode: 0, stdOut: '', stdErr: '' };
+  let exited!: () => void;
+  const exit = new Promise<void>((resolve) => (exited = resolve));
+  const take = (e: ProcessEvent) => {
+    if (e.id !== id) return;
+    if (e.action === 'stdOut') result.stdOut += String(e.data);
+    else if (e.action === 'stdErr') result.stdErr += String(e.data);
+    else if (e.action === 'exit') {
+      result.exitCode = Number(e.data);
+      exited();
+    }
+  };
+  const onEvent = (ev: CustomEvent<ProcessEvent>) => {
+    if (id === null) early.push(ev.detail);
+    else take(ev.detail);
+  };
+  await events.on('spawnedProcess', onEvent);
+  try {
+    id = (await os.spawnProcess(command)).id;
+    early.splice(0).forEach(take);
+    await exit;
+    return result;
+  } finally {
+    void events.off('spawnedProcess', onEvent).catch(() => {});
+  }
 };
 
 let fileCounter = 0;
@@ -102,7 +150,7 @@ export const curlFetch = async (input: RequestInfo | URL, init?: RequestInit): P
     }
     await filesystem.writeFile(cfgPath, config.join('\n'));
 
-    const run = await os.execCommand(`${curlBinary()} -K "${cfgPath}"`);
+    const run = await runCommand(`${curlBinary()} -K "${cfgPath}"`);
     if (init?.signal?.aborted) throw abortError();
     // fetch rejects with a TypeError when the request never got an answer; keep that contract.
     if (run.exitCode !== 0)
@@ -165,7 +213,7 @@ export const curlDownload = async (url: string, path: string, contentLength = 0)
         `url = "${escapeCurlConfigValue(url)}"`,
       ].join('\n'),
     );
-    const run = await os.execCommand(`${curlBinary()} -K "${cfgPath}"`);
+    const run = await runCommand(`${curlBinary()} -K "${cfgPath}"`);
     const { status } = parseDumpedHeaders(await filesystem.readFile(hdrPath).catch(() => ''));
     if (run.exitCode !== 0) throw new StreamDownloadError(`curl exited ${run.exitCode}: ${run.stdErr.trim()}`, status);
     if (status !== 200 && status !== 206) throw new StreamDownloadError(`Stream download got HTTP ${status}`, status);
