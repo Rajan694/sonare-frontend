@@ -22,6 +22,7 @@ import {
 import { useDownloads } from '../storage/downloads';
 import { useAuth } from '../api/hooks';
 import { signOut } from '../api/auth';
+import { AccountDetails } from '../components/account/AccountDetails';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { formatBytes } from '../lib/format';
 import { isInAppYoutubeAllowed } from '../youtube/inApp';
@@ -268,6 +269,7 @@ const Settings = () => {
           <VerifyEmailCode email={user.email} />
         </div>
       )}
+      {user && <AccountDetails key={user.id} user={user} />}
     </div>
   );
 

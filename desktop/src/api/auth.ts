@@ -106,38 +106,55 @@ export const clearSession = () => {
   notifyListeners();
 };
 
-class AuthRequestError extends Error {
+export class AuthRequestError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
   }
 }
 
-/** POSTs to /auth/<path>; throws the server's message on an error status. */
-const postAuth = async <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> => {
-  const res = await serverFetch(`${API_BASE}/auth/${path}`, {
-    method: 'POST',
+type AccountMethod = 'POST' | 'PATCH' | 'DELETE';
+
+/** Sends JSON to the backend (`path` under API_BASE); throws the server's message on an error status. */
+const sendJson = async <T>(
+  method: AccountMethod,
+  path: string,
+  body: unknown,
+  accessToken?: string | null,
+): Promise<T> => {
+  const res = await serverFetch(`${API_BASE}${path}`, {
+    method,
     headers: accessToken ? { ...JSON_HEADERS, Authorization: `Bearer ${accessToken}` } : JSON_HEADERS,
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new AuthRequestError(json?.error?.message || `Request failed with status ${res.status}`, res.status);
+    throw new AuthRequestError(
+      json?.error?.message || `Request failed with status ${res.status}`,
+      res.status,
+      json?.error?.code,
+    );
   }
   return json as T;
 };
 
-/** postAuth as the signed-in account; an expired access token is refreshed once. */
-const postAsAccount = async <T>(path: string, body: unknown): Promise<T> => {
+/** POSTs to /auth/<path>. */
+const postAuth = <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> =>
+  sendJson<T>('POST', `/auth/${path}`, body, accessToken);
+
+/** As the signed-in account (an /auth path, or a full one like `/me`); an expired access token is refreshed once. */
+const asAccount = async <T>(path: string, body: unknown, method: AccountMethod = 'POST'): Promise<T> => {
+  const fullPath = path.startsWith('/') ? path : `/auth/${path}`;
   try {
-    return await postAuth<T>(path, body, currentAccessToken);
+    return await sendJson<T>(method, fullPath, body, currentAccessToken);
   } catch (err) {
     if (!(err instanceof AuthRequestError) || err.status !== 401) throw err;
     const token = await refreshAccessToken();
     if (!token) throw err;
-    return postAuth<T>(path, body, token);
+    return sendJson<T>(method, fullPath, body, token);
   }
 };
 
@@ -164,9 +181,36 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
   await postAuth('forgot-password', { email });
 };
 
+/** The 6-digit code from the reset email, swapped for a token that sets the new password (15 minutes). */
+export const verifyResetCode = async (email: string, code: string): Promise<string> => {
+  const { resetToken } = await postAuth<{ resetToken: string }>('verify-reset-code', { email, code });
+  return resetToken;
+};
+
 /** Every device is signed out by the server, this one included. */
 export const resetPassword = async (token: string, password: string): Promise<void> => {
   await postAuth('reset-password', { token, password });
+  clearSession();
+};
+
+/** Signed in: a new password. This device gets a fresh session; the server signs out every other one. */
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  const pair = await asAccount<{ accessToken: string; refreshToken: string }>('change-password', {
+    currentPassword,
+    newPassword,
+  });
+  if (currentUser) setSession(pair.accessToken, pair.refreshToken, currentUser);
+};
+
+export const updateDisplayName = async (displayName: string): Promise<User> => {
+  const user = await asAccount<User>('/me', { displayName }, 'PATCH');
+  setCurrentUser({ ...currentUser, ...user });
+  return user;
+};
+
+/** Deletes the account and everything saved to it; this device carries on as a guest. */
+export const deleteAccount = async (password: string): Promise<void> => {
+  await asAccount('/me', { password }, 'DELETE');
   clearSession();
 };
 
@@ -187,12 +231,12 @@ export const verifyEmail = async (token: string): Promise<void> => {
 
 /** The 6-digit code from the verification email, for the signed-in account. */
 export const verifyEmailCode = async (code: string): Promise<void> => {
-  await postAsAccount('verify-email-code', { code });
+  await asAccount('verify-email-code', { code });
   if (currentUser) setCurrentUser({ ...currentUser, emailVerified: true });
 };
 
 export const resendVerification = async (): Promise<void> => {
-  await postAsAccount('resend-verification', {});
+  await asAccount('resend-verification', {});
 };
 
 const setCurrentUser = (user: User) => {

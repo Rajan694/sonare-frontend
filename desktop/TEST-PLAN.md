@@ -357,20 +357,20 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/signin.test.tsx`
 
-| ID               | Use case                                                                              |
-| :--------------- | :------------------------------------------------------------------------------------ |
-| `WEB-SIGNIN-001` | signs in with trimmed email, welcomes the user and goes home                          |
-| `WEB-SIGNIN-002` | shows the server error and stays on the form                                          |
-| `WEB-SIGNIN-003` | cannot submit until both email and password are filled                                |
-| `WEB-SIGNIN-004` | shows "Please wait…" while the request is out                                         |
-| `WEB-SIGNIN-005` | switching modes adds the display name field and clears the error                      |
-| `WEB-SIGNIN-006` | registers with the given name, or the email name when left blank                      |
-| `WEB-SIGNIN-007` | shows why the account is needed and finishes the guest's action after signing up      |
-| `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                 |
-| `WEB-SIGNIN-009` | "Forgot password?" sends a reset link for the trimmed email and says it is on its way |
-| `WEB-SIGNIN-010` | a forgot-password error shows, and switching back to sign in clears it                |
-| `WEB-SIGNIN-011` | after signing up, the emailed code can be entered before going on                     |
-| `WEB-SIGNIN-012` | "Skip for now" goes on unverified                                                     |
+| ID               | Use case                                                                                |
+| :--------------- | :-------------------------------------------------------------------------------------- |
+| `WEB-SIGNIN-001` | signs in with trimmed email, welcomes the user and goes home                            |
+| `WEB-SIGNIN-002` | shows the server error and stays on the form                                            |
+| `WEB-SIGNIN-003` | cannot submit until both email and password are filled                                  |
+| `WEB-SIGNIN-004` | shows "Please wait…" while the request is out                                           |
+| `WEB-SIGNIN-005` | switching modes adds the display name field and clears the error                        |
+| `WEB-SIGNIN-006` | registers with the given name, or the email name when left blank                        |
+| `WEB-SIGNIN-007` | shows why the account is needed and finishes the guest's action after signing up        |
+| `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                   |
+| `WEB-SIGNIN-009` | "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in |
+| `WEB-SIGNIN-010` | a wrong code or a rate limit shows why, and "Back to sign in" returns to the form       |
+| `WEB-SIGNIN-011` | after signing up, the emailed code can be entered before going on                       |
+| `WEB-SIGNIN-012` | "Skip for now" goes on unverified                                                       |
 
 ## `test/screens/landing.test.tsx`
 
@@ -913,3 +913,11 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-WAKE-002` | a slow request to an awake server says nothing; after a long quiet spell it does again       |
 | `WEB-WAKE-003` | a backend request that never answers gives up with a clear error; a caller's abort passes on |
 | `WEB-WAKE-004` | the notice shows while the server wakes up and goes away after                               |
+
+## `test/screens/account.test.tsx`
+
+| ID             | Use case                                                                             |
+| :------------- | :----------------------------------------------------------------------------------- |
+| `WEB-ACCT-001` | saves a new name to the account                                                      |
+| `WEB-ACCT-002` | changes the password: a wrong one is refused, then this device keeps a fresh session |
+| `WEB-ACCT-003` | deleting needs the password and a confirmation, then carries on as a guest           |

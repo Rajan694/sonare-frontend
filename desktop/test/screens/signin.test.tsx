@@ -185,11 +185,19 @@ describe('arriving from the account gate', () => {
 });
 
 describe('forgot password', () => {
-  it('WEB-SIGNIN-009 sends a reset link for the trimmed email and says it is on its way', async () => {
-    let sent: unknown;
+  it('WEB-SIGNIN-009 "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in', async () => {
+    const sent: Record<string, unknown> = {};
     server.use(
       http.post(`${API}/auth/forgot-password`, async ({ request }) => {
-        sent = await request.json();
+        sent.forgot = await request.json();
+        return HttpResponse.json({ ok: true });
+      }),
+      http.post(`${API}/auth/verify-reset-code`, async ({ request }) => {
+        sent.verify = await request.json();
+        return HttpResponse.json({ resetToken: 'reset-1' });
+      }),
+      http.post(`${API}/auth/reset-password`, async ({ request }) => {
+        sent.reset = await request.json();
         return HttpResponse.json({ ok: true });
       }),
     );
@@ -197,21 +205,50 @@ describe('forgot password', () => {
     await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
     expect(screen.getByText('Reset password', { selector: 'span' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Password')).not.toBeInTheDocument();
-    await user.type(email(), ' listener@sonare.test ');
-    await user.click(screen.getByRole('button', { name: 'Send reset link' }));
+    await user.type(email(), ' Listener@Sonare.test ');
+    await user.click(screen.getByRole('button', { name: 'Send code' }));
     expect(await screen.findByRole('status')).toHaveTextContent('If an account exists for listener@sonare.test');
-    expect(sent).toEqual({ email: 'listener@sonare.test' });
+    expect(sent.forgot).toEqual({ email: 'listener@sonare.test' });
+
+    await user.type(screen.getByLabelText('Reset code'), '123 456');
+    await user.click(screen.getByRole('button', { name: 'Check code' }));
+    expect(await screen.findByLabelText('New password')).toBeInTheDocument();
+    expect(sent.verify).toEqual({ email: 'listener@sonare.test', code: '123456' });
+
+    await user.type(screen.getByLabelText('New password'), 'brandnew1');
+    await user.type(screen.getByLabelText('Repeat new password'), 'brandnew2');
+    await user.click(screen.getByRole('button', { name: 'Set new password' }));
+    expect(screen.getByRole('alert')).toHaveTextContent("The passwords don't match");
+    await user.clear(screen.getByLabelText('Repeat new password'));
+    await user.type(screen.getByLabelText('Repeat new password'), 'brandnew1');
+    await user.click(screen.getByRole('button', { name: 'Set new password' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Password changed. Sign in with your new password.');
+    expect(sent.reset).toEqual({ token: 'reset-1', password: 'brandnew1' });
+    expect(email()).toHaveValue('listener@sonare.test');
+    expect(password()).toBeInTheDocument();
     expect(getCurrentUser()).toBeNull();
   });
 
-  it('WEB-SIGNIN-010 shows a rate-limit error and goes back to sign in', async () => {
-    server.use(http.post(`${API}/auth/forgot-password`, () => apiError(429, 'RATE_LIMITED', 'Too many attempts')));
+  it('WEB-SIGNIN-010 a wrong code or a rate limit shows why, and "Back to sign in" returns to the form', async () => {
+    server.use(
+      http.post(`${API}/auth/forgot-password`, () => HttpResponse.json({ ok: true })),
+      http.post(`${API}/auth/verify-reset-code`, () =>
+        apiError(400, 'INVALID_CODE', "That code isn't right. Check the email and try again."),
+      ),
+    );
     const { user } = open();
     await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
     await user.type(email(), 'a@b.co');
-    await user.click(screen.getByRole('button', { name: 'Send reset link' }));
+    await user.click(screen.getByRole('button', { name: 'Send code' }));
+    await user.type(await screen.findByLabelText('Reset code'), '000000');
+    await user.click(screen.getByRole('button', { name: 'Check code' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("That code isn't right");
+
+    server.use(http.post(`${API}/auth/forgot-password`, () => apiError(429, 'RATE_LIMITED', 'Too many attempts')));
+    await user.click(screen.getByRole('button', { name: 'Send a new code' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Too many attempts');
-    await user.click(screen.getByRole('button', { name: 'Already have an account? Sign in' }));
+    await user.click(screen.getByRole('button', { name: 'Back to sign in' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
     expect(password()).toBeInTheDocument();
   });
