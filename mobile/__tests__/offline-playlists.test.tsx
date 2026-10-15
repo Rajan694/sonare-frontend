@@ -219,6 +219,8 @@ describe('Offline playlists on screen', () => {
     expect(queryByText('Needs the internet')).toBeNull();
     expect(queryByText('Also needs the internet')).toBeNull();
     expect(getByText('2 songs need the internet')).toBeTruthy();
+    // The header counts what plays here, like its duration, not the 12 the playlist has.
+    expect(getByText(/^1 song( ·|$)/)).toBeTruthy();
   });
 
   it('MOB-OFPL-012 one missing song reads "1 song needs the internet"', async () => {

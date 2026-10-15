@@ -245,7 +245,8 @@ export const PlaylistDetailScreen = () => {
                   {info?.name ?? ' '}
                 </Text>
                 <Text className="text-t2 text-bs">
-                  {songCount(info?.trackCount ?? tracks.length)}
+                  {/* Offline, the songs that play here, as the duration is theirs too. */}
+                  {songCount(offlineOwn ? tracks.length : (info?.trackCount ?? tracks.length))}
                   {durationMinutes ? ` · ${durationMinutes} min` : ''}
                 </Text>
                 <Text className="text-t3 text-bs">{own ? 'Made by you' : 'Online playlist'}</Text>
