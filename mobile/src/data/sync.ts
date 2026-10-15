@@ -2,7 +2,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
 import { create } from 'zustand';
-import { api, ApiError } from './api';
+import { api } from './api';
+import { createPlaySync } from '../../../shared/sync/playSync';
 import { useAuthStore } from './auth';
 import { useModeStore } from '../store/mode';
 import { trackMeta } from '../../../shared/catalog/meta';
@@ -15,8 +16,7 @@ import type { Track, TrackMeta } from './types';
  * own whenever the app is in Online Mode, signed in and the phone has a network: at launch,
  * when the network comes back, on switching to Online, after sign-in and when the app returns
  * to the foreground. A failed upload keeps its plays and retries with backoff; only what the
- * server confirmed leaves the queue, and the backend skips plays it already has, so a retry
- * after a lost response can't double-count.
+ * server confirmed leaves the queue (shared/sync/playSync.ts).
  *
  * Plays are counted from native progress events, which keep coming with the app in the
  * background, so this avoids React effects and `fetch` (api.ts goes through XHR).
@@ -33,10 +33,6 @@ export type PendingPlay = {
 };
 
 const QUEUE_KEY = 'sonare.pendingPlays';
-const RETRY_FIRST_MS = 5_000;
-/** Plays per request: a long offline stretch must not become one body the server refuses. */
-const UPLOAD_BATCH = 100;
-const RETRY_MAX_MS = 5 * 60_000;
 
 /** Split a namespaced id (contract 8.1) into a TrackRef; the backend stores the bare id. */
 const trackRef = (trackId: string): TrackRef => {
@@ -99,23 +95,6 @@ const publish = (syncing = useSyncStatus.getState().syncing) => {
 // ── Uploading ────────────────────────────────────────────────────────────────
 
 let networkUp = true;
-let inFlight: Promise<void> | null = null;
-let rerun = false;
-let retryTimer: ReturnType<typeof setTimeout> | undefined;
-let retryDelay = RETRY_FIRST_MS;
-
-const scheduleRetry = () => {
-  clearTimeout(retryTimer);
-  // No network: NetInfo wakes us instead of a timer.
-  if (!networkUp) return;
-  retryTimer = setTimeout(requestSync, retryDelay);
-  retryDelay = Math.min(retryDelay * 2, RETRY_MAX_MS);
-};
-
-/** A 4xx other than auth/rate-limit means the server will never take these plays. */
-const rejected = (e: unknown): boolean => {
-  return e instanceof ApiError && e.status >= 400 && e.status < 500 && ![401, 403, 408, 429].includes(e.status);
-};
 
 const drop = (done: PendingPlay[]) => {
   const gone = new Set(done.map(playKey));
@@ -123,58 +102,20 @@ const drop = (done: PendingPlay[]) => {
   save();
 };
 
-/**
- * Uploads one batch. A batch the server refuses (too large, or one bad play) is split until
- * the play it won't take is found; only that one is dropped.
- */
-const uploadBatch = async (batch: PendingPlay[]): Promise<void> => {
-  try {
-    await api.reportPlays(batch);
-    drop(batch);
-  } catch (e) {
-    if (!rejected(e)) throw e;
-    if (batch.length === 1) return drop(batch);
-    const half = Math.ceil(batch.length / 2);
-    await uploadBatch(batch.slice(0, half));
-    await uploadBatch(batch.slice(half));
-  }
-};
-
-const flush = async (): Promise<void> => {
-  await load();
-  const auth = useAuthStore.getState();
-  const plays = pendingFor(auth.user?.id);
-  if (useModeStore.getState().mode !== 'online' || auth.status !== 'signedIn' || !networkUp || !plays.length) {
-    return publish(false);
-  }
-  publish(true);
-  try {
-    for (let i = 0; i < plays.length; i += UPLOAD_BATCH) await uploadBatch(plays.slice(i, i + UPLOAD_BATCH));
-    clearTimeout(retryTimer);
-    retryDelay = RETRY_FIRST_MS;
-  } catch {
-    // Batches already confirmed are gone from the queue; the rest wait for the retry.
-    scheduleRetry();
-  } finally {
-    publish(false);
-  }
-};
+// Batches, retries and backoff are shared with the desktop app (shared/sync/playSync.ts).
+const sync = createPlaySync<PendingPlay>({
+  prepare: load,
+  canSync: () =>
+    useModeStore.getState().mode === 'online' && useAuthStore.getState().status === 'signedIn' && networkUp,
+  networkDown: () => !networkUp,
+  pending: () => pendingFor(useAuthStore.getState().user?.id),
+  upload: (batch) => api.reportPlays(batch).then(() => undefined),
+  remove: drop,
+  setSyncing: (syncing) => publish(syncing),
+});
 
 /** Upload whatever is waiting, if we can. Safe to call often: runs are serialised. */
-export const requestSync = (): void => {
-  if (inFlight) {
-    // Plays recorded mid-upload go in one follow-up run.
-    rerun = true;
-    return;
-  }
-  inFlight = flush().finally(() => {
-    inFlight = null;
-    if (rerun) {
-      rerun = false;
-      requestSync();
-    }
-  });
-};
+export const requestSync = (): void => sync.requestSync();
 
 /** Queue a play the listener has actually heard; it uploads in the background. */
 export const queuePlay = (track: Track, at: number, ms: number): void => {
@@ -203,16 +144,16 @@ export const startBackgroundSync = (): void => {
     const up = !!state.isConnected && state.isInternetReachable !== false;
     const cameBack = up && !networkUp;
     networkUp = up;
-    if (!up) return clearTimeout(retryTimer);
-    if (cameBack) retryDelay = RETRY_FIRST_MS;
+    if (!up) return sync.cancelRetry();
+    if (cameBack) sync.resetBackoff();
     requestSync();
   });
   useModeStore.subscribe((s, prev) => {
     if (s.mode === 'online' && prev.mode !== 'online') {
-      retryDelay = RETRY_FIRST_MS;
+      sync.resetBackoff();
       requestSync();
     }
-    if (s.mode !== 'online') clearTimeout(retryTimer);
+    if (s.mode !== 'online') sync.cancelRetry();
   });
   useAuthStore.subscribe((s, prev) => {
     if (s.user?.id !== prev.user?.id) requestSync();
