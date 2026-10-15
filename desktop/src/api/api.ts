@@ -6,59 +6,19 @@ import type { LyricsScript } from '../storage/devicePrefs';
 import { inAppYoutube, isInAppYoutubeAllowed, loadCachedConfig, setAppConfig, type AppConfig } from '../youtube/inApp';
 import { trackThumbUrl } from '../../../shared/catalog/images';
 import { albumMeta, artistMeta, playlistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
+import { ApiError, apiErrorFrom, createCatalogFallback, isYouTubeId, ytId } from '../../../shared/api/client';
 
 type Catalog = Awaited<ReturnType<typeof inAppYoutube.getCatalog>>;
 
 // ---- In-app YouTube (desktop window only; see src/youtube/inApp.ts) ----
 
-const lastFallbackWarning = new Map<string, number>();
+// Asks the in-app catalog first in the desktop window (shared/api/client.ts).
+const { localFirst, paged } = createCatalogFallback<Catalog>({
+  allowed: isInAppYoutubeAllowed,
+  catalog: () => inAppYoutube.getCatalog(),
+});
 
-/**
- * Ask the in-app catalog first (when this app may fetch YouTube itself) and fall back to the
- * backend on any error, saying so at most once a minute per method.
- */
-const localFirst = async <T>(
-  method: string,
-  local: (c: Catalog) => Promise<T>,
-  remote: () => Promise<T>,
-  id?: string,
-): Promise<T> => {
-  if (isInAppYoutubeAllowed() && (id === undefined || isYouTubeId(id))) {
-    try {
-      return await local(await inAppYoutube.getCatalog());
-    } catch (err) {
-      const now = Date.now();
-      if (now - (lastFallbackWarning.get(method) ?? 0) > 60_000) {
-        lastFallbackWarning.set(method, now);
-        console.warn(`[in-app-yt] ${method} fell back to the backend:`, err instanceof Error ? err.message : err);
-      }
-    }
-  }
-  return remote();
-};
-
-/** Paged lists: an `L.` cursor came from the in-app catalog and only works there; others only on the backend. */
-const paged = <T>(
-  method: string,
-  cursor: string | undefined,
-  local: (c: Catalog, cursor?: string) => Promise<T>,
-  remote: (cursor?: string) => Promise<T>,
-  id?: string,
-): Promise<T> => {
-  if (cursor?.startsWith('L.')) return inAppYoutube.getCatalog().then((c) => local(c, cursor));
-  if (cursor) return remote(cursor);
-  return localFirst(
-    method,
-    (c) => local(c),
-    () => remote(),
-    id,
-  );
-};
-
-/** Only YouTube items can come from the in-app catalog. */
-export const isYouTubeId = (id: string): boolean => !id.startsWith('local:') && !id.startsWith('sonare:');
-
-const ytId = (id: string): string => (id.startsWith('yt:') ? id : `yt:${id}`);
+export { isYouTubeId };
 
 // The backend tells an artist page whether you follow the artist; the in-app catalog can't, so
 // remember follows from the library and from follow/unfollow, loading the library once if needed.
@@ -85,17 +45,7 @@ const isFollowed = async (id: string): Promise<boolean> => {
   return followedArtists.get(ytId(id)) ?? false;
 };
 
-export class ApiError extends Error {
-  public status: number;
-  public code?: string;
-
-  constructor(message: string, status: number, code?: string) {
-    super(message);
-    this.name = 'ApiError';
-    this.status = status;
-    this.code = code;
-  }
-}
+export { ApiError };
 
 /** What to tell someone when a section's data did not load. */
 export const loadErrorMessage = (err: unknown): string => {
@@ -168,11 +118,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     return {} as T;
   }
 
-  if (!res.ok) {
-    const code = data?.error?.code;
-    const message = data?.error?.message || `Request failed with status ${res.status}`;
-    throw new ApiError(message, res.status, code);
-  }
+  if (!res.ok) throw apiErrorFrom(res.status, data);
 
   return data as T;
 };

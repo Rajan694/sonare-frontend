@@ -5,6 +5,7 @@ import { isInAppYoutubeEnabled } from '../youtube/appConfig';
 import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
 import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
+import { ApiError, apiErrorFrom, createCatalogFallback, isYouTubeId, ytId } from '../../../shared/api/client';
 import type {
   Album,
   AlbumMeta,
@@ -20,15 +21,7 @@ import type {
   User,
 } from './types';
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public code?: string,
-  ) {
-    super(message);
-  }
-}
+export { ApiError, isYouTubeId };
 
 type Params = Record<string, string | number | boolean | undefined | null>;
 
@@ -74,63 +67,20 @@ const request = async <T>(
   if (res.status === 204) return {} as T;
   const { json } = res;
   if (res.status < 200 || res.status >= 300) {
-    throw new ApiError(json?.error?.message || `Request failed (${res.status})`, res.status, json?.error?.code);
+    throw apiErrorFrom(res.status, json);
   }
   return json as T;
 };
 
 const enc = encodeURIComponent;
 
-/** Only YouTube items can come from the in-app catalog. */
-export const isYouTubeId = (id: string): boolean => !id.startsWith('local:') && !id.startsWith('sonare:');
+// Asks the in-app catalog first when the admin allows it (shared/api/client.ts).
+const { localFirst, paged, resetWarnings } = createCatalogFallback<InAppCatalog>({
+  allowed: isInAppYoutubeEnabled,
+  catalog: getInAppCatalog,
+});
 
-const ytId = (id: string): string => (id.startsWith('yt:') ? id : `yt:${id}`);
-
-const lastFallbackWarning = new Map<string, number>();
-
-/**
- * Ask the in-app catalog first (when the admin allows it) and fall back to the backend on any
- * error, saying so at most once a minute per method.
- */
-const localFirst = async <T>(
-  method: string,
-  local: (c: InAppCatalog) => Promise<T>,
-  remote: () => Promise<T>,
-  id?: string,
-): Promise<T> => {
-  if (isInAppYoutubeEnabled() && (id === undefined || isYouTubeId(id))) {
-    try {
-      return await local(await getInAppCatalog());
-    } catch (err) {
-      const now = Date.now();
-      if (now - (lastFallbackWarning.get(method) ?? 0) > 60_000) {
-        lastFallbackWarning.set(method, now);
-        console.warn(`[in-app-yt] ${method} fell back to the backend:`, err instanceof Error ? err.message : err);
-      }
-    }
-  }
-  return remote();
-};
-
-/** Paged lists: an `L.` cursor came from the in-app catalog and only works there; others only on the backend. */
-const paged = <T>(
-  method: string,
-  cursor: string | undefined,
-  local: (c: InAppCatalog, cursor?: string) => Promise<T>,
-  remote: (cursor?: string) => Promise<T>,
-  id?: string,
-): Promise<T> => {
-  if (cursor?.startsWith('L.')) return getInAppCatalog().then((c) => local(c, cursor));
-  if (cursor) return remote(cursor);
-  return localFirst(
-    method,
-    (c) => local(c),
-    () => remote(),
-    id,
-  );
-};
-
-export const resetFallbackLogThrottleForTesting = () => lastFallbackWarning.clear();
+export const resetFallbackLogThrottleForTesting = resetWarnings;
 
 export const api = {
   // Catalog: YouTube from the phone first (see youtube/inApp.ts), the backend otherwise.
