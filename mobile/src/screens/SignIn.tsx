@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, ScrollView, Pressable, ActivityIndicator } from 'react-native';
+import { View, ScrollView, Pressable, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -12,6 +12,7 @@ import { BrandMark } from '../components/ui/BrandMark';
 import { useAuthStore } from '../data/auth';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { ForgotPassword } from '../components/account/ForgotPassword';
+import { KEYBOARD_GAP } from '../components/layout/Screen';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
@@ -110,151 +111,154 @@ export const SignInScreen = () => {
   const submitLabel = isSignUp ? 'Create account' : 'Sign in';
 
   return (
-    <ScrollView
-      className="flex-1 bg-bg"
-      keyboardShouldPersistTaps="handled"
-      contentContainerStyle={{
-        flexGrow: 1,
-        paddingTop: insets.top + 8,
-        paddingBottom: insets.bottom + 24,
-      }}
-    >
-      <View className="px-3 h-[48px] flex-row items-center">
-        {navigation.canGoBack() && (
-          <IconButton
-            icon={<Icon name="chevron-down" size={22} color="#FFFFFF" />}
-            onPress={() => navigation.goBack()}
-            accessibilityLabel="Keep listening without an account"
-          />
-        )}
-      </View>
-      {verifying ? (
-        <View className="px-6 flex-1 pt-4">
-          <View className="mb-6">
-            <BrandMark size={56} />
-          </View>
-          <Text className="text-h1 font-semibold text-t1 mb-2">Verify your email</Text>
-          <Text className="text-t2 text-bm mb-8">
-            We sent a 6-digit code to {verifying}. Enter it here to verify your address.
-          </Text>
-          <VerifyEmailCode email={verifying} onVerified={leave} />
-          <Button variant="ghost" size="lg" onPress={leave} className="mt-6" accessibilityLabel="Skip for now">
-            Skip for now
-          </Button>
-        </View>
-      ) : (
-        <View className="px-6 flex-1 pt-4">
-          <View className="mb-6">
-            <BrandMark size={56} />
-          </View>
-          <Text className="text-h1 font-semibold text-t1 mb-2">{title}</Text>
-          <Text className="text-t2 text-bm mb-8">{subtitle}</Text>
-
-          {isForgot ? (
-            <>
-              <ForgotPassword
-                initialEmail={email}
-                onDone={(address) => {
-                  setEmail(address);
-                  setPassword('');
-                  switchMode('signin');
-                  setNotice('Password changed. Sign in with your new password.');
-                }}
-              />
-              <Pressable
-                onPress={() => switchMode('signin')}
-                className="mt-6 py-2 items-center"
-                accessibilityRole="button"
-              >
-                <Text className="text-acc text-bm font-medium">Back to sign in</Text>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <View className="gap-3">
-                {isSignUp && (
-                  <Field
-                    placeholder="Your name"
-                    value={name}
-                    onChangeText={setName}
-                    autoCapitalize="words"
-                    autoComplete="name"
-                    textContentType="name"
-                    returnKeyType="next"
-                    accessibilityLabel="Your name"
-                  />
-                )}
-                <Field
-                  placeholder="Email"
-                  value={email}
-                  onChangeText={setEmail}
-                  autoCapitalize="none"
-                  autoComplete="email"
-                  keyboardType="email-address"
-                  textContentType="emailAddress"
-                  returnKeyType="next"
-                  accessibilityLabel="Email"
-                />
-                <Field
-                  placeholder={isSignUp ? 'Password (8+ characters)' : 'Password'}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoComplete={isSignUp ? 'new-password' : 'current-password'}
-                  textContentType={isSignUp ? 'newPassword' : 'password'}
-                  returnKeyType="go"
-                  onSubmitEditing={(e) => submit(e.nativeEvent.text)}
-                  accessibilityLabel="Password"
-                />
-              </View>
-
-              {mode === 'signin' && (
-                <Pressable
-                  onPress={() => switchMode('forgot')}
-                  className="mt-3 self-end py-1"
-                  accessibilityRole="button"
-                >
-                  <Text className="text-t2 text-bs">Forgot password?</Text>
-                </Pressable>
-              )}
-
-              {error && (
-                <Text className="text-red text-bm mt-3" accessibilityLiveRegion="polite">
-                  {error}
-                </Text>
-              )}
-              {notice && (
-                <Text className="text-acc text-bm mt-3" accessibilityLiveRegion="polite">
-                  {notice}
-                </Text>
-              )}
-
-              <Button
-                variant="accent"
-                size="lg"
-                onPress={() => submit()}
-                disabled={busy}
-                className="mt-6"
-                accessibilityLabel={submitLabel}
-              >
-                {busy ? <ActivityIndicator color="#000000" /> : submitLabel}
-              </Button>
-
-              <Pressable
-                onPress={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
-                className="mt-6 py-2 items-center"
-                accessibilityRole="button"
-              >
-                <Text className="text-t2 text-bm">
-                  {mode === 'signin' ? 'New to Sonare? ' : 'Already have an account? '}
-                  <Text className="text-acc font-medium">{mode === 'signin' ? 'Create an account' : 'Sign in'}</Text>
-                </Text>
-              </Pressable>
-            </>
+    // The window draws edge-to-edge, so it no longer resizes for the keyboard: pad for it.
+    <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={KEYBOARD_GAP} style={{ flex: 1 }}>
+      <ScrollView
+        className="flex-1 bg-bg"
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{
+          flexGrow: 1,
+          paddingTop: insets.top + 8,
+          paddingBottom: insets.bottom + 24,
+        }}
+      >
+        <View className="px-3 h-[48px] flex-row items-center">
+          {navigation.canGoBack() && (
+            <IconButton
+              icon={<Icon name="chevron-down" size={22} color="#FFFFFF" />}
+              onPress={() => navigation.goBack()}
+              accessibilityLabel="Keep listening without an account"
+            />
           )}
         </View>
-      )}
-    </ScrollView>
+        {verifying ? (
+          <View className="px-6 flex-1 pt-4">
+            <View className="mb-6">
+              <BrandMark size={56} />
+            </View>
+            <Text className="text-h1 font-semibold text-t1 mb-2">Verify your email</Text>
+            <Text className="text-t2 text-bm mb-8">
+              We sent a 6-digit code to {verifying}. Enter it here to verify your address.
+            </Text>
+            <VerifyEmailCode email={verifying} onVerified={leave} />
+            <Button variant="ghost" size="lg" onPress={leave} className="mt-6" accessibilityLabel="Skip for now">
+              Skip for now
+            </Button>
+          </View>
+        ) : (
+          <View className="px-6 flex-1 pt-4">
+            <View className="mb-6">
+              <BrandMark size={56} />
+            </View>
+            <Text className="text-h1 font-semibold text-t1 mb-2">{title}</Text>
+            <Text className="text-t2 text-bm mb-8">{subtitle}</Text>
+
+            {isForgot ? (
+              <>
+                <ForgotPassword
+                  initialEmail={email}
+                  onDone={(address) => {
+                    setEmail(address);
+                    setPassword('');
+                    switchMode('signin');
+                    setNotice('Password changed. Sign in with your new password.');
+                  }}
+                />
+                <Pressable
+                  onPress={() => switchMode('signin')}
+                  className="mt-6 py-2 items-center"
+                  accessibilityRole="button"
+                >
+                  <Text className="text-acc text-bm font-medium">Back to sign in</Text>
+                </Pressable>
+              </>
+            ) : (
+              <>
+                <View className="gap-3">
+                  {isSignUp && (
+                    <Field
+                      placeholder="Your name"
+                      value={name}
+                      onChangeText={setName}
+                      autoCapitalize="words"
+                      autoComplete="name"
+                      textContentType="name"
+                      returnKeyType="next"
+                      accessibilityLabel="Your name"
+                    />
+                  )}
+                  <Field
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    keyboardType="email-address"
+                    textContentType="emailAddress"
+                    returnKeyType="next"
+                    accessibilityLabel="Email"
+                  />
+                  <Field
+                    placeholder={isSignUp ? 'Password (8+ characters)' : 'Password'}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoComplete={isSignUp ? 'new-password' : 'current-password'}
+                    textContentType={isSignUp ? 'newPassword' : 'password'}
+                    returnKeyType="go"
+                    onSubmitEditing={(e) => submit(e.nativeEvent.text)}
+                    accessibilityLabel="Password"
+                  />
+                </View>
+
+                {mode === 'signin' && (
+                  <Pressable
+                    onPress={() => switchMode('forgot')}
+                    className="mt-3 self-end py-1"
+                    accessibilityRole="button"
+                  >
+                    <Text className="text-t2 text-bs">Forgot password?</Text>
+                  </Pressable>
+                )}
+
+                {error && (
+                  <Text className="text-red text-bm mt-3" accessibilityLiveRegion="polite">
+                    {error}
+                  </Text>
+                )}
+                {notice && (
+                  <Text className="text-acc text-bm mt-3" accessibilityLiveRegion="polite">
+                    {notice}
+                  </Text>
+                )}
+
+                <Button
+                  variant="accent"
+                  size="lg"
+                  onPress={() => submit()}
+                  disabled={busy}
+                  className="mt-6"
+                  accessibilityLabel={submitLabel}
+                >
+                  {busy ? <ActivityIndicator color="#000000" /> : submitLabel}
+                </Button>
+
+                <Pressable
+                  onPress={() => switchMode(mode === 'signin' ? 'signup' : 'signin')}
+                  className="mt-6 py-2 items-center"
+                  accessibilityRole="button"
+                >
+                  <Text className="text-t2 text-bm">
+                    {mode === 'signin' ? 'New to Sonare? ' : 'Already have an account? '}
+                    <Text className="text-acc font-medium">{mode === 'signin' ? 'Create an account' : 'Sign in'}</Text>
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 };

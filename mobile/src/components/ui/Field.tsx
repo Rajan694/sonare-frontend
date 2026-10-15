@@ -16,7 +16,14 @@ export const Field = ({ icon, clearButton, onClear, className, ...props }: Field
       className={cn('flex-row items-center h-[44px] px-3.5 bg-s2 border border-ln2 rounded-full gap-2.5', className)}
     >
       {icon}
-      <TextInput {...props} className="flex-1 text-t1 text-bm font-sans p-0" placeholderTextColor="#7E7E8C" />
+      {/* Full pill height: Android scrolls a focused input's own box above the keyboard, and a
+          text-line-high box left the pill's lower half under it. */}
+      <TextInput
+        {...props}
+        className="flex-1 self-stretch text-t1 text-bm font-sans p-0"
+        textAlignVertical="center"
+        placeholderTextColor="#7E7E8C"
+      />
       {clearButton && onClear ? (
         <Pressable
           onPress={onClear}
