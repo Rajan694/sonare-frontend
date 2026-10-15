@@ -6,7 +6,7 @@
  * page that loop is busy re-rendering the UI, and decoding fell behind real time there
  * (the audio stopped for seconds at a time); a worker's loop is free.
  *
- * Messages in:  probe · open · start · need · stop · close  (see StreamDecoderRequest)
+ * Messages in:  probe · open · grow · start · need · stop · close  (see StreamDecoderRequest)
  * Messages out: probed · chunk · end · error                  (see StreamDecoderEvent)
  */
 
@@ -19,11 +19,18 @@ export interface StreamMedia {
   starts: Float64Array<ArrayBuffer>;
   count: number;
   duration: number;
+  /**
+   * False while the file is still downloading: more packets come with `grow`, so a run that
+   * reaches the last one waits for them instead of ending.
+   */
+  complete?: boolean;
 }
 
 export type StreamDecoderRequest =
   | { type: 'probe'; probe: number; config: AudioDecoderConfig }
   | { type: 'open'; media: number; data: StreamMedia }
+  /** The same file with more of it downloaded: the packets so far are unchanged, more follow. */
+  | { type: 'grow'; media: number; data: StreamMedia }
   | { type: 'start'; media: number; run: number; target: number; contextRate: number }
   | { type: 'need'; run: number; until: number }
   | { type: 'stop'; run: number }
@@ -111,7 +118,8 @@ class Run {
 
   constructor(
     private readonly id: number,
-    private readonly media: StreamMedia,
+    readonly mediaId: number,
+    private media: StreamMedia,
     private readonly target: number,
     private readonly contextRate: number,
   ) {
@@ -137,6 +145,12 @@ class Run {
     this.pump();
   }
 
+  /** More of a downloading file arrived: carry on where decoding stopped. */
+  grow(media: StreamMedia) {
+    this.media = media;
+    this.pump();
+  }
+
   private pump() {
     if (this.stopped || this.drained) return;
     const { media } = this;
@@ -152,7 +166,7 @@ class Run {
       );
       this.fedUntil = i + 1 < media.count ? media.starts[i + 1] : media.duration;
     }
-    if (this.nextPacket >= media.count) {
+    if (this.nextPacket >= media.count && media.complete !== false) {
       this.drained = true;
       this.decoder.flush().then(
         () => {
@@ -240,12 +254,16 @@ scope.onmessage = async (e: MessageEvent<StreamDecoderRequest>) => {
       const media = medias.get(m.media);
       if (!media) return post({ type: 'error', run: m.run, message: 'Media was closed' });
       try {
-        runs.set(m.run, new Run(m.run, media, m.target, m.contextRate));
+        runs.set(m.run, new Run(m.run, m.media, media, m.target, m.contextRate));
       } catch (err) {
         post({ type: 'error', run: m.run, message: err instanceof Error ? err.message : 'Decoder failed' });
       }
       break;
     }
+    case 'grow':
+      medias.set(m.media, m.data);
+      for (const run of runs.values()) if (run.mediaId === m.media) run.grow(m.data);
+      break;
     case 'need':
       runs.get(m.run)?.need(m.until);
       break;

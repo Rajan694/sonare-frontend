@@ -1,6 +1,7 @@
+import { filesystem } from '@neutralinojs/lib';
 import { API_BASE } from '../api/auth';
 import { api } from '../api/api';
-import { demuxAudio, type DemuxedAudio } from './audioDemux';
+import { demuxAudio, demuxWebmPrefix, type DemuxedAudio } from './audioDemux';
 import { BufferPlayback } from './bufferPlayback';
 import { canStream, StreamPlayback } from './streamPlayback';
 import * as dsp from './dsp';
@@ -25,7 +26,8 @@ import { isGooglevideo, StreamDownloadError, streamCache } from '../youtube/stre
  *
  * In the Linux window, local files are decoded and played from memory instead (see
  * bufferPlayback.ts): WebKitGTK's <audio> drops audio at every ~64 KB it reads. Files too
- * long to decode whole are decoded a few seconds at a time (streamPlayback.ts).
+ * long to decode whole are decoded a few seconds at a time (streamPlayback.ts). In-app YouTube
+ * songs there start playing from the first part of their download (playWhileDownloading).
  */
 
 export interface PlaybackStatus {
@@ -404,6 +406,150 @@ const fileSource = async (slot: Slot, isCurrent: () => boolean, file: LocalFileD
   return localLibrary.blobUrlFor(file);
 };
 
+/** Seconds of a downloading song that must be here before it starts playing. */
+const PROGRESSIVE_START_S = 4;
+const PROGRESSIVE_POLL_MS = 300;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Linux window, in-app YouTube: plays a song from the first part of its download instead of
+ * waiting for all of it (audit I3), adding the rest to the decoder as it arrives. Resolves true
+ * once it plays; false when it can't (not Opus in WebM, no WebCodecs, already cached, or the
+ * download ended before enough arrived), and the caller then waits for the whole file as before.
+ * The download is the cache's own, so the finished file is cached like any other.
+ *
+ * Only for the song being played: the next song is downloaded ahead anyway, and a whole file
+ * decodes into a BufferPlayback, which can join the song after it sample-exact.
+ */
+const playWhileDownloading = async (
+  slot: Slot,
+  isCurrent: () => boolean,
+  trackId: string,
+  resolved: ResolvedStream,
+  force: boolean,
+): Promise<boolean> => {
+  if (!/webm/i.test(resolved.mimeType)) return false;
+  if (!force && (await streamCache.getCachedPath(resolved.rawId, resolved.itag))) return false;
+  const graph = await dsp.graphInput();
+  if (!graph || !isCurrent()) return false;
+  const partPath = await streamCache.partPathFor(resolved.rawId, resolved.itag, resolved.mimeType);
+
+  const download: { result: 'done' | 'failed' | null; path: string | null } = { result: null, path: null };
+  void downloadInApp(trackId, resolved, force).then(
+    (path) => {
+      download.path = path;
+      download.result = 'done';
+    },
+    () => {
+      download.result = 'failed';
+    },
+  );
+
+  let bytes = new Uint8Array(Math.max(resolved.contentLength, 1 << 20));
+  let filled = 0;
+  const readMore = async (path: string) => {
+    let size = 0;
+    try {
+      size = (await filesystem.getStats(path)).size;
+    } catch {
+      return; // Not started yet.
+    }
+    if (size <= filled) return;
+    const chunk = new Uint8Array(await filesystem.readBinaryFile(path, { pos: filled, size: size - filled }));
+    if (filled + chunk.length > bytes.length) {
+      const bigger = new Uint8Array(Math.max(bytes.length * 2, filled + chunk.length));
+      bigger.set(bytes.subarray(0, filled));
+      bytes = bigger;
+    }
+    bytes.set(chunk, filled);
+    filled += chunk.length;
+  };
+  // A copy each time: the playback hands its bytes over to the decoder worker.
+  const prefix = () => demuxWebmPrefix(bytes.slice(0, filled));
+
+  let playback: StreamPlayback | null = null;
+  let sentCount = 0;
+  const start = (media: DemuxedAudio, totalSeconds: number) => {
+    const p: StreamPlayback = new StreamPlayback(
+      graph.ctx,
+      graph.input,
+      media,
+      () => decodedEnded(p),
+      () => decodedFailed(p),
+      { totalSeconds },
+    );
+    p.setVolume(volume);
+    p.setRate(dsp.getDsp().speed);
+    emptyElement(el(slot));
+    slot.decoded = p;
+    slot.expiresAt = Number.POSITIVE_INFINITY;
+    slot.muxed = false;
+    if (slot === active) {
+      loading = false;
+      emit();
+    } else {
+      slot.ready = true;
+    }
+    return p;
+  };
+
+  try {
+    for (;;) {
+      // Read the state before the bytes, so bytes that came with the finish aren't missed.
+      const result = download.result;
+      await readMore(result === 'done' && download.path ? download.path : partPath);
+      if (!playback) {
+        // Finished or failed before enough arrived: the usual whole-file path takes over.
+        if (result || !isCurrent()) return false;
+        const { media, declaredDuration } = prefix();
+        if (media && declaredDuration && media.duration >= PROGRESSIVE_START_S) {
+          if (!(await canStream(media)) || !isCurrent()) return false;
+          sentCount = media.count;
+          playback = start(media, declaredDuration);
+          // Keep adding the rest in the background; the song plays meanwhile.
+          void (async () => {
+            for (;;) {
+              await sleep(PROGRESSIVE_POLL_MS);
+              const p = playback!;
+              // Another song took the slot: the download carries on into the cache.
+              if (slot.decoded !== p) return;
+              const state = download.result;
+              await readMore(state === 'done' && download.path ? download.path : partPath);
+              if (state === 'done') {
+                const whole = demuxAudio(bytes.slice(0, filled).buffer, 'webm');
+                const media = whole ?? prefix().media;
+                if (media) p.grow(media, true);
+                return;
+              }
+              if (state === 'failed') {
+                const { media } = prefix();
+                if (media) p.grow(media, true);
+                if (slot === active) {
+                  error = 'The song stopped downloading';
+                  emit();
+                }
+                return;
+              }
+              const { media } = prefix();
+              if (media && media.count > sentCount) {
+                sentCount = media.count;
+                p.grow(media, false);
+              }
+            }
+          })().catch(() => {
+            // Reading the file failed: what arrived keeps playing.
+          });
+          return true;
+        }
+      }
+      await sleep(PROGRESSIVE_POLL_MS);
+    }
+  } catch {
+    return false;
+  }
+};
+
 /**
  * Point `slot` at `trackId`, fetching a fresh stream url when needed. Does not start playback.
  * The active slot reports loading and errors; a standby that fails is just dropped.
@@ -451,6 +597,9 @@ const loadInto = async (slot: Slot, trackId: string, force: boolean): Promise<vo
       if (!resolved.direct) {
         src = resolved.url;
       } else {
+        if (DECODE_LOCAL_FILES && isActive() && (await playWhileDownloading(slot, isCurrent, trackId, resolved, force)))
+          return;
+        if (!isCurrent()) return;
         let path: string | null = null;
         try {
           path = await downloadInApp(trackId, resolved, force);

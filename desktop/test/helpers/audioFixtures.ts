@@ -126,3 +126,44 @@ export const mp3Frames = (n: number, { mono = false } = {}) => {
   }
   return cat(...frames);
 };
+
+/** An EBML element; sizes up to 2^21 - 1 bytes. */
+export const ebml = (id: number[], ...body: (Uint8Array | number[])[]) => {
+  const b = cat(...body);
+  const size =
+    b.length < 127
+      ? [0x80 | b.length]
+      : b.length < 16383
+        ? [0x40 | (b.length >> 8), b.length & 0xff]
+        : [0x20 | (b.length >> 16), (b.length >> 8) & 0xff, b.length & 0xff];
+  return cat(id, size, b);
+};
+
+/**
+ * A WebM file of `packets` 20 ms Opus packets, with the song's length in its Info header the way
+ * YouTube's streams carry it. The segment has an unknown size, as live-written files do.
+ */
+export const webmOpus = (packets: number) => {
+  const head = cat(latin1('OpusHead'), [1, 2, 0x38, 0x01], le32(48_000), [0, 0, 0]);
+  const duration = new Uint8Array(8);
+  new DataView(duration.buffer).setFloat64(0, packets * 20);
+  const info = ebml(
+    [0x15, 0x49, 0xa9, 0x66],
+    ebml([0x2a, 0xd7, 0xb1], [0x0f, 0x42, 0x40]),
+    ebml([0x44, 0x89], duration),
+  );
+  const track = ebml([0xae], ebml([0xd7], [1]), ebml([0x86], latin1('A_OPUS')), ebml([0x63, 0xa2], head));
+  const blocks = Array.from({ length: packets }, (_, i) =>
+    ebml(
+      [0xa3],
+      [0x81, (i >> 8) & 0xff, i & 0xff, 0x80],
+      Uint8Array.from({ length: 12 }, (_, k) => (k === 0 ? 0x08 : 7)),
+    ),
+  );
+  return cat(
+    [0x18, 0x53, 0x80, 0x67, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
+    info,
+    ebml([0x16, 0x54, 0xae, 0x6b], track),
+    ebml([0x1f, 0x43, 0xb6, 0x75], ...blocks),
+  );
+};

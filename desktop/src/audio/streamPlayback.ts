@@ -14,6 +14,9 @@ import type { StreamDecoderEvent, StreamDecoderRequest, StreamMedia } from './st
  *
  * Play, seek and speed changes start a fresh run of the decoder at the new position;
  * pause stops it.
+ *
+ * A song still downloading (in-app YouTube in the Linux window) starts from its first part and
+ * `grow`s as the rest arrives; the decoder waits at the end of what is there (audit I3).
  */
 
 /** Decoded and scheduled ahead of the playhead; covers main-thread stalls and throttled timers. */
@@ -172,6 +175,22 @@ class Run {
   }
 }
 
+const streamMedia = (media: DemuxedAudio, complete: boolean): { data: StreamMedia; buffers: ArrayBuffer[] } => {
+  const data: StreamMedia = {
+    config: decoderConfig(media),
+    codec: media.codec,
+    bytes: media.bytes as Uint8Array<ArrayBuffer>,
+    offsets: media.offsets as Uint32Array<ArrayBuffer>,
+    sizes: media.sizes as Uint32Array<ArrayBuffer>,
+    starts: media.starts as Float64Array<ArrayBuffer>,
+    count: media.count,
+    duration: media.duration,
+    complete,
+  };
+  const buffers = new Set<ArrayBuffer>([data.bytes.buffer, data.offsets.buffer, data.sizes.buffer, data.starts.buffer]);
+  return { data, buffers: [...buffers] };
+};
+
 /** Same surface as BufferPlayback, so player.ts can drive either. */
 export class StreamPlayback {
   private readonly gain: GainNode;
@@ -180,6 +199,9 @@ export class StreamPlayback {
   /** The file's id in the worker, which holds its packets. */
   private readonly mediaId = ++nextId;
   private readonly length: number;
+  /** Seconds of the file that are here; less than `length` while it downloads. */
+  private available: number;
+  private complete: boolean;
   private run: Run | null = null;
   private offset = 0;
   private rate = 1;
@@ -188,36 +210,41 @@ export class StreamPlayback {
   private starting: Promise<void> | null = null;
   private disposed = false;
 
-  /** Hands `media`'s buffers to the worker: they're unusable here afterwards. */
+  /**
+   * Hands `media`'s buffers to the worker: they're unusable here afterwards. `downloading`:
+   * `media` is the first part of a file still arriving, `totalSeconds` long once it's all here.
+   */
   constructor(
     private readonly ctx: AudioContext,
     input: AudioNode,
     media: DemuxedAudio,
     private readonly onEnded: () => void,
     private readonly onError: (message: string) => void,
+    downloading?: { totalSeconds: number },
   ) {
     this.gain = ctx.createGain();
     this.fader = ctx.createGain();
     this.gain.connect(this.fader);
     this.fader.connect(input);
-    this.length = media.duration;
-    const data: StreamMedia = {
-      config: decoderConfig(media),
-      codec: media.codec,
-      bytes: media.bytes as Uint8Array<ArrayBuffer>,
-      offsets: media.offsets as Uint32Array<ArrayBuffer>,
-      sizes: media.sizes as Uint32Array<ArrayBuffer>,
-      starts: media.starts as Float64Array<ArrayBuffer>,
-      count: media.count,
-      duration: media.duration,
-    };
-    const buffers = new Set<ArrayBuffer>([
-      data.bytes.buffer,
-      data.offsets.buffer,
-      data.sizes.buffer,
-      data.starts.buffer,
-    ]);
-    send({ type: 'open', media: this.mediaId, data }, [...buffers]);
+    this.complete = !downloading;
+    this.available = media.duration;
+    this.length = downloading ? Math.max(downloading.totalSeconds, media.duration) : media.duration;
+    const { data, buffers } = streamMedia(media, this.complete);
+    send({ type: 'open', media: this.mediaId, data }, buffers);
+  }
+
+  /** More of the downloading file (the whole of it so far); `complete` once it's all here. */
+  grow(media: DemuxedAudio, complete: boolean): void {
+    if (this.disposed || this.complete) return;
+    this.complete = complete;
+    this.available = media.duration;
+    const { data, buffers } = streamMedia(media, complete);
+    send({ type: 'grow', media: this.mediaId, data }, buffers);
+  }
+
+  /** Seconds that can play now: the whole song once downloaded. */
+  get playable(): number {
+    return this.complete ? this.length : this.available;
   }
 
   get duration(): number {
@@ -288,7 +315,9 @@ export class StreamPlayback {
   seek(seconds: number): void {
     const playing = this.wantPlaying;
     this.pause();
-    this.offset = Math.max(0, Math.min(seconds, this.duration));
+    // While downloading, a seek past what's here lands just before its end.
+    const limit = this.complete ? this.duration : Math.max(0, this.available - 1);
+    this.offset = Math.max(0, Math.min(seconds, limit));
     this.finished = false;
     if (playing) void this.play();
   }

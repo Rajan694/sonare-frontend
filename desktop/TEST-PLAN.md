@@ -455,20 +455,21 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/audioDemux.test.ts`
 
-| ID              | Use case                                                                                  |
-| :-------------- | :---------------------------------------------------------------------------------------- |
-| `WEB-DEMUX-001` | splits frames after the ID3 tag, with exact start times and duration                      |
-| `WEB-DEMUX-002` | skips junk before the first frame, including a false sync word, and stops at an ID3v1 tag |
-| `WEB-DEMUX-003` | recognises mono files                                                                     |
-| `WEB-DEMUX-004` | a file with no MP3 frames is left to the audio element                                    |
-| `WEB-DEMUX-005` | reads the OpusHead and times each packet from its TOC byte                                |
-| `WEB-DEMUX-006` | joins a packet that continues onto the next page                                          |
-| `WEB-DEMUX-007` | ignores pages from another logical stream                                                 |
-| `WEB-DEMUX-008` | Ogg Vorbis and broken pages are not demuxed                                               |
-| `WEB-DEMUX-009` | finds the Opus track and its blocks, even inside an unknown-size segment                  |
-| `WEB-DEMUX-010` | laced blocks and non-Opus tracks are left to the audio element                            |
-| `WEB-DEMUX-011` | packetAt finds the packet playing at a time                                               |
-| `WEB-DEMUX-012` | formats it does not handle return null                                                    |
+| ID              | Use case                                                                                            |
+| :-------------- | :-------------------------------------------------------------------------------------------------- |
+| `WEB-DEMUX-001` | splits frames after the ID3 tag, with exact start times and duration                                |
+| `WEB-DEMUX-002` | skips junk before the first frame, including a false sync word, and stops at an ID3v1 tag           |
+| `WEB-DEMUX-003` | recognises mono files                                                                               |
+| `WEB-DEMUX-004` | a file with no MP3 frames is left to the audio element                                              |
+| `WEB-DEMUX-005` | reads the OpusHead and times each packet from its TOC byte                                          |
+| `WEB-DEMUX-006` | joins a packet that continues onto the next page                                                    |
+| `WEB-DEMUX-007` | ignores pages from another logical stream                                                           |
+| `WEB-DEMUX-008` | Ogg Vorbis and broken pages are not demuxed                                                         |
+| `WEB-DEMUX-009` | finds the Opus track and its blocks, even inside an unknown-size segment                            |
+| `WEB-DEMUX-010` | laced blocks and non-Opus tracks are left to the audio element                                      |
+| `WEB-DEMUX-011` | packetAt finds the packet playing at a time                                                         |
+| `WEB-DEMUX-012` | formats it does not handle return null                                                              |
+| `WEB-DEMUX-013` | a file still downloading gives only whole packets, more as it grows, and the length from its header |
 
 ## `test/unit/auth.test.ts`
 
@@ -916,6 +917,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-062` | streamCache evicts oldest accessed files when total size exceeds 300 MB limit                                |
 | `DSK-063` | streamCache detects deleted files on disk and removes them from the cached index                             |
 | `DSK-078` | streamCache reports how much it holds, and clear empties it from disk                                        |
+| `DSK-079` | on Linux an in-app song starts from the first part of its download and grows to the whole file               |
 | `DSK-064` | player downloads direct YouTube stream into streamCache and decodes via Web Audio on Linux                   |
 | `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
 | `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |

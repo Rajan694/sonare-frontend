@@ -32,7 +32,7 @@ export const demuxAudio = (data: ArrayBuffer, ext: string): DemuxedAudio | null 
   try {
     if (ext === 'mp3') return demuxMp3(bytes);
     if (ext === 'opus' || ext === 'ogg') return demuxOgg(bytes);
-    if (ext === 'webm' || ext === 'mka') return demuxWebm(bytes);
+    if (ext === 'webm' || ext === 'mka') return demuxWebm(bytes).media;
   } catch {
     // Truncated or unusual file: let the element have a go.
   }
@@ -243,6 +243,9 @@ const EBML_CODEC_PRIVATE = 0x63a2;
 const EBML_SIMPLE_BLOCK = 0xa3;
 const EBML_BLOCK_GROUP = 0xa0;
 const EBML_BLOCK = 0xa1;
+const EBML_INFO = 0x1549a966;
+const EBML_TIMECODE_SCALE = 0x2ad7b1;
+const EBML_DURATION = 0x4489;
 
 /** Reads an EBML variable-length integer; `id` keeps the length marker bits. */
 const vint = (b: Uint8Array, i: number, id: boolean): { value: number; length: number; unknown: boolean } => {
@@ -259,20 +262,45 @@ const vint = (b: Uint8Array, i: number, id: boolean): { value: number; length: n
   return { value, length, unknown: !id && allOnes };
 };
 
-const demuxWebm = (b: Uint8Array): DemuxedAudio | null => {
+/**
+ * `partial`: `b` is the start of a file still downloading. Elements that don't fit in it yet are
+ * left out instead of read short, so every packet returned is whole, and the same bytes always
+ * give the same packets (a longer prefix only adds packets at the end).
+ */
+const demuxWebm = (b: Uint8Array, partial = false): WebmResult => {
   const packets = new Packets();
   let head: Uint8Array | null = null;
   let opusTrack = -1;
+  let timecodeScale = 1_000_000;
+  let declaredDuration: number | null = null;
+  // Partial: stops walking at the first element that isn't all there yet.
+  let truncated = false;
 
   // Walks one level of elements in [start, end), descending only into the containers
   // that lead to tracks and blocks.
   const walk = (start: number, end: number) => {
     let i = start;
-    while (i < end) {
+    while (i < end && !truncated) {
+      if (partial && i + 12 > b.length && !fitsHeader(b, i)) {
+        truncated = true;
+        return;
+      }
       const id = vint(b, i, true);
       const size = vint(b, i + id.length, false);
       const data = i + id.length + size.length;
-      const stop = size.unknown ? end : Math.min(end, data + size.value);
+      const declaredEnd = size.unknown ? end : data + size.value;
+      const container =
+        id.value === EBML_SEGMENT ||
+        id.value === EBML_CLUSTER ||
+        id.value === EBML_TRACKS ||
+        id.value === EBML_BLOCK_GROUP;
+      if (partial && declaredEnd > b.length) {
+        // A container is read as far as it goes; anything else waits for the rest of its bytes.
+        if (container && data <= b.length) walk(data, b.length);
+        truncated = true;
+        return;
+      }
+      const stop = size.unknown ? end : Math.min(end, declaredEnd);
       switch (id.value) {
         case EBML_SEGMENT:
         case EBML_CLUSTER:
@@ -282,6 +310,9 @@ const demuxWebm = (b: Uint8Array): DemuxedAudio | null => {
           break;
         case EBML_TRACK_ENTRY:
           readTrack(data, stop);
+          break;
+        case EBML_INFO:
+          readInfo(data, stop);
           break;
         case EBML_SIMPLE_BLOCK:
         case EBML_BLOCK:
@@ -312,6 +343,23 @@ const demuxWebm = (b: Uint8Array): DemuxedAudio | null => {
     }
   };
 
+  const readInfo = (start: number, end: number) => {
+    let i = start;
+    let raw: number | null = null;
+    while (i < end) {
+      const id = vint(b, i, true);
+      const size = vint(b, i + id.length, false);
+      const data = i + id.length + size.length;
+      if (id.value === EBML_TIMECODE_SCALE) timecodeScale = readUint(data, size.value);
+      else if (id.value === EBML_DURATION && (size.value === 4 || size.value === 8)) {
+        const view = new DataView(b.buffer, b.byteOffset + data, size.value);
+        raw = size.value === 4 ? view.getFloat32(0) : view.getFloat64(0);
+      }
+      i = data + size.value;
+    }
+    if (raw !== null && raw > 0) declaredDuration = (raw * timecodeScale) / 1e9;
+  };
+
   const readUint = (at: number, n: number) => {
     let v = 0;
     for (let k = 0; k < n; k++) v = v * 256 + b[at + k];
@@ -330,12 +378,40 @@ const demuxWebm = (b: Uint8Array): DemuxedAudio | null => {
   };
 
   walk(0, b.length);
-  if (!head) return null;
-  return packets.result({
-    codec: 'opus',
-    sampleRate: 48000,
-    channels: opusHeadInfo(head)!.channels,
-    description: head,
-    bytes: b,
-  });
+  const media = head
+    ? packets.result({
+        codec: 'opus',
+        sampleRate: 48000,
+        channels: opusHeadInfo(head)!.channels,
+        description: head,
+        bytes: b,
+      })
+    : null;
+  return { media, declaredDuration };
+};
+
+interface WebmResult {
+  media: DemuxedAudio | null;
+  /** Seconds, from the file's header: the whole song's length while only part of it is here. */
+  declaredDuration: number | null;
+}
+
+/** Whether a whole element id and size can be read at `i` (they are at most 12 bytes). */
+const fitsHeader = (b: Uint8Array, i: number): boolean => {
+  const idLength = Math.clz32(b[i] ?? 0) - 23;
+  if (i >= b.length || idLength < 1 || idLength > 4 || i + idLength >= b.length) return false;
+  const sizeLength = Math.clz32(b[i + idLength]) - 23;
+  return sizeLength >= 1 && sizeLength <= 8 && i + idLength + sizeLength <= b.length;
+};
+
+/**
+ * The packets in the first part of a WebM (Opus) file that is still downloading, and the whole
+ * song's length from its header. Null media until the header and a first packet are in.
+ */
+export const demuxWebmPrefix = (data: Uint8Array): WebmResult => {
+  try {
+    return demuxWebm(data, true);
+  } catch {
+    return { media: null, declaredDuration: null };
+  }
 };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { demuxAudio, packetAt } from '../../src/audio/audioDemux';
+import { demuxAudio, demuxWebmPrefix, packetAt } from '../../src/audio/audioDemux';
 import { cat, id3Frame, id3Tag, latin1, le32, MP3_FRAME_LEN, mp3Frames } from '../helpers/audioFixtures';
 
 const toBuf = (b: Uint8Array) => b.slice().buffer;
@@ -117,6 +117,35 @@ describe('WebM (Matroska)', () => {
     expect([...m.sizes]).toEqual([20, 30, 25]);
     expect(m.duration).toBeCloseTo(0.06, 9);
     expect(m.bytes[m.offsets[1]]).toBe(0x08);
+  });
+
+  it('WEB-DEMUX-013 a file still downloading gives only whole packets, more as it grows, and the length from its header', () => {
+    const durationMs = new Uint8Array(8);
+    new DataView(durationMs.buffer).setFloat64(0, 183_500);
+    const info = ebml(
+      [0x15, 0x49, 0xa9, 0x66],
+      ebml([0x2a, 0xd7, 0xb1], [0x0f, 0x42, 0x40]),
+      ebml([0x44, 0x89], durationMs),
+    );
+    const whole = webm([opus20ms(20), opus20ms(30), opus20ms(25), opus20ms(40)]);
+    // The Info element goes right after the segment header.
+    const file = cat(whole.subarray(0, 12), info, whole.subarray(12));
+    const full = demuxAudio(toBuf(file), 'webm')!;
+    let seen = 0;
+    for (let cut = 0; cut <= file.length; cut++) {
+      const { media, declaredDuration } = demuxWebmPrefix(file.slice(0, cut));
+      const count = media?.count ?? 0;
+      // Never fewer packets than a shorter prefix gave, and each one exactly as in the whole file.
+      expect(count).toBeGreaterThanOrEqual(seen);
+      seen = count;
+      for (let i = 0; i < count; i++) {
+        expect(media!.offsets[i]).toBe(full.offsets[i]);
+        expect(media!.sizes[i]).toBe(full.sizes[i]);
+      }
+      if (media) expect(declaredDuration).toBeCloseTo(183.5, 6);
+    }
+    expect(seen).toBe(4);
+    expect(demuxWebmPrefix(new Uint8Array([0x1a, 0x45]))).toEqual({ media: null, declaredDuration: null });
   });
 
   it('WEB-DEMUX-010 laced blocks and non-Opus tracks are left to the audio element', () => {

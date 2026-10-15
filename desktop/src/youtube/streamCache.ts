@@ -112,6 +112,10 @@ export const streamCache = {
     return null;
   },
 
+  /** Where a download in progress is written (`<file>.part`), so it can be read while it arrives. */
+  partPathFor: async (videoId: string, itag: number, mimeType: string): Promise<string> =>
+    `${await getStreamCacheDir()}/${cacheKey(videoId, itag)}.${extensionForStream(mimeType, itag)}.part`,
+
   /** The cached file, downloading it first if needed. Concurrent calls for one stream share a download. */
   getOrDownload: async (
     videoId: string,
