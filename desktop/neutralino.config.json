@@ -19,6 +19,7 @@
     "os.showMessageBox",
     "os.open",
     "os.execCommand",
+    "os.spawnProcess",
     "os.getPath",
     "os.getEnv",
     "os.showFolderDialog",

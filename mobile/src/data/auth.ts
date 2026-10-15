@@ -29,32 +29,54 @@ interface AuthStore {
   signOut: () => Promise<void>;
   /** Swap the refresh token for a new pair; returns the new access token or null. */
   refresh: () => Promise<string | null>;
-  /** Emails a reset link; the server answers ok whether or not the account exists. */
+  /** Emails a reset code (and link); the server answers ok whether or not the account exists. */
   requestPasswordReset: (email: string) => Promise<void>;
+  /** Swaps the emailed reset code for a token that sets the new password (15 minutes). */
+  verifyResetCode: (email: string, code: string) => Promise<string>;
+  /** Sets a new password with a reset token; every device is signed out. */
+  resetPassword: (resetToken: string, password: string) => Promise<void>;
+  /** Signed in: a new password; this phone gets a fresh session, other devices are signed out. */
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  updateDisplayName: (displayName: string) => Promise<void>;
+  /** Deletes the account and everything saved to it, then carries on as a guest. */
+  deleteAccount: (password: string) => Promise<void>;
+  /** Emails a new verification code and link. */
   resendVerification: () => Promise<void>;
+  /** The 6-digit code from the verification email; marks the account verified. */
+  verifyEmailCode: (code: string) => Promise<void>;
 }
 
-class AuthError extends Error {
+export class AuthError extends Error {
   constructor(
     message: string,
     public status: number,
+    public code?: string,
   ) {
     super(message);
   }
 }
 
-const authRequest = async <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> => {
-  const { status, json } = await httpRequest(`${apiBase()}/auth/${path}`, {
-    method: 'POST',
+const serverRequest = async <T>(
+  method: 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body: unknown,
+  accessToken?: string | null,
+): Promise<T> => {
+  const { status, json } = await httpRequest(`${apiBase()}${path}`, {
+    method,
     headers: {
       'Content-Type': 'application/json',
       ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
     },
     body: JSON.stringify(body),
   });
-  if (status < 200 || status >= 300) throw new AuthError(json?.error?.message || `Request failed (${status})`, status);
+  if (status < 200 || status >= 300)
+    throw new AuthError(json?.error?.message || `Request failed (${status})`, status, json?.error?.code);
   return json as T;
 };
+
+const authRequest = <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> =>
+  serverRequest<T>('POST', `/auth/${path}`, body, accessToken);
 
 let refreshing: Promise<string | null> | null = null;
 
@@ -64,6 +86,23 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       service: KEYCHAIN_SERVICE,
     });
     set({ status: 'signedIn', ...session });
+  };
+
+  /** A call as the signed-in account; an expired access token is refreshed once. */
+  const asAccount = async <T>(
+    path: string,
+    body: unknown,
+    method: 'POST' | 'PATCH' | 'DELETE' = 'POST',
+  ): Promise<T> => {
+    const fullPath = path.startsWith('/') ? path : `/auth/${path}`;
+    try {
+      return await serverRequest<T>(method, fullPath, body, get().accessToken);
+    } catch (e) {
+      if (!(e instanceof AuthError) || e.status !== 401) throw e;
+      const token = await get().refresh();
+      if (!token) throw e;
+      return serverRequest<T>(method, fullPath, body, token);
+    }
   };
 
   const endSession = async () => {
@@ -162,8 +201,46 @@ export const useAuthStore = create<AuthStore>((set, get) => {
       await authRequest('forgot-password', { email });
     },
 
+    verifyResetCode: async (email, code) => {
+      const { resetToken } = await authRequest<{ resetToken: string }>('verify-reset-code', { email, code });
+      return resetToken;
+    },
+
+    resetPassword: async (resetToken, password) => {
+      await authRequest('reset-password', { token: resetToken, password });
+    },
+
+    changePassword: async (currentPassword, newPassword) => {
+      const pair = await asAccount<{ accessToken: string; refreshToken: string }>('change-password', {
+        currentPassword,
+        newPassword,
+      });
+      const { user } = get();
+      if (user) await startSession({ ...pair, user });
+    },
+
+    updateDisplayName: async (displayName) => {
+      const user = await asAccount<User>('/me', { displayName }, 'PATCH');
+      const { accessToken, refreshToken } = get();
+      if (accessToken && refreshToken)
+        await startSession({ accessToken, refreshToken, user: { ...get().user, ...user } });
+    },
+
+    deleteAccount: async (password) => {
+      await asAccount('/me', { password }, 'DELETE');
+      await endSession();
+    },
+
     resendVerification: async () => {
-      await authRequest('resend-verification', {}, get().accessToken);
+      await asAccount('resend-verification', {});
+    },
+
+    verifyEmailCode: async (code) => {
+      await asAccount('verify-email-code', { code });
+      const { accessToken, refreshToken, user } = get();
+      if (accessToken && refreshToken && user) {
+        await startSession({ accessToken, refreshToken, user: { ...user, emailVerified: true } });
+      }
     },
   };
 });

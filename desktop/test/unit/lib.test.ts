@@ -5,6 +5,7 @@ import { cn } from '../../src/lib/cn';
 import { formatBytes, formatDuration, generatePeaks } from '../../src/lib/format';
 import { hasInternet } from '../../src/lib/connectivity';
 import { useLayout } from '../../src/lib/layout';
+import { parseReleaseNotes } from '../../../shared/releaseNotes';
 import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';
 
 useMockServer();
@@ -17,7 +18,7 @@ afterEach(() => {
 });
 
 describe('capabilities and formatting', () => {
-  it('WEB-LIB-001 the web build has no local library, offline mode, native EQ, server address or update check, and includes admin and the intro page', () => {
+  it('WEB-LIB-001 the web build has no local library, offline mode, native EQ or update check, and includes admin and the intro page', () => {
     expect(CAPS).toEqual({
       localLibrary: false,
       offlineMode: false,
@@ -26,7 +27,6 @@ describe('capabilities and formatting', () => {
       nativeEq: false,
       admin: true,
       landing: true,
-      serverAddress: false,
       appUpdates: false,
     });
     expect(CLIENT).toBe('web');
@@ -212,5 +212,26 @@ describe('layout', () => {
       window.dispatchEvent(new Event('resize'));
     });
     expect(result.current).toBe('web');
+  });
+});
+
+describe('release notes', () => {
+  it("WEB-LIB-016 turns GitHub's generated notes into headings and items without links or authors", () => {
+    const notes = [
+      "## What's Changed",
+      '* **Faster** search by @Rajan694 in https://github.com/Rajan694/sonare/pull/10',
+      '- See [the docs](https://sonare.vip/docs) for `offline` mode',
+      '',
+      'Thanks for listening.',
+      '<!-- hidden -->',
+      '**Full Changelog**: https://github.com/Rajan694/sonare/compare/v1.1.0...v1.2.0',
+    ].join('\r\n');
+    expect(parseReleaseNotes(notes)).toEqual([
+      { kind: 'heading', text: "What's Changed" },
+      { kind: 'item', text: 'Faster search' },
+      { kind: 'item', text: 'See the docs for offline mode' },
+      { kind: 'text', text: 'Thanks for listening.' },
+    ]);
+    expect(parseReleaseNotes(null)).toEqual([]);
   });
 });

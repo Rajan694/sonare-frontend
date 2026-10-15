@@ -84,6 +84,10 @@ describe('search slice', () => {
       requested: null,
       status: 'idle',
       error: null,
+      nextCursor: null,
+      loadingMore: false,
+      loadMoreError: null,
+      recent: [],
     });
   });
 });

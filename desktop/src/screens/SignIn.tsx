@@ -2,9 +2,11 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Button from '../components/ui/Button';
 import { Field } from '../components/ui/Field';
-import { requestPasswordReset, signIn, signUp } from '../api/auth';
+import { signIn, signUp } from '../api/auth';
 import { clearPendingAction, takePendingAction } from '../api/accountGate';
 import { showToast } from '../store/toasts';
+import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
+import { ForgotPassword } from '../components/account/ForgotPassword';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
@@ -15,7 +17,7 @@ const TITLES: Record<Mode, string> = {
 };
 
 /**
- * Sign in, create an account, or ask for a password reset link. Reached from Settings / the
+ * Sign in, create an account, or set a new password with an emailed code. Reached from Settings / the
  * top bar, or from the account gate when a guest tries something that saves to an account —
  * then `reason` says why, and what they were doing finishes once they're in. Uses the existing
  * surface / field / button primitives only; the design system has no login screen yet.
@@ -38,12 +40,15 @@ const SignIn = () => {
   const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resetSent, setResetSent] = useState(false);
+  // Said after a forgotten password was replaced.
+  const [notice, setNotice] = useState<string | null>(null);
+  // A new account's email gets a code; it can be typed here before carrying on.
+  const [verifying, setVerifying] = useState<string | null>(null);
 
   const switchMode = (next: Mode) => {
     setMode(next);
     setError(null);
-    setResetSent(false);
+    setNotice(null);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -51,22 +56,14 @@ const SignIn = () => {
     setBusy(true);
     setError(null);
     try {
-      if (mode === 'forgot') {
-        await requestPasswordReset(email.trim());
-        setResetSent(true);
-        return;
-      }
       const user =
         mode === 'signup'
           ? await signUp(email.trim(), password, name.trim() || email.split('@')[0])
           : await signIn(email.trim(), password);
       succeeded.current = true;
       showToast({ title: `Welcome, ${user.displayName}`, icon: 'check', variant: 'acc' });
-      // Back to where they were (a direct visit has nowhere to go back to), then finish
-      // whatever they tried as a guest — the like, the new playlist.
-      if (window.history.state?.idx > 0) navigate(-1);
-      else navigate('/home', { replace: true });
-      await takePendingAction()?.();
+      if (mode === 'signup' && user.emailVerified === false) setVerifying(user.email);
+      else await carryOn();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not sign in');
     } finally {
@@ -74,10 +71,66 @@ const SignIn = () => {
     }
   };
 
+  // Back to where they were (a direct visit has nowhere to go back to), then finish
+  // whatever they tried as a guest — the like, the new playlist.
+  const carryOn = async () => {
+    if (window.history.state?.idx > 0) navigate(-1);
+    else navigate('/home', { replace: true });
+    await takePendingAction()?.();
+  };
+
+  if (verifying) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="surf flex flex-col gap-4 p-8 w-full max-w-[400px]">
+          <div className="flex flex-col gap-1">
+            <span className="text-h1 text-t1">Verify your email</span>
+            <span className="text-body-m text-t2">
+              We sent a 6-digit code to {verifying}. Enter it here, or open the link in that email.
+            </span>
+          </div>
+          <VerifyEmailCode email={verifying} onVerified={() => void carryOn()} />
+          <Button variant="ghost" onClick={() => void carryOn()}>
+            Skip for now
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   const subtitle =
     mode === 'forgot'
-      ? "Enter your account's email and we'll send a link to set a new password."
+      ? "Enter your account's email and we'll send a code to set a new password."
       : (state?.reason ?? 'Your playlists, favourites and history sync to your Sonare account.');
+
+  if (mode === 'forgot') {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="surf flex flex-col gap-4 p-8 w-full max-w-[400px]">
+          <div className="flex flex-col gap-1">
+            <span className="text-h1 text-t1">{TITLES.forgot}</span>
+            <span className="text-body-m text-t2">{subtitle}</span>
+          </div>
+          <ForgotPassword
+            initialEmail={email}
+            onDone={(address) => {
+              setEmail(address);
+              setPassword('');
+              switchMode('signin');
+              setNotice('Password changed. Sign in with your new password.');
+            }}
+          />
+          <button
+            type="button"
+            className="text-body-s text-t3 bg-transparent border-0 cursor-pointer hover:text-t1"
+            onClick={() => switchMode('signin')}
+          >
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center h-full p-8">
@@ -106,31 +159,29 @@ const SignIn = () => {
           autoComplete="email"
           required
         />
-        {mode !== 'forgot' && (
-          <Field
-            icon="settings"
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            aria-label="Password"
-            autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
-            minLength={mode === 'signup' ? 8 : undefined}
-            required
-          />
-        )}
+        <Field
+          icon="settings"
+          type="password"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          aria-label="Password"
+          autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+          minLength={mode === 'signup' ? 8 : undefined}
+          required
+        />
         {error && (
           <span className="text-body-s text-red" role="alert">
             {error}
           </span>
         )}
-        {resetSent && (
-          <span className="text-body-s text-t2" role="status">
-            If an account exists for {email.trim()}, a reset link is on its way. It works for one hour.
+        {notice && (
+          <span className="text-body-s text-acc" role="status">
+            {notice}
           </span>
         )}
-        <Button type="submit" variant="acc" disabled={busy || !email || (mode !== 'forgot' && !password)}>
-          {busy ? 'Please wait…' : mode === 'forgot' ? 'Send reset link' : TITLES[mode]}
+        <Button type="submit" variant="acc" disabled={busy || !email || !password}>
+          {busy ? 'Please wait…' : TITLES[mode]}
         </Button>
         {mode === 'signin' && (
           <button

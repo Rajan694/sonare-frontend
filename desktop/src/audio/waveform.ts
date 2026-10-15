@@ -21,7 +21,9 @@ import {
 // gaps that later plays fill; the partial waveform is kept on this device. Once every bar is
 // heard it is uploaded, for everyone.
 
-const STORAGE_KEY = 'sonare_heard_peaks';
+// Levels are loudness (RMS) since 2026-10-14; partial waveforms saved before held sample peaks.
+const STORAGE_KEY = 'sonare_heard_levels';
+const OLD_STORAGE_KEY = 'sonare_heard_peaks';
 /** Songs whose partial waveform is kept (about 1 KB each). */
 const MAX_KEPT = 200;
 const SAMPLE_MS = 100;
@@ -45,6 +47,7 @@ const listeners = new Set<() => void>();
 const all = (): Record<string, Heard> => {
   if (heardById) return heardById;
   try {
+    localStorage.removeItem(OLD_STORAGE_KEY);
     heardById = (JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, Heard>) ?? {};
   } catch {
     heardById = {};
@@ -108,11 +111,11 @@ const sample = () => {
   if (!s.playing || !meter || !isYouTube(s.trackId) || !placeholderIds.has(s.trackId) || s.durationMs <= 0) return;
   if (!samples || samples.length !== meter.fftSize) samples = new Float32Array(meter.fftSize);
   meter.getFloatTimeDomainData(samples);
-  let level = 0;
-  for (let i = 0; i < samples.length; i++) {
-    const v = Math.abs(samples[i]);
-    if (v > level) level = v;
-  }
+  // Loudness (RMS), not the loudest sample: mastered music touches full scale nearly all the
+  // time, so peaks drew a flat block. The Android app measures the same way.
+  let sum = 0;
+  for (let i = 0; i < samples.length; i++) sum += samples[i] * samples[i];
+  const level = Math.sqrt(sum / samples.length);
   // The meter holds the last fftSize samples: that stretch of the song just played.
   const windowMs = (meter.fftSize / meter.context.sampleRate) * 1000;
   const entry = heardFor(s.trackId, s.durationMs);

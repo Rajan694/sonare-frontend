@@ -11,7 +11,9 @@ import {
 import { useLibraryStore } from '../src/store/library';
 import { useModeStore } from '../src/store/mode';
 import { useTrackMenuStore } from '../src/store/trackMenu';
-import { api } from '../src/data/api';
+import { useRecentSearchesStore } from '../src/store/recentSearches';
+import { useLyricsAvailabilityStore } from '../src/store/lyricsAvailability';
+import { api, ApiError } from '../src/data/api';
 import { SonareDownloads } from '../src/native/SonareDownloads';
 import type { Track } from '../src/data/types';
 
@@ -68,6 +70,7 @@ describe('Store Layer', () => {
       usePlayerStore.setState({
         currentTrack: null,
         queue: [],
+        index: 0,
         isPlaying: false,
         positionMs: 0,
         durationMs: 0,
@@ -222,13 +225,14 @@ describe('Store Layer', () => {
       usePlayerStore.getState().onTrackEnded();
       expect(usePlayerStore.getState().positionMs).toBe(0);
 
-      usePlayerStore.setState({ repeat: 'off', currentTrack: mockTrack2 });
+      usePlayerStore.setState({ repeat: 'off', currentTrack: mockTrack2, index: 1 });
       usePlayerStore.getState().onTrackEnded();
       expect(usePlayerStore.getState().isPlaying).toBe(false);
 
       usePlayerStore.setState({
         repeat: 'all',
         currentTrack: mockTrack2,
+        index: 1,
         isPlaying: true,
       });
       usePlayerStore.getState().onTrackEnded();
@@ -433,8 +437,8 @@ describe('Store Layer', () => {
       });
     });
 
-    it('MOB-STORE-020 load fetches favourites and user playlists from server', async () => {
-      jest.spyOn(api, 'favourites').mockResolvedValue({ items: [mockTrack1] } as any);
+    it('MOB-STORE-020 load fetches favourite ids and user playlists from server', async () => {
+      const ids = jest.spyOn(api, 'favouriteIds').mockResolvedValue({ ids: ['t1'] });
       jest.spyOn(api, 'myPlaylists').mockResolvedValue({
         items: [
           {
@@ -449,6 +453,8 @@ describe('Store Layer', () => {
       } as any);
 
       await useLibraryStore.getState().load();
+      // Just the ids, so the heart state needs no metadata lookups.
+      expect(ids).toHaveBeenCalled();
       expect(useLibraryStore.getState().isFavourite('t1')).toBe(true);
       expect(useLibraryStore.getState().playlists.length).toBe(1);
     });
@@ -579,16 +585,16 @@ describe('Store Layer', () => {
     const [x, y, z] = [t('x'), t('y'), t('z')];
 
     it('MOB-STORE-029 the next track is the following one; repeat all wraps; repeat one and the end have none', () => {
-      usePlayerStore.setState({ currentTrack: x, queue: [x, y, z], repeat: 'off' });
+      usePlayerStore.setState({ currentTrack: x, index: 0, queue: [x, y, z], repeat: 'off' });
       expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:y');
-      usePlayerStore.setState({ currentTrack: z });
+      usePlayerStore.setState({ currentTrack: z, index: 2 });
       expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
       usePlayerStore.setState({ repeat: 'all' });
       expect(usePlayerStore.getState().upcomingTrack()?.id).toBe('yt:x');
-      usePlayerStore.setState({ repeat: 'one', currentTrack: x });
+      usePlayerStore.setState({ repeat: 'one', currentTrack: x, index: 0 });
       expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
       // A single song on repeat all has nothing "next" to preload.
-      usePlayerStore.setState({ repeat: 'all', queue: [x] });
+      usePlayerStore.setState({ repeat: 'all', queue: [x], index: 0 });
       expect(usePlayerStore.getState().upcomingTrack()).toBeNull();
     });
   });
@@ -611,6 +617,61 @@ describe('Store Layer', () => {
       expect(state).toMatchObject({ enabled: false, bassBoost: 100, virtualizer: 30, crossfade: true });
       expect(state.speed).toBe(1); // 3× is not offered
       expect(state.customGains).toHaveLength(8);
+    });
+  });
+
+  describe('useRecentSearchesStore', () => {
+    beforeEach(() => useRecentSearchesStore.setState({ searches: [] }));
+
+    it('MOB-STORE-031 recent searches are trimmed, deduped and kept on the phone across a restart', async () => {
+      const store = useRecentSearchesStore;
+      store.getState().add('  Radiohead ');
+      store.getState().add('kendrick');
+      store.getState().add('RADIOHEAD');
+      // Trimmed, deduped case-insensitively, newest first.
+      expect(store.getState().searches).toEqual(['RADIOHEAD', 'kendrick']);
+      expect(JSON.parse((await AsyncStorage.getItem('sonare.recentSearches'))!)).toEqual(['RADIOHEAD', 'kendrick']);
+
+      // A later launch reads them back.
+      store.setState({ searches: [] });
+      await store.getState().hydrate();
+      expect(store.getState().searches).toEqual(['RADIOHEAD', 'kendrick']);
+
+      store.getState().remove('kendrick');
+      expect(store.getState().searches).toEqual(['RADIOHEAD']);
+      store.getState().clear();
+      expect(store.getState().searches).toEqual([]);
+      expect(await AsyncStorage.getItem('sonare.recentSearches')).toBeNull();
+    });
+  });
+
+  describe('useLyricsAvailabilityStore', () => {
+    beforeEach(() => useLyricsAvailabilityStore.setState({ status: {} }));
+
+    it('MOB-STORE-032 asks for a song once and remembers whether its lyrics were found; no network is no answer', async () => {
+      const lyrics = jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: false, lines: [], offsetMs: 0 } as never);
+      const store = useLyricsAvailabilityStore;
+      const track = { ...mockTrack1, source: 'server' as const };
+      await store.getState().check(track, 'original');
+      await store.getState().check(track, 'original');
+      expect(lyrics).toHaveBeenCalledTimes(1);
+      expect(store.getState().status[track.id]).toBe('available');
+
+      // A song with no lyrics is remembered as unavailable.
+      lyrics.mockRejectedValueOnce(new ApiError('Lyrics not found', 404));
+      const other = { ...mockTrack2, source: 'server' as const };
+      await store.getState().check(other, 'original');
+      expect(store.getState().status[other.id]).toBe('unavailable');
+
+      // No network is no answer: the song stays unknown and is asked about again later.
+      lyrics.mockRejectedValueOnce(new TypeError('Network request failed'));
+      const offline = { ...mockTrack3, id: 'yt:offline', source: 'server' as const };
+      await store.getState().check(offline, 'original');
+      expect(store.getState().status[offline.id]).toBeUndefined();
+
+      // Local files are never asked for, exactly like the Lyrics screen.
+      await store.getState().check({ ...mockTrack3, source: 'local' as const }, 'original');
+      expect(lyrics).toHaveBeenCalledTimes(3);
     });
   });
 });

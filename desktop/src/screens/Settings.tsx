@@ -1,12 +1,10 @@
-import React, { useEffect, useSyncExternalStore } from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon, { type IconName } from '../components/ui/Icon';
 import Button from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
 import { Segmented } from '../components/ui/Segmented';
 import { Select } from '../components/ui/Select';
-import { OutputCard } from '../components/music/OutputPicker';
-import { outputSupport } from '../audio/output';
 import { LYRICS_SCRIPTS, updateDevicePrefs, useDevicePrefs } from '../storage/devicePrefs';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
@@ -23,20 +21,16 @@ import {
 } from '../storage/downloadTargets';
 import { useDownloads } from '../storage/downloads';
 import { useAuth } from '../api/hooks';
-import { clearSession, resendVerification, signOut } from '../api/auth';
-import {
-  ALLOWS_HTTP,
-  DEFAULT_API_ORIGIN,
-  customServerOrigin,
-  normalizeServerOrigin,
-  SERVER_ADDRESS_ENABLED,
-  switchServer,
-} from '../api/server';
-import { promptDialog } from '../store/dialogs';
+import { signOut } from '../api/auth';
+import { AccountDetails } from '../components/account/AccountDetails';
+import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { formatBytes } from '../lib/format';
+import { isInAppYoutubeAllowed } from '../youtube/inApp';
+import { MAX_STREAM_CACHE_BYTES, streamCache } from '../youtube/streamCache';
 import { version as APP_VERSION } from '../../neutralino.config.json';
 import { useAppDispatch, useAppSelector } from '../store';
 import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
+import { releaseNotesDialog } from '../store/dialogs';
 import { openUpdate, showUpdateFolder } from '../storage/appUpdate';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
@@ -79,6 +73,38 @@ interface SectionDef {
   description: string;
   available: boolean;
 }
+
+/** The Linux window keeps the songs it streamed (300 MB, least recently played out first). */
+const StreamCacheRow = () => {
+  const [bytes, setBytes] = useState<number | null>(null);
+  const [clearing, setClearing] = useState(false);
+  useEffect(() => {
+    void streamCache
+      .bytes()
+      .then(setBytes)
+      .catch(() => setBytes(null));
+  }, []);
+  const clear = async () => {
+    setClearing(true);
+    try {
+      await streamCache.clear();
+      setBytes(await streamCache.bytes());
+    } catch {
+      showToast({ title: 'Could not clear the stream cache', icon: 'info' });
+    } finally {
+      setClearing(false);
+    }
+  };
+  const held =
+    bytes === null ? '' : bytes > 0 ? `${formatBytes(bytes)} of ${formatBytes(MAX_STREAM_CACHE_BYTES)} · ` : 'Empty · ';
+  return (
+    <Row icon="download" label="Stream cache" desc={`${held}songs you played recently, so they play again at once`}>
+      <Button variant="out" size="sm" onClick={() => void clear()} disabled={clearing || !bytes}>
+        Clear
+      </Button>
+    </Row>
+  );
+};
 
 const Row = ({
   icon,
@@ -169,14 +195,6 @@ const Settings = () => {
       available: CAPS.offlineMode,
     },
     {
-      id: 'appearance',
-      label: 'Appearance',
-      icon: 'moon',
-      title: 'Appearance',
-      description: 'Display and theme settings.',
-      available: true,
-    },
-    {
       id: 'about',
       label: 'About',
       icon: 'info',
@@ -194,49 +212,9 @@ const Settings = () => {
     setSearchParams({ section: id });
   };
 
-  const handleResendVerification = async () => {
-    try {
-      await resendVerification();
-      showToast({ title: 'Verification email sent', description: `Check ${user?.email}`, icon: 'check' });
-    } catch (err) {
-      showToast({ title: 'Could not send the email', description: err instanceof Error ? err.message : undefined });
-    }
-  };
-
   const handleSignOut = async () => {
     await signOut();
     showToast({ title: 'Signed out', description: "You're listening as a guest", icon: 'logout' });
-  };
-
-  // Sessions belong to a server, so switching signs out; the app restarts on the new one.
-  const changeServer = async (origin: string | null) => {
-    if ((origin ?? DEFAULT_API_ORIGIN) === (customServerOrigin ?? DEFAULT_API_ORIGIN)) return;
-    clearSession();
-    await switchServer(origin);
-  };
-
-  const handleServerAddress = async () => {
-    const text = await promptDialog({
-      title: 'Server address',
-      description: ALLOWS_HTTP
-        ? `The Sonare backend this app talks to; for a computer on the LAN, use its address. Default: ${DEFAULT_API_ORIGIN}. Changing it signs you out and restarts Sonare.`
-        : `The Sonare backend this app talks to. Default: ${DEFAULT_API_ORIGIN}. Changing it signs you out and restarts Sonare.`,
-      placeholder: ALLOWS_HTTP ? '192.168.1.20:3010' : 'https://api.example.com',
-      initialValue: customServerOrigin ?? '',
-      confirmLabel: 'Save & restart',
-      maxLength: 200,
-    });
-    if (!text) return;
-    const origin = normalizeServerOrigin(text);
-    if (!origin) {
-      showToast({ title: 'Not a server address', description: 'Enter an address like 192.168.1.20:3010' });
-      return;
-    }
-    if (!ALLOWS_HTTP && !origin.startsWith('https://')) {
-      showToast({ title: 'HTTPS only', description: 'This build only connects over HTTPS' });
-      return;
-    }
-    await changeServer(origin);
   };
 
   const totalLocalBytes = local.folders.reduce((n, f) => n + f.bytes, 0);
@@ -280,16 +258,18 @@ const Settings = () => {
         )}
       </div>
       {user?.emailVerified === false && (
-        <div className="surf flex items-center gap-4 p-5 rounded-2xl">
-          <span className="flex flex-col grow min-w-0">
+        <div className="surf flex flex-col gap-4 p-5 rounded-2xl">
+          <span className="flex flex-col min-w-0 gap-0.5">
             <span className="text-body-m text-t1 font-medium">Email not verified</span>
-            <span className="text-body-s text-t3">Verify it so you can reset your password if you forget it.</span>
+            <span className="text-body-s text-t3">
+              Enter the 6-digit code we emailed to {user.email}, or open the link in that email. A verified email lets
+              you reset your password if you forget it.
+            </span>
           </span>
-          <Button variant="out" onClick={handleResendVerification}>
-            Resend link
-          </Button>
+          <VerifyEmailCode email={user.email} />
         </div>
       )}
+      {user && <AccountDetails key={user.id} user={user} />}
     </div>
   );
 
@@ -321,6 +301,15 @@ const Settings = () => {
         </Row>
       </label>
       <label className="cursor-pointer">
+        <Row icon="radio" label="Autoplay" desc="When the queue ends, keep playing similar songs">
+          <Switch
+            checked={devicePrefs.autoplaySimilar}
+            onCheckedChange={(autoplaySimilar) => updateDevicePrefs({ autoplaySimilar })}
+            aria-label="Toggle autoplay"
+          />
+        </Row>
+      </label>
+      <label className="cursor-pointer">
         <Row icon="volume" label="Volume normalization" desc="Evens out loud and quiet tracks">
           <Switch
             checked={settings.normalization}
@@ -329,6 +318,7 @@ const Settings = () => {
           />
         </Row>
       </label>
+      {isInAppYoutubeAllowed() && <StreamCacheRow />}
     </div>
   );
 
@@ -444,11 +434,6 @@ const Settings = () => {
           {chevron}
         </Row>
       </Link>
-      {outputSupport() !== 'none' && (
-        <Row icon="output" label="Audio output" desc="The speaker or headphones Sonare plays on">
-          <OutputCard className="min-w-[200px] max-w-[260px] py-2" />
-        </Row>
-      )}
       <Row
         icon="lyrics"
         label="Lyrics language"
@@ -551,21 +536,6 @@ const Settings = () => {
         </label>
       </div>
 
-      {SERVER_ADDRESS_ENABLED && (
-        <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-          <Row icon="cloud" label="Server address" desc={customServerOrigin ?? `Default · ${DEFAULT_API_ORIGIN}`}>
-            {customServerOrigin && (
-              <Button variant="ghost" size="sm" onClick={() => void changeServer(null)}>
-                Use default
-              </Button>
-            )}
-            <Button variant="out" size="sm" onClick={() => void handleServerAddress()}>
-              Change
-            </Button>
-          </Row>
-        </div>
-      )}
-
       {CAPS.localLibrary && (
         <div className="flex items-center gap-3">
           <Button variant="out" icon="folder" onClick={() => navigate('/folders')}>
@@ -573,12 +543,6 @@ const Settings = () => {
           </Button>
         </div>
       )}
-    </div>
-  );
-
-  const renderAppearance = () => (
-    <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-      <Row icon="moon" label="Theme" desc="Dark (always on)" />
     </div>
   );
 
@@ -598,8 +562,6 @@ const Settings = () => {
         return renderLibrary();
       case 'connection':
         return renderConnection();
-      case 'appearance':
-        return renderAppearance();
       case 'about':
         return renderAbout();
       default:
@@ -646,11 +608,6 @@ const Settings = () => {
             {renderLibrary()}
           </div>
         )}
-
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Appearance</span>
-          {renderAppearance()}
-        </div>
 
         <div className="flex flex-col gap-2">
           <span className="text-overline text-t3 pl-1">About</span>
@@ -720,10 +677,21 @@ const UpdatesCard = () => {
   }, [dispatch, online]);
 
   const { status, release, progress, path, error } = update;
-  const versionDesc = release
-    ? [`Version ${release.version}`, formatBytes(release.sizeBytes), release.notes].filter(Boolean).join(' · ')
-    : '';
   const fileKind = release ? (FORMAT_LABELS[release.format] ?? release.format) : '';
+
+  // The changes, with the download one click away.
+  const showChanges = async () => {
+    if (!release) return;
+    const canDownload = status === 'available' || status === 'error';
+    if ((await releaseNotesDialog(release, canDownload ? `Download ${fileKind}` : 'Close')) && canDownload) {
+      void dispatch(downloadAppUpdate(release));
+    }
+  };
+  const whatsNew = (
+    <Button variant="out" size="sm" onClick={() => void showChanges()}>
+      What's new
+    </Button>
+  );
 
   let row: React.ReactNode;
   if (!online) {
@@ -740,10 +708,17 @@ const UpdatesCard = () => {
     );
   } else if (status === 'available' && release) {
     row = (
-      <Row icon="download" label={`Sonare ${release.version} is available`} desc={versionDesc}>
-        <Button variant="acc" size="sm" onClick={() => void dispatch(downloadAppUpdate(release))}>
-          Download {fileKind}
-        </Button>
+      <Row
+        icon="download"
+        label={`Sonare ${release.version} is available`}
+        desc={`Version ${release.version} · ${formatBytes(release.sizeBytes)}`}
+      >
+        <span className="flex items-center gap-2 flex-none">
+          {whatsNew}
+          <Button variant="acc" size="sm" onClick={() => void dispatch(downloadAppUpdate(release))}>
+            Download {fileKind}
+          </Button>
+        </span>
       </Row>
     );
   } else if (status === 'downloading' && release) {
@@ -773,6 +748,7 @@ const UpdatesCard = () => {
         desc={`Saved to ${path}. Close Sonare, then install it.`}
       >
         <span className="flex items-center gap-2 flex-none">
+          {whatsNew}
           <Button variant="out" size="sm" onClick={() => void showUpdateFolder(path)}>
             Show in folder
           </Button>

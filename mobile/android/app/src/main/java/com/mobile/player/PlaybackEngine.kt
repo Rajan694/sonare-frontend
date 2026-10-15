@@ -1,8 +1,6 @@
 package com.mobile.player
 
 import android.content.Context
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.OptIn
@@ -10,13 +8,20 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSource
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.audio.DefaultAudioSink
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.LoadEventInfo
+import androidx.media3.exoplayer.source.MediaLoadData
+import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import com.mobile.player.dsp.SonareAudioProcessor
 import kotlin.math.PI
 import kotlin.math.cos
@@ -60,23 +65,39 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   private var next: MediaItem? = null
   private var transitions = pendingTransitions
   private var speed = pendingSpeed
-  private var pauseAtEnd = false
 
   /** Called with the new active player when a crossfade hands over (the session follows it). */
   var onActiveChanged: ((ExoPlayer) -> Unit)? = null
 
+
+  /** A stream url the server refused (403/410): tell JS, which swaps in a fresh one ([StreamUrls]). */
+  private val refusedStreams =
+    object : AnalyticsListener {
+      override fun onLoadError(
+        eventTime: AnalyticsListener.EventTime,
+        loadEventInfo: LoadEventInfo,
+        mediaLoadData: MediaLoadData,
+        error: java.io.IOException,
+        wasCanceled: Boolean,
+      ) {
+        val status = (error as? HttpDataSource.InvalidResponseCodeException)?.responseCode ?: return
+        if (status != 403 && status != 410) return
+        val timeline = eventTime.timeline
+        val mediaId =
+          if (timeline.isEmpty || eventTime.windowIndex >= timeline.windowCount) null
+          else timeline.getWindow(eventTime.windowIndex, Timeline.Window()).mediaItem.mediaId
+        EngineEvents.streamRefused(mediaId, loadEventInfo.dataSpec.uri.toString())
+      }
+    }
 
   init {
     // Only the active player holds audio focus; see startCrossfade().
     active.setAudioAttributes(attributes, true)
     active.addListener(activeListener(active))
     standby.addListener(activeListener(standby))
+    active.addAnalyticsListener(refusedStreams)
+    standby.addAnalyticsListener(refusedStreams)
     setSpeed(speed)
-    // The service restarted while an output was picked: keep sending audio there.
-    if (preferredDeviceId >= 0) {
-      val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-      audio.getDevices(AudioManager.GET_DEVICES_OUTPUTS).firstOrNull { it.id == preferredDeviceId }?.let(::setPreferredDevice)
-    }
   }
 
   private fun buildPlayer(): ExoPlayer {
@@ -93,8 +114,27 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .build()
       }
+    // Streams are audio only (a few MB a song), so load the whole song as soon as it starts
+    // instead of ExoPlayer's 50 s ahead: a slow or dropped connection mid-song then has
+    // minutes of audio to recover in, not seconds. The byte cap bounds hour-long mixes.
+    val loadControl =
+      DefaultLoadControl.Builder()
+        .setBufferDurationsMs(
+          /* minBufferMs= */ BUFFER_AHEAD_MS,
+          /* maxBufferMs= */ BUFFER_AHEAD_MS,
+          /* bufferForPlaybackMs= */ 1_500,
+          /* bufferForPlaybackAfterRebufferMs= */ 3_000,
+        )
+        .setTargetBufferBytes(BUFFER_BYTES)
+        .setPrioritizeTimeOverSizeThresholds(false)
+        .build()
+    // A dropped connection is retried for about half a minute (1 s, 2 s … 5 s apart) before
+    // playback gives up; the default gave up after 3 tries.
+    val sources =
+      DefaultMediaSourceFactory(dataSourceFactory).setLoadErrorHandlingPolicy(DefaultLoadErrorHandlingPolicy(LOAD_RETRIES))
     return ExoPlayer.Builder(context, renderers)
-      .setMediaSourceFactory(DefaultMediaSourceFactory(dataSourceFactory))
+      .setLoadControl(loadControl)
+      .setMediaSourceFactory(sources)
       .setAudioAttributes(attributes, /* handleAudioFocus= */ false)
       .setHandleAudioBecomingNoisy(true)
       .setWakeMode(C.WAKE_MODE_NETWORK)
@@ -146,19 +186,6 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     syncQueuedNext()
   }
 
-  /** Sends both players to this output, or back to Android's choice with null. */
-  fun setPreferredDevice(device: AudioDeviceInfo?) {
-    active.setPreferredAudioDevice(device)
-    standby.setPreferredAudioDevice(device)
-  }
-
-  /** "Sleep at end of track": stop when the current one finishes instead of moving on. */
-  fun setPauseAtEndOfTrack(value: Boolean) {
-    pauseAtEnd = value
-    active.pauseAtEndOfMediaItems = value
-    syncQueuedNext()
-  }
-
   /** Playback speed; Media3 time-stretches, so pitch stays the same. */
   fun setSpeed(value: Float) {
     speed = value
@@ -192,10 +219,9 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   }
 
   private fun crossfadeNext(): Boolean =
-    !pauseAtEnd &&
-      transitions.crossfadeMs > 0 && next != null && !(transitions.gapless && sameAlbum(active.currentMediaItem, next))
+    transitions.crossfadeMs > 0 && next != null && !(transitions.gapless && sameAlbum(active.currentMediaItem, next))
 
-  private fun gaplessNext(): Boolean = !pauseAtEnd && transitions.gapless && next != null && !crossfadeNext()
+  private fun gaplessNext(): Boolean = transitions.gapless && next != null && !crossfadeNext()
 
   /** Keeps the item after the current one in the active player only when it should play gapless. */
   private fun syncQueuedNext() {
@@ -286,16 +312,22 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     @Volatile var pendingTransitions = Transitions()
     @Volatile var pendingSpeed = 1f
 
-    /** AudioDeviceInfo id picked in the app; -1 leaves it to Android. Read by [OutputDevices]. */
-    @Volatile var preferredDeviceId = -1
+    private const val BUFFER_AHEAD_MS = 15 * 60_000
+    private const val BUFFER_BYTES = 24 * 1024 * 1024
+    private const val LOAD_RETRIES = 8
   }
 }
 
 /** The track the engine moved on to by itself, delivered to whoever listens (the JS module). */
 object EngineEvents {
   @Volatile var advanceListener: ((String) -> Unit)? = null
+  @Volatile var refusedListener: ((mediaId: String?, url: String) -> Unit)? = null
 
   fun advance(mediaId: String) {
     advanceListener?.invoke(mediaId)
+  }
+
+  fun streamRefused(mediaId: String?, url: String) {
+    refusedListener?.invoke(mediaId, url)
   }
 }

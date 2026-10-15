@@ -7,6 +7,7 @@ import { LyricsScreen } from '../screens/Lyrics';
 import { QueueScreen } from '../screens/Queue';
 import { EqualizerScreen } from '../screens/Equalizer';
 import { useDownloadsStore } from '../store/downloads';
+import { useLocalMusicStore } from '../store/localMusic';
 import { useSettingsStore } from '../data/settings';
 import { ModeSwitchScreen } from '../screens/ModeSwitch';
 import { SignInScreen } from '../screens/SignIn';
@@ -20,10 +21,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Icon from '../components/ui/Icon';
 import { Text } from '../components/ui/Text';
 import Animated, { FadeInUp, FadeOutUp, ReduceMotion } from 'react-native-reanimated';
-import { loadServerOrigin } from '../data/config';
 import { PlayerSheetsHost } from '../components/music/PlayerSheets';
 import { useDevicePrefsStore } from '../store/devicePrefs';
+import { useRecentSearchesStore } from '../store/recentSearches';
+import { useOfflinePlaylistsStore } from '../store/offlinePlaylists';
 import { cn } from '../lib/cn';
+import { ServerWakeNotice } from '../components/ui/ServerWakeNotice';
 
 const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
 
@@ -118,12 +121,15 @@ export const RootNavigator = () => {
 
   useEffect(() => {
     useDevicePrefsStore.getState().hydrate();
-    // A server address saved in Settings applies before the first request goes out.
-    loadServerOrigin().finally(() => {
-      hydrate();
-      // Picks up downloads that were running when the app last closed.
-      useDownloadsStore.getState().hydrate();
-    });
+    useRecentSearchesStore.getState().hydrate();
+    useOfflinePlaylistsStore.getState().hydrate();
+    hydrate();
+    // Picks up downloads that were running when the app last closed; then the phone's music,
+    // whose scan also finds downloads the list lost (a reinstall).
+    useDownloadsStore
+      .getState()
+      .hydrate()
+      .then(() => useLocalMusicStore.getState().hydrate());
   }, [hydrate]);
   useSessionEffects(status);
 
@@ -131,6 +137,7 @@ export const RootNavigator = () => {
     return (
       <View className="flex-1 bg-bg items-center justify-center">
         <ActivityIndicator color="#00E28A" />
+        <ServerWakeNotice />
       </View>
     );
   }
@@ -138,6 +145,7 @@ export const RootNavigator = () => {
   return (
     <NavigationContainer ref={navigationRef}>
       <ModeToast />
+      <ServerWakeNotice />
       <Stack.Navigator
         id={undefined}
         screenOptions={{

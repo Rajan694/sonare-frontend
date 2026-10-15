@@ -230,6 +230,14 @@ describe('unreadable input', () => {
     await expect(readTags('broken.flac', 1000, failing)).resolves.toEqual({});
   });
 
+  it('WEB-TAG-022 a Sonare download without tags names its artist and title, not its id', () => {
+    expect(tagsFromFileName('/home/me/Music/Sonare/Radiohead - Karma Police [1uYWYWPc9HU].webm')).toEqual({
+      artist: 'Radiohead',
+      title: 'Karma Police',
+      album: 'Sonare',
+    });
+  });
+
   it('WEB-TAG-014 a truncated ID3 tag keeps whatever frames were complete', async () => {
     const full = id3Tag(id3Frame('TIT2', 'Kept'), id3Frame('TPE1', 'Lost artist'));
     const truncated = full.slice(0, full.length - 5);

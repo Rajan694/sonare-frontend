@@ -13,12 +13,12 @@ import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
 import Waveform from '../music/Waveform';
 import TrackDownloadButton from '../music/TrackDownloadButton';
+import LyricsButton from '../music/LyricsButton';
 import { formatDuration } from '../../lib/format';
 import * as player from '../../audio/player';
 import { useAppDispatch, useAppSelector } from '../../store';
 import { toggleQueue } from '../../store/uiSlice';
 import { playsFrom, useLocalLibrary } from '../../storage/local';
-import { OutputButton } from '../music/OutputPicker';
 import { addToPlaylistDialog } from '../../store/dialogs';
 import { requireAccount } from '../../api/accountGate';
 import type { Track } from '../../types';
@@ -170,9 +170,7 @@ const BottomPlayer = () => {
       </div>
 
       <div className="flex items-center gap-0.5 sm:gap-1 flex-1 basis-0 min-w-max justify-end">
-        <Link to="/lyrics" className="ib ib-32" aria-label="Lyrics" data-tip="Lyrics">
-          <Icon name="lyrics" size={16} />
-        </Link>
+        <LyricsButton track={currentTrack} className="ib ib-32" iconSize={16} />
         <button
           className={cn('ib ib-32', queueOpen && 'text-acc bg-accbg')}
           aria-label="Queue"
@@ -185,7 +183,6 @@ const BottomPlayer = () => {
         <Link to="/equalizer" className="ib ib-32 hidden md:inline-flex" aria-label="Equalizer" data-tip="Equalizer">
           <Icon name="sliders" size={16} />
         </Link>
-        <OutputButton className="hidden md:inline-flex" />
         <div className="hidden lg:flex items-center gap-1.5 flex-none w-24 xl:w-28">
           <button
             className={cn('ib ib-28 flex-none', volume === 0 ? 'text-t4' : 'text-t3')}

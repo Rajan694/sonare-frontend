@@ -2,30 +2,23 @@ import { useSyncExternalStore } from 'react';
 import { getSettings, subscribeSettings, updateSettings } from '../storage/settings';
 
 /**
- * Web Audio DSP chain for the single <audio> element (contract §1: on web the equalizer
+ * Web Audio DSP chain for the player's <audio> elements (contract §1: on web the equalizer
  * is a BiquadFilter chain).
  *
- *   element → 7 × EQ band → bass low-shelf → stereo upmix → mid/side widener → compressor → out
+ *   element → fader → 8 × EQ band → bass low-shelf → stereo upmix → mid/side widener → compressor
+ *     → limiter → out
  *
  * The graph is built on the first user-initiated play, because an AudioContext created
  * outside a gesture starts suspended — and once an element is routed through a context,
  * a suspended context means silence.
  */
 
-export const EQ_BANDS = [32, 64, 150, 400, 1000, 2400, 6000, 14000] as const;
+import { CUSTOM_PRESET, EQ_BANDS, EQ_PRESETS } from '../../../shared/settings';
+
+export { CUSTOM_PRESET, EQ_BANDS, EQ_PRESETS };
 export const EQ_LABELS = ['32', '64', '150', '400', '1k', '2.4k', '6k', '14k'] as const;
 export const EQ_MIN_DB = -12;
 export const EQ_MAX_DB = 12;
-
-export const EQ_PRESETS: Record<string, number[]> = {
-  Flat: [0, 0, 0, 0, 0, 0, 0, 0],
-  Sonare: [1, 4, 0, -1, 2, 5, 3, 0],
-  Bass: [6, 5, 3.5, 1, 0, 0, 0, 0],
-  Vocal: [-3, -2, -1, 1.5, 3.5, 3, 1, 0],
-  Acoustic: [1, 2.5, 1.5, 0.5, 1, 2, 2.5, 2],
-  'Late night': [-3, -2.5, -1, 0, 1, 0.5, -1.5, -3],
-};
-export const CUSTOM_PRESET = 'Custom';
 
 export interface DspState {
   /** Master bypass — off leaves the signal flat without tearing down the graph. */
@@ -37,17 +30,24 @@ export interface DspState {
   /** 0..100 → stereo width 1× .. 2.5×. */
   virtualizer: number;
   speed: number;
+  /** Fade songs into each other over the last CROSSFADE_MS (Android has the same switch). */
+  crossfade: boolean;
 }
+
+/** Fixed, like the Android app's. */
+export const CROSSFADE_MS = 6000;
 
 const STORAGE_KEY = 'sonare_dsp';
 
+// The default preset is the settings' default (Sonare on both apps).
 const DEFAULT_STATE: DspState = {
   enabled: true,
-  preset: 'Flat',
-  gains: [...EQ_PRESETS.Flat],
+  preset: 'Sonare',
+  gains: [...EQ_PRESETS.Sonare],
   bassBoost: 0,
   virtualizer: 0,
   speed: 1,
+  crossfade: false,
 };
 
 const loadState = (): DspState => {
@@ -79,10 +79,15 @@ interface Graph {
   lr: GainNode;
   rr: GainNode;
   comp: DynamicsCompressorNode;
+  /** Last in the chain: keeps EQ and bass boost from clipping, like Android's −1 dBFS limiter. */
+  limiter: DynamicsCompressorNode;
 }
 
 let graph: Graph | null = null;
-let element: HTMLAudioElement | null = null;
+/** The player's elements: two, so the next song can be ready (gapless) or fade in (crossfade). */
+const elements = new Set<HTMLAudioElement>();
+/** Each element's level in the chain, which crossfades ramp; volume stays on the element. */
+const faders = new Map<HTMLAudioElement, GainNode>();
 
 const persist = () => {
   try {
@@ -93,7 +98,7 @@ const persist = () => {
 };
 
 const apply = () => {
-  if (element) {
+  for (const element of elements) {
     element.defaultPlaybackRate = state.speed;
     element.playbackRate = state.speed;
     element.preservesPitch = true;
@@ -125,22 +130,34 @@ const emit = () => {
   for (const l of listeners) l();
 };
 
-/** Remember the element so playback-rate settings apply before the graph exists. */
+/** Remember an element so playback-rate settings apply before the graph exists. */
 export const bindElement = (a: HTMLAudioElement): void => {
-  element = a;
+  elements.add(a);
   apply();
+  if (graph) routeElement(graph, a);
 };
 
-/** Route the element through the DSP graph. Safe to call on every play. */
+/** An element can be routed into one context only, once: do it the first time the graph exists. */
+const routeElement = (g: Graph, a: HTMLAudioElement) => {
+  if (faders.has(a)) return;
+  const fader = g.ctx.createGain();
+  g.ctx.createMediaElementSource(a).connect(fader);
+  fader.connect(g.input);
+  faders.set(a, fader);
+};
+
+/** The element's crossfade level in the chain; null without Web Audio. */
+export const faderFor = (a: HTMLAudioElement): GainNode | null => faders.get(a) ?? null;
+
+/** Route the elements through the DSP graph. Safe to call on every play. */
 export const ensureGraph = async (): Promise<void> => {
-  if (!element) return;
+  if (!elements.size) return;
   if (graph) {
     if (graph.ctx.state === 'suspended') await graph.ctx.resume();
     return;
   }
   try {
     const ctx = new AudioContext();
-    const source = ctx.createMediaElementSource(element);
     const bands = EQ_BANDS.map((hz, i) => {
       const f = ctx.createBiquadFilter();
       f.type = i === 0 ? 'lowshelf' : i === EQ_BANDS.length - 1 ? 'highshelf' : 'peaking';
@@ -169,13 +186,19 @@ export const ensureGraph = async (): Promise<void> => {
     comp.knee.value = 12;
     comp.attack.value = 0.01;
     comp.release.value = 0.25;
+    // The browser's compressor looks ahead a few ms; hard and fast, it works as a peak limiter.
+    const limiter = ctx.createDynamicsCompressor();
+    limiter.threshold.value = -1;
+    limiter.knee.value = 0;
+    limiter.ratio.value = 20;
+    limiter.attack.value = 0.001;
+    limiter.release.value = 0.1;
 
     // Every source joins here; the analyser hears the song as it is, whatever the EQ does.
     const input = ctx.createGain();
     const level = ctx.createAnalyser();
     level.fftSize = 8192;
     input.connect(level);
-    source.connect(input);
 
     let node: AudioNode = input;
     for (const f of bands) {
@@ -194,49 +217,17 @@ export const ensureGraph = async (): Promise<void> => {
     rr.connect(merge, 0, 1);
     lr.connect(merge, 0, 1);
     merge.connect(comp);
-    comp.connect(ctx.destination);
+    comp.connect(limiter);
+    limiter.connect(ctx.destination);
 
-    graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp };
+    graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp, limiter };
+    for (const a of elements) routeElement(graph, a);
     apply();
-    if (sinkId) await applySink();
     if (ctx.state === 'suspended') await ctx.resume();
   } catch {
     // Web Audio unavailable: playback continues unprocessed.
     graph = null;
   }
-};
-
-// ---- Output device (browsers / WebView2 with setSinkId) ----
-
-type SinkTarget = { setSinkId?: (id: string) => Promise<void> };
-let sinkId = '';
-
-/** Whether this browser can route audio to a chosen output device. */
-export const canSetSinkId = (): boolean => {
-  return (
-    typeof AudioContext !== 'undefined' &&
-    'setSinkId' in AudioContext.prototype &&
-    typeof HTMLMediaElement !== 'undefined' &&
-    'setSinkId' in HTMLMediaElement.prototype
-  );
-};
-
-const applySink = async (): Promise<boolean> => {
-  try {
-    // With the graph built, the element's sound leaves through the context.
-    const target = (graph?.ctx ?? element) as SinkTarget | null;
-    if (!target?.setSinkId) return false;
-    await target.setSinkId(sinkId);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-/** Route playback to an output device ('' = system default); kept for a graph built later. */
-export const setSinkId = async (id: string): Promise<boolean> => {
-  sinkId = id;
-  return applySink();
 };
 
 /** The graph's context and input node, building the graph if needed; null without Web Audio. */

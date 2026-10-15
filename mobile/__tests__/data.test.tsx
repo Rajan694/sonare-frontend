@@ -826,8 +826,104 @@ describe('Data Layer', () => {
       expect(del.ok).toBe(true);
       const add = await api.addToPlaylist('sonare:1', [song('yt:t1')]);
       expect(add.ok).toBe(true);
-      const rem = await api.removeFromPlaylist('sonare:1', 0);
+      const rem = await api.removeFromPlaylist('sonare:1', { index: 0 });
       expect(rem.ok).toBe(true);
+    });
+
+    it('MOB-DATA-059 removeFromPlaylist sends the row id when the list knows it, else the position', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ ok: true });
+        onload: (() => void) | null = null;
+        open(method: string, url: string) {
+          calls.push({ method, url, body: undefined });
+        }
+        setRequestHeader() {}
+        send(body: string) {
+          calls[calls.length - 1].body = JSON.parse(body);
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      await api.removeFromPlaylist('sonare:1', { entryId: 'row-1', index: 3 });
+      await api.removeFromPlaylist('sonare:1', { index: 2 });
+
+      expect(calls[0].method).toBe('DELETE');
+      expect(calls[0].url).toBe('http://localhost:3010/api/v1/me/playlists/sonare%3A1/tracks');
+      expect(calls[0].body).toEqual({ entryIds: ['row-1'] });
+      expect(calls[1].body).toEqual({ index: 2 });
+    });
+
+    it('MOB-DATA-060 reorderPlaylist PATCHes a row to its new position', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ ok: true });
+        onload: (() => void) | null = null;
+        open(method: string, url: string) {
+          calls.push({ method, url, body: undefined });
+        }
+        setRequestHeader() {}
+        send(body: string) {
+          calls[calls.length - 1].body = JSON.parse(body);
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      const res = await api.reorderPlaylist('sonare:1', { entryId: 'row-1', to: 2 });
+
+      expect(res.ok).toBe(true);
+      expect(calls[0].method).toBe('PATCH');
+      expect(calls[0].url).toBe('http://localhost:3010/api/v1/me/playlists/sonare%3A1/tracks/order');
+      expect(calls[0].body).toEqual({ entryId: 'row-1', to: 2 });
+    });
+
+    it('MOB-DATA-057 favouriteIds asks only for the ids, so the heart state needs no metadata', async () => {
+      const urls: string[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ ids: ['t1', 't2'] });
+        onload: (() => void) | null = null;
+        open(_method: string, url: string) {
+          urls.push(url);
+        }
+        setRequestHeader() {}
+        send() {
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      const res = await api.favouriteIds();
+      expect(res.ids).toEqual(['t1', 't2']);
+      expect(urls[0]).toBe('http://localhost:3010/api/v1/me/favourites/ids');
+    });
+
+    it('MOB-DATA-058 updatePlaylist PATCHes the name and description and returns the playlist', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ id: 'sonare:1', name: 'Workout', description: 'New' });
+        onload: (() => void) | null = null;
+        open(method: string, url: string) {
+          calls.push({ method, url, body: undefined });
+        }
+        setRequestHeader() {}
+        send(body: string) {
+          calls[0].body = body;
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      const updated = await api.updatePlaylist('sonare:1', { name: 'Workout', description: 'New' });
+      expect(updated.name).toBe('Workout');
+      expect(calls[0].method).toBe('PATCH');
+      expect(calls[0].url).toBe('http://localhost:3010/api/v1/me/playlists/sonare%3A1');
+      expect(JSON.parse(calls[0].body as string)).toEqual({ name: 'Workout', description: 'New' });
     });
 
     it('MOB-DATA-029 auto-refreshes expired access token on 401 response', async () => {
@@ -933,14 +1029,17 @@ describe('Data Layer', () => {
     });
 
     it('MOB-DATA-055 a hand-made (Custom) EQ stays on the phone; gapless and normalization sync', async () => {
-      useAuthStore.setState({ status: 'signedIn' });
+      useAuthStore.setState({ status: 'signedIn', user: { id: 'u1', email: 'a@b.com', displayName: 'A' } });
       const save = jest.spyOn(api, 'saveSettings').mockResolvedValue({ ok: true });
       useSettingsStore.getState().update({ eqPreset: 'Custom' });
       await new Promise((r) => setTimeout(r, 500));
       expect(save).not.toHaveBeenCalled();
       useSettingsStore.getState().update({ eqPreset: 'Bass', gapless: false, normalization: true });
       await new Promise((r) => setTimeout(r, 500));
-      expect(save).toHaveBeenCalledWith({ eqPreset: 'Bass', gapless: false, normalization: true });
+      // Anything else still waiting for the account (an earlier guest change) goes along.
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ eqPreset: 'Bass', gapless: false, normalization: true }),
+      );
     });
 
     it("MOB-DATA-056 signing in keeps the phone's Custom EQ but takes the account's other settings", async () => {

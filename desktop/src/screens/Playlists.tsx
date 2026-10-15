@@ -3,12 +3,15 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
 import { useMyPlaylists, useAuth } from '../api/hooks';
+import { useOfflinePlaylists } from '../storage/offlinePlaylists';
+import { localLibrary } from '../storage/local';
 import { requireAccount } from '../api/accountGate';
 import { createPlaylistWithPrompt } from '../api/newPlaylist';
 import Artwork from '../components/music/Artwork';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { staggerContainer, staggerItem, transition } from '../lib/motion';
+import { cn } from '../lib/cn';
 import type { Playlist } from '../types';
 
 const Playlists = () => {
@@ -16,10 +19,23 @@ const Playlists = () => {
   const isOffline = mode === 'offline';
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists();
+  const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists(!isOffline);
+  const offline = useOfflinePlaylists();
 
-  const rawPlaylists: Playlist[] = playlistsData?.items || [];
-  const playlists = isOffline ? rawPlaylists.filter((p) => p.kind === 'local' || p.downloadedCount > 0) : rawPlaylists;
+  // Offline: the playlists saved on this device, without asking the server. Online: the
+  // server's list.
+  const rawPlaylists: Playlist[] = isOffline
+    ? offline.playlists.filter((p) => p.id.startsWith('sonare:'))
+    : playlistsData?.items || [];
+
+  /** What of a playlist can play here: songs whose file is on this device or downloaded. */
+  const onDevice = (id: string): { have: number; total: number } => {
+    const songs = offline.songs.get(id) ?? [];
+    const total = songs.length || rawPlaylists.find((p) => p.id === id)?.trackCount || 0;
+    return { have: songs.filter((t) => localLibrary.localIdFor(t.id) !== null).length, total };
+  };
+
+  const playlists = rawPlaylists;
 
   const totalCount = playlists.length + 1;
   const countLabel = `${totalCount.toLocaleString()} ${totalCount === 1 ? 'playlist' : 'playlists'}`;
@@ -53,9 +69,11 @@ const Playlists = () => {
           </span>
         </div>
         <div className="flex items-center gap-2.5">
-          <Button variant="acc" icon="plus" onClick={handleCreatePlaylist}>
-            New playlist
-          </Button>
+          {!isOffline && (
+            <Button variant="acc" icon="plus" onClick={handleCreatePlaylist}>
+              New playlist
+            </Button>
+          )}
         </div>
       </motion.div>
 
@@ -116,11 +134,16 @@ const Playlists = () => {
             ))
           : playlists.map((playlist, i) => {
               const artVariant = artVariants[i % artVariants.length];
+              const device = isOffline ? onDevice(playlist.id) : null;
+              const emptyOffline = !!device && device.have === 0;
               return (
                 <Link
                   key={playlist.id}
                   to={`/playlist/${playlist.id}`}
-                  className="surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors w-full"
+                  className={cn(
+                    'surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors w-full',
+                    emptyOffline && 'opacity-60',
+                  )}
                 >
                   <div className="aspect-square w-full rounded-lg relative overflow-hidden shadow-lg">
                     <Artwork
@@ -138,7 +161,13 @@ const Playlists = () => {
                       {playlist.name}
                     </span>
                     <span className="text-body-s text-t2 truncate">
-                      {playlist.trackCount ? `${playlist.trackCount} songs` : 'Playlist'}
+                      {device
+                        ? device.have === 0
+                          ? 'No songs on this device'
+                          : `${device.have} of ${device.total} songs on this device`
+                        : playlist.trackCount
+                          ? `${playlist.trackCount} ${playlist.trackCount === 1 ? 'song' : 'songs'}`
+                          : 'Playlist'}
                     </span>
                     <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                       {playlist.kind === 'local' ? (

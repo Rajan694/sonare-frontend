@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, FlatList, RefreshControl, Pressable, useWindowDimensions } from 'react-native';
+import { View, FlatList, RefreshControl, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -23,26 +23,38 @@ import { songCount } from '../lib/format';
 import { cn } from '../lib/cn';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { useNavigation } from '@react-navigation/native';
-import { downloadedTracks, useDownloadsStore } from '../store/downloads';
+import { useDownloadsStore } from '../store/downloads';
+import { usePhoneTracks } from '../store/localMusic';
+import { playShuffled } from '../lib/playShuffled';
 
-type Tab = 'songs' | 'albums' | 'artists' | 'genres';
+type Tab = 'songs' | 'liked' | 'mostPlayed' | 'albums' | 'artists' | 'genres';
+type TrackTab = 'songs' | 'liked' | 'mostPlayed';
 type Sort = 'addedAt' | 'playCount' | 'title';
 
-// Folders are in Settings → Music folders; a Library tab for them only opened that screen.
+// The desktop library's views (its sidebar has Liked Songs and Most played too). Folders are
+// in Settings → Music folders; a Library tab for them only opened that screen.
 const TABS: { id: Tab; label: string }[] = [
   { id: 'songs', label: 'Songs' },
+  { id: 'liked', label: 'Favourites' },
+  { id: 'mostPlayed', label: 'Most played' },
   { id: 'albums', label: 'Albums' },
   { id: 'artists', label: 'Artists' },
   { id: 'genres', label: 'Genres' },
 ];
+
+const isTrackTab = (tab: Tab): tab is TrackTab => tab === 'songs' || tab === 'liked' || tab === 'mostPlayed';
+
+const FROM: Record<TrackTab, { kind: string; name: string }> = {
+  songs: { kind: 'Library', name: 'Your songs' },
+  liked: { kind: 'Library', name: 'Liked songs' },
+  mostPlayed: { kind: 'Library', name: 'Most played' },
+};
 
 const SORTS: { value: Sort; label: string; icon: IconName }[] = [
   { value: 'addedAt', label: 'Recently added', icon: 'clock' },
   { value: 'playCount', label: 'Most played', icon: 'visualizer' },
   { value: 'title', label: 'A-Z', icon: 'sort' },
 ];
-
-const LIBRARY_FROM = { kind: 'Library', name: 'Your songs' };
 
 export const LibraryScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
@@ -78,28 +90,55 @@ export const LibraryScreen = () => {
     refetchOnFocus: true,
   });
   const genres = useAsync(() => api.genres(), [], { enabled: online && activeTab === 'genres' });
+  // Liked and Most played come from the account; offline they show the downloaded ones.
+  const liked = useAsync(() => api.favourites(), [userId, favouriteCount], {
+    enabled: online && !!userId && activeTab === 'liked',
+    refetchOnFocus: true,
+  });
+  const mostPlayed = useAsync(() => api.mostPlayed(50), [userId], {
+    enabled: online && !!userId && activeTab === 'mostPlayed',
+    refetchOnFocus: true,
+  });
+  const favouriteIds = useLibraryStore((state) => state.favouriteIds);
 
   const downloads = useDownloadsStore((state) => state.items);
-  const serverTracks = (library.data?.items ?? []).filter((t) => t.source === 'server');
-  // Offline, the library is what's been downloaded to this phone.
-  const offlineTracks = React.useMemo(() => downloadedTracks(downloads), [downloads]);
+  const trackTab: TrackTab = isTrackTab(activeTab) ? activeTab : 'songs';
+  const tracksQuery = trackTab === 'liked' ? liked : trackTab === 'mostPlayed' ? mostPlayed : library;
+  const serverTracks = (tracksQuery.data?.items ?? []).filter((t) => t.source === 'server');
+  const isDownloaded = (id: string) => downloads[id]?.status === 'done';
+  // Offline, the library is what's on this phone: downloads and the music folders' songs.
+  const offlineTracks = usePhoneTracks();
   const displayTracks = !online
-    ? offlineTracks
+    ? trackTab === 'songs'
+      ? offlineTracks
+      : trackTab === 'liked'
+        ? offlineTracks.filter((t) => favouriteIds[t.id])
+        : // Nothing is fetched offline: the list from the last time online, downloaded songs only.
+          serverTracks.filter((t) => isDownloaded(t.id))
     : onPhoneOnly
-      ? serverTracks.filter((t) => downloads[t.id]?.status === 'done')
+      ? serverTracks.filter((t) => isDownloaded(t.id))
       : serverTracks;
+  const from = FROM[trackTab];
+  const emptyText = !online
+    ? trackTab === 'songs'
+      ? 'No music on this phone yet. Songs you download show up here.'
+      : trackTab === 'liked'
+        ? 'None of your liked songs are downloaded to this phone.'
+        : 'None of your most played songs are downloaded to this phone.'
+    : trackTab === 'liked'
+      ? 'Songs you like show up here. Tap the heart on any song.'
+      : trackTab === 'mostPlayed'
+        ? 'Songs you play most show up here once you have listened for a while.'
+        : 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".';
 
   const onPlayAll = () => {
     if (displayTracks.length > 0) {
-      playTrack(displayTracks[0], displayTracks, LIBRARY_FROM);
+      playTrack(displayTracks[0], displayTracks, from);
     }
   };
 
   const onShuffle = () => {
-    if (displayTracks.length > 0) {
-      const shuffled = [...displayTracks].sort(() => Math.random() - 0.5);
-      playTrack(shuffled[0], shuffled, LIBRARY_FROM);
-    }
+    playShuffled(displayTracks, from);
   };
 
   return (
@@ -138,8 +177,13 @@ export const LibraryScreen = () => {
         />
       ) : (
         <View className="flex-1">
-          {/* Sub-tabs row */}
-          <View className="flex-row border-b border-ln px-3.5">
+          {/* Sub-tabs row: scrolls sideways, six don't fit a phone */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="border-b border-ln flex-grow-0"
+            contentContainerStyle={{ paddingHorizontal: 14 }}
+          >
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -155,22 +199,28 @@ export const LibraryScreen = () => {
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
 
-          {activeTab === 'songs' ? (
+          {isTrackTab(activeTab) ? (
             <>
               {/* Sort chip and view toggle controls */}
               <View className="flex-row items-center justify-between px-5 py-3">
-                <Pressable
-                  onPress={() => setSortOpen(true)}
-                  className="flex-row items-center gap-1.5 h-[30px] px-3 rounded-full bg-s2 border border-ln2"
-                  accessibilityRole="button"
-                  accessibilityLabel={`Sort: ${SORTS.find((o) => o.value === sort)?.label}`}
-                >
-                  <Icon name="sort" size={13} color="#9A9AA8" />
-                  <Text className="text-bs font-medium text-t1">{SORTS.find((o) => o.value === sort)?.label}</Text>
-                  <Icon name="chevron-down" size={13} color="#9A9AA8" />
-                </Pressable>
+                {activeTab === 'songs' ? (
+                  <Pressable
+                    onPress={() => setSortOpen(true)}
+                    className="flex-row items-center gap-1.5 h-[30px] px-3 rounded-full bg-s2 border border-ln2"
+                    accessibilityRole="button"
+                    accessibilityLabel={`Sort: ${SORTS.find((o) => o.value === sort)?.label}`}
+                  >
+                    <Icon name="sort" size={13} color="#9A9AA8" />
+                    <Text className="text-bs font-medium text-t1">{SORTS.find((o) => o.value === sort)?.label}</Text>
+                    <Icon name="chevron-down" size={13} color="#9A9AA8" />
+                  </Pressable>
+                ) : (
+                  <Text className="text-bs text-t3">
+                    {activeTab === 'liked' ? 'Your favourites' : 'Your top tracks this year'}
+                  </Text>
+                )}
                 <View className="flex-row items-center gap-1">
                   <IconButton
                     icon={<Icon name="download" size={16} color="#9A9AA8" />}
@@ -224,7 +274,7 @@ export const LibraryScreen = () => {
                     Shuffle
                   </Button>
                   <Text className="text-bs text-t3 flex-1 text-right font-normal">
-                    {online && !onPhoneOnly && library.data?.meta?.total
+                    {online && !onPhoneOnly && activeTab === 'songs' && library.data?.meta?.total
                       ? `${library.data.meta.total} songs`
                       : `${displayTracks.length} songs`}
                   </Text>
@@ -233,7 +283,7 @@ export const LibraryScreen = () => {
 
               {/* Track List */}
               <FlatList
-                key={viewMode}
+                key={`${activeTab}-${viewMode}`}
                 data={displayTracks}
                 keyExtractor={(item) => item.id}
                 numColumns={viewMode === 'grid' ? 2 : 1}
@@ -241,7 +291,7 @@ export const LibraryScreen = () => {
                 renderItem={({ item, index }) =>
                   viewMode === 'grid' ? (
                     <Pressable
-                      onPress={() => playTrack(item, displayTracks, LIBRARY_FROM)}
+                      onPress={() => playTrack(item, displayTracks, from)}
                       className="p-1 mb-3"
                       style={cell(2, 12)}
                       accessibilityRole="button"
@@ -264,7 +314,7 @@ export const LibraryScreen = () => {
                   ) : (
                     <SongRow
                       track={item}
-                      onPress={() => playTrack(item, displayTracks, LIBRARY_FROM)}
+                      onPress={() => playTrack(item, displayTracks, from)}
                       isActive={currentTrack?.id === item.id}
                       index={index}
                       showArtwork
@@ -275,7 +325,7 @@ export const LibraryScreen = () => {
                   online ? (
                     <RefreshControl
                       refreshing={false}
-                      onRefresh={library.refetch}
+                      onRefresh={tracksQuery.refetch}
                       tintColor="#00E28A"
                       colors={['#00E28A']}
                     />
@@ -283,14 +333,10 @@ export const LibraryScreen = () => {
                 }
                 ListEmptyComponent={
                   <StateView
-                    loading={online && library.loading && !library.data}
-                    error={library.error}
-                    onRetry={library.refetch}
-                    empty={
-                      online
-                        ? 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".'
-                        : 'No music on this phone yet. Songs you download show up here.'
-                    }
+                    loading={online && tracksQuery.loading && !tracksQuery.data}
+                    error={online ? tracksQuery.error : undefined}
+                    onRetry={tracksQuery.refetch}
+                    empty={emptyText}
                   />
                 }
                 contentContainerStyle={{

@@ -22,24 +22,55 @@ const STORAGE_KEY = 'sonare.devicePrefs';
 /** Preferences kept on this phone only (not the account). */
 interface DevicePrefsStore {
   lyricsScript: LyricsScript;
+  /** Synced lyrics follow playback unless the user turns this off. */
+  lyricsAutoScroll: boolean;
+  /** When the queue runs out, similar songs keep playing (shared/player/autoplay.ts). */
+  autoplaySimilar: boolean;
   hydrate: () => Promise<void>;
   setLyricsScript: (script: LyricsScript) => void;
+  setLyricsAutoScroll: (on: boolean) => void;
+  setAutoplaySimilar: (on: boolean) => void;
 }
 
-export const useDevicePrefsStore = create<DevicePrefsStore>((set) => ({
+type SavedPrefs = Pick<DevicePrefsStore, 'lyricsScript' | 'lyricsAutoScroll' | 'autoplaySimilar'>;
+
+const persist = ({ lyricsScript, lyricsAutoScroll, autoplaySimilar }: SavedPrefs) => {
+  AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ lyricsScript, lyricsAutoScroll, autoplaySimilar })).catch(
+    () => {},
+  );
+};
+
+export const useDevicePrefsStore = create<DevicePrefsStore>((set, get) => ({
   lyricsScript: 'original',
+  lyricsAutoScroll: true,
+  autoplaySimilar: true,
   hydrate: async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
       const saved = raw ? JSON.parse(raw) : {};
-      if (LYRICS_SCRIPTS.some((s) => s.value === saved.lyricsScript)) set({ lyricsScript: saved.lyricsScript });
+      const lyricsScript = LYRICS_SCRIPTS.some((s) => s.value === saved.lyricsScript)
+        ? (saved.lyricsScript as LyricsScript)
+        : 'original';
+      set({
+        lyricsScript,
+        lyricsAutoScroll: typeof saved.lyricsAutoScroll === 'boolean' ? saved.lyricsAutoScroll : true,
+        autoplaySimilar: typeof saved.autoplaySimilar === 'boolean' ? saved.autoplaySimilar : true,
+      });
     } catch {
       // Defaults apply.
     }
   },
   setLyricsScript: (lyricsScript) => {
     set({ lyricsScript });
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ lyricsScript })).catch(() => {});
+    persist(get());
+  },
+  setLyricsAutoScroll: (lyricsAutoScroll) => {
+    set({ lyricsAutoScroll });
+    persist(get());
+  },
+  setAutoplaySimilar: (autoplaySimilar) => {
+    set({ autoplaySimilar });
+    persist(get());
   },
 }));
 

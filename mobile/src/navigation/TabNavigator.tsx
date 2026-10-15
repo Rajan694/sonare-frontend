@@ -14,6 +14,7 @@ import { SettingsScreen } from '../screens/Settings';
 import { FoldersScreen } from '../screens/Folders';
 import { DownloadsScreen } from '../screens/Downloads';
 import { EqualizerScreen } from '../screens/Equalizer';
+import { AccountScreen } from '../screens/Account';
 import { MiniPlayer } from '../components/music/MiniPlayer';
 import { useModeStore } from '../store/mode';
 import Icon from '../components/ui/Icon';
@@ -22,7 +23,7 @@ const Tab = createBottomTabNavigator<Record<string, undefined>, undefined>();
 const Stack = createNativeStackNavigator<Record<string, object | undefined>, undefined>();
 
 /**
- * Each tab is a stack, so album, artist, playlist, settings, folders, downloads and audio
+ * Each tab is a stack, so album, artist, playlist, settings, account, folders, downloads and audio
  * open inside the tab you're in, with the mini player and tab bar still there (M06-M08,
  * M13, M15, M16). Now Playing, Lyrics, Queue, sign-in and the mode switch cover
  * everything from the root stack instead (M09-M12, M14).
@@ -39,6 +40,7 @@ const tabStack = (rootName: string, Root: React.ComponentType<any>) => {
         <Stack.Screen name="Folders" component={FoldersScreen} />
         <Stack.Screen name="Downloads" component={DownloadsScreen} />
         <Stack.Screen name="Equalizer" component={EqualizerScreen} />
+        <Stack.Screen name="Account" component={AccountScreen} />
       </Stack.Navigator>
     );
   };

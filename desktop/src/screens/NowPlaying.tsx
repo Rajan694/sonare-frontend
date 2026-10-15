@@ -9,7 +9,7 @@ import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
 import Waveform from '../components/music/Waveform';
 import TrackDownloadButton from '../components/music/TrackDownloadButton';
-import { OutputButton, OutputCard } from '../components/music/OutputPicker';
+import LyricsButton from '../components/music/LyricsButton';
 import { addCurrentToPlaylist } from '../components/layout/BottomPlayer';
 import { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
@@ -76,13 +76,12 @@ const NowPlaying = () => {
   const currentIndex = state.index >= 0 ? state.index : 0;
   const upcomingQueue = state.queue.slice(currentIndex + 1, currentIndex + 5);
 
-  // Eyebrow source
-  const sourceEyebrow = currentTrack.album ? (
+  // Where the queue came from (an album, a playlist, a search …); else the song's album.
+  const from = state.playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
+  const sourceEyebrow = from ? (
     <span className="flex flex-col items-center justify-center gap-0.5 min-w-0">
-      <span className="text-overline text-t3 uppercase tracking-wider">PLAYING FROM ALBUM</span>
-      <span className="text-label-m text-t1 truncate max-w-[200px] @sm:max-w-[320px] font-medium">
-        {currentTrack.album}
-      </span>
+      <span className="text-overline text-t3 uppercase tracking-wider">Playing from {from.kind}</span>
+      <span className="text-label-m text-t1 truncate max-w-[200px] @sm:max-w-[320px] font-medium">{from.name}</span>
     </span>
   ) : null;
 
@@ -308,14 +307,11 @@ const NowPlaying = () => {
               className="text-t2"
             />
             <TrackDownloadButton track={currentTrack} size={40} className="text-t2" />
-            <Link
-              to="/lyrics"
+            <LyricsButton
+              track={currentTrack}
               className="ib ib-40 flex items-center justify-center text-t2 hover:text-t1 hover:bg-s3 rounded-full transition-colors"
-              aria-label="Lyrics"
-              data-tip="Lyrics"
-            >
-              <Icon name="lyrics" size={20} />
-            </Link>
+              iconSize={20}
+            />
             <Link
               to="/equalizer"
               className="ib ib-40 flex items-center justify-center text-t2 hover:text-t1 hover:bg-s3 rounded-full transition-colors"
@@ -324,8 +320,6 @@ const NowPlaying = () => {
             >
               <Icon name="sliders" size={20} />
             </Link>
-
-            <OutputButton size={40} className="text-t2" />
 
             {/* Volume */}
             <div className="hidden @md:flex items-center gap-2 flex-none w-[110px] @3xl:w-[130px] ml-auto @3xl:ml-2">
@@ -346,8 +340,6 @@ const NowPlaying = () => {
               />
             </div>
           </div>
-
-          <OutputCard className="self-start" />
 
           {/* UP NEXT Section (hidden on mobile single column if small, or displayed nicely) */}
           {upcomingQueue.length > 0 && (

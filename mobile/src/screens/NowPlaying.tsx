@@ -1,15 +1,18 @@
-import React from 'react';
-import { View, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, ScrollView, Pressable, ActivityIndicator, useWindowDimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
 import { Ambient } from '../components/music/Ambient';
 import { IconButton } from '../components/ui/IconButton';
+import { Button } from '../components/ui/Button';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { useTrackMenuStore } from '../store/trackMenu';
+import { useLyricsAvailabilityStore } from '../store/lyricsAvailability';
+import { useDevicePrefsStore } from '../store/devicePrefs';
 import { artworkUrl } from '../data/config';
 import { requireAccount } from '../data/accountGate';
 import { useNavigation } from '@react-navigation/native';
@@ -24,9 +27,6 @@ import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
 import { useWaveform } from '../store/waveforms';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
-import { OUTPUT_ICON, usePlayerSheets } from '../components/music/PlayerSheets';
-import { outputDetail, useOutputStore } from '../store/output';
-import { useSleepTimerStore } from '../store/sleepTimer';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -41,6 +41,9 @@ export const NowPlayingScreen = () => {
   const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
   const playPrevious = usePlayerStore((state) => state.playPrevious);
   const playNext = usePlayerStore((state) => state.playNext);
+  const queue = usePlayerStore((state) => state.queue);
+  const index = usePlayerStore((state) => state.index);
+  const playAt = usePlayerStore((state) => state.playAt);
   const positionMs = usePlayerStore((state) => state.positionMs);
   const durationMs = usePlayerStore((state) => state.durationMs);
   const buffering = usePlayerStore((state) => state.buffering);
@@ -48,9 +51,6 @@ export const NowPlayingScreen = () => {
   const seekTo = usePlayerStore((state) => state.seekTo);
   const favourite = useLibraryStore((state) => !!currentTrack && !!state.favouriteIds[currentTrack.id]);
   const playingFrom = usePlayerStore((state) => state.playingFrom);
-  const output = useOutputStore((state) => state.current);
-  const sleepOn = useSleepTimerStore((state) => state.timer.kind !== 'off');
-  const showSheet = usePlayerSheets((state) => state.show);
   // A finished download plays from the phone too.
   const onDevice = useDownloadsStore(
     (state) =>
@@ -61,8 +61,21 @@ export const NowPlayingScreen = () => {
   const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
   const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
 
+  // Ask once per song whether its lyrics can be found, so a miss shows a disabled Lyrics button.
+  const lyricsScript = useDevicePrefsStore((state) => state.lyricsScript);
+  const lyricsStatus = useLyricsAvailabilityStore((state) =>
+    currentTrack ? state.status[currentTrack.id] : undefined,
+  );
+  const lyricsUnavailable = lyricsStatus === 'unavailable';
+  useEffect(() => {
+    if (currentTrack) useLyricsAvailabilityStore.getState().check(currentTrack, lyricsScript);
+  }, [currentTrack, lyricsScript]);
+
+  // The next few queue entries after the one playing; tapping one jumps to it.
+  const upNext = index >= 0 ? queue.slice(index + 1, index + 5) : [];
+
   const navigation = useNavigation<any>();
-  // The output card and the extra utility buttons need room on shorter phones.
+  // The extra utility buttons need room on shorter phones.
   const { width, height } = useWindowDimensions();
   const artSize = width - 44 >= 314 && height >= 780 ? 314 : width - 44 >= 240 && height >= 640 ? 240 : 200;
 
@@ -119,7 +132,6 @@ export const NowPlayingScreen = () => {
   }
 
   const isGold = mode === 'offline' || currentTrack.source === 'local';
-  const accent = isGold ? '#FFC24D' : '#00E28A';
   // Where the queue came from; a song's own album when it was started from elsewhere.
   const eyebrow = playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
 
@@ -154,7 +166,11 @@ export const NowPlayingScreen = () => {
           />
         }
       />
-      <View className="flex-1 px-[22px] pt-1 pb-[22px]">
+      <ScrollView
+        className="flex-1"
+        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 4, paddingBottom: 22 }}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Large Artwork matching M09 (~306px) */}
         <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
           <AnimatedViewComponent style={artworkStyle} className="self-center mt-3 mb-[26px]">
@@ -182,10 +198,14 @@ export const NowPlayingScreen = () => {
                 className="text-tm text-t2 font-medium truncate"
                 numberOfLines={1}
                 onPress={() => {
+                  const aid = currentTrack.artistId;
+                  if (!aid || String(aid).startsWith('local:')) return;
                   navigation.goBack();
-                  openInCurrentTab('Artist', { id: currentTrack.artistId });
+                  openInCurrentTab('Artist', { id: aid });
                 }}
-                accessibilityRole="link"
+                accessibilityRole={
+                  currentTrack.artistId && !String(currentTrack.artistId).startsWith('local:') ? 'link' : undefined
+                }
               >
                 {currentTrack.artist}
               </Text>
@@ -246,7 +266,19 @@ export const NowPlayingScreen = () => {
                   .join(' · ')}
               </Text>
             )}
-            {error && <Text className="text-red text-bs ml-2 flex-1 truncate">{error}</Text>}
+            {error && (
+              <View className="flex-row items-center gap-2 ml-2 flex-1 min-w-0">
+                <Text className="text-red text-bs flex-1 truncate">{error}</Text>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onPress={() => usePlayerStore.getState().retry()}
+                  accessibilityLabel="Retry"
+                >
+                  Retry
+                </Button>
+              </View>
+            )}
           </View>
 
           {/* Waveform Seek Rail */}
@@ -311,39 +343,32 @@ export const NowPlayingScreen = () => {
 
             <IconButton
               icon={
-                <Icon name="repeat" size={21} color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />
+                <Icon
+                  name={repeat === 'one' ? 'repeat-one' : 'repeat'}
+                  size={21}
+                  color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
+                />
               }
               size={44}
               onPress={cycleRepeat}
-              accessibilityLabel="Toggle repeat"
+              accessibilityLabel={repeat === 'off' ? 'Repeat off' : repeat === 'all' ? 'Repeat all' : 'Repeat one'}
             />
           </View>
 
           {/* Bottom Utility Row */}
           <View className="flex-row items-center justify-between mt-2">
             <IconButton
-              icon={<Icon name="lyrics" size={21} color="#9A9AA8" />}
+              icon={<Icon name="lyrics" size={21} color={lyricsUnavailable ? '#5A5A66' : '#9A9AA8'} />}
               size={44}
               onPress={() => navigation.navigate('Lyrics')}
-              accessibilityLabel="Lyrics"
+              accessibilityLabel={lyricsUnavailable ? 'Lyrics not available' : 'Lyrics'}
+              disabled={lyricsUnavailable}
             />
             <IconButton
               icon={<Icon name="equalizer" size={21} color="#9A9AA8" />}
               size={44}
               onPress={() => navigation.navigate('Equalizer')}
               accessibilityLabel="Equalizer"
-            />
-            <IconButton
-              icon={<Icon name="output" size={21} color="#9A9AA8" />}
-              size={44}
-              onPress={() => showSheet('output')}
-              accessibilityLabel="Audio output"
-            />
-            <IconButton
-              icon={<Icon name="clock" size={21} color={sleepOn ? accent : '#9A9AA8'} />}
-              size={44}
-              onPress={() => showSheet('sleep')}
-              accessibilityLabel={sleepOn ? 'Sleep timer on' : 'Sleep timer'}
             />
             <IconButton
               icon={<Icon name="queue" size={21} color="#9A9AA8" />}
@@ -354,35 +379,43 @@ export const NowPlayingScreen = () => {
           </View>
         </View>
 
-        <View className="flex-1" />
-
-        {/* Audio output card (design M09) */}
-        <Pressable
-          onPress={() => showSheet('output')}
-          className="flex-row items-center gap-2.5 px-3 py-2.5 bg-[rgba(17,17,20,0.86)] border border-ln2 rounded-[14px]"
-          accessibilityRole="button"
-          accessibilityLabel={`Audio output: ${output?.name ?? 'Phone speaker'}`}
-        >
-          <View className="w-[30px] h-[30px] items-center justify-center">
-            <Icon name={output ? OUTPUT_ICON[output.type] : 'output'} size={18} color={accent} />
+        {/* Up next: the queue entries after this one; hidden when nothing comes next. */}
+        {upNext.length > 0 && (
+          <View className="gap-1 mt-4 pt-3 border-t border-ln">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-ov font-semibold text-t3 uppercase">Up next</Text>
+              <Pressable
+                onPress={() => navigation.navigate('Queue')}
+                accessibilityRole="button"
+                accessibilityLabel="Open queue"
+              >
+                <Text className="text-t2 text-ll">Open queue</Text>
+              </Pressable>
+            </View>
+            <View className="gap-0.5 mt-1">
+              {upNext.map((track, i) => (
+                <Pressable
+                  key={`${track.id}:${i}`}
+                  onPress={() => playAt(index + 1 + i)}
+                  className="flex-row items-center gap-3 py-1.5 rounded-md active:bg-s2"
+                  accessibilityRole="button"
+                  accessibilityLabel={`Play ${track.title} by ${track.artist}`}
+                >
+                  <Artwork uri={artworkUrl(track, 64)} size={40} className="rounded-sm" />
+                  <View className="flex-1 min-w-0 gap-0.5">
+                    <Text numberOfLines={1} className="text-tm font-medium text-t1">
+                      {track.title}
+                    </Text>
+                    <Text numberOfLines={1} className="text-t2 text-bs">
+                      {track.artist}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
           </View>
-          <View className="flex-1 gap-px min-w-0">
-            <Text className="text-ll text-t1" numberOfLines={1}>
-              {output?.name ?? 'Phone speaker'}
-            </Text>
-            <Text className="text-ls text-t3" numberOfLines={1}>
-              {output?.type === 'speaker' || !output
-                ? onDevice
-                  ? 'Playing locally · no network used'
-                  : 'Streaming to this phone'
-                : outputDetail(output)}
-            </Text>
-          </View>
-          <View className="w-8 h-8 items-center justify-center">
-            <Icon name="chevron-right" size={16} color="#9A9AA8" />
-          </View>
-        </Pressable>
-      </View>
+        )}
+      </ScrollView>
     </Screen>
   );
 };

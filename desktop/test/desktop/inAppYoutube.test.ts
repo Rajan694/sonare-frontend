@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { commands, files, lib, resetFs, store, writeFile } from '../helpers/fakeNeutralino';
-import { mp3Frames } from '../helpers/audioFixtures';
+import { commands, emitNativeEvent, files, lib, resetFs, store, writeFile } from '../helpers/fakeNeutralino';
+import { mp3Frames, webmOpus } from '../helpers/audioFixtures';
 import { makeTrack } from '../helpers/fixtures';
 import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';
-import { curlFetch, escapeCurlConfigValue } from '../../src/youtube/curlFetch';
+import { curlFetch, escapeCurlConfigValue, runCommand } from '../../src/youtube/curlFetch';
 import {
   inAppYoutube,
   isInAppYoutubeAllowed,
@@ -60,8 +60,13 @@ const h = vi.hoisted(() => {
     setRate(r: number) {
       this.rate = r;
     }
+    fadeTo() {}
     dispose() {
       this.disposed = true;
+    }
+    grows: { count: number; complete: boolean }[] = [];
+    grow(media: { count: number }, complete: boolean) {
+      this.grows.push({ count: media.count, complete });
     }
   }
   const ctx = {
@@ -82,8 +87,15 @@ vi.mock('../../src/audio/bufferPlayback', () => ({
 vi.mock('../../src/audio/streamPlayback', () => ({
   canStream: vi.fn(async () => true),
   StreamPlayback: class extends h.FakePlayback {
-    constructor(_ctx: unknown, _input: unknown, media: { duration: number }, onEnded: () => void) {
-      super('stream', media, media.duration, onEnded);
+    constructor(
+      _ctx: unknown,
+      _input: unknown,
+      media: { duration: number },
+      onEnded: () => void,
+      _onError?: () => void,
+      downloading?: { totalSeconds: number },
+    ) {
+      super('stream', media, downloading?.totalSeconds ?? media.duration, onEnded);
     }
   },
 }));
@@ -92,8 +104,10 @@ vi.mock('../../src/audio/dsp', () => ({
   bindElement: () => {},
   ensureGraph: async () => {},
   graphInput: async () => ({ ctx: h.ctx, input: {} }),
-  getDsp: () => ({ speed: 1 }),
+  getDsp: () => ({ speed: 1, crossfade: false }),
   subscribeDsp: () => () => {},
+  faderFor: () => null,
+  CROSSFADE_MS: 6000,
 }));
 
 useMockServer();
@@ -252,6 +266,21 @@ describe('in-app YouTube desktop transport and integration', () => {
     );
   });
 
+  it('DSK-080 runCommand gathers output and exit code, also from events sent before spawnProcess answers', async () => {
+    vi.mocked(lib.os.spawnProcess).mockImplementationOnce(async (cmd: string) => {
+      commands.ran.push(cmd);
+      emitNativeEvent('spawnedProcess', { id: 42, pid: 42, action: 'stdOut', data: 'out ' });
+      // Another process ending changes nothing.
+      emitNativeEvent('spawnedProcess', { id: 7, pid: 7, action: 'exit', data: 1 });
+      emitNativeEvent('spawnedProcess', { id: 42, pid: 42, action: 'stdErr', data: 'warn' });
+      emitNativeEvent('spawnedProcess', { id: 42, pid: 42, action: 'exit', data: 3 });
+      return { id: 42, pid: 42 };
+    });
+    await expect(runCommand('curl --version')).resolves.toEqual({ exitCode: 3, stdOut: 'out ', stdErr: 'warn' });
+    expect(commands.ran).toEqual(['curl --version']);
+    expect(lib.events.off).toHaveBeenCalledWith('spawnedProcess', expect.any(Function));
+  });
+
   it('DSK-058 isInAppYoutubeAllowed returns true only in Neutralino window mode and respects admin kill-switch', async () => {
     const win = window as unknown as { NL_MODE?: string };
     win.NL_MODE = 'window';
@@ -366,7 +395,7 @@ describe('in-app YouTube desktop transport and integration', () => {
     expect(p1).toBe(p2);
   });
 
-  it('DSK-062 streamCache evicts oldest accessed files when total size exceeds 500 MB limit', async () => {
+  it('DSK-062 streamCache evicts oldest accessed files when total size exceeds 300 MB limit', async () => {
     const cacheDir = await getStreamCacheDir();
     const oldPath = `${cacheDir}/old-251.webm`;
     writeFile(oldPath, new Uint8Array(10));
@@ -375,7 +404,7 @@ describe('in-app YouTube desktop transport and integration', () => {
       videoId: 'old',
       itag: 251,
       path: oldPath,
-      size: 300 * 1024 * 1024,
+      size: 200 * 1024 * 1024,
       ext: 'webm',
       mimeType: 'audio/webm',
       lastAccessed: 1000,
@@ -385,7 +414,7 @@ describe('in-app YouTube desktop transport and integration', () => {
     lib.filesystem.getStats.mockImplementation(async (path: string) => {
       if (path.includes('new-251')) {
         return {
-          size: 250 * 1024 * 1024,
+          size: 150 * 1024 * 1024,
           modifiedAt: Date.now(),
           createdAt: Date.now(),
           isFile: true,
@@ -413,6 +442,29 @@ describe('in-app YouTube desktop transport and integration', () => {
     } finally {
       lib.filesystem.getStats.mockImplementation(origGetStats!);
     }
+  });
+
+  it('DSK-078 streamCache reports how much it holds, and clear empties it from disk', async () => {
+    const cacheDir = await getStreamCacheDir();
+    for (const [id, size] of [
+      ['a', 1000],
+      ['b', 2500],
+    ] as const) {
+      writeFile(`${cacheDir}/${id}-251.webm`, new Uint8Array(10));
+      streamCache._getIndex().set(`${id}-251`, {
+        videoId: id,
+        itag: 251,
+        path: `${cacheDir}/${id}-251.webm`,
+        size,
+        ext: 'webm',
+        mimeType: 'audio/webm',
+        lastAccessed: 1,
+      });
+    }
+    expect(await streamCache.bytes()).toBe(3500);
+    await streamCache.clear();
+    expect(await streamCache.bytes()).toBe(0);
+    expect(files.has(`${cacheDir}/a-251.webm`)).toBe(false);
   });
 
   it('DSK-063 streamCache detects deleted files on disk and removes them from the cached index', async () => {
@@ -466,6 +518,45 @@ describe('in-app YouTube desktop transport and integration', () => {
       trackId: 'yt:stream64',
       error: null,
     });
+  });
+
+  it('DSK-079 on Linux an in-app song starts from the first part of its download and grows to the whole file', async () => {
+    vi.spyOn(api, 'getTrackStream').mockResolvedValue({
+      url: 'https://rr1---sn.googlevideo.com/videoplayback?id=progressive',
+      direct: true,
+      rawId: 'progressive',
+      itag: 251,
+      mimeType: 'audio/webm; codecs="opus"',
+      expiresAt: Date.now() + 3600000,
+    });
+    // 10 s of audio; curl has written the first 6 s when the test lets it finish. The fake, like
+    // Neutralino, holds file calls while an execCommand runs, so the download must not be one.
+    const file = webmOpus(500);
+    let finish!: () => void;
+    const finished = new Promise<void>((resolve) => (finish = resolve));
+    commands.answer = async (cmd: string) => {
+      const cfg = new TextDecoder().decode(files.get(/-K "([^"]+)"/.exec(cmd)![1])!.bytes);
+      const out = /output = "([^"\r\n]+)"/.exec(cfg)![1];
+      writeFile(out, file.slice(0, Math.floor(file.length * 0.6)));
+      await finished;
+      writeFile(out, file);
+      return fakeCurlDone(cmd, 206);
+    };
+
+    await player.playTrackId('yt:progressive');
+
+    // Playing before the download finished, with the whole song's length from the header.
+    const [playback] = h.FakePlayback.made as (InstanceType<typeof h.FakePlayback> & { duration: number })[];
+    expect(playback.kind).toBe('stream');
+    expect(playback.paused).toBe(false);
+    expect(playback.duration).toBeCloseTo(10, 6);
+    expect(player.getStatus()).toMatchObject({ playing: true, loading: false, trackId: 'yt:progressive' });
+
+    finish();
+    await vi.waitFor(() => expect(playback.grows.at(-1)).toEqual({ count: 500, complete: true }), { timeout: 3000 });
+    expect(h.FakePlayback.made).toHaveLength(1);
+    // The finished download is cached like any other.
+    expect(await streamCache.getCachedPath('progressive', 251)).not.toBeNull();
   });
 
   it('DSK-065 player falls back to backend stream relay when direct YouTube stream download fails', async () => {

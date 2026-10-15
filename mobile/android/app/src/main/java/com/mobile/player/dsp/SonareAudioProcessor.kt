@@ -40,7 +40,7 @@ class SonareAudioProcessor : BaseAudioProcessor() {
     val chain = chain
     val input = inputBuffer.order(ByteOrder.nativeOrder())
 
-    LevelMeter.offer(peakOf(input, format.encoding == C.ENCODING_PCM_FLOAT, size))
+    measure(input, format.encoding == C.ENCODING_PCM_FLOAT, size)
 
     val version = AudioEffects.version
     if (chain != null && version != seenVersion) {
@@ -71,16 +71,25 @@ class SonareAudioProcessor : BaseAudioProcessor() {
     output.flip()
   }
 
-  /** The loudest sample (0..1) in the buffer, as it was decoded (before the EQ). Leaves the position alone. */
-  private fun peakOf(input: ByteBuffer, float: Boolean, size: Int): Float {
+  /** Hands the buffer's sum of squares to [LevelMeter], as decoded (before the EQ). Leaves the position alone. */
+  private fun measure(input: ByteBuffer, float: Boolean, size: Int) {
     val start = input.position()
-    var peak = 0f
+    var sum = 0.0
+    val count: Int
     if (float) {
-      for (i in 0 until size / 4) peak = maxOf(peak, kotlin.math.abs(input.getFloat(start + i * 4)))
+      count = size / 4
+      for (i in 0 until count) {
+        val v = input.getFloat(start + i * 4)
+        sum += v * v
+      }
     } else {
-      for (i in 0 until size / 2) peak = maxOf(peak, kotlin.math.abs(input.getShort(start + i * 2) / 32768f))
+      count = size / 2
+      for (i in 0 until count) {
+        val v = input.getShort(start + i * 2) / 32768f
+        sum += v * v
+      }
     }
-    return peak.coerceAtMost(1f)
+    LevelMeter.offer(sum, count)
   }
 
   private fun write(samples: FloatArray, count: Int, float: Boolean, output: ByteBuffer) {

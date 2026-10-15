@@ -11,13 +11,17 @@ import { DownloadAllButton } from '../components/music/DownloadAllButton';
 import { Badge } from '../components/ui/Badge';
 import { IconButton } from '../components/ui/IconButton';
 import { StateView } from '../components/ui/StateView';
+import { LoadMore } from '../components/ui/LoadMore';
 import { usePlayerStore } from '../store/player';
 import { albumMeta } from '../../../shared/catalog/meta';
 import { api } from '../data/api';
 import { useSavedAlbum } from '../data/savedAlbums';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
+import { usePagedList } from '../hooks/usePagedList';
+import type { Track } from '../data/types';
 import { songCount } from '../lib/format';
+import { playShuffled } from '../lib/playShuffled';
 import Icon from '../components/ui/Icon';
 
 export const AlbumScreen = () => {
@@ -32,8 +36,8 @@ export const AlbumScreen = () => {
 
   const album = useAsync(() => api.album(id), [id]);
   const from = album.data ? { kind: 'Album', name: album.data.title } : undefined;
-  const tracksQuery = useAsync(() => api.albumTracks(id), [id]);
-  const tracks = tracksQuery.data?.items ?? [];
+  const tracksQuery = usePagedList<Track>((cursor) => api.albumTracks(id, cursor), [id]);
+  const tracks = tracksQuery.items;
   const info = album.data;
 
   const { isSaved: favourite, toggle: toggleFavourite } = useSavedAlbum(
@@ -53,10 +57,10 @@ export const AlbumScreen = () => {
   ].filter(Boolean);
   const meta = metaParts.join(' · ');
 
-  const playAll = (shuffled: boolean) => {
+  const playAll = () => {
     if (!tracks.length) return;
-    if (shuffled !== shuffle) toggleShuffle();
-    playTrack(shuffled ? tracks[Math.floor(Math.random() * tracks.length)] : tracks[0], tracks, from);
+    if (shuffle) toggleShuffle();
+    playTrack(tracks[0], tracks, from);
   };
 
   const isCurrentAlbumPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
@@ -89,11 +93,13 @@ export const AlbumScreen = () => {
                 {info?.title ?? ' '}
               </Text>
               {info?.artist ? (
-                <Pressable
-                  onPress={info.artistId ? () => navigation.navigate('Artist', { id: info.artistId }) : undefined}
-                >
+                info.artistId && !String(info.artistId).startsWith('local:') ? (
+                  <Pressable onPress={() => navigation.navigate('Artist', { id: info.artistId })}>
+                    <Text className="text-tm font-medium text-t2 text-center">{info.artist}</Text>
+                  </Pressable>
+                ) : (
                   <Text className="text-tm font-medium text-t2 text-center">{info.artist}</Text>
-                </Pressable>
+                )
               ) : null}
               {meta ? <Text className="text-t3 text-bs text-center mt-0.5">{meta}</Text> : null}
             </View>
@@ -148,7 +154,7 @@ export const AlbumScreen = () => {
                   icon={<Icon name="shuffle" size={20} color={shuffle ? '#00E28A' : '#FFFFFF'} />}
                   size={44}
                   variant="bordered"
-                  onPress={() => playAll(true)}
+                  onPress={() => playShuffled(tracks, from)}
                   accessibilityLabel="Shuffle"
                   disabled={!tracks.length}
                 />
@@ -157,7 +163,7 @@ export const AlbumScreen = () => {
                     if (isCurrentAlbumPlaying) {
                       setIsPlaying(false);
                     } else {
-                      playAll(false);
+                      playAll();
                     }
                   }}
                   disabled={!tracks.length}
@@ -188,6 +194,15 @@ export const AlbumScreen = () => {
             onRetry={tracksQuery.refetch}
             empty="No songs found for this album."
           />
+        }
+        ListFooterComponent={
+          tracksQuery.hasMore ? (
+            <LoadMore
+              loading={tracksQuery.loadingMore}
+              failed={!!tracksQuery.loadMoreError}
+              onPress={tracksQuery.loadMore}
+            />
+          ) : undefined
         }
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 160 }}
       />

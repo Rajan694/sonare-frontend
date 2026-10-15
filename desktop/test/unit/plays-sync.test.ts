@@ -288,4 +288,44 @@ describe('background sync', () => {
     await vi.waitFor(() => expect(bodies).toHaveLength(1));
     expect(bodies[0].plays[0].trackRef).toEqual({ kind: 'server', id: 'x' });
   });
+
+  it('WEB-SYNC-010 a long offline stretch uploads in batches of at most 100 plays', async () => {
+    const waiting = Array.from({ length: 250 }, (_, i) => ({
+      trackRef: { kind: 'server', id: `t${i}` },
+      at: i + 1,
+      ms: 31_000,
+      userId: testUser.id,
+    }));
+    localStorage.setItem('sonare_pending_plays', JSON.stringify(waiting));
+    const bodies = syncEndpoint();
+    const { setSyncOnline } = await fresh();
+    setSyncOnline(true);
+    await vi.waitFor(() => expect(pending()).toEqual([]));
+    expect(bodies.map((b) => b.plays.length)).toEqual([100, 100, 50]);
+    expect(bodies.flatMap((b) => b.plays.map((p: any) => p.trackRef.id))).toEqual(waiting.map((p) => p.trackRef.id));
+  });
+
+  it('WEB-SYNC-011 a refused batch is split: too large goes up in halves, and only the bad play is dropped', async () => {
+    const ids = Array.from({ length: 8 }, (_, i) => (i === 5 ? 'bad' : `t${i}`));
+    localStorage.setItem(
+      'sonare_pending_plays',
+      JSON.stringify(
+        ids.map((id, i) => ({ trackRef: { kind: 'server', id }, at: i + 1, ms: 31_000, userId: testUser.id })),
+      ),
+    );
+    const stored: string[] = [];
+    server.use(
+      http.post(`${API}/me/sync`, async ({ request }) => {
+        const body: any = await request.json();
+        if (body.plays.length > 2) return apiError(413, 'PAYLOAD_TOO_LARGE');
+        if (body.plays.some((p: any) => p.trackRef.id === 'bad')) return apiError(400, 'VALIDATION');
+        stored.push(...body.plays.map((p: any) => p.trackRef.id));
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const { setSyncOnline } = await fresh();
+    setSyncOnline(true);
+    await vi.waitFor(() => expect(pending()).toEqual([]));
+    expect(stored).toEqual(ids.filter((id) => id !== 'bad'));
+  });
 });

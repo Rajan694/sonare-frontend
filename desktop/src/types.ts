@@ -1,6 +1,9 @@
 // API shapes live in sonare-frontend/shared (also used by mobile); this file adds what only
 // the desktop/web app needs.
 import type { Track as ApiTrack } from '../../shared/apiTypes';
+import type { PlayingFrom } from '../../shared/player/queue';
+
+export type { PlayingFrom };
 
 export type * from '../../shared/apiTypes';
 
@@ -29,13 +32,11 @@ export interface Folder {
 export interface PlayerState {
   mode: Mode;
   queue: Track[];
+  /** The current entry: a song can be in the queue twice, so it's a position, never an id. */
   index: number;
   shuffle: boolean;
   repeat: 'off' | 'all' | 'one';
-  output: {
-    id: string;
-    name: string;
-    kind: 'wired' | 'bluetooth' | 'cast' | 'speaker';
-    available: boolean;
-  };
+  /** Bumped whenever an entry becomes the current one (the same song again too); the player loads on it. */
+  playId: number;
+  playingFrom: PlayingFrom | null;
 }

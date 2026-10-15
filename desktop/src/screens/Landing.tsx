@@ -6,8 +6,8 @@ import {
   Download,
   FolderOpen,
   HardDriveDownload,
+  AudioLines,
   Languages,
-  Moon,
   RefreshCw,
   SlidersHorizontal,
 } from 'lucide-react';
@@ -59,13 +59,13 @@ const FEATURES = [
   {
     icon: FolderOpen,
     title: 'Your own music too',
-    body: 'On Linux and Windows, add your music folders and play your files next to the catalogue.',
+    body: 'On Android, Linux and Windows, play the music already on your device next to the catalogue.',
     tone: 'gold',
   },
   {
-    icon: Moon,
-    title: 'Sleep timer',
-    body: 'On Android, stop after 15 to 90 minutes or at the end of the song.',
+    icon: AudioLines,
+    title: 'Gapless and crossfade',
+    body: 'Albums play without a gap, and songs can fade into each other over six seconds.',
     tone: 'acc',
   },
 ] as const;
@@ -169,6 +169,18 @@ const Landing = () => {
       else meta.content = previousDescription;
     };
   }, []);
+
+  // The header and hero links jump to #features / #screenshots / #download: glide there instead.
+  // Scoped to this page so the app's own scroll restoration stays instant.
+  useEffect(() => {
+    if (reduce) return;
+    const root = document.documentElement;
+    const previous = root.style.scrollBehavior;
+    root.style.scrollBehavior = 'smooth';
+    return () => {
+      root.style.scrollBehavior = previous;
+    };
+  }, [reduce]);
 
   // Version and size labels only: the buttons work without them.
   useEffect(() => {

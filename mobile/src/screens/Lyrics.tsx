@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Pressable, ScrollView, LayoutChangeEvent } from 'react-native';
+import { View, Pressable, ScrollView, LayoutChangeEvent, Alert } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -15,6 +15,7 @@ import { Badge } from '../components/ui/Badge';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { Chip } from '../components/ui/Chip';
+import { Switch } from '../components/ui/Switch';
 import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
@@ -22,6 +23,15 @@ import Icon from '../components/ui/Icon';
 import { cn } from '../lib/cn';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 import { useWaveform } from '../store/waveforms';
+import { requireAccount } from '../data/accountGate';
+
+/** One tap of "earlier" / "later" (the desktop app's step too). */
+const OFFSET_STEP_MS = 250;
+
+/** How long the app waits after the last tap before it saves the new offset. */
+const OFFSET_SAVE_DELAY_MS = 600;
+
+const offsetLabel = (ms: number) => `${ms > 0 ? '+' : ms < 0 ? '−' : ''}${(Math.abs(ms) / 1000).toFixed(2)}s`;
 
 const stamp = (ms: number) => {
   return `${Math.floor(ms / 60000)}:${(Math.floor(ms / 1000) % 60).toString().padStart(2, '0')}`;
@@ -43,6 +53,8 @@ export const LyricsScreen = () => {
   const [view, setView] = useState<'synced' | 'plain'>('synced');
 
   const lyricsScript = useDevicePrefsStore((state) => state.lyricsScript);
+  const lyricsAutoScroll = useDevicePrefsStore((state) => state.lyricsAutoScroll);
+  const setLyricsAutoScroll = useDevicePrefsStore((state) => state.setLyricsAutoScroll);
   const wave = useWaveform(currentTrack, 76);
   const lyrics = useAsync(
     () => api.lyrics(currentTrack!.id, lyricsScript, currentTrack!),
@@ -57,23 +69,54 @@ export const LyricsScreen = () => {
   const showSynced = hasSynced && view === 'synced';
   const plain = data?.plain || lines.map((l) => l.text).join('\n');
 
-  const at = positionMs + (data?.offsetMs ?? 0);
+  // The account's timing fix for this song, like the desktop app: positive shows each line later.
+  // Taps move it at once; the save waits for a pause so it can't land out of order.
+  const [offsetMs, setOffsetMs] = useState(0);
+  useEffect(() => setOffsetMs(data?.offsetMs ?? 0), [data]);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingOffset = useRef<{ trackId: string; value: number } | null>(null);
+  const flushOffset = useRef<() => void>(() => {});
+  flushOffset.current = () => {
+    const pending = pendingOffset.current;
+    if (!pending) return;
+    pendingOffset.current = null;
+    api.updateLyricsOffset(pending.trackId, pending.value).catch(() => Alert.alert('Could not save the lyric timing'));
+  };
+  // A save still waiting when the screen closes goes out now.
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      flushOffset.current();
+    };
+  }, []);
+
+  const changeOffset = (delta: number) =>
+    requireAccount('Create a free account to fix lyrics and their timing.', () => {
+      const next = offsetMs + delta;
+      setOffsetMs(next);
+      pendingOffset.current = { trackId: currentTrack!.id, value: next };
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+      saveTimer.current = setTimeout(() => flushOffset.current(), OFFSET_SAVE_DELAY_MS);
+    });
+
+  const at = positionMs - offsetMs;
   let activeIndex = -1;
   for (let i = 0; i < lines.length && lines[i].atMs <= at; i++) activeIndex = i;
 
   const scrollViewRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const lineY = useRef<Record<number, number>>({});
 
-  // Keep the current line in view until the user takes over scrolling.
+  // Keep the current line in view until the user takes over scrolling (and only while auto-scroll
+  // is on).
   useEffect(() => {
-    if (!showSynced || userScrolling || activeIndex < 0) return;
+    if (!showSynced || !lyricsAutoScroll || userScrolling || activeIndex < 0) return;
     const y = lineY.current[activeIndex];
     if (y !== undefined)
       scrollViewRef.current?.scrollTo({
         y: Math.max(0, y - 120),
         animated: true,
       });
-  }, [activeIndex, showSynced, userScrolling]);
+  }, [activeIndex, showSynced, userScrolling, lyricsAutoScroll]);
 
   if (!currentTrack) {
     return (
@@ -144,6 +187,39 @@ export const LyricsScreen = () => {
             )}
           </View>
         )}
+
+        {showSynced && (
+          <View className="flex-row items-center gap-2 mt-3">
+            <Text className="text-bs text-t3 flex-1">Timing {offsetLabel(offsetMs)}</Text>
+            <Chip
+              size="sm"
+              label="Earlier"
+              icon={<Icon name="minus" size={13} color="#7E7E8C" />}
+              onPress={() => changeOffset(-OFFSET_STEP_MS)}
+            />
+            <Chip
+              size="sm"
+              label="Later"
+              icon={<Icon name="plus" size={13} color="#7E7E8C" />}
+              onPress={() => changeOffset(OFFSET_STEP_MS)}
+            />
+          </View>
+        )}
+
+        {showSynced && (
+          <View className="flex-row items-center gap-3 mt-3">
+            <Switch
+              value={lyricsAutoScroll}
+              onValueChange={setLyricsAutoScroll}
+              accessibilityLabel="Auto-scroll"
+              variant={isGold ? 'gold' : 'default'}
+            />
+            <View className="flex-1">
+              <Text className="text-tm font-medium text-t1">Auto-scroll</Text>
+              <Text className="text-bs text-t3">Follow the line being sung</Text>
+            </View>
+          </View>
+        )}
       </View>
 
       {!data ? (
@@ -175,11 +251,11 @@ export const LyricsScreen = () => {
                   }}
                 >
                   <Text className={`w-[30px] pt-1.5 text-mono-s font-mono ${isActive ? 'text-acc' : 'text-t4'}`}>
-                    {stamp(item.atMs)}
+                    {stamp(Math.max(0, item.atMs + offsetMs))}
                   </Text>
                   <Pressable
                     onPress={() => {
-                      seekTo(Math.max(0, item.atMs - (data.offsetMs ?? 0)));
+                      seekTo(Math.max(0, item.atMs + offsetMs));
                       setUserScrolling(false);
                     }}
                     className="flex-1"

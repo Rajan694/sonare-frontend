@@ -38,6 +38,8 @@ export const makePlayer = (
     setState: vi.fn(),
     currentTrack: s.queue[s.index] ?? null,
     playTrack: vi.fn(),
+    playShuffled: vi.fn(),
+    playAt: vi.fn(),
     isPlaying: false,
     isLoading: false,
     durationMs: s.queue[s.index]?.durationMs ?? 0,

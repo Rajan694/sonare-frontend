@@ -27,6 +27,8 @@ interface SongRowProps {
   className?: string;
   /** Extra action shown in the long-press menu, e.g. "Remove from playlist". */
   extraAction?: TrackMenuAction;
+  /** Drawn at the right end of the row, after the duration and the more button. */
+  trailing?: React.ReactNode;
 }
 
 export const SongRow = ({
@@ -38,6 +40,7 @@ export const SongRow = ({
   index,
   className,
   extraAction,
+  trailing,
 }: SongRowProps) => {
   const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
   // Only the active row cares, so the others never re-render on play/pause.
@@ -111,6 +114,8 @@ export const SongRow = ({
           onPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
           accessibilityLabel={`More options for ${track.title}`}
         />
+
+        {trailing}
       </Pressable>
     </Animated.View>
   );

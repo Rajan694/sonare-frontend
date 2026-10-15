@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, ScrollView, Pressable } from 'react-native';
+import React from 'react';
+import { View, ScrollView } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -11,38 +11,12 @@ import { Slider } from '../components/ui/Slider';
 import { useModeStore } from '../store/mode';
 import { CUSTOM_PRESET, EQ_PRESETS, useSettingsStore } from '../data/settings';
 import { EQ_LABELS, EQ_MAX_DB, SPEEDS, currentGains, useAudioStore } from '../store/audio';
-import { SonarePlayer, type OutputDevice } from '../native/SonarePlayer';
 import { cn } from '../lib/cn';
-import Icon, { type IconName } from '../components/ui/Icon';
-import { usePlayerSheets } from '../components/music/PlayerSheets';
+import Icon from '../components/ui/Icon';
 
 const formatDb = (db: number) => (db > 0 ? `+${db}` : db < 0 ? `−${-db}` : '0');
 /** 0.75×, 1.0×, 1.25×, 1.5× */
 const formatSpeed = (s: number) => `${Number.isInteger(s) ? s.toFixed(1) : s}×`;
-
-const OUTPUT_ICON: Record<OutputDevice['type'], IconName> = {
-  speaker: 'volume',
-  wired: 'headphones',
-  usb: 'headphones',
-  bluetooth: 'headphones',
-};
-
-/** The audio output in use, kept current as headphones and Bluetooth come and go. */
-const useOutputDevice = () => {
-  const [device, setDevice] = useState<OutputDevice | null>(null);
-  useEffect(() => {
-    let live = true;
-    SonarePlayer.getOutputDevice()
-      .then((d) => live && setDevice(d))
-      .catch(() => {});
-    const sub = SonarePlayer.onOutput(setDevice);
-    return () => {
-      live = false;
-      sub.remove();
-    };
-  }, []);
-  return device;
-};
 
 /**
  * The Audio screen. Everything here reaches the native player (AudioEngine sends it): the
@@ -70,7 +44,6 @@ export const EqualizerScreen = () => {
   const gains = currentGains(preset);
   const { update, setBand } = useAudioStore.getState();
 
-  const output = useOutputDevice();
   const presets = preset === CUSTOM_PRESET ? [...EQ_PRESETS, CUSTOM_PRESET] : EQ_PRESETS;
 
   return (
@@ -253,25 +226,6 @@ export const EqualizerScreen = () => {
             />
           </View>
         </View>
-
-        {/* Output device */}
-        {output && (
-          <Pressable
-            onPress={() => usePlayerSheets.getState().show('output')}
-            className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3"
-            accessibilityRole="button"
-            accessibilityLabel={`Audio output: ${output.name}`}
-          >
-            <View className={cn('w-9 h-9 items-center justify-center rounded-sm', isGold ? 'bg-goldbg' : 'bg-accbg')}>
-              <Icon name={OUTPUT_ICON[output.type]} size={18} color={accent} />
-            </View>
-            <View className="flex-1 gap-0.5">
-              <Text className="text-tm font-medium text-t1">{output.name}</Text>
-              <Text className="text-bs text-t3">Output device · effects apply here</Text>
-            </View>
-            <Icon name="chevron-right" size={16} color="#7E7E8C" />
-          </Pressable>
-        )}
       </ScrollView>
     </Screen>
   );

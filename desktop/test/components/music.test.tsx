@@ -206,14 +206,23 @@ describe('song row', () => {
     expect(screen.getByRole('button', { name: 'Reckoner added' })).toBeDisabled();
   });
 
-  it('WEB-MUSIC-031 the table shows your play count, and the artist where a song has no album', () => {
+  it('WEB-MUSIC-034 the favourite heart is shown at every width', () => {
+    row();
+    const heart = screen.getByRole('button', { name: /favourites/ });
+    // It only fades in on hover where there is room; it is never hidden outright.
+    expect(heart.className).not.toMatch(/\bhidden\b/);
+    expect(heart.className).not.toContain('@[480px]:inline-flex');
+  });
+
+  it('WEB-MUSIC-031 lists of your own songs show your play count, and the artist where a song has no album', () => {
     renderWithProviders(
       <>
-        <SongTableHeader />
-        <SongRow track={{ ...track, playCount: 1234 }} index={1} />
+        <SongTableHeader showPlays />
+        <SongRow track={{ ...track, playCount: 1234 }} index={1} showPlays />
         <SongRow
           track={makeTrack({ id: 'yt:single', title: 'Single', artist: 'Arijit Singh', album: null })}
           index={2}
+          showPlays
         />
       </>,
     );
@@ -225,6 +234,17 @@ describe('song row', () => {
     expect(within(withoutAlbum).queryByText('—')).not.toBeInTheDocument();
     expect(within(withoutAlbum).getAllByText('Arijit Singh')).toHaveLength(2);
     expect(within(withoutAlbum).getByLabelText('0 plays')).toHaveTextContent('0');
+  });
+
+  it('WEB-MUSIC-035 catalog lists (search, albums, artists) have no PLAYS column', () => {
+    renderWithProviders(
+      <>
+        <SongTableHeader />
+        <SongRow track={track} index={1} />
+      </>,
+    );
+    expect(screen.queryByText('PLAYS')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/plays$/)).not.toBeInTheDocument();
   });
 });
 
@@ -385,6 +405,26 @@ describe('track menu', () => {
     expect(within(menu).queryByRole('button', { name: 'Play next' })).not.toBeInTheDocument();
     expect(within(menu).queryByRole('button', { name: 'Go to album' })).not.toBeInTheDocument();
     expect(within(menu).queryByRole('button', { name: 'Download' })).not.toBeInTheDocument();
+    // A favourite is one song, not a selection.
+    expect(within(menu).queryByRole('button', { name: /favourites/ })).not.toBeInTheDocument();
+  });
+
+  it('WEB-MUSIC-033 the menu adds and removes a single song as a favourite', async () => {
+    setSession('a', 'r', testUser);
+    const rec = recordRequests();
+    server.use(
+      http.put(`${API}/me/favourites/tracks/:id`, () => HttpResponse.json({ ok: true })),
+      http.delete(`${API}/me/favourites/tracks/:id`, () => HttpResponse.json({ ok: true })),
+    );
+    // A song untouched by earlier tests, so the menu starts on "Add".
+    const fresh = makeTrack({ id: 'yt:fav', title: 'Midnight', albumId: 'yt:a', artistId: 'yt:b' });
+    const { user, menu } = open({ tracks: [fresh] });
+    await user.click(within(menu()).getByRole('button', { name: 'Add to favourites' }));
+    await waitFor(() => expect(rec.paths()).toContain('PUT /me/favourites/tracks/yt%3Afav'));
+    fireEvent.click(screen.getByRole('button', { name: 'More options' }));
+    await user.click(within(screen.getByRole('menu')).getByRole('button', { name: 'Remove from favourites' }));
+    await waitFor(() => expect(rec.paths()).toContain('DELETE /me/favourites/tracks/yt%3Afav'));
+    rec.stop();
   });
 
   it('WEB-MUSIC-019 Escape and a click outside close the menu', () => {

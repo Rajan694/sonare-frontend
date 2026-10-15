@@ -1,3 +1,4 @@
+import { serverFetch } from './serverFetch';
 import type { User } from '../types';
 import { CLIENT } from '../lib/caps';
 import { API_BASE } from './server';
@@ -105,18 +106,56 @@ export const clearSession = () => {
   notifyListeners();
 };
 
-/** POSTs to /auth/<path>; throws the server's message on an error status. */
-const postAuth = async <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> => {
-  const res = await fetch(`${API_BASE}/auth/${path}`, {
-    method: 'POST',
+export class AuthRequestError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
+
+type AccountMethod = 'POST' | 'PATCH' | 'DELETE';
+
+/** Sends JSON to the backend (`path` under API_BASE); throws the server's message on an error status. */
+const sendJson = async <T>(
+  method: AccountMethod,
+  path: string,
+  body: unknown,
+  accessToken?: string | null,
+): Promise<T> => {
+  const res = await serverFetch(`${API_BASE}${path}`, {
+    method,
     headers: accessToken ? { ...JSON_HEADERS, Authorization: `Bearer ${accessToken}` } : JSON_HEADERS,
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => null);
   if (!res.ok) {
-    throw new Error(json?.error?.message || `Request failed with status ${res.status}`);
+    throw new AuthRequestError(
+      json?.error?.message || `Request failed with status ${res.status}`,
+      res.status,
+      json?.error?.code,
+    );
   }
   return json as T;
+};
+
+/** POSTs to /auth/<path>. */
+const postAuth = <T>(path: string, body: unknown, accessToken?: string | null): Promise<T> =>
+  sendJson<T>('POST', `/auth/${path}`, body, accessToken);
+
+/** As the signed-in account (an /auth path, or a full one like `/me`); an expired access token is refreshed once. */
+const asAccount = async <T>(path: string, body: unknown, method: AccountMethod = 'POST'): Promise<T> => {
+  const fullPath = path.startsWith('/') ? path : `/auth/${path}`;
+  try {
+    return await sendJson<T>(method, fullPath, body, currentAccessToken);
+  } catch (err) {
+    if (!(err instanceof AuthRequestError) || err.status !== 401) throw err;
+    const token = await refreshAccessToken();
+    if (!token) throw err;
+    return sendJson<T>(method, fullPath, body, token);
+  }
 };
 
 interface SessionResponse {
@@ -142,24 +181,62 @@ export const requestPasswordReset = async (email: string): Promise<void> => {
   await postAuth('forgot-password', { email });
 };
 
+/** The 6-digit code from the reset email, swapped for a token that sets the new password (15 minutes). */
+export const verifyResetCode = async (email: string, code: string): Promise<string> => {
+  const { resetToken } = await postAuth<{ resetToken: string }>('verify-reset-code', { email, code });
+  return resetToken;
+};
+
 /** Every device is signed out by the server, this one included. */
 export const resetPassword = async (token: string, password: string): Promise<void> => {
   await postAuth('reset-password', { token, password });
   clearSession();
 };
 
-export const verifyEmail = async (token: string): Promise<void> => {
-  await postAuth('verify-email', { token });
-  // The link may belong to another account than the one signed in here, so ask the server.
+/** Signed in: a new password. This device gets a fresh session; the server signs out every other one. */
+export const changePassword = async (currentPassword: string, newPassword: string): Promise<void> => {
+  const pair = await asAccount<{ accessToken: string; refreshToken: string }>('change-password', {
+    currentPassword,
+    newPassword,
+  });
+  if (currentUser) setSession(pair.accessToken, pair.refreshToken, currentUser);
+};
+
+export const updateDisplayName = async (displayName: string): Promise<User> => {
+  const user = await asAccount<User>('/me', { displayName }, 'PATCH');
+  setCurrentUser({ ...currentUser, ...user });
+  return user;
+};
+
+/** Deletes the account and everything saved to it; this device carries on as a guest. */
+export const deleteAccount = async (password: string): Promise<void> => {
+  await asAccount('/me', { password }, 'DELETE');
+  clearSession();
+};
+
+/** Reads the signed-in account again, e.g. after its email was verified. */
+const refreshCurrentUser = async (): Promise<void> => {
   if (!currentAccessToken) return;
-  const res = await fetch(`${API_BASE}/me`, {
+  const res = await serverFetch(`${API_BASE}/me`, {
     headers: { ...JSON_HEADERS, Authorization: `Bearer ${currentAccessToken}` },
   }).catch(() => null);
   if (res?.ok) setCurrentUser(await res.json());
 };
 
+export const verifyEmail = async (token: string): Promise<void> => {
+  await postAuth('verify-email', { token });
+  // The link may belong to another account than the one signed in here, so ask the server.
+  await refreshCurrentUser();
+};
+
+/** The 6-digit code from the verification email, for the signed-in account. */
+export const verifyEmailCode = async (code: string): Promise<void> => {
+  await asAccount('verify-email-code', { code });
+  if (currentUser) setCurrentUser({ ...currentUser, emailVerified: true });
+};
+
 export const resendVerification = async (): Promise<void> => {
-  await postAuth('resend-verification', {}, currentAccessToken);
+  await asAccount('resend-verification', {});
 };
 
 const setCurrentUser = (user: User) => {
@@ -171,7 +248,7 @@ const setCurrentUser = (user: User) => {
 export const signOut = async (): Promise<void> => {
   try {
     if (currentAccessToken) {
-      await fetch(`${API_BASE}/auth/logout`, {
+      await serverFetch(`${API_BASE}/auth/logout`, {
         method: 'POST',
         headers: {
           ...JSON_HEADERS,
@@ -191,28 +268,68 @@ export const signOut = async (): Promise<void> => {
 
 let refreshPromise: Promise<string | null> | null = null;
 
+/**
+ * Another tab of the web app may have renewed the tokens (the server spends a refresh token
+ * on use) or signed out. Take what storage holds now when it differs from what this tab has.
+ */
+const adoptStoredSession = (): boolean => {
+  const stored = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (stored === currentRefreshToken) return false;
+  currentAccessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  currentRefreshToken = stored;
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    currentUser = stored && raw ? JSON.parse(raw) : null;
+  } catch {
+    currentUser = null;
+  }
+  notifyListeners();
+  return true;
+};
+
+/** One tab refreshes at a time, so two tabs never spend the same refresh token. */
+const oneTabAtATime = <T>(fn: () => Promise<T>): Promise<T> => {
+  const locks = typeof navigator !== 'undefined' ? navigator.locks : undefined;
+  // request() resolves with what the callback's promise resolves with.
+  return locks ? (locks.request('sonare-refresh', fn) as Promise<T>) : fn();
+};
+
+/**
+ * Renews the access token. Only the server refusing the refresh token (401) ends the
+ * session; a network error, a rate limit or a server waking up keeps it, and the caller's
+ * request fails as it would have anyway.
+ */
 export const refreshAccessToken = async (): Promise<string | null> => {
   if (refreshPromise) return refreshPromise;
 
   if (!currentRefreshToken) {
+    if (adoptStoredSession()) return currentAccessToken;
     clearSession();
     return null;
   }
 
-  refreshPromise = (async () => {
+  const spent = currentRefreshToken;
+  refreshPromise = oneTabAtATime(async () => {
+    // Renewed (or signed out) by another tab while this one waited.
+    if (adoptStoredSession() || !currentRefreshToken) return currentAccessToken;
     try {
-      const res = await fetch(`${API_BASE}/auth/refresh`, {
+      const res = await serverFetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
         headers: JSON_HEADERS,
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
       });
 
-      if (!res.ok) {
+      if (res.status === 401) {
+        // A browser without Web Locks can still lose the race to another tab.
+        if (adoptStoredSession()) return currentAccessToken;
         clearSession();
         return null;
       }
+      if (!res.ok) return null;
 
       const json = await res.json();
+      // Signed out or signed in as someone else meanwhile: this answer is for an old session.
+      if (currentRefreshToken !== spent) return currentAccessToken;
       currentAccessToken = json.accessToken;
       currentRefreshToken = json.refreshToken || currentRefreshToken;
 
@@ -223,15 +340,30 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
       return currentAccessToken;
     } catch {
-      clearSession();
       return null;
-    } finally {
-      refreshPromise = null;
     }
-  })();
+  }).finally(() => {
+    refreshPromise = null;
+  });
 
   return refreshPromise;
 };
+
+// A sign-in, sign-out or token renewal in another tab applies here too.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (e) => {
+    if (e.storageArea !== localStorage || adoptStoredSession()) return;
+    if (e.key === ACCESS_TOKEN_KEY) currentAccessToken = e.newValue;
+    if (e.key === USER_KEY && e.newValue) {
+      try {
+        currentUser = JSON.parse(e.newValue);
+        notifyListeners();
+      } catch {
+        // Keep the user this tab has.
+      }
+    }
+  });
+}
 
 export const initDevAuth = async (): Promise<void> => {
   // Someone who signed out stays a guest; dev auto-login is only for a fresh start.

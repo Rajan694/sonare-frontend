@@ -18,7 +18,7 @@ import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import type { Track } from '../data/types';
-import { downloadedTracks, useDownloadsStore } from '../store/downloads';
+import { usePhoneTracks } from '../store/localMusic';
 import { formatDuration } from '../lib/format';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { cn } from '../lib/cn';
@@ -52,8 +52,7 @@ export const HomeScreen = () => {
   const durationMs = usePlayerStore((state) => state.durationMs);
 
   const online = mode === 'online';
-  const downloads = useDownloadsStore((state) => state.items);
-  const offlineTracks = React.useMemo(() => downloadedTracks(downloads), [downloads]);
+  const offlineTracks = usePhoneTracks();
   // History and favourites belong to an account; guests just get the catalog.
   const recent = useAsync(() => api.recentlyPlayed(12), [user?.id], {
     enabled: online && signedIn,

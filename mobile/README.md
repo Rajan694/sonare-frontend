@@ -30,10 +30,8 @@ There is no env file. `src/data/config.ts` picks the API origin:
 
 - debug builds (`__DEV__`): `http://localhost:3010`, forwarded to this computer over USB by
   `adb reverse tcp:3010 tcp:3010` (`../runFE.sh mobile` sets it up; run it by hand after
-  reconnecting a phone). Works on the emulator and on a phone; a phone on Wi-Fi only can
-  be pointed at the computer's LAN address in Settings → Server address;
-- release builds: `https://api.sonare.vip`, always. Settings → Server address only exists in
-  debug builds and dev APKs.
+  reconnecting a phone). Works on the emulator and on a phone connected by USB;
+- release builds: `https://api.sonare.vip`, always. There is no setting for it in the app.
 
 ## Scripts
 

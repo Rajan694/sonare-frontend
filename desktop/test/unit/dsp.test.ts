@@ -41,7 +41,11 @@ class FakeContext {
   destination = new Node();
   biquads: Biquad[] = [];
   gains: Gain[] = [];
-  comp!: Compressor;
+  comps: Compressor[] = [];
+  /** The normalization compressor; the limiter after it is comps[1]. */
+  get comp() {
+    return this.comps[0];
+  }
   constructor() {
     contexts.push(this);
   }
@@ -70,8 +74,9 @@ class FakeContext {
     return new Node();
   }
   createDynamicsCompressor() {
-    this.comp = new Compressor();
-    return this.comp;
+    const c = new Compressor();
+    this.comps.push(c);
+    return c;
   }
   async resume() {
     this.state = 'running';
@@ -93,9 +98,9 @@ afterEach(() => {
 const stored = () => JSON.parse(localStorage.getItem('sonare_dsp')!);
 
 describe('equalizer state', () => {
-  it('WEB-DSP-001 starts flat, and restores a saved curve', async () => {
+  it('WEB-DSP-001 starts on the Sonare preset, and restores a saved curve', async () => {
     let d = await fresh();
-    expect(d.getDsp()).toMatchObject({ enabled: true, preset: 'Flat', gains: [0, 0, 0, 0, 0, 0, 0, 0], speed: 1 });
+    expect(d.getDsp()).toMatchObject({ enabled: true, preset: 'Sonare', gains: d.EQ_PRESETS.Sonare, speed: 1 });
     localStorage.setItem(
       'sonare_dsp',
       JSON.stringify({ preset: 'Custom', gains: [1, 2, 3, 4, 5, 6, 7, 8], bassBoost: 40 }),
@@ -109,15 +114,17 @@ describe('equalizer state', () => {
     });
   });
 
-  it('WEB-DSP-002 a saved curve with the wrong number of bands, or unreadable, falls back to flat', async () => {
+  it('WEB-DSP-002 a saved curve with the wrong number of bands, or unreadable, falls back to the default', async () => {
     localStorage.setItem('sonare_dsp', JSON.stringify({ gains: [1, 2, 3] }));
-    expect((await fresh()).getDsp().gains).toEqual([0, 0, 0, 0, 0, 0, 0, 0]);
+    const d = await fresh();
+    expect(d.getDsp().gains).toEqual(d.EQ_PRESETS.Sonare);
     localStorage.setItem('sonare_dsp', '{oops');
-    expect((await fresh()).getDsp().preset).toBe('Flat');
+    expect((await fresh()).getDsp().preset).toBe('Sonare');
   });
 
   it('WEB-DSP-003 moving a band clamps it to ±12 dB, switches to Custom and is remembered', async () => {
     const d = await fresh();
+    d.applyPreset('Flat');
     d.setBandGain(2, 20);
     d.setBandGain(5, -30);
     d.setBandGain(0, 3.5);
@@ -139,8 +146,8 @@ describe('equalizer state', () => {
   it('WEB-DSP-005 an unknown preset name changes nothing', async () => {
     const d = await fresh();
     d.applyPreset('Nope');
-    expect(d.getDsp().preset).toBe('Flat');
-    expect(d.getSettings().eqPreset).toBe('Flat');
+    expect(d.getDsp().preset).toBe('Sonare');
+    expect(d.getSettings().eqPreset).toBe('Sonare');
   });
 
   it('WEB-DSP-006 releasing a fader commits the current preset name', async () => {
@@ -257,6 +264,18 @@ describe('audio graph', () => {
     expect([comp.threshold.value, comp.ratio.value]).toEqual([-24, 4]);
     d.updateSettings({ normalization: false });
     expect([comp.threshold.value, comp.ratio.value]).toEqual([0, 1]);
+  });
+
+  it('WEB-DSP-017 the output ends in a hard limiter at -1 dB, normalization on or off', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const [comp, limiter] = contexts[0].comps;
+    expect(comp.connections).toEqual([limiter]);
+    expect(limiter.connections).toEqual([contexts[0].destination]);
+    d.updateSettings({ normalization: false });
+    expect([limiter.threshold.value, limiter.ratio.value, limiter.knee.value]).toEqual([-1, 20, 0]);
   });
 
   it('WEB-DSP-014 without Web Audio, playback carries on unprocessed', async () => {

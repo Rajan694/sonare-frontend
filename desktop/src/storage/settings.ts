@@ -1,58 +1,64 @@
 import { useSyncExternalStore } from 'react';
 import { api } from '../api/api';
-import { isAuthenticated, onAuthChange, onAuthReady } from '../api/auth';
+import { getCurrentUser, isAuthenticated, onAuthChange, onAuthReady } from '../api/auth';
+import {
+  API_QUALITY,
+  DEFAULT_SETTINGS,
+  sanitizeSettings,
+  type AudioQuality,
+  type DownloadFormat,
+  type UserSettings,
+} from '../../../shared/settings';
 
 /**
- * Account-level preferences from GET/PUT /me/settings (contract §9).
+ * Preferences, kept on this device (guests and offline included) and, signed in, in the
+ * account (GET/PUT /me/settings, contract §9).
  *
- * Only the fields that changed are sent: the backend keeps the ones it isn't sent, so a
- * change made on the phone since this app loaded its copy isn't overwritten.
+ * A change applies at once and is saved here; it waits in an "unsynced" list until the account
+ * has it, so a change made offline (or as a guest who then signs in) reaches the account once
+ * it can. Only changed fields are sent: the backend keeps the ones it isn't sent, so a change
+ * made on the phone since this app loaded its copy isn't overwritten.
  */
-export type AudioQuality = 'low' | 'normal' | 'high';
-export type DownloadFormat = 'opus' | 'm4a';
+export type { AudioQuality, DownloadFormat, UserSettings };
+export { API_QUALITY, DEFAULT_SETTINGS };
 
-export interface UserSettings {
-  eqPreset: string;
-  gapless: boolean;
-  normalization: boolean;
-  streamQuality: AudioQuality;
-  downloadQuality: AudioQuality;
-  downloadFormat: DownloadFormat;
-  stayOffline: boolean;
-}
+const STORE_KEY = 'sonare_settings';
+/** Changes the account doesn't have yet, and whose they are (null: made as a guest). */
+const UNSYNCED_KEY = 'sonare_settings_unsynced';
 
-let settings: UserSettings = {
-  eqPreset: 'Flat',
-  gapless: false,
-  normalization: true,
-  streamQuality: 'high',
-  downloadQuality: 'high',
-  downloadFormat: 'opus',
-  stayOffline: false,
+const readJson = (key: string): Record<string, unknown> | null => {
+  try {
+    const raw = localStorage.getItem(key);
+    const value = raw ? JSON.parse(raw) : null;
+    return value && typeof value === 'object' ? value : null;
+  } catch {
+    return null;
+  }
 };
 
-const QUALITIES: AudioQuality[] = ['low', 'normal', 'high'];
-
-/** Settings quality → the backend's `quality` parameter for /tracks/:id/stream. */
-export const API_QUALITY: Record<AudioQuality, 'low' | 'normal' | 'high'> = {
-  low: 'low',
-  normal: 'normal',
-  high: 'high',
+const writeJson = (key: string, value: unknown) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    // Storage unavailable: the values still apply until the app closes.
+  }
 };
 
-/** What the server sent, minus values this build doesn't know (e.g. the retired 'lossless'). */
-const sanitize = (s: Partial<UserSettings>): Partial<UserSettings> => {
-  const out = { ...s };
-  if (!QUALITIES.includes(out.streamQuality as AudioQuality)) delete out.streamQuality;
-  if (!QUALITIES.includes(out.downloadQuality as AudioQuality)) delete out.downloadQuality;
-  if (out.downloadFormat !== 'opus' && out.downloadFormat !== 'm4a') delete out.downloadFormat;
-  return out;
+// A hand-made (Custom) EQ is kept too: dsp.ts reads its gains from this device.
+const sanitize = (s: Record<string, unknown> | null | undefined): Partial<UserSettings> =>
+  sanitizeSettings(s, { allowCustom: true });
+
+let settings: UserSettings = { ...DEFAULT_SETTINGS, ...sanitize(readJson(STORE_KEY)) };
+
+const savedUnsynced = readJson(UNSYNCED_KEY);
+let unsynced: { userId: string | null; changes: Partial<UserSettings> } = {
+  userId: typeof savedUnsynced?.userId === 'string' ? savedUnsynced.userId : null,
+  changes: sanitize(savedUnsynced?.changes as Record<string, unknown> | undefined),
 };
 
 const listeners = new Set<() => void>();
 let saveTimer: ReturnType<typeof setTimeout> | undefined;
-/** Changed since the last save, sent together once the user stops changing things. */
-let unsaved: Partial<UserSettings> = {};
+let sending = false;
 let loaded = false;
 
 const emit = () => {
@@ -68,30 +74,63 @@ export const subscribeSettings = (fn: () => void): (() => void) => {
   return () => listeners.delete(fn);
 };
 
-export const updateSettings = (patch: Partial<UserSettings>): void => {
-  settings = { ...settings, ...patch };
-  emit();
-  clearTimeout(saveTimer);
-  // Guests keep settings on this device only; there's no account to save them to.
-  if (!isAuthenticated()) return;
-  unsaved = { ...unsaved, ...patch };
-  saveTimer = setTimeout(() => {
-    const body = unsaved;
-    unsaved = {};
-    void api.saveSettings(body).catch(() => {
-      // Offline — the local value still applies for this session.
-    });
-  }, 400);
+/** Waiting changes that belong to another account than the signed-in one are dropped. */
+const unsyncedFor = (userId: string): Partial<UserSettings> => {
+  if (unsynced.userId !== null && unsynced.userId !== userId) {
+    unsynced = { userId, changes: {} };
+    writeJson(UNSYNCED_KEY, unsynced);
+  }
+  return unsynced.changes;
 };
 
-let watchingAuth = false;
+/** Sends what the account doesn't have yet; on failure it stays queued for the next chance. */
+const sendUnsynced = async (): Promise<void> => {
+  const user = getCurrentUser();
+  if (!user || !isAuthenticated() || sending) return;
+  const body = { ...unsyncedFor(user.id) };
+  if (!Object.keys(body).length) return;
+  sending = true;
+  try {
+    await api.saveSettings(body);
+    // Keep anything changed again while the request was out.
+    const left = { ...unsynced.changes };
+    for (const [k, v] of Object.entries(body))
+      if (left[k as keyof UserSettings] === v) delete left[k as keyof UserSettings];
+    unsynced = { userId: user.id, changes: left };
+    writeJson(UNSYNCED_KEY, unsynced);
+  } catch {
+    // Offline or the server is down: tried again when the network is back or on the next change.
+  } finally {
+    sending = false;
+  }
+};
+
+export const updateSettings = (patch: Partial<UserSettings>): void => {
+  settings = { ...settings, ...patch };
+  writeJson(STORE_KEY, settings);
+  unsynced = { userId: getCurrentUser()?.id ?? unsynced.userId, changes: { ...unsynced.changes, ...patch } };
+  writeJson(UNSYNCED_KEY, unsynced);
+  emit();
+  clearTimeout(saveTimer);
+  // Guests keep them here; they go to the account once someone signs in.
+  if (!isAuthenticated()) return;
+  // Sent together once the user stops changing things.
+  saveTimer = setTimeout(() => void sendUnsynced(), 400);
+};
+
+let watching = false;
 
 export const loadSettings = (): void => {
-  if (!watchingAuth) {
-    watchingAuth = true;
+  if (!watching) {
+    watching = true;
     // Signing in (again) brings that account's settings back.
     onAuthChange((user) => {
       if (!user) return;
+      loaded = false;
+      loadSettings();
+    });
+    // Back online: the account gets what changed meanwhile, and this device what changed there.
+    window.addEventListener('online', () => {
       loaded = false;
       loadSettings();
     });
@@ -99,15 +138,19 @@ export const loadSettings = (): void => {
   if (loaded) return;
   loaded = true;
   onAuthReady(() => {
-    if (!isAuthenticated()) {
+    const user = getCurrentUser();
+    if (!user || !isAuthenticated()) {
       loaded = false;
       return;
     }
     void api
       .getSettings()
       .then((s: Partial<UserSettings>) => {
-        settings = { ...settings, ...sanitize(s) };
+        // What changed on this device and isn't in the account yet wins over the account's copy.
+        settings = { ...settings, ...sanitize(s as Record<string, unknown>), ...unsyncedFor(user.id) };
+        writeJson(STORE_KEY, settings);
         emit();
+        return sendUnsynced();
       })
       .catch(() => {
         loaded = false;

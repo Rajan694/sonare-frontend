@@ -90,7 +90,7 @@ describe('waveforms heard on the phone', () => {
     act(() => noteLevel(song.id, 150_000, 80_000, 80_500, 0.9));
     expect(put).toHaveBeenCalledTimes(1);
     // Completing it wrote it to the phone straight away.
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('sonare.heardPeaks', expect.stringContaining(song.id));
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('sonare.heardLevels', expect.stringContaining(song.id));
   });
 
   it('MOB-WAVE-004 a guest keeps the waveform on the phone; it is uploaded on a later play, signed in', async () => {
@@ -101,7 +101,7 @@ describe('waveforms heard on the phone', () => {
     hearWholeSong();
     saveWaveforms();
     expect(put).not.toHaveBeenCalled();
-    const saved = (AsyncStorage.setItem as jest.Mock).mock.calls.filter((c) => c[0] === 'sonare.heardPeaks').pop()![1];
+    const saved = (AsyncStorage.setItem as jest.Mock).mock.calls.filter((c) => c[0] === 'sonare.heardLevels').pop()![1];
 
     // Next start: the saved waveform is loaded, and with an account it goes up.
     resetWaveformsForTesting();

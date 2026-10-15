@@ -69,6 +69,11 @@ export const initNeutralino = (): void => {
     return;
   }
 
+  // `./runFE.sh web` (browser mode) uses no native API (lib/caps.ts), and its token works for
+  // one tab only: connecting a second one (a link from an email, a reload in a new tab) made
+  // the client replace the page with NE_CL_IVCTOKN. So only the window connects.
+  if (window.NL_MODE !== 'window') return;
+
   init();
 
   void events.on('trayMenuItemClicked', onTrayMenuItemClicked as (ev: CustomEvent) => void);

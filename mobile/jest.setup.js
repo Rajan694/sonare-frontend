@@ -6,14 +6,12 @@ const mockSonarePlayerNative = {
   seekTo: jest.fn(),
   stop: jest.fn(),
   setNext: jest.fn(),
+  replaceUrl: jest.fn(),
+  streamCacheBytes: jest.fn().mockResolvedValue(0),
+  clearStreamCache: jest.fn().mockResolvedValue(0),
   setTransitions: jest.fn(),
   setSpeed: jest.fn(),
   setAudioEffects: jest.fn(),
-  getOutputDevice: jest.fn().mockResolvedValue({ id: 1, type: 'speaker', name: 'Phone speaker' }),
-  getOutputDevices: jest.fn().mockResolvedValue([{ id: 1, type: 'speaker', name: 'Phone speaker' }]),
-  setOutputDevice: jest.fn(),
-  setSleepTimer: jest.fn(),
-  setPauseAtEndOfTrack: jest.fn(),
 };
 
 const mockSonareUpdatesNative = {
@@ -210,6 +208,16 @@ jest.mock('react-native', () => {
       openURL: jest.fn().mockResolvedValue(true),
       canOpenURL: jest.fn().mockResolvedValue(true),
       getInitialURL: jest.fn().mockResolvedValue(null),
+      openSettings: jest.fn().mockResolvedValue(undefined),
+    },
+    PermissionsAndroid: {
+      PERMISSIONS: {
+        READ_MEDIA_AUDIO: 'android.permission.READ_MEDIA_AUDIO',
+        READ_EXTERNAL_STORAGE: 'android.permission.READ_EXTERNAL_STORAGE',
+      },
+      RESULTS: { GRANTED: 'granted', DENIED: 'denied', NEVER_ASK_AGAIN: 'never_ask_again' },
+      check: jest.fn().mockResolvedValue(false),
+      request: jest.fn().mockResolvedValue('denied'),
     },
     I18nManager: {
       getConstants: () => ({ isRTL: false, doLeftAndRightSwapInRTL: false }),
@@ -222,6 +230,7 @@ jest.mock('react-native', () => {
       SonarePlayer: mockSonarePlayerNative,
       SonareDownloads: mockSonareDownloadsNative,
       SonareUpdates: mockSonareUpdatesNative,
+      SonareLibrary: { scan: jest.fn().mockResolvedValue([]) },
       SonareBuild: { dev: false, version: '1.0.1' },
       PlatformConstants: {
         getConstants: () => ({ isTesting: true }),

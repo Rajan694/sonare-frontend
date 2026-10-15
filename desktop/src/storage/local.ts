@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { filesystem, os, storage } from '@neutralinojs/lib';
 import { CAPS } from '../lib/caps';
 import { clean, readTags, tagsFromFileName } from './tags';
+import { idInFileName } from '../../../shared/downloads/fileNames';
 import type { Folder, Track } from '../types';
 
 /**
@@ -61,15 +62,18 @@ export interface LocalLyrics {
   lines: { atMs: number; text: string }[];
   plain?: string;
   offsetMs: number;
-  provider: 'user' | 'lrc';
+  provider: 'lrc';
 }
 
 interface LibraryIndex {
   version: 1;
   folders: Folder[];
   entries: LocalEntry[];
-  /** Lyrics typed or pasted for local files; the server cannot store them (it only knows YouTube ids). */
-  lyrics?: Record<string, LocalLyrics>;
+  /**
+   * The Earlier / Later timing fix for a local file's lyrics (the server only knows YouTube ids).
+   * Older versions also kept typed lyrics here; only `offsetMs` is read now.
+   */
+  lyrics?: Record<string, { offsetMs: number }>;
 }
 
 /** Parse LRC text: `[mm:ss.xx]` stamps (several per line allowed) and an optional `[offset:±ms]` tag. */
@@ -113,6 +117,12 @@ let snapshot: LocalSnapshot = {
   scanning: null,
 };
 const listeners = new Set<() => void>();
+/** Called after a scan refreshes the index, so other stores can adopt files it found. */
+const scanListeners = new Set<() => void>();
+export const onLibraryScanned = (fn: () => void): (() => void) => {
+  scanListeners.add(fn);
+  return () => scanListeners.delete(fn);
+};
 let loadPromise: Promise<void> | null = null;
 
 const hash = (s: string): string => {
@@ -204,7 +214,15 @@ const rangeReader = (path: string, fileSize: number) => {
 
 const indexFile = async (path: string, folderId: string, previous?: LocalEntry): Promise<LocalEntry | null> => {
   const stats = await filesystem.getStats(path);
-  if (previous && previous.size === stats.size && previous.mtime === stats.modifiedAt) return previous;
+  // A file Sonare downloaded is named `Artist - Title [videoId].ext`; the id in the name
+  // links a file found by a scan (a folder re-added after a reinstall) back to its song.
+  const name = path.split(/[\\/]/).pop() ?? path;
+  const fromFileName = idInFileName(name);
+  if (previous && previous.size === stats.size && previous.mtime === stats.modifiedAt) {
+    // An index from before this rule: learn the id from the name it already had.
+    if (!previous.serverId && fromFileName) return { ...previous, serverId: fromFileName };
+    return previous;
+  }
   const tags = await readTags(path, stats.size, rangeReader(path, stats.size));
   const fromName = tagsFromFileName(path);
   return {
@@ -222,7 +240,7 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
     codec: tags.codec,
     bitrateKbps: tags.bitrateKbps,
     addedAt: previous?.addedAt ?? stats.createdAt ?? Date.now(),
-    serverId: previous?.serverId,
+    serverId: previous?.serverId ?? fromFileName ?? undefined,
     thumbnail: previous?.thumbnail,
   };
 };
@@ -397,6 +415,7 @@ export const localLibrary = {
     const after = new Set(index.entries.map((e) => e.id));
     rebuild({ scanning: null });
     await persist();
+    for (const l of scanListeners) l();
     return {
       added: [...after].filter((x) => !before.has(x)).length,
       removed: [...before].filter((x) => !after.has(x)).length,
@@ -457,43 +476,26 @@ export const localLibrary = {
     void persist();
   },
 
-  /** Saved lyrics for a local file, else a sidecar `.lrc` next to it; null when neither exists. */
+  /** A local file's lyrics: the sidecar `.lrc` next to it, with the timing fix the user set; null without one. */
   async lyrics(trackId: string): Promise<LocalLyrics | null> {
     await load();
-    const saved = index.lyrics?.[trackId];
-    if (saved) return saved;
     const entry = index.entries.find((e) => e.id === trackId);
     if (!entry) return null;
+    const saved = index.lyrics?.[trackId]?.offsetMs;
     try {
       const text = await filesystem.readFile(entry.path.replace(/\.[^./]+$/, '.lrc'));
       const { lines, offsetMs } = parseLrc(text);
-      if (lines.length > 0) return { synced: true, lines, offsetMs, provider: 'lrc' };
+      if (lines.length > 0) return { synced: true, lines, offsetMs: saved ?? offsetMs, provider: 'lrc' };
       const plain = text.trim();
-      return plain ? { synced: false, lines: [], plain, offsetMs: 0, provider: 'lrc' } : null;
+      return plain ? { synced: false, lines: [], plain, offsetMs: saved ?? 0, provider: 'lrc' } : null;
     } catch {
       return null;
     }
   },
 
-  async saveLyrics(trackId: string, body: { lrc?: string; plain?: string }): Promise<void> {
-    await load();
-    const lyric: LocalLyrics = body.lrc
-      ? { synced: true, ...parseLrc(body.lrc), provider: 'user' }
-      : {
-          synced: false,
-          lines: (body.plain ?? '').split('\n').map((text) => ({ atMs: 0, text })),
-          plain: body.plain,
-          offsetMs: 0,
-          provider: 'user',
-        };
-    index = { ...index, lyrics: { ...index.lyrics, [trackId]: lyric } };
-    await persist();
-  },
-
   async setLyricsOffset(trackId: string, offsetMs: number): Promise<void> {
-    const current = await localLibrary.lyrics(trackId);
-    if (!current) return;
-    index = { ...index, lyrics: { ...index.lyrics, [trackId]: { ...current, offsetMs } } };
+    if (!(await localLibrary.lyrics(trackId))) return;
+    index = { ...index, lyrics: { ...index.lyrics, [trackId]: { offsetMs } } };
     await persist();
   },
 

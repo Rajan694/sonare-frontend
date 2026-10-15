@@ -2,6 +2,7 @@ import { getCurrentUser, isAuthenticated } from './auth';
 import { requestSync } from './sync';
 import { trackMeta } from '../../../shared/catalog/meta';
 import type { Track, TrackMeta } from '../types';
+import { rememberRecentPlay } from '../storage/recentPlays';
 
 /**
  * Split a namespaced id (contract 8.1) into the TrackRef shape from 8.3. The backend
@@ -91,8 +92,6 @@ export const removePendingPlays = (done: PendingPlay[]): void => {
 export const maybeRecordPlay = (track: Track, startedAt: number, positionMs: number, durationMs: number): void => {
   const trackId = track.id;
   if (!trackId || positionMs <= 0) return;
-  // History belongs to an account; guests just listen.
-  if (!isAuthenticated()) return;
 
   const threshold = durationMs > 0 ? Math.min(PLAY_THRESHOLD_MS, durationMs / 2) : PLAY_THRESHOLD_MS;
   if (positionMs < threshold) return;
@@ -100,6 +99,11 @@ export const maybeRecordPlay = (track: Track, startedAt: number, positionMs: num
   const k = key(trackId, startedAt);
   if (counted.has(k)) return;
   counted.add(k);
+
+  // This device's own list (Offline Mode's "Jump back in"), for guests too.
+  rememberRecentPlay(track);
+  // History belongs to an account; guests just listen.
+  if (!isAuthenticated()) return;
 
   const play: PendingPlay = {
     trackRef: trackRef(trackId),

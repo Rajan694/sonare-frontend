@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import type { PlayerStore } from '../../src/store/playerContext';
 import type { PlaybackStatus } from '../../src/audio/player';
 import { makeTrack } from '../helpers/fixtures';
@@ -24,6 +24,7 @@ const h = vi.hoisted(() => {
     status,
     playbackListeners: new Set<(s: PlaybackStatus) => void>(),
     endedListeners: new Set<() => void>(),
+    advanceListeners: new Set<(id: string) => void>(),
     store: { current: null as PlayerStore | null },
   };
 });
@@ -40,6 +41,11 @@ vi.mock('../../src/audio/player', () => ({
     return () => h.endedListeners.delete(fn);
   },
   playTrackId: vi.fn(async () => {}),
+  setNext: vi.fn(),
+  onAdvance: (fn: (id: string) => void) => {
+    h.advanceListeners.add(fn);
+    return () => h.advanceListeners.delete(fn);
+  },
   play: vi.fn(async () => {}),
   toggle: vi.fn(),
   seek: vi.fn(),
@@ -63,6 +69,8 @@ import App from '../../src/App';
 import * as player from '../../src/audio/player';
 import * as plays from '../../src/api/plays';
 import * as sync from '../../src/api/sync';
+import { api } from '../../src/api/api';
+import { updateDevicePrefs } from '../../src/storage/devicePrefs';
 
 const store = () => h.store.current!;
 const ids = () => store().state.queue.map((t) => t.id);
@@ -97,7 +105,7 @@ describe('starting playback', () => {
     run(() => store().playTrack(b, [a, b, c]));
     expect(ids()).toEqual(['yt:a', 'yt:b', 'yt:c']);
     expect(current()).toBe('yt:b');
-    expect(player.playTrackId).toHaveBeenCalledWith('yt:b');
+    expect(player.playTrackId).toHaveBeenCalledWith('yt:b', true);
     expect(plays.resetPlay).toHaveBeenCalledWith('yt:b', expect.any(Number));
   });
 
@@ -185,7 +193,7 @@ describe('next, previous and the end of a track', () => {
   it('WEB-QUEUE-010 a finished song advances to the next one', () => {
     trackEnds();
     expect(current()).toBe('yt:b');
-    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:b');
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:b', true);
   });
 
   it('WEB-QUEUE-011 with repeat one, a finished song plays again from the start', () => {
@@ -209,27 +217,76 @@ describe('next, previous and the end of a track', () => {
 describe('shuffle', () => {
   const tracks = Array.from({ length: 8 }, (_, i) => makeTrack({ id: `yt:s${i}` }));
 
-  it('WEB-QUEUE-013 shuffle plays every song exactly once, starting from the current one, without reordering the queue', () => {
+  it('WEB-QUEUE-013 shuffle reorders the queue: the current song first, then every other song once', () => {
     run(() => store().playTrack(tracks[3], tracks));
     run(() => store().toggleShuffle());
+    expect(current()).toBe('yt:s3');
+    expect(store().state.index).toBe(0);
+    expect([...ids()].sort()).toEqual(tracks.map((t) => t.id).sort());
+    // The queue order is the play order, so Up next shows what really comes next.
+    const order = ids();
     const heard = [current()];
-    for (let i = 0; i < tracks.length + 2; i++) {
+    for (let i = 1; i < tracks.length; i++) {
       run(() => store().next());
-      if (current() !== heard[heard.length - 1]) heard.push(current());
+      heard.push(current());
     }
-    expect(heard[0]).toBe('yt:s3');
-    expect([...heard].sort()).toEqual(tracks.map((t) => t.id).sort());
-    expect(ids()).toEqual(tracks.map((t) => t.id));
+    expect(heard).toEqual(order);
   });
 
-  it('WEB-QUEUE-014 turning shuffle off continues in the real queue order from the current song', () => {
+  it('WEB-QUEUE-014 turning shuffle off keeps the shuffled order and carries on from the current song', () => {
     run(() => store().playTrack(tracks[0], tracks));
     run(() => store().toggleShuffle());
     run(() => store().next());
-    const at = store().state.index;
+    const order = ids();
     run(() => store().toggleShuffle());
+    expect(ids()).toEqual(order);
     run(() => store().next());
-    expect(store().state.index).toBe(Math.min(at + 1, tracks.length - 1));
+    expect(current()).toBe(order[2]);
+  });
+
+  it('WEB-QUEUE-024 an album or playlist Shuffle button turns shuffle on and starts the list shuffled', () => {
+    run(() => store().playShuffled(tracks, { kind: 'Album', name: 'Some album' }));
+    expect(store().state.shuffle).toBe(true);
+    expect(store().state.index).toBe(0);
+    expect([...ids()].sort()).toEqual(tracks.map((t) => t.id).sort());
+    expect(store().state.playingFrom).toEqual({ kind: 'Album', name: 'Some album' });
+  });
+
+  it('WEB-QUEUE-025 the same song twice in a list plays twice, from the start each time', () => {
+    const again = { ...a };
+    run(() => store().playTrack(a, [a, b, again]));
+    run(() => store().next());
+    run(() => store().next());
+    expect(store().state.index).toBe(2);
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:a', true);
+    expect(vi.mocked(player.playTrackId).mock.calls.filter(([id]) => id === 'yt:a')).toHaveLength(2);
+  });
+});
+
+describe('the engine and the next song', () => {
+  it('WEB-QUEUE-026 the engine is told what plays next by itself, and that nothing does on repeat one', () => {
+    run(() => store().playTrack(a, [a, { ...b, album: 'Second' }, c]));
+    expect(player.setNext).toHaveBeenLastCalledWith({ id: 'yt:b', album: 'Second' }, null);
+    run(() => store().next());
+    run(() => store().next());
+    expect(player.setNext).toHaveBeenLastCalledWith(null, null);
+    run(() => store().cycleRepeat());
+    expect(player.setNext).toHaveBeenLastCalledWith({ id: 'yt:a', album: null }, null);
+    run(() => store().cycleRepeat());
+    expect(player.setNext).toHaveBeenLastCalledWith(null, null);
+  });
+
+  it('WEB-QUEUE-027 when the engine moves on by itself, the queue follows without loading the song again', () => {
+    run(() => store().playTrack(a, [a, b, c]));
+    vi.mocked(player.playTrackId).mockClear();
+    act(() => h.advanceListeners.forEach((fn) => fn('yt:b')));
+    expect(store().currentTrack?.id).toBe('yt:b');
+    expect(player.playTrackId).not.toHaveBeenCalled();
+    expect(plays.resetPlay).toHaveBeenLastCalledWith('yt:b', expect.any(Number));
+    // An engine out of step with the queue is put back on what the queue says.
+    act(() => h.advanceListeners.forEach((fn) => fn('yt:zzz')));
+    expect(store().currentTrack?.id).toBe('yt:b');
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:b', true);
   });
 });
 
@@ -297,5 +354,56 @@ describe('editing the queue', () => {
     run(() => store().playNext(d));
     expect(ids()).toEqual(['yt:d']);
     expect(current()).toBe('yt:d');
+  });
+});
+
+describe('when the queue runs out', () => {
+  const [e, f] = ['e', 'f'].map((id) => makeTrack({ id: `yt:${id}`, title: id.toUpperCase(), durationMs: 200_000 }));
+  afterEach(() => updateDevicePrefs({ autoplaySimilar: true }));
+
+  it('WEB-QUEUE-028 the last song asks once for similar songs, adds the new ones, and they play next', async () => {
+    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue([a, e, makeTrack({ id: 'local:x' }), f]);
+    run(() => store().playTrack(b, [a, b]));
+    await waitFor(() => expect(ids()).toEqual(['yt:a', 'yt:b', 'yt:e', 'yt:f']));
+    expect(related).toHaveBeenCalledTimes(1);
+    expect(related).toHaveBeenCalledWith('yt:b');
+    trackEnds();
+    expect(current()).toBe('yt:e');
+    expect(related).toHaveBeenCalledTimes(1);
+  });
+
+  it('WEB-QUEUE-029 nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device', async () => {
+    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue([e]);
+    updateDevicePrefs({ autoplaySimilar: false });
+    run(() => store().playTrack(c, [c]));
+    await act(async () => {});
+    expect(related).not.toHaveBeenCalled();
+
+    updateDevicePrefs({ autoplaySimilar: true });
+    run(() => store().cycleRepeat());
+    expect(store().state.repeat).toBe('all');
+    run(() => store().playTrack(d, [d]));
+    await act(async () => {});
+    expect(related).not.toHaveBeenCalled();
+
+    // Turning repeat off on the last song is the queue running out again.
+    run(() => store().cycleRepeat());
+    run(() => store().cycleRepeat());
+    expect(store().state.repeat).toBe('off');
+    await waitFor(() => expect(related).toHaveBeenCalledWith('yt:d'));
+    related.mockClear();
+
+    run(() => store().playTrack(makeTrack({ id: 'local:song' }), [makeTrack({ id: 'local:song' })]));
+    await act(async () => {});
+    expect(related).not.toHaveBeenCalled();
+  });
+
+  it('WEB-QUEUE-030 an answer that arrives after another song was picked is dropped', async () => {
+    let answer!: (tracks: (typeof a)[]) => void;
+    vi.spyOn(api, 'getRelatedTracks').mockReturnValue(new Promise((res) => (answer = res)));
+    run(() => store().playTrack(b, [a, b]));
+    run(() => store().playTrack(a));
+    await act(async () => answer([e, f]));
+    expect(ids()).toEqual(['yt:a', 'yt:b']);
   });
 });

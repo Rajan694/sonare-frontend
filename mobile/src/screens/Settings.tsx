@@ -1,12 +1,13 @@
-import React from 'react';
-import { View, ScrollView, Alert, Pressable } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, ScrollView, Alert, Pressable, Dimensions } from 'react-native';
 import { Text } from '../components/ui/Text';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { Button } from '../components/ui/Button';
+import { Switch } from '../components/ui/Switch';
 import { useModeStore } from '../store/mode';
 import { useAuthStore } from '../data/auth';
 import { useSyncStatus } from '../data/sync';
@@ -15,30 +16,34 @@ import { useDownloadsStore } from '../store/downloads';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
 import { usePlayerSheets } from '../components/music/PlayerSheets';
-import { useOutputStore } from '../store/output';
-import { sleepTimerLabel, useSleepTimerStore } from '../store/sleepTimer';
 import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
-import { DEFAULT_API_ORIGIN, SERVER_ADDRESS_ENABLED, customServerOrigin } from '../data/config';
 import { useAppUpdateStore } from '../store/appUpdate';
 import { appVersion } from '../native/SonareBuild';
+import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
+import { Sheet } from '../components/ui/Sheet';
+import { parseReleaseNotes } from '../../../shared/releaseNotes';
+import { SonarePlayer } from '../native/SonarePlayer';
+import { formatBytes } from '../lib/format';
+import type { AppRelease } from '../data/types';
+import { musicFolders, useLocalMusicStore } from '../store/localMusic';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
 
 export const SettingsScreen = () => {
+  // Music folders: how many, or that Sonare may not read them yet.
+  const musicPermission = useLocalMusicStore((state) => state.permission);
+  const phoneSongs = useLocalMusicStore((state) => state.songs);
+  const hiddenFolders = useLocalMusicStore((state) => state.hidden);
+  const foldersSummary = React.useMemo(() => {
+    if (musicPermission !== 'granted') return 'Allow access to play the music on this phone';
+    const folders = musicFolders({ songs: phoneSongs, hidden: hiddenFolders });
+    const shown = folders.filter((f) => !f.hidden).length;
+    return folders.length === 0 ? 'No music on this phone yet' : `${shown} of ${folders.length} folders shown`;
+  }, [musicPermission, phoneSongs, hiddenFolders]);
   const sync = useSyncStatus();
   const navigation = useNavigation<any>();
   const user = useAuthStore((s) => s.user);
   const signOut = useAuthStore((s) => s.signOut);
-  const resendVerification = useAuthStore((s) => s.resendVerification);
-
-  const resendLink = async () => {
-    try {
-      await resendVerification();
-      Alert.alert('Verification email sent', `Check ${user?.email}.`);
-    } catch (e: any) {
-      Alert.alert('Could not send the email', e?.message);
-    }
-  };
   const mode = useModeStore((s) => s.mode);
   const setMode = useModeStore((s) => s.setMode);
 
@@ -54,11 +59,10 @@ export const SettingsScreen = () => {
 
   const isGold = mode === 'offline';
   const showSheet = usePlayerSheets((st) => st.show);
-  const output = useOutputStore((st) => st.current);
-  const sleepTimer = useSleepTimerStore((st) => st.timer);
   const lyricsScript = useDevicePrefsStore((st) => st.lyricsScript);
-  // Re-render when the server sheet closes, so the row shows the saved address.
-  usePlayerSheets((st) => st.open);
+  const autoplaySimilar = useDevicePrefsStore((st) => st.autoplaySimilar);
+  const setAutoplaySimilar = useDevicePrefsStore((st) => st.setAutoplaySimilar);
+  const streamQuality = useSettingsStore((s) => s.streamQuality);
   const downloadQuality = useSettingsStore((s) => s.downloadQuality);
   const downloadFormat = useSettingsStore((s) => s.downloadFormat);
   const updateSettings = useSettingsStore((s) => s.update);
@@ -162,14 +166,18 @@ export const SettingsScreen = () => {
         ) : null}
 
         {user?.emailVerified === false && (
-          <View className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3">
-            <View className="flex-1 gap-0.5">
+          <View className="bg-s1 border border-ln rounded-lg p-3.5 gap-3">
+            <View className="gap-0.5">
               <Text className="text-tm font-semibold text-t1">Email not verified</Text>
-              <Text className="text-bs text-t3">Verify it so you can reset your password if you forget it.</Text>
+              <Text className="text-bs text-t3">
+                Enter the 6-digit code we emailed to {user.email}. A verified email lets you reset your password if you
+                forget it.
+              </Text>
             </View>
-            <Button variant="outline" size="sm" onPress={resendLink}>
-              Resend link
-            </Button>
+            <VerifyEmailCode
+              email={user.email}
+              onVerified={() => Alert.alert('Email verified', `${user.email} is verified.`)}
+            />
           </View>
         )}
 
@@ -221,6 +229,28 @@ export const SettingsScreen = () => {
         <View className="gap-2">
           <Text className="text-ov font-semibold text-t3 uppercase pl-1">Playback</Text>
           <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
+            <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
+              <View className="gap-0.5">
+                <Text className="text-tm font-medium text-t1">Streaming quality</Text>
+                <Text className="text-bs text-t3">Applies from the next song · Low saves mobile data</Text>
+              </View>
+              <SegmentedControl
+                options={[
+                  { value: 'low', label: 'Low' },
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'high', label: 'High' },
+                ]}
+                value={streamQuality}
+                onChange={(v) => updateSettings({ streamQuality: v as AudioQuality })}
+              />
+            </View>
+            <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Autoplay</Text>
+                <Text className="text-bs text-t3">When the queue ends, keep playing similar songs</Text>
+              </View>
+              <Switch value={autoplaySimilar} onValueChange={setAutoplaySimilar} accessibilityLabel="Autoplay" />
+            </View>
             <Pressable
               onPress={() => navigation.navigate('Equalizer')}
               className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
@@ -235,40 +265,6 @@ export const SettingsScreen = () => {
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>
 
-            <Pressable
-              onPress={() => showSheet('output')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
-              accessibilityRole="button"
-              accessibilityLabel="Audio output"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="output" size={18} color="#9A9AA8" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Audio output</Text>
-                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                  {output?.name ?? 'Phone speaker'}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
-            <Pressable
-              onPress={() => showSheet('sleep')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
-              accessibilityRole="button"
-              accessibilityLabel="Sleep timer"
-            >
-              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                <Icon name="clock" size={18} color="#9A9AA8" />
-              </View>
-              <View className="flex-1 gap-0.5 min-w-0">
-                <Text className="text-tm font-medium text-t1">Sleep timer</Text>
-                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                  {sleepTimerLabel(sleepTimer)}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={16} color="#7E7E8C" />
-            </Pressable>
             <Pressable
               onPress={() => showSheet('lyrics')}
               className="flex-row items-center gap-3.5 px-4 py-3.5"
@@ -302,7 +298,7 @@ export const SettingsScreen = () => {
               </View>
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Music folders</Text>
-                <Text className="text-bs text-t3 truncate">Not available on this phone yet</Text>
+                <Text className="text-bs text-t3 truncate">{foldersSummary}</Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>
@@ -361,7 +357,7 @@ export const SettingsScreen = () => {
             </Pressable>
             <Pressable
               onPress={() => navigation.navigate('Downloads')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5"
+              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
               accessibilityRole="button"
               accessibilityLabel="Manage downloads"
             >
@@ -376,34 +372,9 @@ export const SettingsScreen = () => {
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
             </Pressable>
+            <StreamCacheRow />
           </View>
         </View>
-
-        {/* Connection: which backend this phone talks to (development builds only) */}
-        {SERVER_ADDRESS_ENABLED && (
-          <View className="gap-2">
-            <Text className="text-ov font-semibold text-t3 uppercase pl-1">Server</Text>
-            <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
-              <Pressable
-                onPress={() => showSheet('server')}
-                className="flex-row items-center gap-3.5 px-4 py-3.5"
-                accessibilityRole="button"
-                accessibilityLabel="Server address"
-              >
-                <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-                  <Icon name="server" size={18} color="#9A9AA8" />
-                </View>
-                <View className="flex-1 gap-0.5 min-w-0">
-                  <Text className="text-tm font-medium text-t1">Server address</Text>
-                  <Text className="text-bs text-t3 truncate" numberOfLines={1}>
-                    {customServerOrigin() ?? `Default · ${DEFAULT_API_ORIGIN}`}
-                  </Text>
-                </View>
-                <Icon name="chevron-right" size={16} color="#7E7E8C" />
-              </Pressable>
-            </View>
-          </View>
-        )}
 
         <AboutSection online={mode !== 'offline'} />
 
@@ -411,6 +382,23 @@ export const SettingsScreen = () => {
           <View className="gap-2">
             <Text className="text-ov font-semibold text-t3 uppercase pl-1">Account</Text>
             <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
+              <Pressable
+                onPress={() => navigation.navigate('Account')}
+                className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
+                accessibilityRole="button"
+                accessibilityLabel="Account details"
+              >
+                <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                  <Icon name="user" size={18} color="#9A9AA8" />
+                </View>
+                <View className="flex-1 gap-0.5 min-w-0">
+                  <Text className="text-tm font-medium text-t1">Account details</Text>
+                  <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                    Name, password, delete account
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={16} color="#7E7E8C" />
+              </Pressable>
               <Pressable
                 onPress={confirmSignOut}
                 className="flex-row items-center gap-3.5 px-4 py-3.5"
@@ -438,8 +426,53 @@ export const SettingsScreen = () => {
 const formatSize = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
 /** The app's version, and the update check against the builds uploaded on the admin page. */
+/** Songs played recently stay on the phone (300 MB, oldest first out), so a replay doesn't download. */
+const StreamCacheRow = () => {
+  const [bytes, setBytes] = useState<number | null>(null);
+  const [clearing, setClearing] = useState(false);
+  useFocusEffect(
+    useCallback(() => {
+      SonarePlayer.streamCacheBytes()
+        .then(setBytes)
+        .catch(() => setBytes(null));
+    }, []),
+  );
+  const clear = () => {
+    setClearing(true);
+    SonarePlayer.clearStreamCache()
+      .then(setBytes)
+      .catch(() => {})
+      .finally(() => setClearing(false));
+  };
+  return (
+    <View className="flex-row items-center gap-3.5 px-4 py-3.5">
+      <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+        <Icon name="history" size={18} color="#9A9AA8" />
+      </View>
+      <View className="flex-1 gap-0.5 min-w-0">
+        <Text className="text-tm font-medium text-t1">Stream cache</Text>
+        <Text className="text-bs text-t3" numberOfLines={2}>
+          {bytes === null
+            ? 'Songs you played recently'
+            : `${bytes > 0 ? `${formatBytes(bytes)} of 300 MB` : 'Empty'} · songs you played recently`}
+        </Text>
+      </View>
+      <Button
+        variant="outline"
+        size="sm"
+        onPress={clear}
+        disabled={clearing || !bytes}
+        accessibilityLabel="Clear stream cache"
+      >
+        Clear
+      </Button>
+    </View>
+  );
+};
+
 const AboutSection = ({ online }: { online: boolean }) => {
   const { status, release, progress, error, check, download, install } = useAppUpdateStore();
+  const [notesOpen, setNotesOpen] = React.useState(false);
 
   // Look each time Settings opens (a download in progress carries on).
   React.useEffect(() => {
@@ -475,7 +508,7 @@ const AboutSection = ({ online }: { online: boolean }) => {
   } else if (status === 'available' && release) {
     icon = 'download';
     label = `Sonare ${release.version} is available`;
-    desc = [formatSize(release.sizeBytes), release.notes].filter(Boolean).join(' · ');
+    desc = `${formatSize(release.sizeBytes)} · Tap to see what's new`;
     action = (
       <Button size="sm" onPress={() => download()}>
         Download
@@ -488,7 +521,7 @@ const AboutSection = ({ online }: { online: boolean }) => {
   } else if (status === 'downloaded' && release) {
     icon = 'check';
     label = `Sonare ${release.version} is downloaded`;
-    desc = 'Install it to update; your music and settings stay';
+    desc = "Install it to update; your music and settings stay. Tap to see what's new";
     action = (
       <Button size="sm" onPress={onInstall}>
         Install
@@ -505,8 +538,28 @@ const AboutSection = ({ online }: { online: boolean }) => {
     );
   }
 
+  const hasNotes = online && !!release && (status === 'available' || status === 'downloaded');
+  const notesAction =
+    status === 'available'
+      ? { label: 'Download', run: () => download() }
+      : status === 'downloaded'
+        ? { label: 'Install', run: onInstall }
+        : null;
+
   return (
     <View className="gap-2">
+      {release && (
+        <ReleaseNotesSheet
+          visible={notesOpen && hasNotes}
+          release={release}
+          action={notesAction?.label}
+          onAction={() => {
+            setNotesOpen(false);
+            notesAction?.run();
+          }}
+          onClose={() => setNotesOpen(false)}
+        />
+      )}
       <Text className="text-ov font-semibold text-t3 uppercase pl-1">About</Text>
       <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
         <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
@@ -520,19 +573,33 @@ const AboutSection = ({ online }: { online: boolean }) => {
         </View>
         <View className="px-4 py-3.5 gap-2.5" accessibilityLabel="Updates">
           <View className="flex-row items-center gap-3.5">
-            <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
-              <Icon name={icon} size={18} color="#9A9AA8" />
-            </View>
-            <View className="flex-1 gap-0.5 min-w-0">
-              <Text className="text-tm font-medium text-t1">{label}</Text>
-              {desc ? (
-                <Text className="text-bs text-t3" numberOfLines={2}>
-                  {desc}
-                </Text>
-              ) : null}
-            </View>
+            {/* A newer build: the row opens its changes. */}
+            <Pressable
+              className="flex-1 flex-row items-center gap-3.5 min-w-0"
+              disabled={!hasNotes}
+              onPress={() => setNotesOpen(true)}
+              accessibilityRole={hasNotes ? 'button' : undefined}
+              accessibilityLabel={hasNotes ? "What's new" : undefined}
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name={icon} size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">{label}</Text>
+                {desc ? (
+                  <Text className="text-bs text-t3" numberOfLines={2}>
+                    {desc}
+                  </Text>
+                ) : null}
+              </View>
+            </Pressable>
             {action}
           </View>
+          {hasNotes && (
+            <Button variant="outline" size="sm" className="self-start" onPress={() => setNotesOpen(true)}>
+              What's new
+            </Button>
+          )}
           {status === 'downloading' && (
             <View
               className="h-1.5 rounded-full bg-s3 overflow-hidden"
@@ -545,5 +612,78 @@ const AboutSection = ({ online }: { online: boolean }) => {
         </View>
       </View>
     </View>
+  );
+};
+
+/** What changed in a newer build (the release's notes), with its download or install. */
+const ReleaseNotesSheet = ({
+  visible,
+  release,
+  action,
+  onAction,
+  onClose,
+}: {
+  visible: boolean;
+  release: AppRelease;
+  action?: string;
+  onAction: () => void;
+  onClose: () => void;
+}) => {
+  const notes = parseReleaseNotes(release.notes);
+  const date = new Date(release.uploadedAt);
+  const meta = [
+    Number.isNaN(date.getTime())
+      ? null
+      : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
+    formatSize(release.sizeBytes),
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  return (
+    <Sheet visible={visible} onClose={onClose}>
+      <View className="px-6 pb-6 gap-4">
+        <View className="gap-1">
+          <Text className="text-h2 font-semibold text-t1">What's new in Sonare {release.version}</Text>
+          <Text className="text-bs text-t3">{meta}</Text>
+        </View>
+        <ScrollView
+          style={{ maxHeight: Dimensions.get('window').height * 0.45 }}
+          contentContainerStyle={{ gap: 10 }}
+          accessibilityLabel="Changes"
+        >
+          {notes.length === 0 ? (
+            <Text className="text-bm text-t3">This release has no notes.</Text>
+          ) : (
+            notes.map((block, i) =>
+              block.kind === 'heading' ? (
+                <Text key={i} className="text-tm font-semibold text-t1 pt-1">
+                  {block.text}
+                </Text>
+              ) : block.kind === 'item' ? (
+                <View key={i} className="flex-row gap-2.5">
+                  <View className="w-1.5 h-1.5 rounded-full bg-acc mt-[9px]" />
+                  <Text className="flex-1 text-bm text-t2">{block.text}</Text>
+                </View>
+              ) : (
+                <Text key={i} className="text-bm text-t2">
+                  {block.text}
+                </Text>
+              ),
+            )
+          )}
+        </ScrollView>
+        <View className="flex-row gap-2.5">
+          <Button variant="outline" className="flex-1" onPress={onClose}>
+            Later
+          </Button>
+          {action ? (
+            <Button variant="accent" className="flex-1" onPress={onAction}>
+              {action}
+            </Button>
+          ) : null}
+        </View>
+      </View>
+    </Sheet>
   );
 };

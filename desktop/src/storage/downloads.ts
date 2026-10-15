@@ -7,7 +7,7 @@ import { API_BASE } from '../api/auth';
 import { inAppYoutube } from '../youtube/inApp';
 import { curlFetch } from '../youtube/curlFetch';
 import { isGooglevideo } from '../youtube/streamCache';
-import { localLibrary } from './local';
+import { localLibrary, onLibraryScanned } from './local';
 import { API_QUALITY, getSettings, type AudioQuality, type DownloadFormat } from './settings';
 import {
   askForWebFolderOnce,
@@ -20,6 +20,7 @@ import {
   type TargetKind,
 } from './downloadTargets';
 import type { Track } from '../types';
+import { downloadName } from '../../../shared/downloads/fileNames';
 
 /**
  * Download manager (desktop and web).
@@ -156,7 +157,7 @@ const load = (): Promise<void> => {
     } catch {
       items = [];
     }
-    if (CAPS.offlineDownloads) await importLegacyDownloads();
+    if (CAPS.offlineDownloads) await adoptFoundDownloads();
     // A browser folder needs its permission re-granted by a click after a reload.
     for (const i of items) {
       if (i.status === 'queued' && !(await targetFor(i).ready(false))) {
@@ -166,19 +167,21 @@ const load = (): Promise<void> => {
     }
     emit();
     pump();
+    // A scan of a re-added folder can find downloads this list forgot (a reinstall).
+    if (CAPS.offlineDownloads) onLibraryScanned(() => void adoptFoundDownloads(true));
   })();
   return loadPromise;
 };
 
-/** Downloads made before this list existed are only in the local library index. */
-const importLegacyDownloads = async () => {
+/** Downloads made before this list existed, and files found again by a scan, are only in the local library index. */
+const adoptFoundDownloads = async (notify = false) => {
   const known = new Set(items.map((i) => i.id));
-  const legacy = (await localLibrary.downloadedEntries()).filter((e) => !known.has(e.serverId));
-  if (legacy.length === 0) return;
+  const found = (await localLibrary.downloadedEntries()).filter((e) => !known.has(e.serverId));
+  if (found.length === 0) return;
   const format = getSettings().downloadFormat;
   items = [
     ...items,
-    ...legacy.map<DownloadItem>((e) => ({
+    ...found.map<DownloadItem>((e) => ({
       id: e.serverId,
       title: e.title,
       artist: e.artist,
@@ -202,6 +205,7 @@ const importLegacyDownloads = async () => {
     })),
   ];
   persistSoon(true);
+  if (notify) emit();
 };
 
 const pump = () => {
@@ -232,18 +236,6 @@ const start = (id: string) => {
 
 const absolute = (url: string): string => {
   return /^https?:\/\//.test(url) ? url : new URL(API_BASE).origin + url;
-};
-
-const safeName = (s: string): string => {
-  return (
-    s
-      // Control characters are not allowed in file names.
-      // eslint-disable-next-line no-control-regex
-      .replace(/[\\/:*?"<>|\x00-\x1f]/g, '_')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .slice(0, 120) || 'track'
-  );
 };
 
 /** The server says 0 (or -1, from NewPipe) when YouTube didn't give a size: unknown. */
@@ -424,7 +416,7 @@ const run = async (id: string, signal: AbortSignal): Promise<void> => {
     }
 
     const item = get(id)!;
-    const fileName = `${safeName(`${item.artist} - ${item.title}`)}.${extensionFor(item.mimeType ?? '')}`;
+    const fileName = `${downloadName(item)}.${extensionFor(item.mimeType ?? '')}`;
     const saved = await part.finish(fileName, item.mimeType ?? 'audio/webm');
     if (item.target === 'native') {
       await localLibrary.addDownload({

@@ -2,6 +2,7 @@ package com.mobile.player
 
 import android.app.PendingIntent
 import android.content.Intent
+import android.net.Uri
 import androidx.annotation.OptIn
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
@@ -10,6 +11,7 @@ import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
+import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.mobile.MainActivity
@@ -32,8 +34,12 @@ class SonarePlaybackService : MediaSessionService() {
     // Artwork urls on our API redirect from http to https (i.ytimg.com); allow that hop.
     val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
     // googlevideo sends a request without a Range header at ~35 KB/s; any Range gets full speed.
-    // Media3 only sets one when it seeks, so add it to reads from the start.
-    val resolvingHttp = ResolvingDataSource.Factory(http) { dataSpec ->
+    // Media3 only sets one when it seeks, so add it to reads from the start. A url refused
+    // mid-song goes to the fresh one JS fetched ([StreamUrls]).
+    val resolvingHttp = ResolvingDataSource.Factory(http) { original ->
+      val url = original.uri.toString()
+      val fresh = StreamUrls.resolve(url)
+      val dataSpec = if (fresh == url) original else original.withUri(Uri.parse(fresh))
       val host = dataSpec.uri.host
       if (host != null && host.endsWith(".googlevideo.com") && dataSpec.position == 0L) {
         val headers = dataSpec.httpRequestHeaders.toMutableMap()
@@ -46,7 +52,15 @@ class SonarePlaybackService : MediaSessionService() {
         dataSpec
       }
     }
-    val dataSource = DefaultDataSource.Factory(this, resolvingHttp)
+    // Streams go through the stream cache (files on the phone don't: DefaultDataSource only
+    // uses this factory for http).
+    val cachedHttp =
+      CacheDataSource.Factory()
+        .setCache(StreamCache.get(this))
+        .setUpstreamDataSourceFactory(resolvingHttp)
+        .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+    val dataSource = DefaultDataSource.Factory(this, cachedHttp)
+    val artworkSource = DefaultDataSource.Factory(this, resolvingHttp)
 
     val engine = PlaybackEngine(this, dataSource)
     this.engine = engine
@@ -63,7 +77,7 @@ class SonarePlaybackService : MediaSessionService() {
     session =
       MediaSession.Builder(this, QueueForwardingPlayer(engine.active, engine))
         .setSessionActivity(openApp)
-        .setBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), dataSource))
+        .setBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkSource))
         .build()
     // A crossfade hands playback to the other player; the session (notification, lock
     // screen, the app's controller) follows it.

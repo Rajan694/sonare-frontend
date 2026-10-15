@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useAlbum, useAlbumTracks, useLibraryAlbums } from '../api/hooks';
+import { useAlbum, usePagedList, useLibraryAlbums } from '../api/hooks';
 import { api } from '../api/api';
 import { requireAccount } from '../api/accountGate';
 import { openTrackMenu } from '../components/music/TrackMenu';
@@ -12,34 +12,44 @@ import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import Artwork from '../components/music/Artwork';
 import Button, { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
+import LoadMore from '../components/ui/LoadMore';
 import { EmptyState } from '../components/ui/EmptyState';
 import { staggerContainer } from '../lib/motion';
 import { formatDuration } from '../lib/format';
+import type { Track } from '../types';
 
 const Album = () => {
   const { id } = useParams();
   const { mode } = useModeStore();
-  const { currentTrack, playTrack } = usePlayerStore();
+  const { currentTrack, playTrack, playShuffled } = usePlayerStore();
   const isOffline = mode === 'offline';
 
   const { data: album, loading: albumLoading, error: albumError } = useAlbum(id);
-  const { data: tracksData, loading: tracksLoading } = useAlbumTracks(id);
+  const {
+    items: tracks,
+    loading: tracksLoading,
+    hasMore,
+    loadingMore,
+    moreError,
+    loadMore,
+  } = usePagedList<Track>((cursor) => (id ? api.getAlbumTracks(id, cursor) : Promise.resolve({ items: [] })), [id], {
+    enabled: !!id,
+  });
   const { data: savedAlbums } = useLibraryAlbums();
   const [favouriteOverride, setFavourite] = useState<boolean | null>(null);
   const favourite = favouriteOverride ?? !!savedAlbums?.items.some((a) => a.id === id);
 
-  const tracks = tracksData?.items || [];
+  const from = { kind: 'Album', name: album?.title ?? 'Album' };
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      playTrack(tracks[0], tracks);
+      playTrack(tracks[0], tracks, from);
     }
   };
 
   const handleShuffle = () => {
     if (tracks.length > 0) {
-      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
-      playTrack(shuffled[0], shuffled);
+      playShuffled(tracks, from);
     }
   };
 
@@ -125,7 +135,11 @@ const Album = () => {
               album.artist
             )}
             {album.year ? ` · ${album.year}` : ''}
-            {album.trackCount ? ` · ${album.trackCount} songs` : tracks.length > 0 ? ` · ${tracks.length} songs` : ''}
+            {album.trackCount
+              ? ` · ${album.trackCount} ${album.trackCount === 1 ? 'song' : 'songs'}`
+              : tracks.length > 0
+                ? ` · ${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}`
+                : ''}
             {durationStr ? ` · ${durationStr}` : ''}
           </span>
 
@@ -187,17 +201,25 @@ const Album = () => {
             ))}
           </div>
         ) : (
-          <motion.div className="flex flex-col gap-0.5" variants={staggerContainer} initial="hidden" animate="visible">
-            {tracks.map((track, i) => (
-              <SongRow
-                key={track.id}
-                track={track}
-                index={i + 1}
-                isActive={currentTrack?.id === track.id}
-                onClick={() => playTrack(track, tracks)}
-              />
-            ))}
-          </motion.div>
+          <>
+            <motion.div
+              className="flex flex-col gap-0.5"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
+              {tracks.map((track, i) => (
+                <SongRow
+                  key={track.id}
+                  track={track}
+                  index={i + 1}
+                  isActive={currentTrack?.id === track.id}
+                  onClick={() => playTrack(track, tracks, from)}
+                />
+              ))}
+            </motion.div>
+            {hasMore && <LoadMore loading={loadingMore} error={moreError} onClick={loadMore} />}
+          </>
         )}
       </div>
     </div>

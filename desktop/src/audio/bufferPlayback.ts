@@ -13,6 +13,8 @@
  */
 export class BufferPlayback {
   private readonly gain: GainNode;
+  /** Crossfades ramp this one; `gain` is the user's volume. */
+  private readonly fader: GainNode;
   private source: AudioBufferSourceNode | null = null;
   /** Position in the track, in seconds, as of `startedAt` (context time) when playing. */
   private offset = 0;
@@ -31,7 +33,9 @@ export class BufferPlayback {
     private readonly onEnded: () => void,
   ) {
     this.gain = ctx.createGain();
-    this.gain.connect(input);
+    this.fader = ctx.createGain();
+    this.gain.connect(this.fader);
+    this.fader.connect(input);
   }
 
   get duration(): number {
@@ -49,6 +53,21 @@ export class BufferPlayback {
   get currentTime(): number {
     if (!this.source) return this.offset;
     return Math.min(this.duration, this.offset + (this.ctx.currentTime - this.startedAt) * this.rate);
+  }
+
+  /** When the next play() starts, in context time: a gapless start right where the last song ends. */
+  private startAtTime = 0;
+
+  /** Starts playing exactly at `when` (context time), for gapless playback. */
+  playAt(when: number): Promise<void> {
+    this.startAtTime = when;
+    return this.play();
+  }
+
+  /** Context time this track will end at while it plays, or null. */
+  get endsAt(): number | null {
+    if (!this.source) return null;
+    return this.startedAt + (this.duration - this.offset) / this.rate;
   }
 
   play(): Promise<void> {
@@ -85,8 +104,10 @@ export class BufferPlayback {
       this.wantPlaying = false;
       this.onEnded();
     };
-    this.startedAt = this.ctx.currentTime;
-    source.start(0, this.offset);
+    const when = Math.max(this.ctx.currentTime, this.startAtTime);
+    this.startAtTime = 0;
+    this.startedAt = when;
+    source.start(when, this.offset);
     this.source = source;
   }
 
@@ -109,6 +130,14 @@ export class BufferPlayback {
     this.gain.gain.value = v;
   }
 
+  /** Ramps the crossfade level (0..1) over `seconds`. */
+  fadeTo(level: number, seconds: number): void {
+    const t = this.ctx.currentTime;
+    this.fader.gain.cancelScheduledValues(t);
+    this.fader.gain.setValueAtTime(this.fader.gain.value, t);
+    this.fader.gain.linearRampToValueAtTime(level, t + Math.max(0.01, seconds));
+  }
+
   /** Playback speed. Unlike the element's, this also shifts pitch. */
   setRate(rate: number): void {
     if (rate === this.rate) return;
@@ -125,6 +154,7 @@ export class BufferPlayback {
     this.wantPlaying = false;
     this.stopSource();
     this.gain.disconnect();
+    this.fader.disconnect();
   }
 
   private stopSource(): void {

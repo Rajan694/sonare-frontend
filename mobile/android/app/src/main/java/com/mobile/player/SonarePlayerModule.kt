@@ -28,13 +28,14 @@ import com.mobile.player.dsp.LevelMeter
  * JS face of [SonarePlaybackService]. Talks to the service through a MediaController, which
  * also starts it, so playback outlives the activity. Emits:
  *  - `SonarePlayer.state`    { playWhenReady, isPlaying, buffering, ended, mediaId }
- *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs, level } every 500ms while playing
+ *  - `SonarePlayer.progress` { positionMs, durationMs, bufferedMs, level } every 500ms while playing;
+ *                            level is the loudness (RMS, 0..1) of the audio decoded since the last one
  *  - `SonarePlayer.error`    { message, code, mediaId, positionMs }
  *  - `SonarePlayer.remote`   { command: "next" | "previous" } from notification / lock screen
  *  - `SonarePlayer.advance`  { mediaId } when the engine moved on to the next track by itself
  *                            (gapless or crossfade), sent before the state change it causes
- *  - `SonarePlayer.output`   { id, type, name } when the audio output changes (headphones, Bluetooth…)
- *  - `SonarePlayer.sleep`    {} when the sleep timer paused playback
+ *  - `SonarePlayer.streamRefused` { mediaId, url } when the server refused a stream url (403) while
+ *                            loading; JS answers with replaceUrl() and the retry carries on
  */
 class SonarePlayerModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   private val main = Handler(Looper.getMainLooper())
@@ -79,6 +80,15 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         }
         EngineEvents.advanceListener = { mediaId ->
           emit(EVENT_ADVANCE, Arguments.createMap().apply { putString("mediaId", mediaId) })
+        }
+        EngineEvents.refusedListener = { mediaId, url ->
+          emit(
+            EVENT_REFUSED,
+            Arguments.createMap().apply {
+              putString("mediaId", mediaId)
+              putString("url", url)
+            },
+          )
         }
         pending.forEach { it(c) }
         pending.clear()
@@ -157,7 +167,7 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         putDouble("positionMs", player.currentPosition.toDouble())
         putDouble("durationMs", duration.toDouble())
         putDouble("bufferedMs", player.bufferedPosition.toDouble())
-        // The loudest sample decoded since the last event, for the waveform.
+        // How loud the audio decoded since the last event was, for the waveform.
         putDouble("level", LevelMeter.take().toDouble())
       },
     )
@@ -180,8 +190,25 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     return MediaItem.Builder()
       .setMediaId(if (options.hasKey("id")) options.getString("id") ?: url else url)
       .setUri(url)
+      // The stream cache's key: the track and its format, since the url changes every time.
+      .setCustomCacheKey(if (options.hasKey("cacheKey")) options.getString("cacheKey") else null)
       .setMediaMetadata(metadata)
       .build()
+  }
+
+  /** How much the stream cache holds, in bytes. */
+  @ReactMethod
+  fun streamCacheBytes(promise: Promise) {
+    Thread { promise.resolve(StreamCache.bytes(context).toDouble()) }.start()
+  }
+
+  /** Empties the stream cache (downloads are kept). */
+  @ReactMethod
+  fun clearStreamCache(promise: Promise) {
+    Thread {
+      StreamCache.clear(context)
+      promise.resolve(StreamCache.bytes(context).toDouble())
+    }.start()
   }
 
   /** Replace whatever is loaded with one track; the lock screen shows its metadata. */
@@ -204,6 +231,12 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
       engine.load(item, startMs, autoplay)
       promise.resolve(null)
     }
+  }
+
+  /** Loads of the track loaded with `url` go to `fresh` from now on (see [StreamUrls]). */
+  @ReactMethod
+  fun replaceUrl(url: String, fresh: String) {
+    StreamUrls.replace(url, fresh)
   }
 
   /** The track after the current one (null: none), for gapless playback and crossfades. */
@@ -248,53 +281,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     )
   }
 
-  /** Where audio is going right now: `{ id, type, name }`. */
-  @ReactMethod
-  fun getOutputDevice(promise: Promise) {
-    promise.resolve(outputs.current())
-  }
-
-  /** Every output music can go to right now: `[{ id, type, name }]`. */
-  @ReactMethod
-  fun getOutputDevices(promise: Promise) {
-    promise.resolve(outputs.list())
-  }
-
-  /**
-   * Plays on this output (an id from getOutputDevices) while it stays connected; -1 goes
-   * back to Android's choice. Android may still move a call or an alarm elsewhere.
-   */
-  @ReactMethod
-  fun setOutputDevice(id: Double) {
-    val deviceId = id.toInt()
-    PlaybackEngine.preferredDeviceId = deviceId
-    main.post {
-      PlaybackEngine.instance?.setPreferredDevice(if (deviceId >= 0) outputs.info(deviceId) else null)
-      outputs.refresh()
-    }
-  }
-
-  private val sleepTick = Runnable {
-    withController { it.pause() }
-    emit(EVENT_SLEEP, Arguments.createMap())
-  }
-
-  /**
-   * Pauses after `ms` (0 cancels). Runs here rather than in JS, whose timers can stall while
-   * the app is in the background.
-   */
-  @ReactMethod
-  fun setSleepTimer(ms: Double) {
-    main.removeCallbacks(sleepTick)
-    if (ms > 0) main.postDelayed(sleepTick, ms.toLong())
-  }
-
-  /** Stops when the current track ends instead of moving on (the sleep timer's "End of track"). */
-  @ReactMethod
-  fun setPauseAtEndOfTrack(value: Boolean) {
-    main.post { PlaybackEngine.instance?.setPauseAtEndOfTrack(value) }
-  }
-
   @ReactMethod fun play() = withController { it.play() }
 
   @ReactMethod fun pause() = withController { it.pause() }
@@ -318,20 +304,12 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
 
   @ReactMethod fun removeListeners(count: Double) {}
 
-  private val outputs = OutputDevices(context) { emit(EVENT_OUTPUT, it) }
-
-  override fun initialize() {
-    super.initialize()
-    outputs.start()
-  }
-
   override fun invalidate() {
-    outputs.stop()
-    main.removeCallbacks(sleepTick)
     main.post {
       stopProgress()
       RemoteCommands.listener = null
       EngineEvents.advanceListener = null
+      EngineEvents.refusedListener = null
       controller?.release()
       controller = null
     }
@@ -346,7 +324,6 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     private const val EVENT_ERROR = "SonarePlayer.error"
     private const val EVENT_REMOTE = "SonarePlayer.remote"
     private const val EVENT_ADVANCE = "SonarePlayer.advance"
-    private const val EVENT_OUTPUT = "SonarePlayer.output"
-    private const val EVENT_SLEEP = "SonarePlayer.sleep"
+    private const val EVENT_REFUSED = "SonarePlayer.streamRefused"
   }
 }

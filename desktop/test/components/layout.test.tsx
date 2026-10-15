@@ -41,6 +41,7 @@ vi.mock('../../src/audio/player', () => ({
 useMockServer(
   http.get(`${API}/tracks/:id/peaks`, () => HttpResponse.json({ peaks: [0.5, 1] })),
   http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/search/suggestions`, () => HttpResponse.json([])),
 );
 
 const song = makeTrack({ id: 'yt:np', title: 'Nude', artist: 'Radiohead', durationMs: 200_000 });
@@ -169,7 +170,7 @@ describe('bottom player', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('WEB-LAYOUT-038 no output button where the browser cannot choose the speaker', () => {
+  it('WEB-LAYOUT-038 there is no output button: Sonare plays on the system output', () => {
     renderWithProviders(<BottomPlayer />, { player: makePlayer({ queue: [song], index: 0 }) });
     expect(screen.queryByRole('button', { name: /^Audio output/ })).not.toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'Volume' })).toBeInTheDocument();
@@ -210,17 +211,17 @@ describe('search field', () => {
   it('WEB-LAYOUT-010 typing stores the query and jumps to the search page; clearing empties it', async () => {
     const store = makeStore();
     const { user, location } = renderWithProviders(<SearchField />, { route: '/library', store });
-    await user.type(screen.getByRole('textbox', { name: 'Search' }), 'blur');
+    await user.type(screen.getByRole('combobox', { name: 'Search' }), 'blur');
     expect(store.getState().search.query).toBe('blur');
     expect(location()).toBe('/search');
     await user.click(screen.getByRole('button', { name: 'Clear search' }));
     expect(store.getState().search.query).toBe('');
-    expect(screen.getByRole('textbox', { name: 'Search' })).toHaveFocus();
+    expect(screen.getByRole('combobox', { name: 'Search' })).toHaveFocus();
   });
 
   it('WEB-LAYOUT-011 spaces alone do not leave the page; Enter does', async () => {
     const { user, location } = renderWithProviders(<SearchField />, { route: '/home' });
-    const box = screen.getByRole('textbox', { name: 'Search' });
+    const box = screen.getByRole('combobox', { name: 'Search' });
     await user.type(box, '  ');
     expect(location()).toBe('/home');
     await user.type(box, '{Enter}');
@@ -234,7 +235,7 @@ describe('search field', () => {
         <SearchField />
       </>,
     );
-    const box = screen.getByRole('textbox', { name: 'Search' });
+    const box = screen.getByRole('combobox', { name: 'Search' });
     await user.keyboard('/');
     expect(box).toHaveFocus();
     await user.click(screen.getByRole('textbox', { name: 'Other' }));
@@ -242,6 +243,35 @@ describe('search field', () => {
     expect(screen.getByRole('textbox', { name: 'Other' })).toHaveValue('/');
     await user.keyboard('{Control>}k{/Control}');
     expect(box).toHaveFocus();
+  });
+
+  it('WEB-LAYOUT-039 suggestions show once typing pauses; arrows and Enter or a click pick one', async () => {
+    const asked: string[] = [];
+    server.use(
+      http.get(`${API}/search/suggestions`, ({ request }) => {
+        const q = new URL(request.url).searchParams.get('q') ?? '';
+        asked.push(q);
+        return HttpResponse.json([`${q} songs`, `${q} live`]);
+      }),
+    );
+    const store = makeStore();
+    const { user, location } = renderWithProviders(<SearchField />, { route: '/home', store });
+    const box = screen.getByRole('combobox', { name: 'Search' });
+    await user.type(box, 'blur');
+    expect(await screen.findByRole('option', { name: 'blur songs' })).toBeInTheDocument();
+    expect(asked).toEqual(['blur']);
+    await user.keyboard('{ArrowDown}{ArrowDown}');
+    expect(screen.getByRole('option', { name: 'blur live' })).toHaveAttribute('aria-selected', 'true');
+    await user.keyboard('{Enter}');
+    expect(store.getState().search.query).toBe('blur live');
+    expect(location()).toBe('/search');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+    await user.type(box, ' 2');
+    await user.click(await screen.findByRole('option', { name: 'blur live 2 songs' }));
+    expect(store.getState().search.query).toBe('blur live 2 songs');
+    expect(box).toHaveFocus();
+    await user.keyboard('x{Escape}');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
 });
 
@@ -377,10 +407,10 @@ describe('queue panel', () => {
   it('WEB-LAYOUT-020 clicking an upcoming song plays it; its X removes it without playing', async () => {
     const { user, p } = panel();
     await user.click(screen.getByText('Last One'));
-    expect(p.setState).toHaveBeenCalledWith({ index: 3 });
+    expect(p.playAt).toHaveBeenCalledWith(3);
     await user.click(screen.getAllByRole('button', { name: 'Remove from queue' })[0]);
     expect(p.removeFromQueue).toHaveBeenCalledWith(2);
-    expect(p.setState).toHaveBeenCalledTimes(1);
+    expect(p.playAt).toHaveBeenCalledTimes(1);
   });
 
   it('WEB-LAYOUT-021 dragging a row onto another moves it', () => {
@@ -401,11 +431,21 @@ describe('queue panel', () => {
     expect(screen.getByText('No upcoming songs in queue')).toBeInTheDocument();
   });
 
-  it('WEB-LAYOUT-023 saves the queue as a playlist and opens it', async () => {
+  it('WEB-LAYOUT-023 saves the queue as the next "Queue N" playlist and opens it', async () => {
     setSession('a', 'r', testUser);
     let added: unknown;
+    let created: unknown;
     server.use(
-      http.post(`${API}/me/playlists`, () => HttpResponse.json(makePlaylist({ id: 'sonare:sun', name: 'Sunday' }))),
+      http.get(`${API}/me/playlists`, () =>
+        HttpResponse.json({
+          items: [makePlaylist({ name: 'Queue 2' }), makePlaylist({ name: 'Road trip' })],
+          meta: { total: 2 },
+        }),
+      ),
+      http.post(`${API}/me/playlists`, async ({ request }) => {
+        created = await request.json();
+        return HttpResponse.json(makePlaylist({ id: 'sonare:sun', name: 'Queue 3' }));
+      }),
       http.post(`${API}/me/playlists/:id/tracks`, async ({ request }) => {
         added = await request.json();
         return HttpResponse.json({ ok: true });
@@ -413,10 +453,9 @@ describe('queue panel', () => {
     );
     const { user, onClose, location } = panel();
     await user.click(screen.getByRole('button', { name: 'Save as playlist' }));
-    // Suggests a name, which the user replaces.
-    expect(await screen.findByDisplayValue('My queue')).toBeInTheDocument();
-    await answerPrompt(user, 'Sunday');
+    // No name to type: it's one past the highest "Queue N" there is.
     await waitFor(() => expect(location()).toBe('/playlist/sonare:sun'));
+    expect(created).toMatchObject({ name: 'Queue 3' });
     expect(added).toMatchObject({ trackIds: queue.map((t) => t.id) });
     expect(onClose).toHaveBeenCalled();
     expect(screen.getByText('Playlist saved')).toBeInTheDocument();
@@ -452,43 +491,43 @@ describe('player keyboard shortcuts', () => {
       </>
     );
   };
-  const setup = (p = makePlayer({ queue: [song], index: 0 })) => ({
+  const setup = (p = makePlayer({ queue: [song], index: 0, positionMs: 60_000 })) => ({
     ...renderWithProviders(<Harness />, { player: p }),
     p,
   });
 
   it('WEB-LAYOUT-026 Space plays or pauses from anywhere, but not while typing', async () => {
-    const { user } = setup();
+    const { user, p } = setup();
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
     await user.click(screen.getByRole('textbox', { name: 'Notes' }));
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('textbox', { name: 'Notes' })).toHaveValue(' ');
   });
 
   it('WEB-LAYOUT-027 a clicked button does not swallow Space; a Tab-focused one keeps it', async () => {
-    const { user } = setup();
+    const { user, p } = setup();
     await user.click(screen.getByRole('button', { name: 'Some button' }));
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Some button' })).not.toHaveFocus();
     await user.click(document.body);
     await user.tab();
     expect(screen.getByRole('button', { name: 'Some button' })).toHaveFocus();
     await user.keyboard(' ');
-    expect(player.toggle).toHaveBeenCalledTimes(1);
+    expect(p.togglePlay).toHaveBeenCalledTimes(1);
   });
 
   it('WEB-LAYOUT-028 arrows seek 5 seconds; a quick double press changes song', async () => {
     const { p } = setup();
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(player.seek).toHaveBeenLastCalledWith(65_000);
+    expect(p.seek).toHaveBeenLastCalledWith(65_000);
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(p.next).toHaveBeenCalledTimes(1);
     vi.spyOn(performance, 'now').mockReturnValue(1e9);
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(player.seek).toHaveBeenLastCalledWith(55_000);
+    expect(p.seek).toHaveBeenLastCalledWith(55_000);
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
     expect(p.skipToPrevious).toHaveBeenCalledTimes(1);
     // Holding the key repeats the seek, it never counts as a double press.
@@ -498,20 +537,20 @@ describe('player keyboard shortcuts', () => {
   });
 
   it('WEB-LAYOUT-029 up and down change the volume by 5%; modified keys are left alone', () => {
-    setup();
+    const { p } = setup();
     fireEvent.keyDown(window, { key: 'ArrowUp' });
     fireEvent.keyDown(window, { key: 'ArrowDown' });
     expect(vi.mocked(player.setVolume).mock.calls.map((c) => c[0])).toEqual([0.55, 0.45]);
     fireEvent.keyDown(window, { key: ' ', ctrlKey: true });
     fireEvent.keyDown(window, { key: 'ArrowUp', shiftKey: true });
-    expect(player.toggle).not.toHaveBeenCalled();
+    expect(p.togglePlay).not.toHaveBeenCalled();
     expect(player.setVolume).toHaveBeenCalledTimes(2);
   });
 
   it('WEB-LAYOUT-030 with nothing playing the arrows do not seek', () => {
-    setup(makePlayer());
+    const { p } = setup(makePlayer());
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(player.seek).not.toHaveBeenCalled();
+    expect(p.seek).not.toHaveBeenCalled();
   });
 });
 

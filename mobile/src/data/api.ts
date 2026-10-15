@@ -5,6 +5,7 @@ import { isInAppYoutubeEnabled } from '../youtube/appConfig';
 import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
 import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
+import { ApiError, apiErrorFrom, createCatalogFallback, isYouTubeId, ytId } from '../../../shared/api/client';
 import type {
   Album,
   AlbumMeta,
@@ -16,18 +17,11 @@ import type {
   SearchItem,
   StreamInfo,
   Track,
+  TrackMeta,
   User,
 } from './types';
 
-export class ApiError extends Error {
-  constructor(
-    message: string,
-    public status: number,
-    public code?: string,
-  ) {
-    super(message);
-  }
-}
+export { ApiError, isYouTubeId };
 
 type Params = Record<string, string | number | boolean | undefined | null>;
 
@@ -73,63 +67,20 @@ const request = async <T>(
   if (res.status === 204) return {} as T;
   const { json } = res;
   if (res.status < 200 || res.status >= 300) {
-    throw new ApiError(json?.error?.message || `Request failed (${res.status})`, res.status, json?.error?.code);
+    throw apiErrorFrom(res.status, json);
   }
   return json as T;
 };
 
 const enc = encodeURIComponent;
 
-/** Only YouTube items can come from the in-app catalog. */
-export const isYouTubeId = (id: string): boolean => !id.startsWith('local:') && !id.startsWith('sonare:');
+// Asks the in-app catalog first when the admin allows it (shared/api/client.ts).
+const { localFirst, paged, resetWarnings } = createCatalogFallback<InAppCatalog>({
+  allowed: isInAppYoutubeEnabled,
+  catalog: getInAppCatalog,
+});
 
-const ytId = (id: string): string => (id.startsWith('yt:') ? id : `yt:${id}`);
-
-const lastFallbackWarning = new Map<string, number>();
-
-/**
- * Ask the in-app catalog first (when the admin allows it) and fall back to the backend on any
- * error, saying so at most once a minute per method.
- */
-const localFirst = async <T>(
-  method: string,
-  local: (c: InAppCatalog) => Promise<T>,
-  remote: () => Promise<T>,
-  id?: string,
-): Promise<T> => {
-  if (isInAppYoutubeEnabled() && (id === undefined || isYouTubeId(id))) {
-    try {
-      return await local(await getInAppCatalog());
-    } catch (err) {
-      const now = Date.now();
-      if (now - (lastFallbackWarning.get(method) ?? 0) > 60_000) {
-        lastFallbackWarning.set(method, now);
-        console.warn(`[in-app-yt] ${method} fell back to the backend:`, err instanceof Error ? err.message : err);
-      }
-    }
-  }
-  return remote();
-};
-
-/** Paged lists: an `L.` cursor came from the in-app catalog and only works there; others only on the backend. */
-const paged = <T>(
-  method: string,
-  cursor: string | undefined,
-  local: (c: InAppCatalog, cursor?: string) => Promise<T>,
-  remote: (cursor?: string) => Promise<T>,
-  id?: string,
-): Promise<T> => {
-  if (cursor?.startsWith('L.')) return getInAppCatalog().then((c) => local(c, cursor));
-  if (cursor) return remote(cursor);
-  return localFirst(
-    method,
-    (c) => local(c),
-    () => remote(),
-    id,
-  );
-};
-
-export const resetFallbackLogThrottleForTesting = () => lastFallbackWarning.clear();
+export const resetFallbackLogThrottleForTesting = resetWarnings;
 
 export const api = {
   // Catalog: YouTube from the phone first (see youtube/inApp.ts), the backend otherwise.
@@ -139,6 +90,13 @@ export const api = {
       cursor,
       (c, cur) => c.search(q, type, cur) as Promise<Page<SearchItem>>,
       (cur) => request('/search', { params: { q, type, cursor: cur } }),
+    ),
+  /** Autocomplete for the search field. */
+  suggestions: (q: string) =>
+    localFirst<string[]>(
+      'suggestions',
+      (c) => c.suggestions(q),
+      () => request('/search/suggestions', { params: { q } }),
     ),
   trending: (limit = 20) =>
     localFirst<Page<Track>>(
@@ -184,6 +142,10 @@ export const api = {
       (cur) => request(`/artists/${enc(id)}/albums`, { params: { cursor: cur } }),
       id,
     ),
+  /** Songs like this one, played when the queue runs out (backend only). */
+  relatedTracks: (id: string, limit = 20) =>
+    request<Page<Track>>(`/tracks/${enc(id)}/related`, { params: { limit } }).then((page) => page.items),
+
   /** YouTube playlists; the user's own ones go through the `my*` calls below. */
   playlist: (id: string) =>
     localFirst<Playlist>(
@@ -231,6 +193,9 @@ export const api = {
         ...(track?.durationMs && { durationMs: track.durationMs }),
       },
     }),
+  /** Shifts the account's lyric timing for a song; positive shows each line later. */
+  updateLyricsOffset: (id: string, offsetMs: number) =>
+    request<{ ok: boolean }>(`/tracks/${enc(id)}/lyrics/offset`, { method: 'PATCH', body: { offsetMs } }),
   /** App builds uploaded on the admin page: the newest of each platform and format. */
   releases: () => request<{ items: AppRelease[] }>('/releases'),
   releaseDownloadUrl: (id: string) => `${apiBase()}/releases/${enc(id)}/download`,
@@ -266,6 +231,8 @@ export const api = {
       params: { sort, order: sort === 'title' ? 'asc' : 'desc' },
     }),
   favourites: () => request<Page<Track>>('/me/favourites/tracks'),
+  /** Just the ids, for the apps' heart state: no metadata lookups. */
+  favouriteIds: () => request<{ ids: string[] }>('/me/favourites/ids'),
   // Saving one sends what the app knows about it (`meta`): the backend may never have seen
   // an item found in-app.
   setFavourite: (trackId: string, favourite: boolean, track?: Track) =>
@@ -300,12 +267,14 @@ export const api = {
       trackRef: { kind: 'server'; id: string } | { kind: 'local'; fingerprint: string };
       at: number;
       ms: number;
+      meta?: TrackMeta;
     }[],
   ) =>
     request<{ ok: boolean }>('/me/sync', {
       method: 'POST',
       body: {
-        plays: plays.map(({ trackRef, at, ms }) => ({ trackRef, at, ms })),
+        // The song details matter: the backend may never have seen a song found in-app.
+        plays: plays.map(({ trackRef, at, ms, meta }) => ({ trackRef, at, ms, meta })),
       },
       // A hung upload would hold the whole queue; time out and let sync.ts retry.
       timeoutMs: 15_000,
@@ -321,16 +290,26 @@ export const api = {
       body: { name, kind: 'synced' },
     }),
   deletePlaylist: (id: string) => request<{ ok: boolean }>(`/me/playlists/${enc(id)}`, { method: 'DELETE' }),
+  /** Renames and/or re-describes an own playlist; an empty description clears it. */
+  updatePlaylist: (id: string, body: { name?: string; description?: string }) =>
+    request<Playlist>(`/me/playlists/${enc(id)}`, { method: 'PATCH', body }),
   addToPlaylist: (id: string, tracks: Track[]) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {
       method: 'POST',
       body: { trackIds: tracks.map((t) => t.id), metas: trackMetas(tracks) },
     }),
-  removeFromPlaylist: (id: string, index: number) =>
+  /**
+   * Removes one playlist row: by its row id when the list knows it (the same song can be in
+   * the playlist twice), by its position otherwise.
+   */
+  removeFromPlaylist: (id: string, entry: { entryId?: string; index: number }) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {
       method: 'DELETE',
-      body: { index },
+      body: entry.entryId ? { entryIds: [entry.entryId] } : { index: entry.index },
     }),
+  /** Moves one playlist row (`entryId`) to position `to` (0-based, in the full list). */
+  reorderPlaylist: (id: string, body: { entryId: string; to: number }) =>
+    request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks/order`, { method: 'PATCH', body }),
 };
 
 /** The user's own playlists live under /me; everything else is a YouTube playlist. */

@@ -52,6 +52,7 @@ beforeEach(() => {
   usePlayerStore.setState({
     currentTrack: song,
     queue: [song, later],
+    index: 0,
     isPlaying: true,
     positionMs: 50_000,
     durationMs: 200_000,
@@ -186,6 +187,7 @@ describe('mini player', () => {
     expect(getByText('Reckoner')).toBeTruthy();
     fireEvent.press(getByLabelText('Pause'));
     expect(usePlayerStore.getState().isPlaying).toBe(false);
+    useAuthStore.setState({ status: 'signedIn', user: alice } as never);
     fireEvent.press(getByLabelText('Add to favourites'));
     expect(toggle).toHaveBeenCalledWith(song);
     fireEvent.press(getByLabelText('Next track'));
@@ -202,6 +204,28 @@ describe('mini player', () => {
     useDownloadsStore.setState({ items: { [song.id]: makeDownload(song) } });
     const saved = render(<MiniPlayer />);
     expect(JSON.stringify(saved.toJSON())).toContain('icon-smartphone');
+  });
+
+  it('MOB-COMP-045 a guest hearting from the mini player is asked to sign up; nothing is saved', () => {
+    const navigate = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
+    jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
+    const toggle = jest.spyOn(useLibraryStore.getState(), 'toggleFavourite').mockResolvedValue();
+    const { getByLabelText } = render(<MiniPlayer />);
+    fireEvent.press(getByLabelText('Add to favourites'));
+    expect(navigate).toHaveBeenCalledWith('SignIn', { reason: 'Create a free account to save songs you love.' });
+    expect(toggle).not.toHaveBeenCalled();
+    useAuthStore.setState({ status: 'signedIn', user: alice } as never);
+    fireEvent.press(getByLabelText('Add to favourites'));
+    expect(toggle).toHaveBeenCalledWith(song);
+  });
+
+  it('MOB-COMP-046 a playback error turns the play button into Retry, which reloads the song', () => {
+    usePlayerStore.setState({ error: 'Playback failed' });
+    const { getByLabelText, queryByLabelText } = render(<MiniPlayer />);
+    expect(queryByLabelText('Play')).toBeNull();
+    const before = usePlayerStore.getState().playId;
+    fireEvent.press(getByLabelText('Retry'));
+    expect(usePlayerStore.getState()).toMatchObject({ error: null, isPlaying: true, playId: before + 1 });
   });
 });
 
@@ -221,6 +245,36 @@ describe('song menu', () => {
     act(() => useTrackMenuStore.getState().open(song));
     fireEvent.press(getByLabelText('Play next'));
     expect(usePlayerStore.getState().queue[1].id).toBe(song.id);
+  });
+
+  it('MOB-COMP-044 "Go to album" and "Go to artist" open those pages, closing Now Playing first', () => {
+    const withAlbum = makeTrack({ albumId: 'yt:alb', artistId: 'yt:art' });
+    const navigate = jest.spyOn(navigationRef, 'navigate').mockImplementation(() => {});
+    const dispatch = jest.spyOn(navigationRef, 'dispatch').mockImplementation(() => {});
+    jest.spyOn(navigationRef, 'isReady').mockReturnValue(true);
+    jest
+      .spyOn(navigationRef, 'getRootState')
+      .mockReturnValue({ index: 1, routes: [{ name: 'Tabs' }, { name: 'NowPlaying' }] } as never);
+    const { getByLabelText, queryByLabelText } = render(<TrackMenuHost />);
+    act(() => useTrackMenuStore.getState().open(withAlbum));
+    fireEvent.press(getByLabelText('Go to album'));
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({ type: 'POP_TO_TOP' }));
+    expect(navigate).toHaveBeenLastCalledWith(
+      'Tabs',
+      expect.objectContaining({ params: { screen: 'Album', params: { id: 'yt:alb' } } }),
+    );
+    act(() => useTrackMenuStore.getState().open(withAlbum));
+    fireEvent.press(getByLabelText('Go to artist'));
+    expect(navigate).toHaveBeenLastCalledWith(
+      'Tabs',
+      expect.objectContaining({ params: { screen: 'Artist', params: { id: 'yt:art' } } }),
+    );
+    // A song without an album has no "Go to album", and one whose artist id the Artist
+    // screen can't open (a local file) has no "Go to artist".
+    act(() => useTrackMenuStore.getState().open(makeTrack()));
+    expect(queryByLabelText('Go to album')).toBeNull();
+    act(() => useTrackMenuStore.getState().open(makeTrack({ artistId: 'local:x' })));
+    expect(queryByLabelText('Go to artist')).toBeNull();
   });
 
   it('MOB-COMP-038 a guest choosing favourites or playlists is asked to create an account', () => {
@@ -371,7 +425,11 @@ describe('download buttons', () => {
     const { getByLabelText, rerender, toJSON } = render(<DownloadAllButton tracks={tracks} />);
     fireEvent.press(getByLabelText('Download all'));
     expect(dl.enqueue).toHaveBeenCalledWith([song, later]);
-    expect(alert).toHaveBeenCalledWith('Added to downloads', '2 songs will be saved to Music/Sonare.');
+    expect(alert).toHaveBeenCalledWith(
+      'Added to downloads',
+      '2 songs will be saved to Music/Sonare.',
+      expect.any(Array),
+    );
 
     downloadsWith({ [song.id]: makeDownload(song, { status: 'downloading' }) });
     rerender(<DownloadAllButton tracks={tracks} />);

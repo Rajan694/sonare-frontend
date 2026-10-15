@@ -1,21 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useLocalLibrary, resolveLocalRefs } from '../storage/local';
-import { useFavouriteLookup } from '../api/favourites';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import {
-  useLibraryTracks,
-  useFavourites,
-  useMostPlayed,
-  useLibraryAlbums,
-  useLibraryArtists,
-  useTrending,
-  useAuth,
-  useGenres,
-} from '../api/hooks';
+import { useLibraryTracks, useMostPlayed, useLibraryAlbums, useLibraryArtists, useAuth, useGenres } from '../api/hooks';
 import { DEFAULT_GENRES, GenreCard, genreQuery, genreVariant } from '../components/music/GenreCard';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import { Card } from '../components/ui/Card';
@@ -26,10 +16,13 @@ import Icon from '../components/ui/Icon';
 import { Select } from '../components/ui/Select';
 import { staggerContainer } from '../lib/motion';
 import { cn } from '../lib/cn';
+import { useVirtualRows } from '../lib/useVirtualRows';
+import { useLayout } from '../lib/layout';
 import type { Track } from '../types';
 
 // Folders are a screen of their own (/folders), opened from the Songs tab's Folders button.
-const TABS = ['Songs', 'Albums', 'Artists', 'Genres', 'Favourites', 'Most played'] as const;
+// The song views first: on a phone only the first few tabs fit without scrolling.
+const TABS = ['Songs', 'Most played', 'Albums', 'Artists', 'Genres'] as const;
 type Tab = (typeof TABS)[number];
 
 const SOURCE_FILTERS: { value: 'all' | 'local' | 'server'; label: string }[] = [
@@ -60,11 +53,21 @@ const sortTracks = (list: Track[], key: SortKey, desc: boolean): Track[] => {
 
 const Library = () => {
   const { mode } = useModeStore();
-  const { currentTrack, playTrack } = usePlayerStore();
+  const { currentTrack, playTrack, playShuffled } = usePlayerStore();
   const [params, setParams] = useSearchParams();
   const slug = (t: Tab) => t.toLowerCase().replace(' ', '-');
   const activeTab: Tab = TABS.find((t) => slug(t) === params.get('view')) ?? 'Songs';
   const setActiveTab = (t: Tab) => setParams(t === 'Songs' ? {} : { view: slug(t) }, { replace: true });
+  // The full sidebar links every view (?view=); phones and tablets have no sidebar, so they get tabs.
+  const layout = useLayout();
+  const showTabs = layout === 'phone' || layout === 'tablet';
+  // A view opened by link may be off to the side of the tabs row: bring its tab into sight.
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    activeTabRef.current?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [activeTab, showTabs]);
+  // The song list scrolls here; only the rows in view are drawn (lib/useVirtualRows.ts).
+  const listRef = useRef<HTMLDivElement>(null);
 
   const [sort, setSort] = useState<{ key: SortKey; desc: boolean } | null>(null);
   const [sourceFilter, setSourceFilter] = useState<'all' | 'local' | 'server'>('all');
@@ -76,33 +79,20 @@ const Library = () => {
   const guestTab = !isOffline && !user && activeTab !== 'Songs' && activeTab !== 'Genres';
 
   const { data: libraryTracksData, loading: libLoading } = useLibraryTracks();
-  const { data: favsData, loading: favsLoading } = useFavourites();
   const { data: mostPlayedData, loading: mostLoading } = useMostPlayed();
   const { data: albumsData, loading: albumsLoading } = useLibraryAlbums();
   const { data: artistsData, loading: artistsLoading } = useLibraryArtists();
-  const { data: trendingData } = useTrending('IN', 20);
   const { data: genres } = useGenres();
 
   const local = useLocalLibrary();
-  const isFavourite = useFavouriteLookup();
 
   let tracks: Track[] = [];
   let loading = false;
 
   if (activeTab === 'Songs') {
-    const server = isOffline
-      ? []
-      : libraryTracksData?.items && libraryTracksData.items.length > 0
-        ? libraryTracksData.items
-        : local.tracks.length > 0
-          ? []
-          : trendingData?.items || [];
+    const server = isOffline ? [] : (libraryTracksData?.items ?? []);
     tracks = [...local.tracks, ...server];
     loading = !isOffline && libLoading && local.tracks.length === 0;
-  } else if (activeTab === 'Favourites') {
-    // An unhearted row leaves at once; the refetch that follows the save confirms it.
-    tracks = resolveLocalRefs(favsData?.items || [], local).filter((t) => isFavourite(t.id, true));
-    loading = favsLoading && !favsData;
   } else if (activeTab === 'Most played') {
     tracks = resolveLocalRefs(mostPlayedData?.items || [], local);
     loading = mostLoading;
@@ -124,7 +114,16 @@ const Library = () => {
   }
 
   if (sort) tracks = sortTracks(tracks, sort.key, sort.desc);
-  const isTrackTab = activeTab === 'Songs' || activeTab === 'Favourites' || activeTab === 'Most played';
+  const isTrackTab = activeTab === 'Songs' || activeTab === 'Most played';
+  const from = { kind: 'Library', name: activeTab };
+  // Songs rows are ~58px (measured once drawn); the container is remounted (and its scroll reset) by the key below.
+  const virtual = useVirtualRows({
+    count: tracks.length,
+    rowHeight: 58,
+    gap: 2,
+    scrollRef: listRef,
+    deps: [activeTab, mode, view, sourceFilter, downloadedOnly],
+  });
 
   const sortBy = (key: SortKey) => {
     const preset = SORTS.find((s) => s.key === key)!;
@@ -160,14 +159,13 @@ const Library = () => {
 
   const handlePlayAll = () => {
     if (tracks.length > 0) {
-      playTrack(tracks[0], tracks);
+      playTrack(tracks[0], tracks, from);
     }
   };
 
   const handleShuffle = () => {
     if (tracks.length > 0) {
-      const shuffled = [...tracks].sort(() => Math.random() - 0.5);
-      playTrack(shuffled[0], shuffled);
+      playShuffled(tracks, from);
     }
   };
 
@@ -216,18 +214,20 @@ const Library = () => {
           </div>
         </div>
 
-        {/* Horizontal scrollable tabs row */}
-        <div className="tabs overflow-x-auto no-scrollbar flex items-center">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              className={cn('tab flex-none', activeTab === tab && 'on')}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        {showTabs && (
+          <div className="tabs overflow-x-auto no-scrollbar flex items-center">
+            {TABS.map((tab) => (
+              <button
+                key={tab}
+                className={cn('tab flex-none', activeTab === tab && 'on')}
+                onClick={() => setActiveTab(tab)}
+                ref={activeTab === tab ? activeTabRef : undefined}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Filter chips & list/grid toggle row */}
         {isTrackTab && (
@@ -285,7 +285,7 @@ const Library = () => {
 
         {/* Table header */}
         {isTrackTab && view === 'list' && (
-          <SongTableHeader>
+          <SongTableHeader showPlays>
             <span className="text-right">#</span>
             <span />
             {headerCell('title', 'TITLE')}
@@ -304,6 +304,7 @@ const Library = () => {
       <AnimatePresence mode="wait">
         <motion.div
           key={activeTab + mode + view + sourceFilter + downloadedOnly}
+          ref={listRef}
           className="flex flex-col gap-0.5 px-4 @[480px]:px-8 pb-8 overflow-auto"
           variants={staggerContainer}
           initial="hidden"
@@ -347,7 +348,7 @@ const Library = () => {
                     subtitle={`${group.length} ${group.length === 1 ? 'song' : 'songs'}`}
                     artVariant={`a${(i % 12) + 1}` as any}
                     thumbnail={group.find((t) => t.thumbnail)?.thumbnail}
-                    onPlay={() => playTrack(group[0], group)}
+                    onPlay={() => playTrack(group[0], group, from)}
                   />
                 ))}
               </div>
@@ -424,6 +425,7 @@ const Library = () => {
               {(genres ?? DEFAULT_GENRES).map((g, i) => (
                 <GenreCard
                   key={g.id}
+                  id={g.id}
                   name={g.name}
                   variant={genreVariant(i)}
                   to={`/search?q=${encodeURIComponent(genreQuery(g))}`}
@@ -431,7 +433,13 @@ const Library = () => {
               ))}
             </div>
           ) : tracks.length === 0 ? (
-            <EmptyState icon="music" title="No songs found" description="Add songs or go online to browse catalog" />
+            <EmptyState
+              icon="music"
+              title="No songs found"
+              description={
+                activeTab === 'Songs' ? 'Songs you like show up here.' : 'Add songs or go online to browse catalog'
+              }
+            />
           ) : view === 'grid' ? (
             <div className="flex gap-4 flex-wrap">
               {tracks.map((track, i) => (
@@ -442,20 +450,23 @@ const Library = () => {
                   artVariant={`a${(i % 12) + 1}` as any}
                   thumbnail={trackArtwork(track, 140)}
                   to={track.albumId ? `/album/${track.albumId}` : undefined}
-                  onPlay={() => playTrack(track, tracks)}
+                  onPlay={() => playTrack(track, tracks, from)}
                 />
               ))}
             </div>
           ) : (
-            tracks.map((track, i) => (
-              <SongRow
-                key={track.id}
-                track={track}
-                index={i + 1}
-                isActive={currentTrack?.id === track.id}
-                onClick={() => playTrack(track, tracks)}
-              />
-            ))
+            <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
+              {tracks.slice(virtual.start, virtual.end).map((track, i) => (
+                <SongRow
+                  key={track.id}
+                  track={track}
+                  index={virtual.start + i + 1}
+                  isActive={currentTrack?.id === track.id}
+                  onClick={() => playTrack(track, tracks, from)}
+                  showPlays
+                />
+              ))}
+            </div>
           )}
         </motion.div>
       </AnimatePresence>

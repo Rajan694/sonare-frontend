@@ -29,7 +29,6 @@ const LIBRARY_ITEMS = [
   { to: '/library?view=genres', icon: 'grid' as const, label: 'Genres' },
   { to: '/folders', icon: 'folder' as const, label: 'Folders' },
   { to: '/downloads', icon: 'download' as const, label: 'Downloads' },
-  { to: '/library?view=favourites', icon: 'heart' as const, label: 'Favourites' },
 ] as const;
 
 const playlistIcon = (kind: Playlist['kind']) => {
@@ -137,7 +136,6 @@ const Sidebar = () => {
           {LIBRARY_ITEMS.filter((item) => {
             if (item.to === '/folders' && !CAPS.localLibrary) return false;
             if (item.to === '/downloads' && !CAPS.downloads) return false;
-            if (item.to === LIKED_SONGS) return false;
             return true;
           }).map((item) => (
             <Link

@@ -5,15 +5,22 @@ import { CAPS } from './lib/caps';
 import { hasInternet } from './lib/connectivity';
 import { ModeContext } from './store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from './store/playerContext';
-import { setPlaybackPosition } from './store/playbackPosition';
-import type { PlayerState } from './types';
-import { initDevAuth } from './api/auth';
+import { getPlaybackPosition, setPlaybackPosition } from './store/playbackPosition';
+import type { PlayerState, PlayingFrom } from './types';
+import * as queueOps from '../../shared/player/queue';
+import { createAutoplay } from '../../shared/player/autoplay';
+import { getDevicePrefs } from './storage/devicePrefs';
+import { api } from './api/api';
+import { getCurrentUser, initDevAuth, onAuthChange } from './api/auth';
+import { accountQueue, queueChanged, savedQueue, setQueueSource } from './storage/playerPersist';
+import { bindMediaSession, showInMediaSession, showPositionInMediaSession } from './audio/mediaSession';
+import type { SavedQueue } from '../../shared/player/savedQueue';
 import * as player from './audio/player';
 import { maybeRecordPlay, resetPlay } from './api/plays';
 import { setSyncOnline, startBackgroundSync } from './api/sync';
 import { loadSettings, updateSettings, useSettings } from './storage/settings';
-import { watchOutput } from './audio/output';
 import { showToast } from './store/toasts';
+import { ServerWakeNotice } from './components/ui/ServerWakeNotice';
 import { localLibrary } from './storage/local';
 import { downloads } from './storage/downloads';
 import AppShell from './components/layout/AppShell';
@@ -115,12 +122,24 @@ const App = () => {
 
   const currentTrackRef = useRef(currentTrack);
   currentTrackRef.current = currentTrack;
+  const playerStateRef = useRef(playerState);
+  playerStateRef.current = playerState;
+  /**
+   * A queue brought back from the last session (or another device) waits, paused, until Play:
+   * loading it at launch would fetch a stream (in the Linux window, the whole song) for nothing.
+   */
+  const resume = useRef<{ playId: number; id: string; positionMs: number } | null>(null);
+  /** Something was played this launch: a queue saved elsewhere doesn't replace it any more. */
+  const playedThisLaunch = useRef(false);
+  /** When the queue shown was saved, to tell whether the account's copy is newer. */
+  const queueSavedAt = useRef(0);
+  const lastPositionSave = useRef(0);
+  /** The playId of an entry the engine already started by itself (gapless / crossfade). */
+  const adopted = useRef<number | null>(null);
 
   // Everything about playback except the position, which lives in store/playbackPosition so
   // a position tick doesn't re-render the app (see there).
   const [playback, setPlayback] = useState<Playback>(() => withoutPosition(player.getStatus()));
-  /** Queue indices in shuffled order; rebuilt whenever shuffle is switched on. */
-  const shuffleOrder = useRef<number[]>([]);
   /** When the current listen began — used to key a play so a replay counts again. */
   const playStartedAt = useRef<number>(Date.now());
 
@@ -130,9 +149,71 @@ const App = () => {
     startBackgroundSync();
     // Picks up downloads that were running when the app last closed.
     void downloads.init();
-    // Puts playback back on the speaker chosen last time.
-    watchOutput();
   }, []);
+
+  /** Put back a saved queue, paused at its position. */
+  const restoreQueue = (saved: SavedQueue<Track>) => {
+    const playId = playerStateRef.current.playId + 1;
+    resume.current = { playId, id: saved.queue[saved.index].id, positionMs: saved.positionMs };
+    queueSavedAt.current = saved.savedAt;
+    setPlaybackPosition(saved.positionMs);
+    setPlayerState((prev) => ({
+      ...prev,
+      queue: saved.queue,
+      index: saved.index,
+      shuffle: saved.shuffle,
+      repeat: saved.repeat,
+      playingFrom: saved.playingFrom,
+      playId,
+    }));
+  };
+
+  // The queue comes back after a restart; signed in, a newer one saved on another device
+  // (start on the phone, carry on here) wins until something is played.
+  useEffect(() => {
+    setQueueSource(() => {
+      const s = playerStateRef.current;
+      if (!s.queue.length) return null;
+      return {
+        queue: s.queue,
+        index: s.index,
+        positionMs: resume.current?.positionMs ?? player.getStatus().positionMs,
+        shuffle: s.shuffle,
+        repeat: s.repeat,
+        playingFrom: s.playingFrom,
+        savedAt: Date.now(),
+      };
+    });
+    const local = savedQueue();
+    if (local) restoreQueue(local);
+    const fromAccount = () =>
+      void accountQueue().then((saved) => {
+        if (saved && !playedThisLaunch.current && saved.savedAt > queueSavedAt.current) restoreQueue(saved);
+      });
+    if (getCurrentUser()) fromAccount();
+    return onAuthChange((user) => {
+      if (user) fromAccount();
+    });
+  }, []);
+
+  // Lock screen, notification and media-key controls.
+  useEffect(() => {
+    return bindMediaSession({
+      play: () => {
+        if (!player.getStatus().playing) actionsRef.current.togglePlay();
+      },
+      pause: () => player.pause(),
+      next: () => actionsRef.current.next(),
+      previous: () => actionsRef.current.previous(),
+      seekTo: (positionMs) => actionsRef.current.seek(positionMs),
+    });
+  }, []);
+
+  useEffect(() => showInMediaSession(currentTrack, playback.playing), [currentTrack, playback.playing]);
+
+  useEffect(() => {
+    if (playerState.queue.length || queueSavedAt.current) queueChanged();
+  }, [playerState]);
 
   // Plays held in Offline Mode upload in the background once the app is Online again.
   useEffect(() => setSyncOnline(effectiveMode === 'online'), [effectiveMode]);
@@ -141,7 +222,13 @@ const App = () => {
   // only when something other than the position changed.
   useEffect(() => {
     return player.onPlaybackChange((s) => {
-      setPlaybackPosition(s.positionMs);
+      // A restored queue shows its saved position until it plays.
+      if (!resume.current) setPlaybackPosition(s.positionMs);
+      showPositionInMediaSession(s.positionMs, s.durationMs);
+      if (s.playing && Date.now() - lastPositionSave.current >= 5000) {
+        lastPositionSave.current = Date.now();
+        queueChanged();
+      }
       setPlayback((prev) => (samePlayback(prev, s) ? prev : withoutPosition(s)));
       // Count the play once enough of the track has actually been heard.
       const track = currentTrackRef.current;
@@ -151,14 +238,38 @@ const App = () => {
     });
   }, []);
 
-  // Load and play whenever the selected track changes.
+  // Load and play whenever another queue entry becomes the current one.
   useEffect(() => {
     if (!currentTrack) return;
+    // A restored queue waits for Play.
+    if (resume.current?.playId === playerState.playId) return;
+    resume.current = null;
+    playedThisLaunch.current = true;
     const startedAt = Date.now();
     playStartedAt.current = startedAt;
     resetPlay(currentTrack.id, startedAt);
-    void player.playTrackId(currentTrack.id);
-  }, [currentTrack?.id]);
+    // Already playing: the engine moved on to it by itself.
+    if (adopted.current === playerState.playId) {
+      adopted.current = null;
+      return;
+    }
+    void player.playTrackId(currentTrack.id, true);
+  }, [currentTrack?.id, playerState.playId]);
+
+  // The engine started the next song by itself (gapless or crossfade): move the queue along.
+  useEffect(() => {
+    return player.onAdvance((trackId) => {
+      const prev = playerStateRef.current;
+      const moved = stepQueue(prev, 1);
+      if (moved !== prev && moved.queue[moved.index]?.id === trackId) {
+        adopted.current = moved.playId;
+        setPlayerState(moved);
+      } else {
+        // The queue changed under the engine: play what the queue says is current.
+        setPlayerState((p) => ({ ...p, playId: p.playId + 1 }));
+      }
+    });
+  }, []);
 
   // Advance the queue when a track finishes.
   useEffect(() => {
@@ -178,17 +289,6 @@ const App = () => {
     setPlayerState((prev) => ({ ...prev, ...patch }));
   };
 
-  // Shuffle keeps the queue order intact and walks a separate randomised order, so
-  // turning it off returns you to the real running order rather than a scrambled queue.
-  const buildShuffleOrder = (length: number, startIndex: number): number[] => {
-    const rest = Array.from({ length }, (_, i) => i).filter((i) => i !== startIndex);
-    for (let i = rest.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [rest[i], rest[j]] = [rest[j], rest[i]];
-    }
-    return [startIndex, ...rest];
-  };
-
   /** Offline, only tracks on this device (local files or downloads) can play. */
   const playable = (t: Track) => {
     return modeRef.current === 'online' || !!localLibrary.localIdFor(t.id);
@@ -205,37 +305,40 @@ const App = () => {
     return next !== prev && playable(next.queue[next.index]) ? next : prev;
   };
 
+  // Shuffle reorders the queue itself (shared/player/queue.ts), so the queue's order is the
+  // play order: Up next and the queue panel show what really comes next.
   const stepOnce = (prev: PlayerState, delta: 1 | -1): PlayerState => {
-    if (prev.queue.length === 0) return prev;
-    if (prev.shuffle && shuffleOrder.current.length === prev.queue.length) {
-      const pos = shuffleOrder.current.indexOf(prev.index);
-      const nextPos = pos + delta;
-      if (nextPos < 0) return prev;
-      if (nextPos >= shuffleOrder.current.length) {
-        if (prev.repeat !== 'all') return prev;
-        return { ...prev, index: shuffleOrder.current[0] };
-      }
-      return { ...prev, index: shuffleOrder.current[nextPos] };
-    }
-    const nextIndex = prev.index + delta;
-    if (nextIndex < 0) return prev;
-    if (nextIndex >= prev.queue.length) {
-      if (prev.repeat !== 'all') return prev;
-      return { ...prev, index: 0 };
-    }
-    return { ...prev, index: nextIndex };
+    const at = queueOps.stepIndex(prev, delta);
+    return at < 0 ? prev : { ...prev, index: at, playId: prev.playId + 1 };
   };
 
   const next = () => {
     setPlayerState((prev) => stepQueue(prev, 1));
   };
 
+  // What plays after this by itself, so the engine can prepare it (gapless, crossfade, or just
+  // its stream looked up ahead).
+  const following = playerState.repeat === 'one' ? null : stepQueue(playerState, 1);
+  const upcoming = following && following !== playerState ? following.queue[following.index] : null;
+  useEffect(() => {
+    player.setNext(upcoming ? { id: upcoming.id, album: upcoming.album ?? null } : null, currentTrack?.album ?? null);
+  }, [upcoming?.id, upcoming?.album, currentTrack?.album]);
+
+  // When the queue is about to run out, similar songs are added (audit I11).
+  const [autoplay] = useState(() =>
+    createAutoplay<Track>({
+      fetchRelated: (id) => api.getRelatedTracks(id),
+      getState: () => playerStateRef.current,
+      append: (tracks) => setPlayerState((prev) => queueOps.append(prev, tracks)),
+      enabled: () => getDevicePrefs().autoplaySimilar && modeRef.current === 'online',
+    }),
+  );
+  useEffect(() => {
+    void autoplay.check();
+  }, [autoplay, playerState.index, playerState.queue, playerState.repeat]);
+
   const toggleShuffle = () => {
-    setPlayerState((prev) => {
-      const shuffle = !prev.shuffle;
-      shuffleOrder.current = shuffle ? buildShuffleOrder(prev.queue.length, prev.index) : [];
-      return { ...prev, shuffle };
-    });
+    setPlayerState((prev) => queueOps.toggleShuffle(prev));
   };
 
   const cycleRepeat = () => {
@@ -246,9 +349,34 @@ const App = () => {
     });
   };
 
+  const seek = (positionMs: number) => {
+    if (resume.current) {
+      resume.current = { ...resume.current, positionMs };
+      setPlaybackPosition(positionMs);
+      queueChanged();
+      return;
+    }
+    player.seek(positionMs);
+  };
+
   const seekRatio = (ratio: number) => {
     const total = playback.durationMs || currentTrack?.durationMs || 0;
-    if (total > 0) player.seek(Math.max(0, Math.min(1, ratio)) * total);
+    if (total > 0) seek(Math.max(0, Math.min(1, ratio)) * total);
+  };
+
+  /** Play / pause; the first Play of a restored queue loads it from where it was left. */
+  const togglePlay = () => {
+    const waiting = resume.current;
+    if (waiting && currentTrackRef.current?.id === waiting.id) {
+      resume.current = null;
+      playedThisLaunch.current = true;
+      const startedAt = Date.now();
+      playStartedAt.current = startedAt;
+      resetPlay(waiting.id, startedAt);
+      void player.playTrackId(waiting.id, false, waiting.positionMs);
+      return;
+    }
+    player.toggle();
   };
 
   const skipToPrevious = () => {
@@ -257,38 +385,27 @@ const App = () => {
 
   const previous = () => {
     // Match the usual player convention: restart the track unless we are near its start.
-    if (player.getStatus().positionMs > 3000) {
-      player.seek(0);
+    if ((resume.current ? getPlaybackPosition() : player.getStatus().positionMs) > 3000) {
+      seek(0);
       return;
     }
     skipToPrevious();
   };
 
-  /** Queue edits move the playing index along with the current track, and reshuffle. */
-  const editQueue = (edit: (queue: Track[], index: number) => { queue: Track[]; index: number }) => {
-    setPlayerState((prev) => {
-      const { queue, index } = edit(prev.queue, prev.index);
-      if (prev.shuffle) shuffleOrder.current = buildShuffleOrder(queue.length, index);
-      return { ...prev, queue, index };
-    });
-  };
-
+  // A song already queued is added again rather than moved: moving it could take the playing
+  // entry away or skip what was lined up.
   const playNext = (track: Track) => {
-    editQueue((queue, index) => {
-      if (queue.length === 0) return { queue: [track], index: 0 };
-      const current = queue[index];
-      if (current.id === track.id) return { queue, index };
-      const rest = queue.filter((t) => t.id !== track.id);
-      const at = rest.indexOf(current);
-      return { queue: [...rest.slice(0, at + 1), track, ...rest.slice(at + 1)], index: at };
+    setPlayerState((prev) => {
+      const next = queueOps.insertNext(prev, [track]);
+      return prev.queue.length ? next : { ...next, playId: prev.playId + 1 };
     });
     showToast({ title: 'Playing next', description: track.title, icon: 'list' });
   };
 
   const enqueue = (tracks: Track[]) => {
-    editQueue((queue, index) => {
-      const known = new Set(queue.map((t) => t.id));
-      return { queue: [...queue, ...tracks.filter((t) => !known.has(t.id))], index };
+    setPlayerState((prev) => {
+      const next = queueOps.append(prev, tracks);
+      return prev.queue.length ? next : { ...next, playId: prev.playId + 1 };
     });
     showToast({
       title: 'Added to queue',
@@ -298,57 +415,58 @@ const App = () => {
   };
 
   const removeFromQueue = (i: number) => {
-    editQueue((queue, index) => {
-      const next = queue.filter((_, j) => j !== i);
-      // Removing the playing track hands over to whatever now sits at its position.
-      const newIndex = i < index ? index - 1 : Math.min(index, Math.max(0, next.length - 1));
-      return { queue: next, index: newIndex };
+    setPlayerState((prev) => {
+      const next = queueOps.removeAt(prev, i);
+      // The playing entry was removed: whatever took its place starts.
+      return i === prev.index ? { ...next, playId: prev.playId + 1 } : next;
     });
   };
 
   const moveInQueue = (from: number, to: number) => {
-    editQueue((queue, index) => {
-      if (from === to || from < 0 || to < 0 || from >= queue.length || to >= queue.length) return { queue, index };
-      const current = queue[index];
-      const next = [...queue];
-      const [moved] = next.splice(from, 1);
-      next.splice(to, 0, moved);
-      return { queue: next, index: next.indexOf(current) };
-    });
+    setPlayerState((prev) => queueOps.move(prev, from, to));
   };
 
   const clearUpcoming = () => {
-    editQueue((queue, index) => ({ queue: queue.slice(0, index + 1), index }));
+    setPlayerState((prev) => queueOps.clearUpcoming(prev));
   };
 
-  const playTrack = (track: Track, newQueue?: Track[]) => {
-    if (newQueue) {
-      const idx = Math.max(
-        0,
-        newQueue.findIndex((t) => t.id === track.id),
-      );
-      setPlayerState((prev) => {
-        if (prev.shuffle) shuffleOrder.current = buildShuffleOrder(newQueue.length, idx);
-        return { ...prev, queue: newQueue, index: idx };
-      });
-    } else {
-      setPlayerState((prev) => {
-        const existingIdx = prev.queue.findIndex((t) => t.id === track.id);
-        if (existingIdx >= 0) {
-          return { ...prev, index: existingIdx };
-        }
-        const queue = [track, ...prev.queue];
-        if (prev.shuffle) shuffleOrder.current = buildShuffleOrder(queue.length, 0);
-        return { ...prev, queue, index: 0 };
-      });
-    }
+  const playAt = (index: number) => {
+    setPlayerState((prev) =>
+      index >= 0 && index < prev.queue.length ? { ...prev, index, playId: prev.playId + 1 } : prev,
+    );
+  };
+
+  const playTrack = (track: Track, newQueue?: Track[], from?: PlayingFrom) => {
+    setPlayerState((prev) => {
+      if (newQueue) {
+        return { ...queueOps.startQueue(prev, newQueue, track), playId: prev.playId + 1, playingFrom: from ?? null };
+      }
+      const at = queueOps.positionOf(prev.queue, track, prev.index);
+      if (at >= 0) return { ...prev, index: at, playId: prev.playId + 1 };
+      return { ...queueOps.startQueue(prev, [track, ...prev.queue], track), playId: prev.playId + 1 };
+    });
+  };
+
+  /** Shuffle on, and the list in random order from a random song. */
+  const playShuffled = (tracks: Track[], from?: PlayingFrom) => {
+    if (!tracks.length) return;
+    const first = tracks[Math.floor(Math.random() * tracks.length)];
+    setPlayerState((prev) => ({
+      ...queueOps.startQueue({ ...prev, shuffle: true }, tracks, first),
+      playId: prev.playId + 1,
+      playingFrom: from ?? null,
+    }));
   };
 
   // The handlers above are recreated on every render; consumers get stable wrappers that
   // call the latest ones, so the context value changes only when its data does.
   const actions = {
     patchPlayerState,
+    togglePlay,
+    seek,
     playTrack,
+    playShuffled,
+    playAt,
     seekRatio,
     next,
     previous,
@@ -366,7 +484,12 @@ const App = () => {
   const stableActions = useMemo(
     () => ({
       setState: (patch: Partial<PlayerState>) => actionsRef.current.patchPlayerState(patch),
-      playTrack: (track: Track, newQueue?: Track[]) => actionsRef.current.playTrack(track, newQueue),
+      togglePlay: () => actionsRef.current.togglePlay(),
+      seek: (positionMs: number) => actionsRef.current.seek(positionMs),
+      playTrack: (track: Track, newQueue?: Track[], from?: PlayingFrom) =>
+        actionsRef.current.playTrack(track, newQueue, from),
+      playShuffled: (tracks: Track[], from?: PlayingFrom) => actionsRef.current.playShuffled(tracks, from),
+      playAt: (index: number) => actionsRef.current.playAt(index),
       seekRatio: (ratio: number) => actionsRef.current.seekRatio(ratio),
       next: () => actionsRef.current.next(),
       previous: () => actionsRef.current.previous(),
@@ -392,8 +515,6 @@ const App = () => {
       durationMs,
       playbackError: playback.error,
       volume: playback.volume,
-      togglePlay: player.toggle,
-      seek: player.seek,
       setVolume: player.setVolume,
       toggleMute: player.toggleMute,
     }),
@@ -404,6 +525,7 @@ const App = () => {
     <ModeContext.Provider value={{ mode: effectiveMode, setMode }}>
       <PlayerContext.Provider value={playerValue}>
         <BrowserRouter>
+          <ServerWakeNotice />
           <Routes>
             {CAPS.landing ? (
               <Route

@@ -32,14 +32,14 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   followingArtistIds: {},
 
   load: async () => {
-    const [favs, lists, artists] = await Promise.all([
-      api.favourites().catch(() => null),
+    const [favourites, lists, artists] = await Promise.all([
+      api.favouriteIds().catch(() => null),
       api.myPlaylists().catch(() => null),
       api.libraryArtists().catch(() => null),
     ]);
     set({
-      ...(favs && {
-        favouriteIds: Object.fromEntries(favs.items.map((t) => [t.id, true as const])),
+      ...(favourites && {
+        favouriteIds: Object.fromEntries(favourites.ids.map((id) => [id, true as const])),
       }),
       ...(lists && { playlists: lists.items }),
       // The library also lists artists of liked songs; only `following` ones are followed.

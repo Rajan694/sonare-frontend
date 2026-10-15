@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { api } from './api';
 import { onFavouritesSaved } from './favourites';
+import { fetchLyrics } from './lyricsAvailability';
 import { getCurrentUser, isAuthReady, onAuthChange, onAuthReady } from './auth';
-import type { Track, User } from '../types';
+import { saveOfflinePlaylists } from '../storage/offlinePlaylists';
+import type { Page, Track, User } from '../types';
 import { useDevicePrefs } from '../storage/devicePrefs';
 
 export interface AsyncState<T> {
@@ -11,6 +13,109 @@ export interface AsyncState<T> {
   error: Error | null;
   refetch: () => void;
 }
+
+export interface PagedList<T> {
+  items: T[];
+  loading: boolean;
+  error: Error | null;
+  /** Whether the server said there is another page to ask for. */
+  hasMore: boolean;
+  loadingMore: boolean;
+  /** Why the last "Load more" failed; null when the last one worked. */
+  moreError: string | null;
+  loadMore: () => void;
+  refetch: () => void;
+}
+
+/**
+ * A list that comes in pages: the first page loads on its own (again when `deps` change or
+ * `refetch` is called), and `loadMore` appends the next one, dropping anything already shown.
+ */
+export const usePagedList = <T extends { id: string }>(
+  fetchPage: (cursor?: string) => Promise<Page<T>>,
+  deps: unknown[] = [],
+  options: { enabled?: boolean } = {},
+): PagedList<T> => {
+  const { enabled = true } = options;
+  const [items, setItems] = useState<T[]>([]);
+  const [loading, setLoading] = useState<boolean>(enabled);
+  const [error, setError] = useState<Error | null>(null);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
+  const [trigger, setTrigger] = useState(0);
+  // Bumped for every first page, so a "Load more" answer for the old list is dropped.
+  const generation = useRef(0);
+
+  const refetch = useCallback(() => setTrigger((t) => t + 1), []);
+  // Same trick as useAsync: a fixed-size dependency array for a caller-chosen list of deps.
+  const depKey = JSON.stringify(deps);
+
+  useEffect(() => {
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
+
+    let isMounted = true;
+    generation.current += 1;
+    setLoading(true);
+    setError(null);
+    setMoreError(null);
+    setNextCursor(null);
+    setLoadingMore(false);
+
+    fetchPage()
+      .then((page) => {
+        if (!isMounted) return;
+        setItems(page.items);
+        setNextCursor(page.meta?.nextCursor ?? null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        setError(err instanceof Error ? err : new Error(String(err)));
+        setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [enabled, trigger, depKey]);
+
+  const loadMore = useCallback(() => {
+    if (!nextCursor || loadingMore) return;
+    const asked = generation.current;
+    setLoadingMore(true);
+    setMoreError(null);
+    fetchPage(nextCursor)
+      .then((page) => {
+        if (asked !== generation.current) return;
+        setItems((prev) => {
+          const seen = new Set(prev.map((item) => item.id));
+          return [...prev, ...page.items.filter((item) => !seen.has(item.id))];
+        });
+        setNextCursor(page.meta?.nextCursor ?? null);
+      })
+      .catch((err) => {
+        if (asked === generation.current) setMoreError(err instanceof Error ? err.message : "Couldn't load more");
+      })
+      .finally(() => {
+        if (asked === generation.current) setLoadingMore(false);
+      });
+  }, [nextCursor, loadingMore, depKey]);
+
+  return {
+    items,
+    loading,
+    error,
+    hasMore: nextCursor !== null,
+    loadingMore,
+    moreError,
+    loadMore,
+    refetch,
+  };
+};
 
 export const useAuth = (): { user: User | null; ready: boolean } => {
   const [user, setUser] = useState<User | null>(getCurrentUser());
@@ -120,11 +225,23 @@ export const useSearch = (
   query: string,
   type: 'songs' | 'albums' | 'artists' | 'playlists' | 'all' = 'all',
   cursor?: string,
+  enabled: boolean = true,
 ) => {
   const debouncedQuery = useDebounce(query.trim(), 300);
   return useAsync(() => api.search(debouncedQuery, type, cursor), [debouncedQuery, type, cursor], {
-    enabled: debouncedQuery.length > 0,
+    enabled: enabled && debouncedQuery.length > 0,
   });
+};
+
+/**
+ * Autocomplete for the search field, asked for once typing pauses. The previous list stays up
+ * while the next one loads, so it doesn't flicker on every keystroke.
+ */
+export const useSearchSuggestions = (query: string, enabled: boolean = true): string[] => {
+  const debouncedQuery = useDebounce(query.trim(), 250);
+  const on = enabled && debouncedQuery.length > 0 && debouncedQuery.length <= 200;
+  const { data } = useAsync(() => api.searchSuggestions(debouncedQuery), [debouncedQuery], { enabled: on });
+  return on && query.trim() ? (data ?? []).slice(0, 8) : [];
 };
 
 export const useGenres = () => {
@@ -171,7 +288,7 @@ export const useArtistAlbums = (id: string | undefined, cursor?: string) => {
 const isOwnPlaylist = (id: string) => id.startsWith('sonare:');
 
 export const usePlaylist = (id: string | undefined) => {
-  return useAuthAsync(
+  const result = useAuthAsync(
     () =>
       !id
         ? Promise.reject(new Error('Missing playlist id'))
@@ -181,9 +298,18 @@ export const usePlaylist = (id: string | undefined) => {
     [id],
     { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) },
   );
+  // Renamed (or changed) elsewhere, e.g. from the sidebar's menu: show the new name.
+  const { refetch } = result;
+  const own = !!id && isOwnPlaylist(id);
+  useEffect(() => {
+    if (!own) return;
+    window.addEventListener(PLAYLISTS_CHANGED, refetch);
+    return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch);
+  }, [refetch, own]);
+  return result;
 };
 
-export const usePlaylistTracks = (id: string | undefined, cursor?: string) => {
+export const usePlaylistTracks = (id: string | undefined, cursor?: string, enabled: boolean = true) => {
   return useAuthAsync(
     () =>
       !id
@@ -192,7 +318,7 @@ export const usePlaylistTracks = (id: string | undefined, cursor?: string) => {
           ? api.getMyPlaylistTracks(id)
           : api.getPlaylistTracks(id, cursor),
     [id, cursor],
-    { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) },
+    { enabled: enabled && !!id, accountOnly: !!id && isOwnPlaylist(id) },
   );
 };
 
@@ -241,9 +367,13 @@ export const notifyPlaylistsChanged = (): void => {
   window.dispatchEvent(new Event(PLAYLISTS_CHANGED));
 };
 
-export const useMyPlaylists = () => {
-  const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true });
-  const { refetch } = result;
+export const useMyPlaylists = (enabled: boolean = true) => {
+  const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true, enabled });
+  const { data, refetch } = result;
+  // Keep the server's list for Offline Mode (storage/offlinePlaylists.ts).
+  useEffect(() => {
+    if (data) saveOfflinePlaylists(data.items);
+  }, [data]);
   useEffect(() => {
     window.addEventListener(PLAYLISTS_CHANGED, refetch);
     return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch);
@@ -258,10 +388,10 @@ export const useLyrics = (
   const { lyricsScript } = useDevicePrefs();
   const trackId = track?.id;
   return useAsync(
-    () =>
-      track ? api.getLyrics(track.id, prefer, lyricsScript, track) : Promise.reject(new Error('Missing track id')),
+    // The same request the Lyrics buttons made when the song started, if there was one.
+    () => (track ? fetchLyrics(track, prefer, lyricsScript) : Promise.reject(new Error('Missing track id'))),
     [trackId, prefer, lyricsScript],
-    // Local files are unknown to the server; their lyrics come from the editor only.
+    // Local files are unknown to the server; their lyrics come from the file (tags or a .lrc).
     { enabled: !!trackId && !trackId.startsWith('local:') },
   );
 };

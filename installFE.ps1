@@ -5,7 +5,10 @@ Push-Location $ScriptDir
 try {
 
 function Invoke-Checked {
-    $cmd, $rest = $args
+    # @() keeps $rest an array: with one argument it would be a bare string, which
+    # splatting passes one character at a time ("install" -> i n s t a l l).
+    $cmd = $args[0]
+    $rest = @($args | Select-Object -Skip 1)
     $global:LASTEXITCODE = 0
     & $cmd @rest
     # $? also catches a command that isn't installed, which leaves $LASTEXITCODE alone.

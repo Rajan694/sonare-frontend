@@ -33,6 +33,14 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return context.resolveRequest(context, moduleName, platform);
 };
 
+// Images under ../shared (the genre photos) are served at /assets/../shared/…, but Android's
+// HTTP client resolves the `..` and asks for /shared/…, which Metro answers with a 404, so debug
+// builds showed no photos. Map that back to the encoded form Metro serves. Release builds bundle
+// the images and never ask Metro.
+const rewriteRequestUrl = config.server.rewriteRequestUrl;
+config.server.rewriteRequestUrl = (url) =>
+  rewriteRequestUrl(url.replace(/^(\w+:\/\/[^/]+)?\/shared\//, '$1/assets/..%2Fshared/'));
+
 module.exports = withNativeWind(config, {
   input: './global.css',
 });

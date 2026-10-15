@@ -19,6 +19,8 @@ export interface LoadOptions {
   artworkUrl?: string;
   startMs?: number;
   autoplay?: boolean;
+  /** The stream cache's key for a streamed track (its id and format; the url changes every time). */
+  cacheKey?: string;
 }
 
 export interface PlayerStateEvent {
@@ -33,7 +35,7 @@ export interface ProgressEvent {
   positionMs: number;
   durationMs: number;
   bufferedMs: number;
-  /** The loudest sample (0..1) decoded since the last event; the waveform is drawn from it. */
+  /** How loud (RMS, 0..1) the audio decoded since the last event was; the waveform is drawn from it. */
   level?: number;
 }
 
@@ -63,13 +65,6 @@ export interface Transitions {
   gapless: boolean;
 }
 
-export interface OutputDevice {
-  /** AudioDeviceInfo id; -1 when unknown. */
-  id: number;
-  type: 'speaker' | 'wired' | 'bluetooth' | 'usb';
-  name: string;
-}
-
 interface NativeSonarePlayer {
   load(options: LoadOptions): Promise<void>;
   play(): void;
@@ -77,14 +72,12 @@ interface NativeSonarePlayer {
   seekTo(positionMs: number): void;
   stop(): void;
   setNext(options: LoadOptions | null): void;
+  replaceUrl(url: string, fresh: string): void;
+  streamCacheBytes(): Promise<number>;
+  clearStreamCache(): Promise<number>;
   setTransitions(options: Transitions): void;
   setSpeed(speed: number): void;
   setAudioEffects(options: AudioEffects): void;
-  getOutputDevice(): Promise<OutputDevice>;
-  getOutputDevices(): Promise<OutputDevice[]>;
-  setOutputDevice(id: number): void;
-  setSleepTimer(ms: number): void;
-  setPauseAtEndOfTrack(value: boolean): void;
 }
 
 const native = NativeModules.SonarePlayer as NativeSonarePlayer | undefined;
@@ -107,22 +100,21 @@ export const SonarePlayer = {
   pause: () => native?.pause(),
   seekTo: (positionMs: number) => native?.seekTo(positionMs),
   stop: () => native?.stop(),
+  /**
+   * Loads of the track loaded with `url` go to `fresh` from now on: the answer to onStreamRefused,
+   * so the player's retry carries on without reloading the track.
+   */
+  replaceUrl: (url: string, fresh: string) => native?.replaceUrl?.(url, fresh),
+  /** Bytes held by the stream cache (songs played recently, so a replay needn't download). */
+  streamCacheBytes: (): Promise<number> => native?.streamCacheBytes?.() ?? Promise.resolve(0),
+  /** Empties the stream cache; resolves with what's left (a song being played stays). */
+  clearStreamCache: (): Promise<number> => native?.clearStreamCache?.() ?? Promise.resolve(0),
   /** The track after the current one; the player starts it by itself (gapless or crossfade). */
   setNext: (options: LoadOptions | null) => native?.setNext(options),
   setTransitions: (options: Transitions) => native?.setTransitions(options),
   /** Pitch is preserved. */
   setSpeed: (speed: number) => native?.setSpeed(speed),
   setAudioEffects: (options: AudioEffects) => native?.setAudioEffects(options),
-  getOutputDevice: (): Promise<OutputDevice> =>
-    native?.getOutputDevice() ?? Promise.resolve({ id: -1, type: 'speaker', name: 'Phone speaker' }),
-  /** Every connected output, phone speaker first. */
-  getOutputDevices: (): Promise<OutputDevice[]> => native?.getOutputDevices?.() ?? Promise.resolve([]),
-  /** Play on this output while it stays connected; -1 leaves it to Android. */
-  setOutputDevice: (id: number) => native?.setOutputDevice?.(id),
-  /** Pause after `ms`; 0 cancels. Kept natively, so it fires with the app in the background. */
-  setSleepTimer: (ms: number) => native?.setSleepTimer?.(ms),
-  /** Stop when the current track ends instead of moving on. */
-  setPauseAtEndOfTrack: (value: boolean) => native?.setPauseAtEndOfTrack?.(value),
 
   onState: (handler: (e: PlayerStateEvent) => void) => on('state', handler),
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),
@@ -131,8 +123,6 @@ export const SonarePlayer = {
   onRemote: (handler: (e: { command: 'next' | 'previous' }) => void) => on('remote', handler),
   /** The player moved on to the next track by itself; sent before the state change it causes. */
   onAdvance: (handler: (e: { mediaId: string }) => void) => on('advance', handler),
-  /** Audio output changed (headphones plugged in, Bluetooth connected…). */
-  onOutput: (handler: (e: OutputDevice) => void) => on('output', handler),
-  /** The sleep timer ran out and paused playback. */
-  onSleep: (handler: () => void) => on('sleep', handler),
+  /** The server refused a stream url (403) while loading; the player retries for a while. */
+  onStreamRefused: (handler: (e: { mediaId: string | null; url: string }) => void) => on('streamRefused', handler),
 };

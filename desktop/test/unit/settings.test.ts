@@ -19,8 +19,8 @@ describe('user settings', () => {
   it('WEB-SET-001 starts from the documented defaults', async () => {
     const { getSettings } = await fresh();
     expect(getSettings()).toEqual({
-      eqPreset: 'Flat',
-      gapless: false,
+      eqPreset: 'Sonare',
+      gapless: true,
       normalization: true,
       streamQuality: 'high',
       downloadQuality: 'high',
@@ -29,14 +29,14 @@ describe('user settings', () => {
     });
   });
 
-  it('WEB-SET-002 a guest change applies locally and is never sent', async () => {
+  it('WEB-SET-002 a guest change applies locally and sends nothing while signed out', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const { updateSettings, getSettings } = await fresh();
     const rec = recordRequests();
-    updateSettings({ gapless: true });
+    updateSettings({ gapless: false });
     await vi.advanceTimersByTimeAsync(1000);
     rec.stop();
-    expect(getSettings().gapless).toBe(true);
+    expect(getSettings().gapless).toBe(false);
     expect(rec.seen).toHaveLength(0);
   });
 
@@ -132,6 +132,68 @@ describe('user settings', () => {
     await changed;
     expect(calls).toBe(2);
     expect(getSettings().gapless).toBe(true);
+  });
+
+  it('WEB-SET-009 settings are kept on the device across restarts, for guests too', async () => {
+    const first = await fresh();
+    first.updateSettings({ streamQuality: 'low', normalization: false, stayOffline: true });
+    const again = await fresh();
+    expect(again.getSettings()).toMatchObject({ streamQuality: 'low', normalization: false, stayOffline: true });
+  });
+
+  it('WEB-SET-010 a change made offline reaches the account when the network is back', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const { updateSettings, setSession, loadSettings } = await fresh();
+    setSession('a', 'r', testUser);
+    const bodies: unknown[] = [];
+    let up = false;
+    server.use(
+      http.get(`${API}/me/settings`, () => (up ? HttpResponse.json({ gapless: true }) : HttpResponse.error())),
+      http.put(`${API}/me/settings`, async ({ request }) => {
+        if (!up) return HttpResponse.error();
+        bodies.push(await request.json());
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    loadSettings();
+    updateSettings({ downloadFormat: 'm4a' });
+    await vi.advanceTimersByTimeAsync(450);
+    expect(bodies).toHaveLength(0);
+    up = true;
+    window.dispatchEvent(new Event('online'));
+    await vi.waitFor(() => expect(bodies).toEqual([{ downloadFormat: 'm4a' }]));
+  });
+
+  it("WEB-SET-011 a guest's changes go to the account on sign-in and win over the account's copy", async () => {
+    const { updateSettings, setSession, loadSettings, getSettings } = await fresh();
+    const bodies: unknown[] = [];
+    server.use(
+      http.get(`${API}/me/settings`, () => HttpResponse.json({ eqPreset: 'Bass', normalization: true })),
+      http.put(`${API}/me/settings`, async ({ request }) => {
+        bodies.push(await request.json());
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    loadSettings();
+    updateSettings({ normalization: false });
+    setSession('a', 'r', testUser);
+    await vi.waitFor(() => expect(bodies).toEqual([{ normalization: false }]));
+    expect(getSettings()).toMatchObject({ eqPreset: 'Bass', normalization: false });
+  });
+
+  it('WEB-SET-012 changes waiting for one account are not sent to another', async () => {
+    localStorage.setItem(
+      'sonare_settings_unsynced',
+      JSON.stringify({ userId: 'someone-else', changes: { streamQuality: 'low' } }),
+    );
+    const { setSession, loadSettings } = await fresh();
+    const rec = recordRequests();
+    server.use(http.get(`${API}/me/settings`, () => HttpResponse.json({ streamQuality: 'high' })));
+    setSession('a', 'r', testUser);
+    loadSettings();
+    await new Promise((r) => setTimeout(r, 50));
+    rec.stop();
+    expect(rec.paths()).toEqual(['GET /me/settings']);
   });
 
   it('WEB-SET-008 useSettings re-renders with every change', async () => {

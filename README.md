@@ -78,9 +78,8 @@ the latest release through the backend's `/releases`, so every release must carr
   `./buildFE.sh` with `prod`; a prod build without `VITE_API_BASE_PROD` fails.
 - Mobile: no env file. `mobile/src/data/config.ts` uses `http://localhost:3010` in debug
   builds (`./runFE.sh mobile` forwards it to this computer with `adb reverse`, on the
-  emulator or a USB phone) and `https://api.sonare.vip` in release builds. Settings →
-  Server address overrides it on the phone (e.g. the computer's LAN IP over Wi-Fi), in debug
-  builds and dev APKs only.
+  emulator or a USB phone) and `https://api.sonare.vip` in release builds. There is no
+  setting for it in the app.
 
 ## Tests and checks
 

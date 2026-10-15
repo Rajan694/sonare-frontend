@@ -60,7 +60,7 @@ describe('library', () => {
     expect(await screen.findByText('3 songs in your library')).toBeInTheDocument();
     expect(titles()).toEqual(['Bravo', 'alpha', 'Charlie']);
     await user.click(screen.getByRole('button', { name: 'Play all' }));
-    expect(player.playTrack).toHaveBeenCalledWith(mine[0], mine);
+    expect(player.playTrack).toHaveBeenCalledWith(mine[0], mine, { kind: 'Library', name: 'Songs' });
   });
 
   it('WEB-LIBRARY-002 shuffle plays every saved song in some order', async () => {
@@ -69,9 +69,9 @@ describe('library', () => {
     const { user } = renderWithProviders(<Library />, { player });
     await screen.findByText('3 songs in your library');
     await user.click(screen.getByRole('button', { name: 'Shuffle' }));
-    const [first, queue] = vi.mocked(player.playTrack).mock.calls[0];
-    expect(queue!.map((t) => t.id).sort()).toEqual(['yt:m1', 'yt:m2', 'yt:m3']);
-    expect(first).toBe(queue![0]);
+    const [queue, from] = vi.mocked(player.playShuffled).mock.calls[0];
+    expect(queue.map((t) => t.id).sort()).toEqual(['yt:m1', 'yt:m2', 'yt:m3']);
+    expect(from).toEqual({ kind: 'Library', name: 'Songs' });
   });
 
   it('WEB-LIBRARY-003 sorts by title (case-insensitive), then reverses on a second click; sorts by duration', async () => {
@@ -106,7 +106,7 @@ describe('library', () => {
     await user.click(screen.getByRole('button', { name: 'Grid view' }));
     await waitFor(() => expect(screen.queryAllByRole('row')).toHaveLength(0));
     await user.click(screen.getByRole('button', { name: 'Play Charlie' }));
-    expect(player.playTrack).toHaveBeenCalledWith(mine[2], mine);
+    expect(player.playTrack).toHaveBeenCalledWith(mine[2], mine, { kind: 'Library', name: 'Songs' });
   });
 
   it('WEB-LIBRARY-006 tabs are reflected in the address, and the address opens a tab', async () => {
@@ -138,33 +138,30 @@ describe('library', () => {
     expect(await screen.findByText('No artists yet')).toBeInTheDocument();
   });
 
-  it('WEB-LIBRARY-008 un-hearting a favourite removes it from the list at once', async () => {
+  it('WEB-LIBRARY-008 an old ?view=favourites link opens Songs', async () => {
     setSession('a', 'r', testUser);
-    let release!: () => void;
-    const gate = new Promise<void>((r) => (release = r));
-    server.use(
-      http.delete(`${API}/me/favourites/tracks/:id`, async () => {
-        await gate;
-        return HttpResponse.json({ ok: true });
-      }),
-    );
-    const { user } = renderWithProviders(<Library />, { route: '/library?view=favourites' });
-    await waitFor(() => expect(titles()).toEqual(['Bravo', 'Charlie']));
-    const row = screen.getAllByRole('row')[0];
-    await user.click(within(row).getByRole('button', { name: 'Remove from favourites' }));
-    expect(titles()).toEqual(['Charlie']);
-    release();
+    renderWithProviders(<Library />, { route: '/library?view=favourites' });
+    expect(await screen.findByText('3 songs in your library')).toBeInTheDocument();
+    expect(titles()).toEqual(['Bravo', 'alpha', 'Charlie']);
   });
 
-  it("WEB-LIBRARY-009 a guest's account-only tabs invite them to sign up; Songs still works", async () => {
+  it("WEB-LIBRARY-009 a guest's account-only tabs invite them to sign up; Songs works", async () => {
     const { user } = renderWithProviders(<Library />, { route: '/library?view=favourites' });
-    expect(screen.getByText('This lives in your account')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signin');
+    // The favourites view is gone; an old link lands on Songs, which is the guest's own list.
+    expect(await screen.findByText('Songs you like show up here.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Albums' }));
     expect(screen.getByText('This lives in your account')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Songs' }));
-    // Nothing saved as a guest: the trending chart fills the page instead of an empty list.
-    expect(await screen.findByRole('button', { name: 'Play Trending tune' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signin');
+  });
+
+  it('WEB-LIBRARY-014 an empty Songs list shows the empty state, not a chart', async () => {
+    setSession('a', 'r', testUser);
+    server.use(http.get(`${API}/me/library/tracks`, () => HttpResponse.json(page([]))));
+    renderWithProviders(<Library />);
+    expect(await screen.findByText('No songs found')).toBeInTheDocument();
+    expect(screen.getByText('Songs you like show up here.')).toBeInTheDocument();
+    expect(screen.queryByText('Trending tune')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Play all' })).toBeDisabled();
   });
 
   it('WEB-LIBRARY-010 genres link to a search for that genre', async () => {
@@ -254,10 +251,11 @@ describe('album', () => {
     const player = makePlayer();
     const { user } = openAlbum(player);
     await screen.findAllByRole('row');
+    const from = { kind: 'Album', name: 'In Rainbows' };
     await user.click(screen.getByRole('button', { name: 'Play album' }));
-    expect(player.playTrack).toHaveBeenCalledWith(albumTracks[0], albumTracks);
+    expect(player.playTrack).toHaveBeenCalledWith(albumTracks[0], albumTracks, from);
     await user.click(screen.getByRole('button', { name: 'Shuffle' }));
-    expect(vi.mocked(player.playTrack).mock.calls[1][1]).toHaveLength(3);
+    expect(player.playShuffled).toHaveBeenCalledWith(albumTracks, from);
   });
 
   it('WEB-ALBUM-003 an unknown album shows "Album not found" with the reason', async () => {
@@ -360,7 +358,7 @@ describe('artist', () => {
     artistServer();
     openArtist();
     expect(await screen.findByText('Radiohead')).toBeInTheDocument();
-    expect(screen.getByText(/12,345,678 monthly listeners · 9 albums/)).toBeInTheDocument();
+    expect(screen.getByText('9 albums')).toBeInTheDocument();
     expect(await screen.findAllByRole('row')).toHaveLength(5);
     expect(await screen.findByRole('link', { name: /Kid A/ })).toHaveAttribute('href', '/album/yt:kida');
   });
@@ -371,9 +369,9 @@ describe('artist', () => {
     const { user } = openArtist(player);
     const rows = await screen.findAllByRole('row');
     await user.click(within(rows[1]).getByRole('button', { name: 'Play Top 1' }));
-    expect(player.playTrack).toHaveBeenCalledWith(top[1], top);
+    expect(player.playTrack).toHaveBeenCalledWith(top[1], top, { kind: 'Artist', name: 'Radiohead' });
     await user.click(screen.getByRole('button', { name: 'Play artist' }));
-    expect(player.playTrack).toHaveBeenLastCalledWith(top[0], top);
+    expect(player.playTrack).toHaveBeenLastCalledWith(top[0], top, { kind: 'Artist', name: 'Radiohead' });
   });
 
   it('WEB-ARTIST-003 follow and unfollow, with the button following the saved state', async () => {

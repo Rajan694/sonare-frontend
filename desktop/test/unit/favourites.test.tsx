@@ -15,7 +15,8 @@ import { API, apiError, http, HttpResponse, recordRequests, server, useMockServe
 import { testUser } from '../helpers/fixtures';
 import type { Track } from '../../src/types';
 
-useMockServer();
+// Signing in loads the account's liked ids; none unless a test says otherwise.
+useMockServer(http.get(`${API}/me/favourites/ids`, () => HttpResponse.json({ ids: [] })));
 
 afterEach(() => clearSession());
 
@@ -146,7 +147,10 @@ describe('useFavourite', () => {
       await takePendingAction()?.();
     });
     rec.stop();
-    expect(rec.paths()).toEqual(['PUT /me/favourites/tracks/yt%3Aguest1']);
+    // Signing in also loads the account's liked ids.
+    expect(rec.paths().filter((p) => p !== 'GET /me/favourites/ids')).toEqual([
+      'PUT /me/favourites/tracks/yt%3Aguest1',
+    ]);
     expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -180,5 +184,64 @@ describe('useFavourite', () => {
     await act(() => setFavourite('yt:lookup1', true));
     expect(renders).toBeGreaterThan(before);
     expect(result.current('yt:lookup1', false)).toBe(true);
+  });
+});
+
+describe("the account's liked ids", () => {
+  const idsAnswer = (ids: string[] | null) => {
+    let asked = 0;
+    server.use(
+      http.get(`${API}/me/favourites/ids`, () => {
+        asked++;
+        return ids ? HttpResponse.json({ ids }) : apiError(500, 'DOWN');
+      }),
+    );
+    return () => asked;
+  };
+
+  it('WEB-FAV-011 a song from search shows a filled heart when the account likes it', async () => {
+    idsAnswer(['yt:liked1']);
+    render(
+      <>
+        <Heart id="yt:liked1" server={false} />
+        <Heart id="yt:other1" server={false} />
+      </>,
+    );
+    act(() => setSession('a', 'r', testUser));
+    const [liked, other] = screen.getAllByRole('button');
+    await waitFor(() => expect(liked).toHaveAttribute('aria-pressed', 'true'));
+    expect(other).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('WEB-FAV-012 un-hearting a liked song empties every heart for it; signing out forgets the list', async () => {
+    idsAnswer(['yt:liked2']);
+    server.use(http.all(`${API}/me/favourites/tracks/:id`, () => HttpResponse.json({ ok: true })));
+    act(() => setSession('a', 'r', testUser));
+    render(
+      <>
+        <Heart id="yt:liked2" server={false} />
+        <Heart id="yt:liked2" server={false} />
+      </>,
+    );
+    const [a, b] = screen.getAllByRole('button');
+    await waitFor(() => expect(a).toHaveAttribute('aria-pressed', 'true'));
+    await userEvent.click(a);
+    expect(a).toHaveAttribute('aria-pressed', 'false');
+    expect(b).toHaveAttribute('aria-pressed', 'false');
+    await userEvent.click(a);
+    await waitFor(() => expect(b).toHaveAttribute('aria-pressed', 'true'));
+    act(() => clearSession());
+    expect(isFavourite('yt:liked2', false)).toBe(false);
+  });
+
+  it('WEB-FAV-013 a token refresh for the same account loads nothing again; a failed load keeps the old behaviour', async () => {
+    const asked = idsAnswer(null);
+    act(() => setSession('a', 'r', testUser));
+    await waitFor(() => expect(asked()).toBe(1));
+    expect(isFavourite('yt:x', false)).toBe(false);
+    expect(isFavourite('yt:x', true)).toBe(true);
+    act(() => setSession('a2', 'r2', testUser));
+    await new Promise((r) => setTimeout(r, 20));
+    expect(asked()).toBe(1);
   });
 });

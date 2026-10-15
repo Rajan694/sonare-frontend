@@ -17,31 +17,38 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/app/queue.test.tsx`
 
-| ID              | Use case                                                                                           |
-| :-------------- | :------------------------------------------------------------------------------------------------- |
-| `WEB-QUEUE-001` | playing a song from a list queues the list and starts that song                                    |
-| `WEB-QUEUE-002` | playing a single song jumps to it if queued, otherwise puts it first                               |
-| `WEB-QUEUE-003` | counts a play from the live playback position                                                      |
-| `WEB-QUEUE-004` | the web app always syncs in Online Mode                                                            |
-| `WEB-QUEUE-005` | next walks forward and stops at the end when repeat is off                                         |
-| `WEB-QUEUE-006` | repeat all wraps from the last song to the first                                                   |
-| `WEB-QUEUE-007` | repeat cycles off → all → one → off                                                                |
-| `WEB-QUEUE-008` | previous restarts the song after 3 seconds, and goes back before that                              |
-| `WEB-QUEUE-009` | skip-to-previous always changes song, however far in                                               |
-| `WEB-QUEUE-010` | a finished song advances to the next one                                                           |
-| `WEB-QUEUE-011` | with repeat one, a finished song plays again from the start                                        |
-| `WEB-QUEUE-012` | seeking by fraction clamps to the track and uses the live duration                                 |
-| `WEB-QUEUE-013` | shuffle plays every song exactly once, starting from the current one, without reordering the queue |
-| `WEB-QUEUE-014` | turning shuffle off continues in the real queue order from the current song                        |
-| `WEB-QUEUE-015` | play next puts a song right after the current one                                                  |
-| `WEB-QUEUE-016` | play next moves a song that is already queued instead of duplicating it                            |
-| `WEB-QUEUE-017` | add to queue appends new songs and skips ones already there                                        |
-| `WEB-QUEUE-018` | removing a song before the current one keeps the same song playing                                 |
-| `WEB-QUEUE-019` | removing the playing song hands over to the one after it                                           |
-| `WEB-QUEUE-020` | removing the playing last song falls back to the new last song                                     |
-| `WEB-QUEUE-021` | reordering keeps the playing song playing and ignores invalid moves                                |
-| `WEB-QUEUE-022` | clear upcoming keeps everything up to the current song                                             |
-| `WEB-QUEUE-023` | play next on an empty queue makes it the only song                                                 |
+| ID              | Use case                                                                                             |
+| :-------------- | :--------------------------------------------------------------------------------------------------- |
+| `WEB-QUEUE-001` | playing a song from a list queues the list and starts that song                                      |
+| `WEB-QUEUE-002` | playing a single song jumps to it if queued, otherwise puts it first                                 |
+| `WEB-QUEUE-003` | counts a play from the live playback position                                                        |
+| `WEB-QUEUE-004` | the web app always syncs in Online Mode                                                              |
+| `WEB-QUEUE-005` | next walks forward and stops at the end when repeat is off                                           |
+| `WEB-QUEUE-006` | repeat all wraps from the last song to the first                                                     |
+| `WEB-QUEUE-007` | repeat cycles off → all → one → off                                                                  |
+| `WEB-QUEUE-008` | previous restarts the song after 3 seconds, and goes back before that                                |
+| `WEB-QUEUE-009` | skip-to-previous always changes song, however far in                                                 |
+| `WEB-QUEUE-010` | a finished song advances to the next one                                                             |
+| `WEB-QUEUE-011` | with repeat one, a finished song plays again from the start                                          |
+| `WEB-QUEUE-012` | seeking by fraction clamps to the track and uses the live duration                                   |
+| `WEB-QUEUE-013` | shuffle reorders the queue: the current song first, then every other song once                       |
+| `WEB-QUEUE-014` | turning shuffle off keeps the shuffled order and carries on from the current song                    |
+| `WEB-QUEUE-015` | play next puts a song right after the current one                                                    |
+| `WEB-QUEUE-016` | play next moves a song that is already queued instead of duplicating it                              |
+| `WEB-QUEUE-017` | add to queue appends new songs and skips ones already there                                          |
+| `WEB-QUEUE-018` | removing a song before the current one keeps the same song playing                                   |
+| `WEB-QUEUE-019` | removing the playing song hands over to the one after it                                             |
+| `WEB-QUEUE-020` | removing the playing last song falls back to the new last song                                       |
+| `WEB-QUEUE-021` | reordering keeps the playing song playing and ignores invalid moves                                  |
+| `WEB-QUEUE-022` | clear upcoming keeps everything up to the current song                                               |
+| `WEB-QUEUE-023` | play next on an empty queue makes it the only song                                                   |
+| `WEB-QUEUE-024` | an album or playlist Shuffle button turns shuffle on and starts the list shuffled                    |
+| `WEB-QUEUE-025` | the same song twice in a list plays twice, from the start each time                                  |
+| `WEB-QUEUE-026` | the engine is told what plays next by itself, and that nothing does on repeat one                    |
+| `WEB-QUEUE-027` | when the engine moves on by itself, the queue follows without loading the song again                 |
+| `WEB-QUEUE-028` | the last song asks once for similar songs, adds the new ones, and they play next                     |
+| `WEB-QUEUE-029` | nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device |
+| `WEB-QUEUE-030` | an answer that arrives after another song was picked is dropped                                      |
 
 ## `test/components/layout.test.tsx`
 
@@ -69,7 +76,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-020` | clicking an upcoming song plays it; its X removes it without playing               |
 | `WEB-LAYOUT-021` | dragging a row onto another moves it                                               |
 | `WEB-LAYOUT-022` | Clear drops upcoming songs; with none left it says so                              |
-| `WEB-LAYOUT-023` | saves the queue as a playlist and opens it                                         |
+| `WEB-LAYOUT-023` | saves the queue as the next "Queue N" playlist and opens it                        |
 | `WEB-LAYOUT-024` | a guest is asked to sign in first; an empty queue cannot be saved                  |
 | `WEB-LAYOUT-025` | the phone sheet has its own play button and a close button                         |
 | `WEB-LAYOUT-026` | Space plays or pauses from anywhere, but not while typing                          |
@@ -84,7 +91,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-035` | shows toasts and lets them be dismissed                                            |
 | `WEB-LAYOUT-036` | "Add to playlist" opens the playlist picker for the playing song                   |
 | `WEB-LAYOUT-037` | a guest pressing "Add to playlist" is asked to create an account first             |
-| `WEB-LAYOUT-038` | no output button where the browser cannot choose the speaker                       |
+| `WEB-LAYOUT-038` | there is no output button: Sonare plays on the system output                       |
+| `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
 
 ## `test/components/music.test.tsx`
 
@@ -120,8 +128,11 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-MUSIC-028` | arrow keys jump 5 seconds, within the track                                                  |
 | `WEB-MUSIC-029` | scrubbing previews the time and seeks once on release                                        |
 | `WEB-MUSIC-030` | without a seek handler it is a picture, not a control                                        |
-| `WEB-MUSIC-031` | the table shows your play count, and the artist where a song has no album                    |
+| `WEB-MUSIC-031` | lists of your own songs show your play count, and the artist where a song has no album       |
+| `WEB-MUSIC-035` | catalog lists (search, albums, artists) have no PLAYS column                                 |
 | `WEB-MUSIC-032` | a guest who signs in from "Add to playlist" gets the playlist picker for that song           |
+| `WEB-MUSIC-033` | the menu adds and removes a single song as a favourite                                       |
+| `WEB-MUSIC-034` | the favourite heart is shown at every width                                                  |
 
 ## `test/components/ui.test.tsx`
 
@@ -160,7 +171,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-007` | a file that cannot be read is skipped without failing the folder                             |
 | `DSK-008` | a folder that disappeared scans as empty                                                     |
 | `DSK-009` | excluding a folder hides its songs; including it brings them back                            |
-| `DSK-010` | removing a folder forgets its songs and their saved lyrics, but leaves the files             |
+| `DSK-010` | removing a folder forgets its songs and their lyric timing, but leaves the files             |
 | `DSK-011` | the library is kept in Neutralino storage and restored at the next launch                    |
 | `DSK-012` | a corrupt stored library starts empty instead of crashing                                    |
 | `DSK-013` | "open folder" shows the file's folder in the file manager                                    |
@@ -168,7 +179,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-015` | the player's real duration is remembered for files the scan could not measure                |
 | `DSK-016` | server lists swap in this device's copy of a local song and drop ones it lacks               |
 | `DSK-017` | reads a sidecar .lrc next to the file, synced or plain                                       |
-| `DSK-018` | lyrics the user saves replace the sidecar, and their timing offset is kept                   |
+| `DSK-018` | the timing fix the user sets applies to the sidecar lyrics                                   |
 | `DSK-019` | a finished download joins the library under "Sonare downloads" and replaces the stream       |
 | `DSK-020` | downloading the same song again keeps one copy; forgetting it unlinks the stream             |
 | `DSK-021` | rescanning downloads drops files deleted outside Sonare                                      |
@@ -187,9 +198,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-029` | offline, the queue skips songs that are not on this device                                    |
 | `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                      |
 | `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
-| `DSK-053` | About in the desktop app checks for a newer build instead of listing every download           |
-| `DSK-054` | the server address can point the desktop app at another backend, which restarts it signed out |
-| `DSK-075` | a release build has no server address setting and ignores one a dev build saved               |
+| `DSK-053` | About in the desktop app checks for a newer build; "What's new" shows its changes in a dialog |
+| `DSK-054` | the desktop settings have no server address and no appearance section                         |
+| `DSK-075` | an address saved by an older build's server setting is ignored                                |
 | `DSK-032` | with no folders it invites the user to add one, using the folder picker                       |
 | `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work                   |
 | `DSK-034` | a failed scan is reported instead of breaking the page                                        |
@@ -207,29 +218,37 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-041` | choosing another song stops and releases the previous decoded one               |
 | `DSK-042` | a downloaded song plays from disk, never from the server                        |
 | `DSK-043` | a blocked start asks the user to press play                                     |
+| `DSK-076` | the next song fades in over the last 6 seconds while this one fades out         |
+| `DSK-077` | songs of one album join without a crossfade while gapless is on                 |
 
 ## `test/screens/home-search.test.tsx`
 
-| ID               | Use case                                                                               |
-| :--------------- | :------------------------------------------------------------------------------------- |
-| `WEB-HOME-001`   | a guest is welcomed, invited to create an account, and sees trending music             |
-| `WEB-HOME-002`   | a signed-in user is greeted by name and sees their recently played, without duplicates |
-| `WEB-HOME-003`   | when the music service is down it explains why and can retry                           |
-| `WEB-HOME-004`   | with a song loaded the header button pauses or resumes it                              |
-| `WEB-HOME-005`   | playing a table row plays it within the trending list                                  |
-| `WEB-HOME-006`   | "See all" shows the full trending shelf                                                |
-| `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry          |
-| `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre searches for its query   |
-| `WEB-SEARCH-002` | shows a top result, songs and artists, with a result count                             |
-| `WEB-SEARCH-003` | the top result plays within the results                                                |
-| `WEB-SEARCH-004` | the chips search albums, artists and playlists and link to them                        |
-| `WEB-SEARCH-005` | says when nothing matches                                                              |
-| `WEB-SEARCH-006` | a failed search shows the error and can be retried                                     |
-| `WEB-SEARCH-007` | a shared ?q= link fills the search box and is removed from the address                 |
-| `WEB-SEARCH-008` | add-songs mode adds a result to the playlist and counts it                             |
-| `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                             |
-| `WEB-SEARCH-010` | a category without a query searches for its name                                       |
-| `WEB-SEARCH-011` | the Artists row shows each song's artist once, with their picture and page             |
+| ID               | Use case                                                                                     |
+| :--------------- | :------------------------------------------------------------------------------------------- |
+| `WEB-HOME-001`   | a guest gets trending tiles and cards                                                        |
+| `WEB-HOME-002`   | a signed-in user is greeted by name and gets their recent plays as tiles, without duplicates |
+| `WEB-HOME-003`   | when the music service is down it explains why and can retry                                 |
+| `WEB-HOME-004`   | with a song loaded the header button pauses or resumes it                                    |
+| `WEB-HOME-005`   | a trending shelf card plays within the trending list                                         |
+| `WEB-HOME-006`   | "See all" shows the full trending shelf                                                      |
+| `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry                |
+| `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre searches for its query         |
+| `WEB-SEARCH-002` | shows a top result and songs, with a result count                                            |
+| `WEB-SEARCH-003` | the top result plays within the results                                                      |
+| `WEB-SEARCH-004` | the chips search albums, artists and playlists and link to them                              |
+| `WEB-SEARCH-005` | says when nothing matches                                                                    |
+| `WEB-SEARCH-006` | a failed search shows the error and can be retried                                           |
+| `WEB-SEARCH-007` | a shared ?q= link fills the search box and is removed from the address                       |
+| `WEB-SEARCH-008` | add-songs mode adds a result to the playlist and counts it                                   |
+| `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                                   |
+| `WEB-SEARCH-010` | a category without a query searches for its name                                             |
+| `WEB-SEARCH-011` | the All tab shows artists from their own search, with a picture and page                     |
+
+## `test/screens/home-offline.test.tsx`
+
+| ID             | Use case                                             |
+| :------------- | :--------------------------------------------------- |
+| `WEB-HOME-008` | offline, the tiles come from what this device played |
 
 ## `test/screens/library-catalog.test.tsx`
 
@@ -242,9 +261,10 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LIBRARY-005` | grid view shows the songs as cards that play in the list                              |
 | `WEB-LIBRARY-006` | tabs are reflected in the address, and the address opens a tab                        |
 | `WEB-LIBRARY-007` | followed artists link to their pages; empty albums and artists say so                 |
-| `WEB-LIBRARY-008` | un-hearting a favourite removes it from the list at once                              |
-| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs still works                 |
+| `WEB-LIBRARY-008` | an old ?view=favourites link opens Songs                                              |
+| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs works                       |
 | `WEB-LIBRARY-010` | genres link to a search for that genre                                                |
+| `WEB-LIBRARY-014` | an empty Songs list shows the empty state, not a chart                                |
 | `WEB-ALBUM-001`   | shows the album, its artist link, year, size and total length                         |
 | `WEB-ALBUM-002`   | play and shuffle play the whole album                                                 |
 | `WEB-ALBUM-003`   | an unknown album shows "Album not found" with the reason                              |
@@ -252,7 +272,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-ALBUM-007`   | an album already saved in the library starts hearted                                  |
 | `WEB-ALBUM-005`   | a guest hearting an album is asked to sign up                                         |
 | `WEB-ALBUM-006`   | "More options" opens the menu for all the album's songs                               |
-| `WEB-ARTIST-001`  | shows listeners and albums, the top five songs and the discography                    |
+| `WEB-ARTIST-001`  | shows the album count and the top songs, without a listener figure                    |
 | `WEB-ARTIST-002`  | playing a popular song queues all of the artist's top songs                           |
 | `WEB-ARTIST-003`  | follow and unfollow, with the button following the saved state                        |
 | `WEB-ARTIST-004`  | a failed follow is undone                                                             |
@@ -262,93 +282,152 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/player-screens.test.tsx`
 
-| ID               | Use case                                                                            |
-| :--------------- | :---------------------------------------------------------------------------------- |
-| `WEB-NP-001`     | with nothing playing it points back to Home                                         |
-| `WEB-NP-002`     | shows the song, its album, artist link, stream quality and time left                |
-| `WEB-NP-003`     | lists the next four songs, and clicking one plays it                                |
-| `WEB-NP-004`     | transport, shuffle, repeat and seek go to the player                                |
-| `WEB-NP-005`     | a playback error is shown with a retry                                              |
-| `WEB-NP-006`     | leaving goes home on a direct visit                                                 |
-| `WEB-LYRICS-001` | highlights the line at the current position, with its source                        |
-| `WEB-LYRICS-002` | clicking a line seeks there                                                         |
-| `WEB-LYRICS-003` | a signed-in user nudges the timing and it is saved                                  |
-| `WEB-LYRICS-004` | a guest fixing timing or text is asked to create an account                         |
-| `WEB-LYRICS-005` | editing opens the lyrics as LRC; saving LRC sends it as synced lyrics               |
-| `WEB-LYRICS-006` | with no lyrics, typed plain text is saved as plain; a failed save keeps the editor  |
-| `WEB-LYRICS-007` | an imported .lrc file opens in the editor to check before saving                    |
-| `WEB-LYRICS-008` | plain-text view drops timestamps; auto-scroll can be switched off and is remembered |
-| `WEB-LYRICS-009` | unsynced lyrics show as plain text with no timing controls                          |
-| `WEB-LYRICS-010` | with nothing playing it says so                                                     |
-| `WEB-QROUTE-001` | /queue opens the queue panel and returns to Home                                    |
-| `WEB-EQ-001`     | picking a preset moves the faders to its curve                                      |
-| `WEB-EQ-002`     | moving a fader makes a custom curve, and double-click resets it to 0 dB             |
-| `WEB-EQ-003`     | turning the equalizer off disables presets and faders                               |
-| `WEB-EQ-004`     | bass boost, virtualizer and speed apply and show their values                       |
-| `WEB-EQ-005`     | gapless and normalization switches update the account settings                      |
-| `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                            |
-| `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in               |
-| `WEB-NP-009`     | there is no output picker where the browser cannot switch outputs                   |
-| `WEB-LYRICS-011` | asks for lyrics in the preferred script, and asks again when it changes             |
-| `WEB-LYRICS-012` | a guest who signs in to edit lyrics lands back in the editor                        |
-| `WEB-LYRICS-013` | a guest who signs in to fix the timing gets that change saved                       |
-| `WEB-LYRICS-014` | LRCLIB down says so and retries, instead of "No lyrics"                             |
+| ID               | Use case                                                                               |
+| :--------------- | :------------------------------------------------------------------------------------- |
+| `WEB-NP-001`     | with nothing playing it points back to Home                                            |
+| `WEB-NP-002`     | shows the song, its album, artist link, stream quality and time left                   |
+| `WEB-NP-003`     | lists the next four songs, and clicking one plays it                                   |
+| `WEB-NP-004`     | transport, shuffle, repeat and seek go to the player                                   |
+| `WEB-NP-005`     | a playback error is shown with a retry                                                 |
+| `WEB-NP-006`     | leaving goes home on a direct visit                                                    |
+| `WEB-LYRICS-001` | highlights the line at the current position, with its source                           |
+| `WEB-LYRICS-002` | clicking a line seeks there                                                            |
+| `WEB-LYRICS-003` | a signed-in user nudges the timing: it moves at once and is saved once, after the taps |
+| `WEB-LYRICS-004` | a guest fixing the timing is asked to create an account                                |
+| `WEB-LYRICS-005` | lyrics are read-only: no editing, adding or importing                                  |
+| `WEB-LYRICS-006` | a timing change still waiting is saved when the screen closes                          |
+| `WEB-LYRICS-007` | the auto-scroll switch is there for synced lyrics only                                 |
+| `WEB-LYRICS-008` | plain-text view drops timestamps; auto-scroll can be switched off and is remembered    |
+| `WEB-LYRICS-009` | unsynced lyrics show as plain text with no timing controls                             |
+| `WEB-LYRICS-010` | with nothing playing it says so                                                        |
+| `WEB-QROUTE-001` | /queue opens the queue panel and returns to Home                                       |
+| `WEB-EQ-001`     | picking a preset moves the faders to its curve                                         |
+| `WEB-EQ-002`     | moving a fader makes a custom curve, and double-click resets it to 0 dB                |
+| `WEB-EQ-003`     | turning the equalizer off disables presets and faders                                  |
+| `WEB-EQ-004`     | bass boost, virtualizer and speed apply and show their values                          |
+| `WEB-EQ-005`     | gapless and normalization switches update the account settings                         |
+| `WEB-EQ-006`     | the crossfade switch turns crossfade on; gapless then says it skips one album          |
+| `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                               |
+| `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in                  |
+| `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                           |
+| `WEB-LYRICS-011` | asks for lyrics in the preferred script, and asks again when it changes                |
+| `WEB-LYRICS-012` | a song whose lyrics can't be found gets a disabled Lyrics button with a tooltip        |
+| `WEB-LYRICS-013` | a guest who signs in to fix the timing gets that change saved                          |
+| `WEB-LYRICS-014` | LRCLIB down says so and retries, instead of "No lyrics"                                |
 
 ## `test/screens/playlists.test.tsx`
 
-| ID                  | Use case                                                                       |
-| :------------------ | :----------------------------------------------------------------------------- |
-| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one |
-| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                       |
-| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                            |
-| `WEB-PLAYLISTS-004` | in Offline Mode only playlists available on the device are shown               |
-| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link |
-| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                             |
-| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                             |
-| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position         |
-| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                |
-| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order |
-| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu |
-| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest         |
+| ID                  | Use case                                                                                 |
+| :------------------ | :--------------------------------------------------------------------------------------- |
+| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one           |
+| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                 |
+| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                      |
+| `WEB-PLAYLISTS-004` | in Offline Mode the stored own playlists are shown with device counts; no server call    |
+| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link           |
+| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                       |
+| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                       |
+| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position                   |
+| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                          |
+| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order           |
+| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu           |
+| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest                   |
+| `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so |
+| `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in    |
+
+## `test/screens/offline-playlists.test.tsx`
+
+| ID             | Use case                                                                                             |
+| :------------- | :--------------------------------------------------------------------------------------------------- |
+| `WEB-OFPL-001` | saveOfflinePlaylists persists the list for the signed-in user and is readable by getOfflinePlaylists |
+| `WEB-OFPL-002` | saveOfflinePlaylistSongs saves songs per playlist id and tracks updatedAt                            |
+| `WEB-OFPL-003` | signing in as a different user shows nothing until that user has data                                |
+| `WEB-OFPL-004` | signing out clears the view (another user or guest sees nothing)                                     |
+| `WEB-OFPL-005` | saveOfflinePlaylists drops songs for playlists no longer in the list                                 |
+| `WEB-OFPL-006` | offline Playlists lists only sonare: playlists from the offline store                                |
+| `WEB-OFPL-007` | offline Playlists dims playlists with no songs on this device                                        |
+| `WEB-OFPL-008` | offline Playlists does not show the New playlist button                                              |
+| `WEB-OFPL-009` | offline own playlist shows meta from the offline store and no Add songs button                       |
+| `WEB-OFPL-010` | offline own playlist shows empty-state message when songs aren't on device                           |
+| `WEB-OFPL-011` | offline Playlists counts the songs on this device and does not dim a playlist that has some          |
+| `WEB-OFPL-012` | offline own playlist lists only the songs on this device and says how many need the internet         |
+
+## `test/screens/virtual-rows.test.tsx`
+
+| ID             | Use case                                                                                             |
+| :------------- | :--------------------------------------------------------------------------------------------------- |
+| `WEB-VIRT-001` | with a measured container (clientHeight > 0) only a visible window of rows is returned               |
+| `WEB-VIRT-002` | without a measured container (clientHeight = 0) every row is returned (null-state fallback)          |
+| `WEB-VIRT-003` | scrolling the element fires a scroll event and shifts the rendered window                            |
+| `WEB-VIRT-004` | the Library screen draws a slice of rows in a box as tall as every row when virtualisation is active |
+| `WEB-VIRT-005` | without layout (clientHeight = 0) all rows are rendered and no large spacer appears                  |
+| `WEB-VIRT-006` | scrolling moves the drawn rows inside the box but never changes its height                           |
+| `WEB-VIRT-007` | the height of a drawn row replaces the guessed one                                                   |
+
+## `test/screens/load-more.test.tsx`
+
+| ID             | Use case                                                  |
+| :------------- | :-------------------------------------------------------- |
+| `WEB-PAGE-001` | Load more asks for the next page and appends it           |
+| `WEB-PAGE-002` | no cursor from the server means no Load more              |
+| `WEB-PAGE-003` | a failed next page keeps the list and offers a retry      |
+| `WEB-PAGE-004` | a new query replaces the pages instead of adding to them  |
+| `WEB-PAGE-005` | an album appends its next page of songs                   |
+| `WEB-PAGE-006` | a YouTube playlist appends its next page of songs         |
+| `WEB-PAGE-007` | an own playlist comes whole, so it never offers Load more |
+
+## `test/screens/recent-searches.test.tsx`
+
+| ID                     | Use case                                                                            |
+| :--------------------- | :---------------------------------------------------------------------------------- |
+| `WEB-RECENTSEARCH-001` | a query whose result was used is offered again, and picking it searches for it      |
+| `WEB-RECENTSEARCH-002` | pressing Enter remembers the typed query at once                                    |
+| `WEB-RECENTSEARCH-003` | picking a suggestion remembers the completed query                                  |
+| `WEB-RECENTSEARCH-004` | keeps the newest first, only ten, and moves a repeat to the front whatever its case |
+| `WEB-RECENTSEARCH-005` | the × forgets just that query                                                       |
+| `WEB-RECENTSEARCH-006` | Clear forgets them all                                                              |
+| `WEB-RECENTSEARCH-007` | the list survives a restart                                                         |
+| `WEB-RECENTSEARCH-008` | unreadable or junk saved searches are ignored                                       |
 
 ## `test/screens/settings-downloads.test.tsx`
 
-| ID                 | Use case                                                                               |
-| :----------------- | :------------------------------------------------------------------------------------- |
-| `WEB-SETTINGS-001` | a guest is offered to create an account or sign in                                     |
-| `WEB-SETTINGS-002` | a signed-in user sees their profile and can sign out                                   |
-| `WEB-SETTINGS-003` | the web build shows no desktop-only sections, on either layout                         |
-| `WEB-SETTINGS-004` | playback: streaming quality and the two switches change the settings                   |
-| `WEB-SETTINGS-005` | choosing a section updates the address and shows it                                    |
-| `WEB-SETTINGS-006` | download quality choices follow the file format                                        |
-| `WEB-SETTINGS-007` | shows download progress counts and links to the Downloads page                         |
-| `WEB-SETTINGS-008` | choosing a download folder confirms it; cancelling says nothing; a failure is reported |
-| `WEB-SETTINGS-009` | a picked folder shows its name and can be reset to the default                         |
-| `WEB-SETTINGS-010` | an unverified user can resend the verification link; verified users see no prompt      |
-| `WEB-DLPAGE-001`   | with nothing downloaded it says so and where files go                                  |
-| `WEB-DLPAGE-002`   | in-progress rows show their state, size and progress, with the right control           |
-| `WEB-DLPAGE-003`   | finished downloads are counted, and play as a queue of downloads                       |
-| `WEB-DLPAGE-004`   | "Save again" re-saves the kept copy, and explains when there is none                   |
-| `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result     |
-| `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                |
-| `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                           |
-| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; no output row where it can't switch   |
-| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none       |
+| ID                 | Use case                                                                                           |
+| :----------------- | :------------------------------------------------------------------------------------------------- |
+| `WEB-SETTINGS-001` | a guest is offered to create an account or sign in                                                 |
+| `WEB-SETTINGS-002` | a signed-in user sees their profile and can sign out                                               |
+| `WEB-SETTINGS-003` | the web build shows no desktop-only sections, on either layout                                     |
+| `WEB-SETTINGS-004` | playback: streaming quality and the two switches change the settings                               |
+| `WEB-SETTINGS-005` | choosing a section updates the address and shows it                                                |
+| `WEB-SETTINGS-006` | download quality choices follow the file format                                                    |
+| `WEB-SETTINGS-007` | shows download progress counts and links to the Downloads page                                     |
+| `WEB-SETTINGS-008` | choosing a download folder confirms it; cancelling says nothing; a failure is reported             |
+| `WEB-SETTINGS-009` | a picked folder shows its name and can be reset to the default                                     |
+| `WEB-SETTINGS-010` | an unverified user verifies with the emailed code or sends a new one; verified users see no prompt |
+| `WEB-DLPAGE-001`   | with nothing downloaded it says so and where files go                                              |
+| `WEB-DLPAGE-002`   | in-progress rows show their state, size and progress, with the right control                       |
+| `WEB-DLPAGE-003`   | finished downloads are counted, and play as a queue of downloads                                   |
+| `WEB-DLPAGE-004`   | "Save again" re-saves the kept copy, and explains when there is none                               |
+| `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result                 |
+| `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                            |
+| `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                                       |
+| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; there is no output row                            |
+| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none                   |
 
 ## `test/screens/signin.test.tsx`
 
-| ID               | Use case                                                                              |
-| :--------------- | :------------------------------------------------------------------------------------ |
-| `WEB-SIGNIN-001` | signs in with trimmed email, welcomes the user and goes home                          |
-| `WEB-SIGNIN-002` | shows the server error and stays on the form                                          |
-| `WEB-SIGNIN-003` | cannot submit until both email and password are filled                                |
-| `WEB-SIGNIN-004` | shows "Please wait…" while the request is out                                         |
-| `WEB-SIGNIN-005` | switching modes adds the display name field and clears the error                      |
-| `WEB-SIGNIN-006` | registers with the given name, or the email name when left blank                      |
-| `WEB-SIGNIN-007` | shows why the account is needed and finishes the guest's action after signing up      |
-| `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                 |
-| `WEB-SIGNIN-009` | "Forgot password?" sends a reset link for the trimmed email and says it is on its way |
-| `WEB-SIGNIN-010` | a forgot-password error shows, and switching back to sign in clears it                |
+| ID               | Use case                                                                                |
+| :--------------- | :-------------------------------------------------------------------------------------- |
+| `WEB-SIGNIN-001` | signs in with trimmed email, welcomes the user and goes home                            |
+| `WEB-SIGNIN-002` | shows the server error and stays on the form                                            |
+| `WEB-SIGNIN-003` | cannot submit until both email and password are filled                                  |
+| `WEB-SIGNIN-004` | shows "Please wait…" while the request is out                                           |
+| `WEB-SIGNIN-005` | switching modes adds the display name field and clears the error                        |
+| `WEB-SIGNIN-006` | registers with the given name, or the email name when left blank                        |
+| `WEB-SIGNIN-007` | shows why the account is needed and finishes the guest's action after signing up        |
+| `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                   |
+| `WEB-SIGNIN-009` | "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in |
+| `WEB-SIGNIN-010` | a wrong code or a rate limit shows why, and "Back to sign in" returns to the form       |
+| `WEB-SIGNIN-011` | after signing up, the emailed code can be entered before going on                       |
+| `WEB-SIGNIN-012` | "Skip for now" goes on unverified                                                       |
 
 ## `test/screens/landing.test.tsx`
 
@@ -405,20 +484,21 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/audioDemux.test.ts`
 
-| ID              | Use case                                                                                  |
-| :-------------- | :---------------------------------------------------------------------------------------- |
-| `WEB-DEMUX-001` | splits frames after the ID3 tag, with exact start times and duration                      |
-| `WEB-DEMUX-002` | skips junk before the first frame, including a false sync word, and stops at an ID3v1 tag |
-| `WEB-DEMUX-003` | recognises mono files                                                                     |
-| `WEB-DEMUX-004` | a file with no MP3 frames is left to the audio element                                    |
-| `WEB-DEMUX-005` | reads the OpusHead and times each packet from its TOC byte                                |
-| `WEB-DEMUX-006` | joins a packet that continues onto the next page                                          |
-| `WEB-DEMUX-007` | ignores pages from another logical stream                                                 |
-| `WEB-DEMUX-008` | Ogg Vorbis and broken pages are not demuxed                                               |
-| `WEB-DEMUX-009` | finds the Opus track and its blocks, even inside an unknown-size segment                  |
-| `WEB-DEMUX-010` | laced blocks and non-Opus tracks are left to the audio element                            |
-| `WEB-DEMUX-011` | packetAt finds the packet playing at a time                                               |
-| `WEB-DEMUX-012` | formats it does not handle return null                                                    |
+| ID              | Use case                                                                                            |
+| :-------------- | :-------------------------------------------------------------------------------------------------- |
+| `WEB-DEMUX-001` | splits frames after the ID3 tag, with exact start times and duration                                |
+| `WEB-DEMUX-002` | skips junk before the first frame, including a false sync word, and stops at an ID3v1 tag           |
+| `WEB-DEMUX-003` | recognises mono files                                                                               |
+| `WEB-DEMUX-004` | a file with no MP3 frames is left to the audio element                                              |
+| `WEB-DEMUX-005` | reads the OpusHead and times each packet from its TOC byte                                          |
+| `WEB-DEMUX-006` | joins a packet that continues onto the next page                                                    |
+| `WEB-DEMUX-007` | ignores pages from another logical stream                                                           |
+| `WEB-DEMUX-008` | Ogg Vorbis and broken pages are not demuxed                                                         |
+| `WEB-DEMUX-009` | finds the Opus track and its blocks, even inside an unknown-size segment                            |
+| `WEB-DEMUX-010` | laced blocks and non-Opus tracks are left to the audio element                                      |
+| `WEB-DEMUX-011` | packetAt finds the packet playing at a time                                                         |
+| `WEB-DEMUX-012` | formats it does not handle return null                                                              |
+| `WEB-DEMUX-013` | a file still downloading gives only whole packets, more as it grows, and the length from its header |
 
 ## `test/unit/auth.test.ts`
 
@@ -436,7 +516,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-AUTH-010` | restores a saved session on start-up                                          |
 | `WEB-AUTH-011` | ignores a corrupt saved user instead of crashing                              |
 | `WEB-AUTH-012` | refreshing without a refresh token signs out and returns null                 |
-| `WEB-AUTH-013` | a refresh that cannot reach the server signs out                              |
+| `WEB-AUTH-013` | a refresh that fails for any reason but a refused token keeps the session     |
 | `WEB-AUTH-014` | without dev credentials, auth is ready immediately                            |
 | `WEB-AUTH-015` | holds auth-ready until the dev account has signed in                          |
 | `WEB-AUTH-016` | registers the dev account when it does not exist yet                          |
@@ -446,6 +526,10 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-AUTH-020` | sends a guest to sign-up with the reason and holds the action until then      |
 | `WEB-AUTH-021` | runs the action straight away for a signed-in user                            |
 | `WEB-AUTH-022` | keeps only the latest pending action, and cancelling drops it                 |
+| `WEB-AUTH-023` | a refused refresh token signs out                                             |
+| `WEB-AUTH-024` | tokens another tab renewed are used instead of spending the old refresh token |
+| `WEB-AUTH-025` | losing the refresh race to another tab keeps the session the other tab saved  |
+| `WEB-AUTH-026` | signing out or in another tab applies here                                    |
 
 ## `test/unit/downloadTargets.test.ts`
 
@@ -499,24 +583,25 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/dsp.test.ts`
 
-| ID            | Use case                                                                        |
-| :------------ | :------------------------------------------------------------------------------ |
-| `WEB-DSP-001` | starts flat, and restores a saved curve                                         |
-| `WEB-DSP-002` | a saved curve with the wrong number of bands, or unreadable, falls back to flat |
-| `WEB-DSP-003` | moving a band clamps it to ±12 dB, switches to Custom and is remembered         |
-| `WEB-DSP-004` | choosing a preset loads its curve and saves the preset to the account           |
-| `WEB-DSP-005` | an unknown preset name changes nothing                                          |
-| `WEB-DSP-006` | releasing a fader commits the current preset name                               |
-| `WEB-DSP-007` | adopts the account's preset after sign-in, unless the user has a custom curve   |
-| `WEB-DSP-008` | useDsp re-renders on changes                                                    |
-| `WEB-DSP-009` | playback speed reaches the element and keeps the pitch                          |
-| `WEB-DSP-010` | builds 8 EQ bands (low shelf, peaks, high shelf) and applies the curve          |
-| `WEB-DSP-011` | turning the EQ off flattens every stage without tearing the graph down          |
-| `WEB-DSP-012` | the virtualizer widens stereo: full width is 2.5x, zero is untouched            |
-| `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through            |
-| `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                              |
-| `WEB-DSP-015` | a suspended context is resumed on the next play                                 |
-| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                       |
+| ID            | Use case                                                                               |
+| :------------ | :------------------------------------------------------------------------------------- |
+| `WEB-DSP-001` | starts on the Sonare preset, and restores a saved curve                                |
+| `WEB-DSP-002` | a saved curve with the wrong number of bands, or unreadable, falls back to the default |
+| `WEB-DSP-003` | moving a band clamps it to ±12 dB, switches to Custom and is remembered                |
+| `WEB-DSP-004` | choosing a preset loads its curve and saves the preset to the account                  |
+| `WEB-DSP-005` | an unknown preset name changes nothing                                                 |
+| `WEB-DSP-006` | releasing a fader commits the current preset name                                      |
+| `WEB-DSP-007` | adopts the account's preset after sign-in, unless the user has a custom curve          |
+| `WEB-DSP-008` | useDsp re-renders on changes                                                           |
+| `WEB-DSP-009` | playback speed reaches the element and keeps the pitch                                 |
+| `WEB-DSP-010` | builds 8 EQ bands (low shelf, peaks, high shelf) and applies the curve                 |
+| `WEB-DSP-011` | turning the EQ off flattens every stage without tearing the graph down                 |
+| `WEB-DSP-012` | the virtualizer widens stereo: full width is 2.5x, zero is untouched                   |
+| `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through                   |
+| `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                                     |
+| `WEB-DSP-015` | a suspended context is resumed on the next play                                        |
+| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                              |
+| `WEB-DSP-017` | the output ends in a hard limiter at -1 dB, normalization on or off                    |
 
 ## `test/unit/waveform.test.tsx`
 
@@ -527,21 +612,25 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-WAVE-003` | a guest keeps the full waveform; it is uploaded the next time the song shows, signed in |
 | `WEB-WAVE-004` | a real waveform from the backend is drawn as it is, and nothing is sampled              |
 | `WEB-WAVE-005` | device files keep their own waveform and never ask the backend                          |
+| `WEB-WAVE-006` | a bar is as tall as the music is loud, not as its loudest sample                        |
 
 ## `test/unit/favourites.test.tsx`
 
-| ID            | Use case                                                                           |
-| :------------ | :--------------------------------------------------------------------------------- |
-| `WEB-FAV-001` | the heart flips before the server answers                                          |
-| `WEB-FAV-002` | a failed save rolls the heart back to the server value and rethrows                |
-| `WEB-FAV-003` | a failed un-heart returns to the previous local choice, not the stale server value |
-| `WEB-FAV-004` | tells saved-listeners only after the server accepted the change                    |
-| `WEB-FAV-005` | without a local change, the server value is used as is                             |
-| `WEB-FAV-006` | every heart for the same song updates together                                     |
-| `WEB-FAV-007` | a guest is sent to sign up, and the heart is saved after signing in                |
-| `WEB-FAV-008` | a toggle that fails on the server shows the old state again                        |
-| `WEB-FAV-009` | no track id means not favourite and a no-op toggle                                 |
-| `WEB-FAV-010` | useFavouriteLookup re-renders lists when any heart changes                         |
+| ID            | Use case                                                                                        |
+| :------------ | :---------------------------------------------------------------------------------------------- |
+| `WEB-FAV-001` | the heart flips before the server answers                                                       |
+| `WEB-FAV-002` | a failed save rolls the heart back to the server value and rethrows                             |
+| `WEB-FAV-003` | a failed un-heart returns to the previous local choice, not the stale server value              |
+| `WEB-FAV-004` | tells saved-listeners only after the server accepted the change                                 |
+| `WEB-FAV-005` | without a local change, the server value is used as is                                          |
+| `WEB-FAV-006` | every heart for the same song updates together                                                  |
+| `WEB-FAV-007` | a guest is sent to sign up, and the heart is saved after signing in                             |
+| `WEB-FAV-008` | a toggle that fails on the server shows the old state again                                     |
+| `WEB-FAV-009` | no track id means not favourite and a no-op toggle                                              |
+| `WEB-FAV-010` | useFavouriteLookup re-renders lists when any heart changes                                      |
+| `WEB-FAV-011` | a song from search shows a filled heart when the account likes it                               |
+| `WEB-FAV-012` | un-hearting a liked song empties every heart for it; signing out forgets the list               |
+| `WEB-FAV-013` | a token refresh for the same account loads nothing again; a failed load keeps the old behaviour |
 
 ## `test/unit/hooks.test.tsx`
 
@@ -567,83 +656,94 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/lib.test.ts`
 
-| ID            | Use case                                                                                                        |
-| :------------ | :-------------------------------------------------------------------------------------------------------------- |
-| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ, server address or update check, and includes admin |
-| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour                              |
-| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                                          |
-| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                                  |
-| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                                       |
-| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                                           |
-| `WEB-LIB-007` | is online when either probe answers                                                                             |
-| `WEB-LIB-008` | is offline when both probes fail or time out                                                                    |
-| `WEB-LIB-009` | sends an error with its type, stack and page                                                                    |
-| `WEB-LIB-010` | turns strings and objects into readable messages                                                                |
-| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                                       |
-| `WEB-LIB-012` | sends nothing while offline                                                                                     |
-| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                                         |
-| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                                    |
-| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                                         |
+| ID            | Use case                                                                                        |
+| :------------ | :---------------------------------------------------------------------------------------------- |
+| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ or update check, and includes admin |
+| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour              |
+| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                          |
+| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                  |
+| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                       |
+| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                           |
+| `WEB-LIB-007` | is online when either probe answers                                                             |
+| `WEB-LIB-008` | is offline when both probes fail or time out                                                    |
+| `WEB-LIB-009` | sends an error with its type, stack and page                                                    |
+| `WEB-LIB-010` | turns strings and objects into readable messages                                                |
+| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                       |
+| `WEB-LIB-012` | sends nothing while offline                                                                     |
+| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                         |
+| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                    |
+| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                         |
+| `WEB-LIB-016` | turns GitHub's generated notes into headings and items without links or authors                 |
 
 ## `test/unit/player.test.ts`
 
-| ID               | Use case                                                                         |
-| :--------------- | :------------------------------------------------------------------------------- |
-| `WEB-PLAYER-001` | resolves a stream at the chosen quality, points the element at it and plays      |
-| `WEB-PLAYER-002` | keeps an absolute stream url as it is                                            |
-| `WEB-PLAYER-003` | reuses a fresh url for the same track, and re-resolves one about to expire       |
-| `WEB-PLAYER-004` | a slow answer for a track the user already skipped does not replace the new one  |
-| `WEB-PLAYER-005` | a stream that cannot be resolved surfaces the server message                     |
-| `WEB-PLAYER-006` | reports buffering between waiting and playing                                    |
-| `WEB-PLAYER-007` | flags a muxed (video) fallback stream                                            |
-| `WEB-PLAYER-008` | a media error re-resolves the url once without showing an error                  |
-| `WEB-PLAYER-009` | a second media error on the same track shows "Playback failed"                   |
-| `WEB-PLAYER-010` | retry fetches a fresh url and plays again, even after giving up                  |
-| `WEB-PLAYER-011` | a blocked autoplay asks the user to press play instead of reporting a failure    |
-| `WEB-PLAYER-012` | toggle plays when paused and pauses when playing; does nothing with no track     |
-| `WEB-PLAYER-013` | seek clamps to the track and waits for a known duration                          |
-| `WEB-PLAYER-014` | notifies ended-listeners when a track finishes                                   |
-| `WEB-PLAYER-015` | a playback listener gets the current state at once and stops after unsubscribing |
-| `WEB-PLAYER-016` | clamps, applies and remembers the volume                                         |
-| `WEB-PLAYER-017` | mute goes to 0 and unmute restores the previous level                            |
-| `WEB-PLAYER-018` | unmuting after muting by dragging to 0 goes back to full volume                  |
-| `WEB-PLAYER-019` | starts at the remembered volume; bad or out-of-range values fall back safely     |
+| ID               | Use case                                                                            |
+| :--------------- | :---------------------------------------------------------------------------------- |
+| `WEB-PLAYER-001` | resolves a stream at the chosen quality, points the element at it and plays         |
+| `WEB-PLAYER-002` | keeps an absolute stream url as it is                                               |
+| `WEB-PLAYER-003` | reuses a fresh url for the same track, and re-resolves one about to expire          |
+| `WEB-PLAYER-004` | a slow answer for a track the user already skipped does not replace the new one     |
+| `WEB-PLAYER-005` | a stream that cannot be resolved surfaces the server message                        |
+| `WEB-PLAYER-006` | reports buffering between waiting and playing                                       |
+| `WEB-PLAYER-007` | flags a muxed (video) fallback stream                                               |
+| `WEB-PLAYER-008` | a media error re-resolves the url once without showing an error                     |
+| `WEB-PLAYER-009` | a second media error on the same track shows "Playback failed"                      |
+| `WEB-PLAYER-010` | retry fetches a fresh url and plays again, even after giving up                     |
+| `WEB-PLAYER-011` | a blocked autoplay asks the user to press play instead of reporting a failure       |
+| `WEB-PLAYER-012` | toggle plays when paused and pauses when playing; does nothing with no track        |
+| `WEB-PLAYER-013` | seek clamps to the track and waits for a known duration                             |
+| `WEB-PLAYER-014` | notifies ended-listeners when a track finishes                                      |
+| `WEB-PLAYER-015` | a playback listener gets the current state at once and stops after unsubscribing    |
+| `WEB-PLAYER-016` | clamps, applies and remembers the volume                                            |
+| `WEB-PLAYER-017` | mute goes to 0 and unmute restores the previous level                               |
+| `WEB-PLAYER-018` | unmuting after muting by dragging to 0 goes back to full volume                     |
+| `WEB-PLAYER-019` | starts at the remembered volume; bad or out-of-range values fall back safely        |
+| `WEB-PLAYER-020` | gapless: the next song waits ready in a second element and starts as this one ends  |
+| `WEB-PLAYER-021` | with gapless and crossfade off, the next stream is looked up ahead and used         |
+| `WEB-PLAYER-022` | skipping to the prepared song takes it over without loading it again                |
+| `WEB-PLAYER-023` | a prepared song that is no longer next is dropped; one that fails loads at its turn |
 
 ## `test/unit/plays-sync.test.ts`
 
-| ID             | Use case                                                                           |
-| :------------- | :--------------------------------------------------------------------------------- |
-| `WEB-PLAY-001` | a guest listening records nothing                                                  |
-| `WEB-PLAY-002` | a long song counts after 30 seconds, not before                                    |
-| `WEB-PLAY-003` | a short song counts at half its length; an unknown length waits 30 seconds         |
-| `WEB-PLAY-004` | one listen counts once; a replay counts again                                      |
-| `WEB-PLAY-005` | local files are sent by fingerprint and server tracks by bare id                   |
-| `WEB-PLAY-006` | each account only uploads its own plays (plus untagged older ones)                 |
-| `WEB-PLAY-007` | removing uploaded plays keeps ones recorded meanwhile                              |
-| `WEB-PLAY-008` | unreadable stored plays are treated as none                                        |
-| `WEB-PLAY-009` | a play carries what the app knows about the song, for one the backend never saw    |
-| `WEB-SYNC-001` | a counted play uploads straight away in Online Mode and leaves the queue           |
-| `WEB-SYNC-002` | Offline Mode holds plays, and switching to Online uploads them and refreshes lists |
-| `WEB-SYNC-003` | with the network down nothing is sent; the online event sends it                   |
-| `WEB-SYNC-004` | a server error keeps the plays and retries with backoff                            |
-| `WEB-SYNC-005` | plays the server rejects outright (4xx) are dropped instead of retried forever     |
-| `WEB-SYNC-006` | an auth failure (401) keeps the plays for later                                    |
-| `WEB-SYNC-007` | plays counted during an upload go up in one follow-up request                      |
-| `WEB-SYNC-008` | useSyncStatus reports waiting plays for the signed-in account                      |
-| `WEB-SYNC-009` | signing in uploads what that account has waiting                                   |
+| ID             | Use case                                                                            |
+| :------------- | :---------------------------------------------------------------------------------- |
+| `WEB-PLAY-001` | a guest listening records nothing                                                   |
+| `WEB-PLAY-002` | a long song counts after 30 seconds, not before                                     |
+| `WEB-PLAY-003` | a short song counts at half its length; an unknown length waits 30 seconds          |
+| `WEB-PLAY-004` | one listen counts once; a replay counts again                                       |
+| `WEB-PLAY-005` | local files are sent by fingerprint and server tracks by bare id                    |
+| `WEB-PLAY-006` | each account only uploads its own plays (plus untagged older ones)                  |
+| `WEB-PLAY-007` | removing uploaded plays keeps ones recorded meanwhile                               |
+| `WEB-PLAY-008` | unreadable stored plays are treated as none                                         |
+| `WEB-PLAY-009` | a play carries what the app knows about the song, for one the backend never saw     |
+| `WEB-SYNC-001` | a counted play uploads straight away in Online Mode and leaves the queue            |
+| `WEB-SYNC-002` | Offline Mode holds plays, and switching to Online uploads them and refreshes lists  |
+| `WEB-SYNC-003` | with the network down nothing is sent; the online event sends it                    |
+| `WEB-SYNC-004` | a server error keeps the plays and retries with backoff                             |
+| `WEB-SYNC-005` | plays the server rejects outright (4xx) are dropped instead of retried forever      |
+| `WEB-SYNC-006` | an auth failure (401) keeps the plays for later                                     |
+| `WEB-SYNC-007` | plays counted during an upload go up in one follow-up request                       |
+| `WEB-SYNC-008` | useSyncStatus reports waiting plays for the signed-in account                       |
+| `WEB-SYNC-009` | signing in uploads what that account has waiting                                    |
+| `WEB-SYNC-010` | a long offline stretch uploads in batches of at most 100 plays                      |
+| `WEB-SYNC-011` | a refused batch is split: too large goes up in halves, only the bad play is dropped |
 
 ## `test/unit/settings.test.ts`
 
 | ID            | Use case                                                                      |
 | :------------ | :---------------------------------------------------------------------------- |
 | `WEB-SET-001` | starts from the documented defaults                                           |
-| `WEB-SET-002` | a guest change applies locally and is never sent                              |
+| `WEB-SET-002` | a guest change applies locally and sends nothing while signed out             |
 | `WEB-SET-003` | quick successive changes are sent once, with only the changed fields          |
 | `WEB-SET-004` | a failed save keeps the local value                                           |
 | `WEB-SET-005` | loading merges the account settings and drops values this build does not know |
 | `WEB-SET-006` | a guest does not ask for account settings, but signing in loads them          |
 | `WEB-SET-007` | a failed load is tried again on the next sign-in                              |
 | `WEB-SET-008` | useSettings re-renders with every change                                      |
+| `WEB-SET-009` | settings are kept on the device across restarts, for guests too               |
+| `WEB-SET-010` | a change made offline reaches the account when the network is back            |
+| `WEB-SET-011` | a guest's changes go to the account on sign-in and win over its copy          |
+| `WEB-SET-012` | changes waiting for one account are not sent to another                       |
 
 ## `test/unit/store.test.ts`
 
@@ -686,6 +786,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                           |
 | `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing              |
 | `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                            |
+| `WEB-TAG-022` | a Sonare download without tags names its artist and title, not its id              |
 
 ## `test/components/dialogs-select.test.tsx`
 
@@ -706,42 +807,38 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/library.test.tsx`
 
-| ID        | Use case                                                      |
-| --------- | ------------------------------------------------------------- |
-| `DSK-051` | folders open from the Songs tab only; there is no Folders tab |
-| `DSK-052` | an old ?view=folders link opens the Songs tab                 |
+| ID        | Use case                                                                                |
+| --------- | --------------------------------------------------------------------------------------- |
+| `DSK-051` | folders open from the Songs view only; the sidebar picks the view, so there are no tabs |
+| `DSK-052` | an old ?view=folders link opens the Songs tab                                           |
 
-## `test/desktop/output.test.tsx`
+## `test/desktop/relink.test.ts`
 
-| ID        | Use case                                                                         |
-| --------- | -------------------------------------------------------------------------------- |
-| `DSK-044` | lists the PulseAudio / PipeWire outputs with their kind                          |
-| `DSK-045` | choosing one moves only Sonare's own stream, and is remembered                   |
-| `DSK-046` | back to the system default sends the stream to the default sink                  |
-| `DSK-047` | the chosen output is applied again on start-up and whenever another track starts |
-| `DSK-048` | with the default output nothing is moved when tracks change                      |
-| `DSK-049` | without pactl only the system default is offered                                 |
-| `DSK-050` | the output button switches the speaker from the list                             |
+| ID               | Use case                                                                                          |
+| :--------------- | :------------------------------------------------------------------------------------------------ |
+| `WEB-RELINK-001` | idInFileName extracts the YouTube id from a file name and null for other files                    |
+| `WEB-RELINK-002` | a file named with the Sonare pattern gets serverId set in the index                               |
+| `WEB-RELINK-003` | localIdFor finds a relinked file so the player uses the local copy                                |
+| `WEB-RELINK-004` | an unchanged file keeps its serverId across a rescan without re-reading tags                      |
+| `WEB-RELINK-005` | downloadedEntries returns all files whose names embed a server id                                 |
+| `WEB-RELINK-006` | a file without a Sonare id in its name is not returned by downloadedEntries                       |
+| `WEB-RELINK-007` | a scan that finds a download the list forgot adds it to Downloads once, and a rescan adds nothing |
 
 ## `test/unit/devicePrefs.test.ts`
 
-| ID              | Use case                                                                       |
-| --------------- | ------------------------------------------------------------------------------ |
-| `WEB-PREFS-001` | start at the original lyrics and the system output, and restore what was saved |
-| `WEB-PREFS-002` | an unknown script or unreadable storage falls back to the defaults             |
-| `WEB-PREFS-003` | every script offered is one the server accepts                                 |
+| ID              | Use case                                                                  |
+| --------------- | ------------------------------------------------------------------------- |
+| `WEB-PREFS-001` | start at the original lyrics with Autoplay on, and restore what was saved |
+| `WEB-PREFS-002` | an unknown script or unreadable storage falls back to the defaults        |
+| `WEB-PREFS-003` | every script offered is one the server accepts                            |
 
-## `test/unit/output.test.tsx`
+## `test/unit/recentPlays.test.ts`
 
-| ID               | Use case                                                                                   |
-| ---------------- | ------------------------------------------------------------------------------------------ |
-| `WEB-OUTPUT-001` | without setSinkId there is nothing to choose, and no button                                |
-| `WEB-OUTPUT-002` | lists the output devices after the system default, with their kind                         |
-| `WEB-OUTPUT-003` | choosing a device routes the element, then the graph once it exists, and is remembered     |
-| `WEB-OUTPUT-004` | the output button lists the devices, marks the current one, and switches                   |
-| `WEB-OUTPUT-005` | a remembered device that is gone reads as the system default                               |
-| `WEB-OUTPUT-006` | the Now Playing card opens the same list and switches the device                           |
-| `WEB-OUTPUT-007` | before a media permission the blank placeholder output is the default, not a second device |
+| ID               | Use case                                                              |
+| ---------------- | --------------------------------------------------------------------- |
+| `WEB-RECENT-001` | starts empty and keeps the newest play first                          |
+| `WEB-RECENT-002` | a repeat moves the song back to the front instead of listing it twice |
+| `WEB-RECENT-003` | keeps the last 50, reads them back, and ignores unreadable storage    |
 
 ## `test/unit/sharedCatalog/catalog.test.ts`
 
@@ -859,9 +956,41 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-059` | loadCachedConfig and setAppConfig sync config with Neutralino storage and re-create catalog on client change |
 | `DSK-060` | streamCache downloads stream via curl with Range: bytes=0- into .part file and renames on success            |
 | `DSK-061` | streamCache deduplicates concurrent in-flight downloads for the same video and itag                          |
-| `DSK-062` | streamCache evicts oldest accessed files when total size exceeds 500 MB limit                                |
+| `DSK-062` | streamCache evicts oldest accessed files when total size exceeds 300 MB limit                                |
 | `DSK-063` | streamCache detects deleted files on disk and removes them from the cached index                             |
+| `DSK-078` | streamCache reports how much it holds, and clear empties it from disk                                        |
+| `DSK-079` | on Linux an in-app song starts from the first part of its download and grows to the whole file               |
+| `DSK-080` | runCommand gathers output and exit code, also from events sent before spawnProcess answers                   |
 | `DSK-064` | player downloads direct YouTube stream into streamCache and decodes via Web Audio on Linux                   |
 | `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
 | `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |
 | `DSK-067` | api catalog methods query inApp catalog first and fall back to backend endpoints on failure                  |
+
+## `test/app/restore.test.tsx`
+
+| ID                | Use case                                                                     |
+| :---------------- | :--------------------------------------------------------------------------- |
+| `WEB-RESTORE-001` | a saved queue comes back paused at its song and position; Play resumes there |
+| `WEB-RESTORE-002` | seeking a restored song before Play moves where it resumes                   |
+| `WEB-RESTORE-003` | the queue, its song and the modes are saved on the device as they change     |
+| `WEB-RESTORE-004` | signed in, a newer queue from another device replaces this one's             |
+| `WEB-RESTORE-005` | a queue from the account arriving after something was played changes nothing |
+| `WEB-RESTORE-006` | an account queue older than the device's changes nothing                     |
+| `WEB-MEDIA-001`   | lock-screen and media-key controls drive the player and show the song        |
+
+## `test/unit/serverWake.test.tsx`
+
+| ID             | Use case                                                                                     |
+| :------------- | :------------------------------------------------------------------------------------------- |
+| `WEB-WAKE-001` | a slow first request says the server is waking up until it answers                           |
+| `WEB-WAKE-002` | a slow request to an awake server says nothing; after a long quiet spell it does again       |
+| `WEB-WAKE-003` | a backend request that never answers gives up with a clear error; a caller's abort passes on |
+| `WEB-WAKE-004` | the notice shows while the server wakes up and goes away after                               |
+
+## `test/screens/account.test.tsx`
+
+| ID             | Use case                                                                             |
+| :------------- | :----------------------------------------------------------------------------------- |
+| `WEB-ACCT-001` | saves a new name to the account                                                      |
+| `WEB-ACCT-002` | changes the password: a wrong one is refused, then this device keeps a fresh session |
+| `WEB-ACCT-003` | deleting needs the password and a confirmation, then carries on as a guest           |

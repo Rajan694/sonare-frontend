@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '../../store/playerContext';
 import * as player from '../../audio/player';
+import { getPlaybackPosition } from '../../store/playbackPosition';
 
 const SEEK_STEP_MS = 5000;
 const VOLUME_STEP = 0.05;
@@ -67,12 +68,13 @@ export const usePlayerShortcuts = () => {
       if (!focusFromKeyboard && e.target instanceof HTMLElement && e.target !== document.body) e.target.blur();
 
       if (e.key === ' ') {
-        if (!e.repeat) player.toggle();
+        // Through the store: the first Play of a restored queue loads it where it was left.
+        if (!e.repeat) latest.current.togglePlay();
       } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
         const step = e.key === 'ArrowUp' ? VOLUME_STEP : -VOLUME_STEP;
         player.setVolume(Math.round((player.getVolume() + step) * 100) / 100);
       } else {
-        const { currentTrack, next, skipToPrevious } = latest.current;
+        const { currentTrack, next, skipToPrevious, seek } = latest.current;
         if (!currentTrack) return;
         const forward = e.key === 'ArrowRight';
         // Holding the key repeats the seek; only two separate presses count as a double press.
@@ -83,7 +85,7 @@ export const usePlayerShortcuts = () => {
           if (forward) next();
           else skipToPrevious();
         } else {
-          player.seek(player.getStatus().positionMs + (forward ? SEEK_STEP_MS : -SEEK_STEP_MS));
+          seek(getPlaybackPosition() + (forward ? SEEK_STEP_MS : -SEEK_STEP_MS));
         }
       }
     };

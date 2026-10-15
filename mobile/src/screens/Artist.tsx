@@ -16,6 +16,7 @@ import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import { requireAccount } from '../data/accountGate';
 import { useAuthStore } from '../data/auth';
+import { playShuffled } from '../lib/playShuffled';
 import Icon from '../components/ui/Icon';
 
 export const ArtistScreen = () => {
@@ -26,13 +27,12 @@ export const ArtistScreen = () => {
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
   const shuffle = usePlayerStore((state) => state.shuffle);
-  const toggleShuffle = usePlayerStore((state) => state.toggleShuffle);
 
   // Following is per account, so re-read it when someone signs in or out.
   const userId = useAuthStore((state) => state.user?.id);
   const artist = useAsync(() => api.artist(id), [id, userId]);
   const from = artist.data ? { kind: 'Artist', name: artist.data.name } : undefined;
-  const top = useAsync(() => api.artistTopTracks(id, 20), [id]);
+  const top = useAsync(() => api.artistTopTracks(id, 5), [id]);
   const albums = useAsync(() => api.artistAlbums(id), [id]);
   const tracks = top.data?.items ?? [];
   const info = artist.data;
@@ -48,9 +48,7 @@ export const ArtistScreen = () => {
     });
 
   const shufflePlay = () => {
-    if (!tracks.length) return;
-    if (!shuffle) toggleShuffle();
-    playTrack(tracks[Math.floor(Math.random() * tracks.length)], tracks, from);
+    playShuffled(tracks, from);
   };
 
   const isCurrentArtistPlaying = isPlaying && currentTrack && tracks.some((t) => t.id === currentTrack.id);
@@ -78,9 +76,7 @@ export const ArtistScreen = () => {
               <Artwork uri={artworkUrl(info, 300)} size={132} rings className="rounded-full mb-3 shadow-e4" />
               <View className="items-center gap-1 mb-3">
                 <Text className="text-h1 font-semibold text-t1 text-center">{info?.name ?? ' '}</Text>
-                {info?.monthlyListeners ? (
-                  <Text className="text-t3 text-bs">{info.monthlyListeners.toLocaleString()} monthly listeners</Text>
-                ) : info?.albumCount ? (
+                {info?.albumCount ? (
                   <Text className="text-t3 text-bs">
                     {info.albumCount} {info.albumCount === 1 ? 'album' : 'albums'}
                   </Text>

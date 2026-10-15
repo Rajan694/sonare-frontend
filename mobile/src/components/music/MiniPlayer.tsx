@@ -14,6 +14,7 @@ import Icon from '../ui/Icon';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDownloadsStore } from '../../store/downloads';
+import { requireAccount } from '../../data/accountGate';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated';
 import { springs } from '../../lib/motion';
 
@@ -25,6 +26,7 @@ export const MiniPlayer = () => {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const error = usePlayerStore((state) => state.error);
   const playNext = usePlayerStore((state) => state.playNext);
   const favourite = useLibraryStore((s) => (currentTrack ? !!s.favouriteIds[currentTrack.id] : false));
   const toggleFavourite = useLibraryStore((s) => s.toggleFavourite);
@@ -117,15 +119,24 @@ export const MiniPlayer = () => {
             }
             size={32}
             onPress={() => {
-              if (currentTrack) toggleFavourite(currentTrack).catch(() => {});
+              if (!currentTrack) return;
+              requireAccount('Create a free account to save songs you love.', () =>
+                toggleFavourite(currentTrack).catch(() => {}),
+              );
             }}
             accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
           />
           <IconButton
-            icon={<Icon name={isPlaying ? 'pause' : 'play'} size={20} color="#FFFFFF" />}
+            icon={
+              error ? (
+                <Icon name="refresh" size={20} color="#FF4D5E" />
+              ) : (
+                <Icon name={isPlaying ? 'pause' : 'play'} size={20} color="#FFFFFF" />
+              )
+            }
             size={40}
-            onPress={() => setIsPlaying(!isPlaying)}
-            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+            onPress={() => (error ? usePlayerStore.getState().retry() : setIsPlaying(!isPlaying))}
+            accessibilityLabel={error ? 'Retry' : isPlaying ? 'Pause' : 'Play'}
           />
           <IconButton
             icon={<Icon name="skip-forward" size={18} color="#FFFFFF" />}

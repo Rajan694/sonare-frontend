@@ -144,10 +144,13 @@ describe('settings', () => {
     expect(nav).not.toContain('Connection mode');
     expect(nav).not.toContain('Library & scanning');
     // The phone layout stacks every section on one page.
-    for (const title of ['Account', 'Playback', 'Downloads', 'Audio & effects', 'Appearance', 'About']) {
+    for (const title of ['Account', 'Playback', 'Downloads', 'Audio & effects', 'About']) {
       expect(phone.getByText(title, { selector: '.text-overline' })).toBeInTheDocument();
     }
     expect(phone.queryByText('Connection mode')).not.toBeInTheDocument();
+    // Sonare is dark only: there is nothing to choose.
+    expect(phone.queryByText('Appearance')).not.toBeInTheDocument();
+    expect(nav).not.toContain('Appearance');
   });
 
   it('WEB-SETTINGS-004 playback: streaming quality and the two switches change the settings', async () => {
@@ -218,7 +221,7 @@ describe('settings', () => {
     expect(w.getByRole('button', { name: 'Change' })).toBeInTheDocument();
   });
 
-  it("WEB-SETTINGS-011 audio: the lyrics language is chosen per device; no output row where it can't switch", async () => {
+  it('WEB-SETTINGS-011 audio: the lyrics language is chosen per device; there is no output row', async () => {
     const { user, w } = openSettings('/settings?section=audio');
     expect(w.getByRole('button', { name: 'Lyrics language' })).toHaveTextContent('Original (as released)');
     await user.click(w.getByRole('button', { name: 'Lyrics language' }));
@@ -349,18 +352,42 @@ describe('downloads page', () => {
 });
 
 describe('email verification in settings', () => {
-  it('WEB-SETTINGS-010 an unverified user can resend the link; verified users see no prompt', async () => {
+  it('WEB-SETTINGS-010 an unverified user verifies with the emailed code or sends a new one; verified users see no prompt', async () => {
     setSession('acc', 'ref', { ...testUser, emailVerified: false });
     const rec = recordRequests();
-    server.use(http.post(`${API}/auth/resend-verification`, () => HttpResponse.json({ ok: true })));
+    let typed: unknown;
+    server.use(
+      http.post(`${API}/auth/resend-verification`, () => HttpResponse.json({ ok: true })),
+      http.post(`${API}/auth/verify-email-code`, async ({ request }) => {
+        typed = ((await request.json()) as { code: string }).code;
+        return typed === '123456'
+          ? HttpResponse.json({ ok: true })
+          : HttpResponse.json({ error: { code: 'INVALID_CODE', message: "That code isn't right." } }, { status: 400 });
+      }),
+    );
     const { user, w, unmount } = openSettings();
     expect(w.getByText('Email not verified')).toBeInTheDocument();
-    await user.click(w.getByRole('button', { name: 'Resend link' }));
-    await waitFor(() =>
-      expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Verification email sent' })),
-    );
+    await user.click(w.getByRole('button', { name: 'Send a new code' }));
+    expect(await w.findByText(/A new code is on its way/)).toBeInTheDocument();
+
+    const field = w.getByRole('textbox', { name: 'Verification code' });
+    const verify = w.getByRole('button', { name: 'Verify' });
+    expect(verify).toBeDisabled();
+    await user.type(field, '654321');
+    await user.click(verify);
+    expect(await w.findByRole('alert')).toHaveTextContent("That code isn't right.");
+    await user.clear(field);
+    await user.type(field, '123 456');
+    await user.click(w.getByRole('button', { name: 'Verify' }));
+    await waitFor(() => expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Email verified' })));
+    expect(typed).toBe('123456');
+    await waitFor(() => expect(w.queryByText('Email not verified')).not.toBeInTheDocument());
     rec.stop();
-    expect(sent(rec)).toEqual(['POST /auth/resend-verification']);
+    expect(sent(rec)).toEqual([
+      'POST /auth/resend-verification',
+      'POST /auth/verify-email-code',
+      'POST /auth/verify-email-code',
+    ]);
     unmount();
 
     setSession('acc', 'ref', { ...testUser, emailVerified: true });

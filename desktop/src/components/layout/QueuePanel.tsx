@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useModeStore } from '../../store/modeContext';
 import { usePlayerStore } from '../../store/playerContext';
@@ -6,7 +6,7 @@ import { usePlaybackPosition } from '../../store/playbackPosition';
 import { showToast } from '../../store/toasts';
 import { api } from '../../api/api';
 import { requireAccount } from '../../api/accountGate';
-import { promptDialog } from '../../store/dialogs';
+import { nextQueuePlaylistName } from '../../../../shared/player/playlistNames';
 import { notifyPlaylistsChanged } from '../../api/hooks';
 import { localLibrary, playsFrom, useLocalLibrary } from '../../storage/local';
 import { IconButton } from '../ui/Button';
@@ -15,6 +15,7 @@ import { SourceGlyph } from '../ui/SourceGlyph';
 import Artwork, { trackArtwork } from '../music/Artwork';
 import { cn } from '../../lib/cn';
 import { formatDuration } from '../../lib/format';
+import { useVirtualRows } from '../../lib/useVirtualRows';
 
 interface QueuePanelProps {
   onClose: () => void;
@@ -26,7 +27,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
   const { mode } = useModeStore();
   const {
     state,
-    setState,
+    playAt,
     currentTrack,
     durationMs,
     isPlaying,
@@ -45,12 +46,16 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dropAt, setDropAt] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  // Only the upcoming rows in view are drawn; the queue can be long.
+  const listRef = useRef<HTMLDivElement>(null);
 
   const rows = state.queue
     .map((track, index) => ({ track, index }))
     .filter((r) => !isOffline || !!localLibrary.localIdFor(r.track.id));
   const upcoming = rows.filter((r) => r.index > state.index);
   const serverCount = rows.filter((r) => r.track.source === 'server').length;
+
+  const virtual = useVirtualRows({ count: upcoming.length, rowHeight: 48, gap: 2, scrollRef: listRef });
 
   const effectiveDurationMs = durationMs || currentTrack?.durationMs || 1;
   const remainingMs = Math.max(0, effectiveDurationMs - positionMs);
@@ -62,15 +67,10 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
   };
 
   const saveQueue = async () => {
-    const name = await promptDialog({
-      title: 'Save queue as playlist',
-      label: 'Name',
-      initialValue: 'My queue',
-      confirmLabel: 'Save',
-    });
-    if (!name) return;
     setSaving(true);
     try {
+      const existing = await api.getMyPlaylists();
+      const name = nextQueuePlaylistName(existing.items.map((p) => p.name));
       const playlist = await api.createPlaylist({ name, kind: 'synced' });
       await api.addTracksToPlaylist(
         playlist.id,
@@ -124,7 +124,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
       </div>
 
       {/* Content */}
-      <div className="flex flex-col grow p-4 gap-3.5 overflow-y-auto">
+      <div className="flex flex-col grow min-h-0 p-4 gap-3.5 overflow-hidden">
         {/* Badge & count summary */}
         <div className="flex items-center gap-2 flex-none">
           <span
@@ -205,59 +205,61 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
             No upcoming songs in queue
           </div>
         ) : (
-          <div className="flex flex-col gap-0.5">
-            {upcoming.map(({ track, index }) => (
-              <div
-                key={`${track.id}-${index}`}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = 'move';
-                  setDragFrom(index);
-                }}
-                onDragOver={(e) => {
-                  if (dragFrom === null) return;
-                  e.preventDefault();
-                  setDropAt(index);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  onDrop(index);
-                }}
-                onDragEnd={() => {
-                  setDragFrom(null);
-                  setDropAt(null);
-                }}
-                className={cn(
-                  'srow p-1.5 sm:px-2 gap-2 rounded-md hover:bg-s2 transition-colors cursor-pointer group',
-                  dragFrom === index && 'opacity-40',
-                  dropAt === index && dragFrom !== index && 'border-t-2 border-acc',
-                )}
-                onClick={() => setState({ index })}
-              >
-                <span className="flex-none text-t4 cursor-grab hover:text-t2 p-1" aria-hidden>
-                  <Icon name="menu" size={14} />
-                </span>
-                <Artwork src={trackArtwork(track, 64)} alt={track.title} variant="a2" size={36} radius="sm" />
-                <div className="flex flex-col grow gap-0.5 min-w-0">
-                  <span className="flex items-center gap-1.5 min-w-0">
-                    <span className="text-label-l text-t1 truncate">{track.title}</span>
-                    <SourceGlyph source={playsFrom(track, local)} />
-                  </span>
-                  <span className="text-label-s text-t3 truncate">{track.artist}</span>
-                </div>
-                <span className="text-mono-s text-t3 flex-none">{formatDuration(track.durationMs)}</span>
-                <IconButton
-                  icon="close"
-                  label="Remove from queue"
-                  size={28}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFromQueue(index);
+          <div ref={listRef} className="flex flex-col gap-0.5 overflow-y-auto grow min-h-0">
+            <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
+              {upcoming.slice(virtual.start, virtual.end).map(({ track, index }) => (
+                <div
+                  key={`${track.id}-${index}`}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.effectAllowed = 'move';
+                    setDragFrom(index);
                   }}
-                  className="opacity-70 group-hover:opacity-100 flex-none"
-                />
-              </div>
-            ))}
+                  onDragOver={(e) => {
+                    if (dragFrom === null) return;
+                    e.preventDefault();
+                    setDropAt(index);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    onDrop(index);
+                  }}
+                  onDragEnd={() => {
+                    setDragFrom(null);
+                    setDropAt(null);
+                  }}
+                  className={cn(
+                    'srow p-1.5 sm:px-2 gap-2 rounded-md hover:bg-s2 transition-colors cursor-pointer group',
+                    dragFrom === index && 'opacity-40',
+                    dropAt === index && dragFrom !== index && 'border-t-2 border-acc',
+                  )}
+                  onClick={() => playAt(index)}
+                >
+                  <span className="flex-none text-t4 cursor-grab hover:text-t2 p-1" aria-hidden>
+                    <Icon name="menu" size={14} />
+                  </span>
+                  <Artwork src={trackArtwork(track, 64)} alt={track.title} variant="a2" size={36} radius="sm" />
+                  <div className="flex flex-col grow gap-0.5 min-w-0">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-label-l text-t1 truncate">{track.title}</span>
+                      <SourceGlyph source={playsFrom(track, local)} />
+                    </span>
+                    <span className="text-label-s text-t3 truncate">{track.artist}</span>
+                  </div>
+                  <span className="text-mono-s text-t3 flex-none">{formatDuration(track.durationMs)}</span>
+                  <IconButton
+                    icon="close"
+                    label="Remove from queue"
+                    size={28}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromQueue(index);
+                    }}
+                    className="opacity-70 group-hover:opacity-100 flex-none"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -1,8 +1,9 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * Preferences that belong to this device rather than the account: which speaker to play
- * on, and the script lyrics are shown in. Kept in localStorage.
+ * Preferences that belong to this device rather than the account: the script lyrics are
+ * shown in, and whether similar songs play when the queue ends. Kept in localStorage. Sonare
+ * plays on the system's audio output.
  */
 
 export type LyricsScript =
@@ -23,12 +24,12 @@ export const LYRICS_SCRIPTS: { value: LyricsScript; label: string }[] = [
 
 export interface DevicePrefs {
   lyricsScript: LyricsScript;
-  /** An output device id from enumerateDevices / pactl; empty is the system default. */
-  audioOutputId: string;
+  /** When the queue runs out, similar songs keep playing (shared/player/autoplay.ts). */
+  autoplaySimilar: boolean;
 }
 
 const KEY = 'sonare_device_prefs';
-const DEFAULTS: DevicePrefs = { lyricsScript: 'original', audioOutputId: '' };
+const DEFAULTS: DevicePrefs = { lyricsScript: 'original', autoplaySimilar: true };
 
 const read = (): DevicePrefs => {
   try {
@@ -37,7 +38,10 @@ const read = (): DevicePrefs => {
     const lyricsScript = LYRICS_SCRIPTS.some((s) => s.value === saved.lyricsScript)
       ? (saved.lyricsScript as LyricsScript)
       : DEFAULTS.lyricsScript;
-    return { ...DEFAULTS, ...saved, lyricsScript };
+    const autoplaySimilar =
+      typeof saved.autoplaySimilar === 'boolean' ? saved.autoplaySimilar : DEFAULTS.autoplaySimilar;
+    // Only known keys: an output device saved by an older version is dropped.
+    return { lyricsScript, autoplaySimilar };
   } catch {
     return DEFAULTS;
   }

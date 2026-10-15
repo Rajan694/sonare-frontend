@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, Dimensions, StyleSheet, Modal } from 'react-native';
+import { View, Pressable, Dimensions, StyleSheet, Modal, KeyboardAvoidingView } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { springs } from '../../lib/motion';
 import { GestureHandlerRootView, PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
@@ -82,12 +82,16 @@ export const Sheet = ({ visible, onClose, children }: SheetProps) => {
             <Pressable className="flex-1 bg-black" onPress={onClose} accessibilityLabel="Close" />
           </BackdropComponent>
 
-          <PanGestureHandler onGestureEvent={onGestureEvent as any} onEnded={onGestureEnd as any}>
-            <SheetComponent style={sheetStyle} className="bg-s1 rounded-t-3xl pt-2 pb-8 border-t border-ln mt-24">
-              <View className="w-12 h-1 bg-ln3 rounded-full self-center mb-6" />
-              {children}
-            </SheetComponent>
-          </PanGestureHandler>
+          {/* Rises above the keyboard when one of its fields is focused (the Modal draws
+              edge-to-edge, so the window doesn't resize for it). */}
+          <KeyboardAvoidingView behavior="padding">
+            <PanGestureHandler onGestureEvent={onGestureEvent as any} onEnded={onGestureEnd as any}>
+              <SheetComponent style={sheetStyle} className="bg-s1 rounded-t-3xl pt-2 pb-8 border-t border-ln mt-24">
+                <View className="w-12 h-1 bg-ln3 rounded-full self-center mb-6" />
+                {children}
+              </SheetComponent>
+            </PanGestureHandler>
+          </KeyboardAvoidingView>
         </View>
       </GestureHandlerRootView>
     </Modal>

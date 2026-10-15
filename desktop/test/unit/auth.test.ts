@@ -149,12 +149,78 @@ describe('session restore and refresh', () => {
     expect(rec.seen).toHaveLength(0);
   });
 
-  it('WEB-AUTH-013 a refresh that cannot reach the server signs out', async () => {
+  it('WEB-AUTH-013 a refresh that fails for any reason but a refused token keeps the session', async () => {
     const auth = await freshAuth();
     auth.setSession('acc', 'ref', testUser);
     server.use(http.post(`${API}/auth/refresh`, () => HttpResponse.error()));
     await expect(auth.refreshAccessToken()).resolves.toBeNull();
+    for (const status of [429, 500, 503]) {
+      server.use(http.post(`${API}/auth/refresh`, () => apiError(status, 'X')));
+      await expect(auth.refreshAccessToken()).resolves.toBeNull();
+    }
+    expect(auth.getCurrentUser()).toEqual(testUser);
+    expect(auth.getRefreshToken()).toBe('ref');
+    expect(localStorage.getItem('sonare_refresh_token')).toBe('ref');
+  });
+
+  it('WEB-AUTH-023 a refused refresh token signs out', async () => {
+    const auth = await freshAuth();
+    auth.setSession('acc', 'ref', testUser);
+    server.use(http.post(`${API}/auth/refresh`, () => apiError(401, 'UNAUTHORIZED')));
+    await expect(auth.refreshAccessToken()).resolves.toBeNull();
     expect(auth.getCurrentUser()).toBeNull();
+    expect(localStorage.getItem('sonare_refresh_token')).toBeNull();
+  });
+
+  it('WEB-AUTH-024 tokens another tab renewed are used instead of spending the old refresh token', async () => {
+    const auth = await freshAuth();
+    auth.setSession('acc', 'ref', testUser);
+    // The other tab renewed: storage holds the new pair, this tab still has the old one.
+    localStorage.setItem('sonare_access_token', 'acc-2');
+    localStorage.setItem('sonare_refresh_token', 'ref-2');
+    const rec = recordRequests();
+    await expect(auth.refreshAccessToken()).resolves.toBe('acc-2');
+    rec.stop();
+    expect(rec.seen).toHaveLength(0);
+    expect(auth.getRefreshToken()).toBe('ref-2');
+    expect(auth.getCurrentUser()).toEqual(testUser);
+  });
+
+  it('WEB-AUTH-025 losing the refresh race to another tab keeps the session the other tab saved', async () => {
+    const auth = await freshAuth();
+    auth.setSession('acc', 'ref', testUser);
+    server.use(
+      http.post(`${API}/auth/refresh`, () => {
+        // The other tab spent `ref` first and saved its new pair.
+        localStorage.setItem('sonare_access_token', 'acc-2');
+        localStorage.setItem('sonare_refresh_token', 'ref-2');
+        return apiError(401, 'UNAUTHORIZED');
+      }),
+    );
+    await expect(auth.refreshAccessToken()).resolves.toBe('acc-2');
+    expect(auth.getCurrentUser()).toEqual(testUser);
+    expect(localStorage.getItem('sonare_refresh_token')).toBe('ref-2');
+  });
+
+  it('WEB-AUTH-026 signing out or in another tab applies here', async () => {
+    const auth = await freshAuth();
+    auth.setSession('acc', 'ref', testUser);
+    const seen: unknown[] = [];
+    auth.onAuthChange((u) => seen.push(u));
+    localStorage.clear();
+    window.dispatchEvent(new StorageEvent('storage', { key: null, storageArea: localStorage }));
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(seen).toEqual([null]);
+
+    const other = { ...testUser, id: 'u-other' };
+    localStorage.setItem('sonare_access_token', 'acc-9');
+    localStorage.setItem('sonare_refresh_token', 'ref-9');
+    localStorage.setItem('sonare_user', JSON.stringify(other));
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'sonare_refresh_token', newValue: 'ref-9', storageArea: localStorage }),
+    );
+    expect(auth.getAccessToken()).toBe('acc-9');
+    expect(auth.getCurrentUser()).toEqual(other);
   });
 });
 

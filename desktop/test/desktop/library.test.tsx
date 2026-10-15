@@ -18,16 +18,16 @@ import Library from '../../src/screens/Library';
 beforeEach(() => resetFs());
 
 describe('library (desktop window)', () => {
-  it('DSK-051 folders open from the Songs tab only; there is no Folders tab', async () => {
-    const { user } = renderWithProviders(<Library />, { route: '/library', mode: 'offline' });
+  it('DSK-051 folders open from the Songs view only; the sidebar picks the view, so there are no tabs', () => {
+    const songs = renderWithProviders(<Library />, { route: '/library', mode: 'offline' });
     expect(screen.getByRole('link', { name: 'Folders' })).toHaveAttribute('href', '/folders');
-    expect(screen.queryByRole('button', { name: 'Folders' })).not.toBeInTheDocument();
-    for (const tab of ['Albums', 'Artists', 'Genres']) {
-      await user.click(screen.getByRole('button', { name: tab }));
+    expect(screen.queryByRole('button', { name: 'Albums' })).not.toBeInTheDocument();
+    songs.unmount();
+    for (const view of ['albums', 'artists', 'genres']) {
+      const other = renderWithProviders(<Library />, { route: `/library?view=${view}`, mode: 'offline' });
       expect(screen.queryByRole('link', { name: 'Folders' })).not.toBeInTheDocument();
+      other.unmount();
     }
-    await user.click(screen.getByRole('button', { name: 'Songs' }));
-    expect(screen.getByRole('link', { name: 'Folders' })).toBeInTheDocument();
   });
 
   it('DSK-052 an old ?view=folders link opens the Songs tab', () => {

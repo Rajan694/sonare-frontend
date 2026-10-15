@@ -38,23 +38,23 @@ afterEach(() => {
 });
 
 describe('home', () => {
-  it('WEB-HOME-001 a guest is welcomed, invited to create an account, and sees trending music', async () => {
+  it('WEB-HOME-001 a guest gets trending tiles and cards', async () => {
     const player = makePlayer();
     const { user } = renderWithProviders(<Home />, { player });
     expect(screen.getByText('Welcome back')).toBeInTheDocument();
     expect(screen.getByText("You're listening as a guest")).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signin');
-    // The top song shows as a quick tile, a trending card and a table row.
-    expect(await screen.findAllByRole('button', { name: 'Play Hit 0' })).toHaveLength(3);
+    // No history: the first six songs are quick tiles, the shelf picks up from the seventh.
+    expect(await screen.findAllByRole('button', { name: 'Play Hit 0' })).toHaveLength(1);
+    expect(await screen.findByRole('button', { name: 'Play Hit 6' })).toBeInTheDocument();
     expect(screen.getByText('Trending locally this week')).toBeInTheDocument();
-    // The table lists the top 10 only.
-    const rows = screen.getAllByRole('row');
-    expect(rows).toHaveLength(10);
+    // "Most played" is a signed-in table; a guest gets no table at all.
+    expect(screen.queryByText('Most played')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Play trending' }));
     expect(player.playTrack).toHaveBeenCalledWith(trending[0], trending);
   });
 
-  it('WEB-HOME-002 a signed-in user is greeted by name and sees their recently played, without duplicates', async () => {
+  it('WEB-HOME-002 a signed-in user is greeted by name and gets their recent plays as tiles, without duplicates', async () => {
     setSession('a', 'r', testUser);
     const again = makeTrack({ id: 'yt:again', title: 'On repeat' });
     const rec = recordRequests();
@@ -66,8 +66,12 @@ describe('home', () => {
     renderWithProviders(<Home />);
     expect(screen.getByText('Welcome back, Test Listener')).toBeInTheDocument();
     expect(screen.queryByText("You're listening as a guest")).not.toBeInTheDocument();
-    expect(await screen.findByText('Recently played')).toBeInTheDocument();
+    // A repeat is stored once: one tile. With six or fewer plays the tiles hold them all, so
+    // there is no "Recently played" shelf repeating them.
+    expect(await screen.findByRole('button', { name: 'Play On repeat' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Play On repeat' })).toHaveLength(1);
+    expect(screen.getByRole('button', { name: 'Play Once' })).toBeInTheDocument();
+    expect(screen.queryByText('Recently played')).not.toBeInTheDocument();
     rec.stop();
     expect(rec.paths()).toContain('GET /me/recently-played?limit=10');
   });
@@ -103,7 +107,7 @@ describe('home', () => {
     expect(screen.getByText('Recently played')).toBeInTheDocument();
     failing = false;
     await user.click(screen.getByRole('button', { name: 'Try again' }));
-    expect(await screen.findByRole('button', { name: 'Play Back again' })).toBeInTheDocument();
+    expect(await screen.findAllByRole('button', { name: 'Play Back again' })).not.toHaveLength(0);
     expect(screen.queryByText('Could not load recently played')).not.toBeInTheDocument();
   });
 
@@ -115,20 +119,27 @@ describe('home', () => {
     expect(screen.queryByRole('button', { name: 'Play trending' })).not.toBeInTheDocument();
   });
 
-  it('WEB-HOME-005 playing a table row plays it within the trending list', async () => {
+  it('WEB-HOME-005 a trending shelf card plays within the trending list', async () => {
     const player = makePlayer();
     const { user } = renderWithProviders(<Home />, { player });
-    const row = (await screen.findAllByRole('row'))[2];
-    await user.click(within(row).getByRole('button', { name: 'Play Hit 2' }));
-    expect(player.playTrack).toHaveBeenLastCalledWith(trending[2], trending);
+    // The seventh song is past the six tiles, so it is a shelf card and nothing else.
+    const card = await screen.findByRole('button', { name: 'Play Hit 6' });
+    await user.click(card);
+    expect(player.playTrack).toHaveBeenLastCalledWith(trending[6], trending);
   });
 
   it('WEB-HOME-006 "See all" shows the full trending shelf', async () => {
-    const { user, container } = renderWithProviders(<Home />);
-    await waitFor(() => expect(container.querySelectorAll('.acard').length).toBe(10));
-    const seeAll = screen.getAllByRole('button', { name: /See all/ })[0];
-    await user.click(seeAll);
-    await waitFor(() => expect(container.querySelectorAll('.acard').length).toBe(12));
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/recently-played`, () =>
+        HttpResponse.json(page([makeTrack({ id: 'yt:back', title: 'Back again' })])),
+      ),
+    );
+    const { user } = renderWithProviders(<Home />);
+    // Tiles come from the play history, so the whole chart is in the shelf (capped at 10).
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Play Hit/ })).toHaveLength(10));
+    await user.click(screen.getByRole('button', { name: /See all/ }));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: /^Play Hit/ })).toHaveLength(12));
     expect(screen.getByRole('button', { name: /Show less/ })).toBeInTheDocument();
   });
 });
@@ -163,14 +174,15 @@ describe('search', () => {
     expect(store.getState().search.query).toBe('Qawwali');
   });
 
-  it('WEB-SEARCH-002 shows a top result, songs and artists, with a result count', async () => {
+  it('WEB-SEARCH-002 shows a top result and songs, with a result count', async () => {
     server.use(http.get(`${API}/search`, () => HttpResponse.json(page(results))));
     search('android');
     expect(await screen.findByText('Top result')).toBeInTheDocument();
     expect(screen.getByText('Song · Radiohead · OK Computer')).toBeInTheDocument();
     expect(screen.getByText('Server + device · 2 results')).toBeInTheDocument();
     expect(screen.getAllByRole('row')).toHaveLength(2);
-    expect(screen.getAllByText('Artist')).toHaveLength(2);
+    // Track-shaped hits never masquerade as a second kind, so those sections stay away.
+    expect(screen.queryByText('Artists', { selector: '.text-overline' })).not.toBeInTheDocument();
   });
 
   it('WEB-SEARCH-003 the top result plays within the results', async () => {
@@ -179,7 +191,7 @@ describe('search', () => {
     const { user } = search('android', '/search', player);
     const card = (await screen.findByText('Top result')).parentElement!;
     await user.click(within(card).getByRole('button', { name: 'Play Paranoid Android' }));
-    expect(player.playTrack).toHaveBeenCalledWith(results[0], results);
+    expect(player.playTrack).toHaveBeenCalledWith(results[0], results, { kind: 'Search', name: '“android”' });
   });
 
   it('WEB-SEARCH-004 the chips search albums, artists and playlists and link to them', async () => {
@@ -282,30 +294,28 @@ describe('search', () => {
     expect(screen.getByRole('button', { name: 'Add Paranoid Android to playlist' })).toBeEnabled();
   });
 
-  it("WEB-SEARCH-011 the Artists row shows each song's artist once, with their picture and page", async () => {
+  it('WEB-SEARCH-011 the All tab shows artists from their own search, with a picture and page', async () => {
     server.use(
-      http.get(`${API}/search`, () =>
-        HttpResponse.json(
-          page([
-            makeTrack({ id: 'yt:1', title: 'Tum Hi Ho', artist: 'Arijit Singh', artistId: 'yt:UCarijit' }),
-            makeTrack({ id: 'yt:2', title: 'Channa Mereya', artist: 'Arijit Singh', artistId: 'yt:UCarijit' }),
-            makeTrack({ id: 'yt:3', title: 'Lover', artist: 'Diljit Dosanjh', artistId: 'yt:UCdiljit' }),
-            // Piped couldn't tell the channel: shown, but with no page to open.
-            makeTrack({ id: 'yt:4', title: 'Mystery', artist: 'Nobody Known', artistId: 'yt:unknown' }),
-          ]),
-        ),
-      ),
+      http.get(`${API}/search`, ({ request }) => {
+        const type = new URL(request.url).searchParams.get('type');
+        if (type === 'artists')
+          return HttpResponse.json(
+            page([
+              makeArtist({ id: 'yt:UCarijit', name: 'Arijit Singh' }),
+              makeArtist({ id: 'yt:UCdiljit', name: 'Diljit Dosanjh' }),
+            ]),
+          );
+        return HttpResponse.json(page(results));
+      }),
     );
     search('tum');
-    const row = (await screen.findByText('Artists', { selector: '.text-overline' })).parentElement!;
-    const arijit = within(row).getByRole('link', { name: /Arijit Singh/ });
+    const arijit = await screen.findByRole('link', { name: /Arijit Singh/ });
     expect(arijit).toHaveAttribute('href', '/artist/yt:UCarijit');
     expect(within(arijit).getByRole('img', { name: 'Arijit Singh' }).getAttribute('src')).toContain(
       '/api/v1/artists/yt:UCarijit/artwork',
     );
-    expect(within(row).getByRole('link', { name: /Diljit Dosanjh/ })).toHaveAttribute('href', '/artist/yt:UCdiljit');
-    expect(within(row).getAllByText('Arijit Singh')).toHaveLength(1);
-    expect(within(row).getByText('Nobody Known')).toBeInTheDocument();
-    expect(within(row).queryByRole('link', { name: /Nobody Known/ })).not.toBeInTheDocument();
+    expect(await screen.findByRole('link', { name: /Diljit Dosanjh/ })).toHaveAttribute('href', '/artist/yt:UCdiljit');
+    // The section offers the full list.
+    expect(screen.getByRole('button', { name: 'See all artists' })).toBeInTheDocument();
   });
 });

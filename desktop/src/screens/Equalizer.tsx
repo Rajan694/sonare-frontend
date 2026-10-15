@@ -3,10 +3,7 @@ import { useModeStore } from '../store/modeContext';
 import Icon from '../components/ui/Icon';
 import { Switch } from '../components/ui/Switch';
 import { Slider } from '../components/ui/Slider';
-import { Badge } from '../components/ui/ChipBadge';
 import { Select } from '../components/ui/Select';
-import { OutputCard } from '../components/music/OutputPicker';
-import { outputSupport } from '../audio/output';
 import { cn } from '../lib/cn';
 import {
   useDsp,
@@ -80,7 +77,7 @@ const Equalizer = () => {
         )}
       </div>
 
-      {/* Main Grid: EQ card (left) + Settings Toggles & Output card (right) */}
+      {/* Main Grid: EQ card (left) + Settings Toggles (right) */}
       <div className="grid grid-cols-1 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-start">
         {/* Left Column: Graphic EQ + Bass Boost & Virtualizer */}
         <div className="surf p-4 @sm:p-6 flex flex-col gap-6 w-full overflow-hidden">
@@ -158,17 +155,35 @@ const Equalizer = () => {
           </div>
         </div>
 
-        {/* Right Column: Audio Options & Output */}
+        {/* Right Column: Audio Options */}
         <div className="flex flex-col gap-5 w-full">
           {/* Toggles list */}
           <div className="surf flex flex-col divide-y divide-ln">
+            <label className="lrow cursor-pointer flex items-center justify-between p-4">
+              <span className="icobox">
+                <Icon name="sync" size={16} />
+              </span>
+              <span className="flex flex-col grow min-w-0 pr-2">
+                <span className="text-body-m font-medium text-t1 truncate">Crossfade</span>
+                <span className="text-body-s text-t3 truncate">6 seconds between tracks</span>
+              </span>
+              <Switch
+                variant={variant}
+                checked={dsp.crossfade}
+                onCheckedChange={(crossfade) => setDsp({ crossfade })}
+                aria-label="Toggle crossfade"
+              />
+            </label>
+
             <label className="lrow cursor-pointer flex items-center justify-between p-4">
               <span className="icobox">
                 <Icon name="music" size={16} />
               </span>
               <span className="flex flex-col grow min-w-0 pr-2">
                 <span className="text-body-m font-medium text-t1 truncate">Gapless playback</span>
-                <span className="text-body-s text-t3 truncate">Seamless album transitions</span>
+                <span className="text-body-s text-t3 truncate">
+                  {dsp.crossfade ? 'No crossfade between tracks of one album' : 'Seamless album transitions'}
+                </span>
               </span>
               <Switch
                 variant={variant}
@@ -211,25 +226,6 @@ const Equalizer = () => {
                 onChange={(speed) => setDsp({ speed })}
               />
             </div>
-          </div>
-
-          {/* Output Device */}
-          <div className="surf flex flex-col gap-3 p-5">
-            <span className="text-overline text-t3 font-semibold uppercase tracking-wider">Audio output</span>
-            {outputSupport() !== 'none' ? (
-              <OutputCard className="w-full max-w-none" />
-            ) : (
-              <div className="flex items-center gap-3 p-2 rounded-lg bg-s2/50 border border-ln">
-                <span className={cn('icobox', isOffline ? 'icobox-gold' : 'icobox-acc')}>
-                  <Icon name="volume" size={16} />
-                </span>
-                <div className="flex flex-col min-w-0 grow">
-                  <span className="text-body-m font-medium text-t1 truncate">System default output</span>
-                  <span className="text-body-s text-t3 truncate">Active · EQ applies here</span>
-                </div>
-                <Badge variant={isOffline ? 'local' : 'cloud'}>Active</Badge>
-              </div>
-            )}
           </div>
         </div>
       </div>

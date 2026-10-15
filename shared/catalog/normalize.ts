@@ -1,10 +1,33 @@
-// Normalizers - port of backend/src/normalize/index.ts
-// Maps Piped JSON to Sonare API shapes (shared/apiTypes).
+// Normalizers: Piped JSON to Sonare API shapes (shared/apiTypes). The backend uses a copy of
+// this file (scripts/sync-shared-catalog.mjs in the root repo), so both always agree.
 
 import type { Channel, ChannelTabItem, Playlist, StreamItem, Streams } from './pipedTypes.js';
 import type { Track, Album, Artist } from '../apiTypes.js';
 import { idHelpers } from './ids.js';
 import { directImageUrl, trackThumbUrl } from './images.js';
+
+/**
+ * Where artwork urls point. The apps use the CDN directly; the backend points at its own
+ * artwork routes (which also remember album covers), and sets that with setCatalogImages.
+ * `ytid` is the item's `yt:` id (`yt:unknown` when it had none); `raw` the url Piped gave.
+ */
+export interface CatalogImages {
+  track: (videoId: string) => string;
+  artist: (ytid: string, raw: string | undefined) => string | undefined;
+  album: (ytid: string, raw: string | undefined) => string | undefined;
+}
+
+const directImages: CatalogImages = {
+  track: trackThumbUrl,
+  artist: (_ytid, raw) => (raw ? directImageUrl(raw) : undefined),
+  album: (_ytid, raw) => (raw ? directImageUrl(raw) : undefined),
+};
+
+let images: CatalogImages = directImages;
+
+export const setCatalogImages = (impl: CatalogImages): void => {
+  images = impl;
+};
 
 export interface UserTrackFields {
   playCount?: number;
@@ -77,7 +100,7 @@ export const normalizeStreamToTrack = (
       codec: codecStr ? mapCodec(codecStr) : null,
       bitrateKbps: bitrate ? Math.floor(bitrate / 1000) : null,
       bitDepth: undefined,
-      thumbnail: trackThumbUrl(videoId),
+      thumbnail: images.track(videoId),
     },
     userFields,
   );
@@ -107,7 +130,7 @@ export const normalizeStreamItemToTrack = (
       codec: null,
       bitrateKbps: null,
       bitDepth: undefined,
-      thumbnail: trackThumbUrl(id),
+      thumbnail: images.track(id),
     },
     userFields,
   );
@@ -126,7 +149,7 @@ export const normalizeStreamItemToArtist = (item: StreamItem): Artist & { thumbn
     localTrackCount: 0,
     following: false,
     monthlyListeners: sanitizeCount(item.views) ?? sanitizeCount(item.subscriberCount),
-    thumbnail: rawThumb ? directImageUrl(rawThumb) : undefined,
+    thumbnail: images.artist(ytid, rawThumb),
   };
 };
 
@@ -143,7 +166,7 @@ export const normalizeStreamItemToAlbum = (item: StreamItem): Album & { thumbnai
     genre: null,
     source: 'server' as const,
     downloaded: false,
-    thumbnail: item.thumbnail ? directImageUrl(item.thumbnail) : undefined,
+    thumbnail: images.album(ytid, item.thumbnail),
   };
 };
 
@@ -161,7 +184,7 @@ export const normalizeChannelTabAlbum = (item: ChannelTabItem): Album & { thumbn
     genre: null,
     source: 'server' as const,
     downloaded: false,
-    thumbnail: thumb ? directImageUrl(thumb) : undefined,
+    thumbnail: images.album(ytid, thumb),
   };
 };
 
@@ -177,7 +200,7 @@ export const normalizeChannelToArtist = (
     localTrackCount: 0,
     following: false,
     monthlyListeners: sanitizeCount(channel.subscriberCount),
-    thumbnail: channel.avatarUrl ? directImageUrl(channel.avatarUrl) : undefined,
+    thumbnail: images.artist(ytid, channel.avatarUrl),
   };
 };
 
@@ -216,6 +239,6 @@ export const normalizePlaylistToAlbum = (
     genre: null,
     source: 'server' as const,
     downloaded: false,
-    thumbnail: playlist.thumbnailUrl ? directImageUrl(playlist.thumbnailUrl) : undefined,
+    thumbnail: images.album(ytid, playlist.thumbnailUrl),
   };
 };
