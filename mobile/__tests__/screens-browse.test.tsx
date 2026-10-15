@@ -178,7 +178,7 @@ describe('Search', () => {
     fireEvent.changeText(getByLabelText('Search all music'), '  paranoid ');
     expect(await findByText(/· 1 results/)).toBeTruthy();
     expect(search).toHaveBeenCalledTimes(1);
-    expect(search).toHaveBeenCalledWith('paranoid', 'all');
+    expect(search).toHaveBeenCalledWith('paranoid', 'all', undefined);
     // Shown as the top result and again in the song list.
     expect(getByText('Top result')).toBeTruthy();
     expect(getAllByText('Radiohead · OK Computer')).toHaveLength(2);
@@ -226,7 +226,7 @@ describe('Search', () => {
     fireEvent.press(getByLabelText('Radiohead'));
     expect(nav.navigate).toHaveBeenCalledWith('Artist', { id: 'yt:rh' });
     fireEvent.press(getByLabelText('Albums'));
-    await waitFor(() => expect(search).toHaveBeenLastCalledWith('radiohead', 'albums'));
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('radiohead', 'albums', undefined));
   });
 
   it('MOB-SEARCH-006 the Genres chip shows the categories, and a category searches for its query', async () => {
@@ -237,13 +237,13 @@ describe('Search', () => {
     ]);
     const { getByLabelText, getByText, findByLabelText } = render(<SearchScreen />);
     fireEvent.changeText(getByLabelText('Search all music'), 'lofi');
-    await waitFor(() => expect(search).toHaveBeenLastCalledWith('lofi', 'all'));
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('lofi', 'all', undefined));
     // The server has no genre search: the chip shows categories instead of searching again.
     fireEvent.press(getByText('Genres'));
     expect(getByText('Browse categories')).toBeTruthy();
     fireEvent.press(await findByLabelText('Browse Sufi'));
     expect(getByLabelText('Search all music').props.value).toBe('sufi songs');
-    await waitFor(() => expect(search).toHaveBeenLastCalledWith('sufi songs', 'all'));
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('sufi songs', 'all', undefined));
     expect(search).toHaveBeenCalledTimes(2);
   });
 
@@ -251,7 +251,7 @@ describe('Search', () => {
     const search = stub('search', async () => page([]));
     route.params = { q: 'bhojpuri songs' };
     const { getByLabelText } = render(<SearchScreen />);
-    await waitFor(() => expect(search).toHaveBeenLastCalledWith('bhojpuri songs', 'all'));
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('bhojpuri songs', 'all', undefined));
     expect(getByLabelText('Search all music').props.value).toBe('bhojpuri songs');
     expect(nav.setParams).toHaveBeenCalledWith({ q: undefined });
   });
@@ -281,7 +281,7 @@ describe('Search', () => {
     expect(suggestions).toHaveBeenCalledWith('arijit');
     expect(getByLabelText('Search all music').props.value).toBe('arijit live');
     expect(queryByLabelText('Search suggestions')).toBeNull();
-    await waitFor(() => expect(search).toHaveBeenLastCalledWith('arijit live', 'all'));
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('arijit live', 'all', undefined));
   });
 
   it("MOB-SEARCH-005 offline, the phone's songs are searched and the server is never asked", async () => {
@@ -419,7 +419,7 @@ describe('Search', () => {
     // Tapping one fills the field, searches, and moves it to the front.
     fireEvent.press(getByLabelText('Search for kendrick'));
     expect(getByLabelText('Search all music').props.value).toBe('kendrick');
-    await waitFor(() => expect(search).toHaveBeenLastCalledWith('kendrick', 'all'));
+    await waitFor(() => expect(search).toHaveBeenLastCalledWith('kendrick', 'all', undefined));
     expect(useRecentSearchesStore.getState().searches).toEqual(['kendrick', 'radiohead']);
     // Submitting a new query remembers it, trimmed.
     fireEvent.changeText(getByLabelText('Search all music'), '  new query  ');
@@ -573,12 +573,12 @@ describe('Playlists', () => {
     expect(del).toHaveBeenCalledWith('sonare:gym');
   });
 
-  it('MOB-PLS-005 offline, playlists wait for Online Mode', () => {
+  it('MOB-PLS-005 offline, a playlist this phone never saved is not listed', () => {
     useModeStore.setState({ mode: 'offline' });
     signIn();
     useLibraryStore.setState({ playlists: [makePlaylist({ name: 'Gym' })] });
     const { getByText, queryByLabelText } = render(<PlaylistsScreen />);
-    expect(getByText('Playlists sync from the Sonare server — switch back to Online.')).toBeTruthy();
+    expect(getByText('No playlists on this phone. Go online to load your playlists.')).toBeTruthy();
     expect(queryByLabelText('Gym')).toBeNull();
   });
 });

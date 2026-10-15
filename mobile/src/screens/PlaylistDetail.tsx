@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, FlatList, Pressable, Alert } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNetInfo } from '@react-native-community/netinfo';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
 import { IconButton } from '../components/ui/IconButton';
@@ -15,13 +16,17 @@ import { Field } from '../components/ui/Field';
 import { Artwork } from '../components/music/Artwork';
 import { Ambient } from '../components/music/Ambient';
 import { StateView } from '../components/ui/StateView';
+import { LoadMore } from '../components/ui/LoadMore';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { useModeStore } from '../store/mode';
+import { usePhoneTracks } from '../store/localMusic';
+import { playablePlaylistTracks, useOfflinePlaylistsStore } from '../store/offlinePlaylists';
 import { playlistMeta } from '../../../shared/catalog/meta';
 import { api, isOwnPlaylist } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
+import { usePagedList } from '../hooks/usePagedList';
 import { useSavedAlbum } from '../data/savedAlbums';
 import { songCount } from '../lib/format';
 import { playShuffled } from '../lib/playShuffled';
@@ -35,7 +40,12 @@ export const PlaylistDetailScreen = () => {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
   const own = isOwnPlaylist(id);
-  const online = useModeStore((state) => state.mode) === 'online';
+  // Online means Online Mode *and* a network: either one being down shows what this phone saved.
+  const net = useNetInfo();
+  const modeOnline = useModeStore((state) => state.mode) === 'online';
+  const online = modeOnline && !!net.isConnected && net.isInternetReachable !== false;
+  // An own playlist still works offline, from the copy this phone saved.
+  const offlineOwn = own && !online;
   const playTrack = usePlayerStore((state) => state.playTrack);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -48,28 +58,45 @@ export const PlaylistDetailScreen = () => {
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
-  const playlist = useAsync(() => (own ? api.myPlaylist(id) : api.playlist(id)), [id], { refetchOnFocus: own });
+  // Offline, an own playlist is what this phone saved the last time it was online.
+  const savedPlaylists = useOfflinePlaylistsStore((state) => state.playlists);
+  const savedTracks = useOfflinePlaylistsStore((state) => state.tracks);
+  const phoneTracks = usePhoneTracks();
+  const offline = useMemo(
+    () => playablePlaylistTracks(offlineOwn ? (savedTracks[id] ?? []) : [], phoneTracks),
+    [offlineOwn, savedTracks, id, phoneTracks],
+  );
+  // "2 songs need the internet", but "1 song needs the internet".
+  const needsInternet = `${songCount(offline.hidden)} ${offline.hidden === 1 ? 'needs' : 'need'} the internet`;
+
+  const playlist = useAsync(() => api.myPlaylist(id), [id], { enabled: own && online, refetchOnFocus: true });
+  const publicPlaylist = useAsync(() => api.playlist(id), [id], { enabled: !own });
+  const info =
+    playlist.data ?? publicPlaylist.data ?? (offlineOwn ? savedPlaylists.find((p) => p.id === id) : undefined);
   // YouTube playlists are saved to the library the same way albums are.
   const { isSaved, toggle: toggleSaved } = useSavedAlbum(
     id,
     'Create a free account to save playlists you love.',
-    playlist.data && !own ? playlistMeta(playlist.data) : undefined,
+    info && !own ? playlistMeta(info) : undefined,
   );
-  const from = playlist.data ? { kind: 'Playlist', name: playlist.data.name } : undefined;
-  const tracksQuery = useAsync(() => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)), [id], {
-    refetchOnFocus: own,
-  });
+  const from = info ? { kind: 'Playlist', name: info.name } : undefined;
+  const tracksQuery = useAsync(() => api.myPlaylistTracks(id), [id], { enabled: own && online, refetchOnFocus: true });
+  const pagedTracks = usePagedList<Track>((cursor) => api.playlistTracks(id, cursor), [id], { enabled: !own });
   const playlistItems = tracksQuery.data?.items;
   // An own playlist is edited on the phone first (remove / reorder), seeded from the query.
   const [entries, setEntries] = useState<Track[]>([]);
   useEffect(() => {
     if (playlistItems) setEntries(playlistItems);
   }, [playlistItems]);
+  // The songs just loaded are kept for Offline Mode.
+  useEffect(() => {
+    if (own && online && playlistItems) useOfflinePlaylistsStore.getState().rememberTracks(id, playlistItems);
+  }, [own, online, id, playlistItems]);
   // A drag on a row turns the list's own scrolling off, so the drag can't scroll it.
   const [dragging, setDragging] = useState(false);
-  const allTracks = own ? entries : (playlistItems ?? []);
-  const tracks = allTracks.filter((t) => t.source === 'server');
-  const info = playlist.data;
+  const allTracks = own ? (offlineOwn ? offline.playable : entries) : pagedTracks.items;
+  // Offline the phone's own copies play; a stream needs the server.
+  const tracks = offlineOwn ? allTracks : allTracks.filter((t) => t.source === 'server');
 
   const totalDurationMs = tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0);
   const durationMinutes = Math.round(totalDurationMs / 60000);
@@ -186,7 +213,7 @@ export const PlaylistDetailScreen = () => {
                 Add songs
               </Button>
             )}
-            {own && (
+            {own && online && (
               <IconButton
                 icon={<Icon name="more" size={20} color="#FFFFFF" />}
                 onPress={() => setMenuOpen(true)}
@@ -199,7 +226,7 @@ export const PlaylistDetailScreen = () => {
 
       <FlatList
         data={tracks}
-        scrollEnabled={!(own && dragging)}
+        scrollEnabled={!dragging}
         keyExtractor={(item, index) => item.entryId ?? `${item.id}:${index}`}
         ListHeaderComponent={
           <View>
@@ -296,10 +323,15 @@ export const PlaylistDetailScreen = () => {
                 </Pressable>
               </View>
             </View>
+
+            {/* With nothing playable, the empty state already says it. */}
+            {offlineOwn && offline.playable.length > 0 && offline.hidden > 0 && (
+              <Text className="text-t3 text-bs px-5 pb-3">{needsInternet}</Text>
+            )}
           </View>
         }
         renderItem={({ item, index }) =>
-          own ? (
+          own && !offlineOwn ? (
             <OwnRow
               track={item}
               index={index}
@@ -321,11 +353,27 @@ export const PlaylistDetailScreen = () => {
         }
         ListEmptyComponent={
           <StateView
-            loading={tracksQuery.loading && !tracksQuery.data}
-            error={tracksQuery.error}
-            onRetry={tracksQuery.refetch}
-            empty={own ? 'This playlist is empty. Tap Add songs to find some.' : 'No playable songs in this playlist.'}
+            // Own playlists come whole from one call; a YouTube playlist arrives page by page.
+            loading={own ? tracksQuery.loading && !tracksQuery.data : pagedTracks.loading}
+            error={own ? tracksQuery.error : pagedTracks.error}
+            onRetry={own ? tracksQuery.refetch : pagedTracks.refetch}
+            empty={
+              own
+                ? offlineOwn
+                  ? "None of this playlist's songs are on this phone."
+                  : 'This playlist is empty. Tap Add songs to find some.'
+                : 'No playable songs in this playlist.'
+            }
           />
+        }
+        ListFooterComponent={
+          !own && pagedTracks.hasMore ? (
+            <LoadMore
+              loading={pagedTracks.loadingMore}
+              failed={!!pagedTracks.loadMoreError}
+              onPress={pagedTracks.loadMore}
+            />
+          ) : undefined
         }
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 160 }}
       />

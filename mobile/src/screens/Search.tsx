@@ -13,6 +13,7 @@ import { Button } from '../components/ui/Button';
 import { SongRow } from '../components/music/SongRow';
 import { Artwork } from '../components/music/Artwork';
 import { StateView } from '../components/ui/StateView';
+import { LoadMore } from '../components/ui/LoadMore';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
@@ -21,6 +22,7 @@ import { useRecentSearchesStore } from '../store/recentSearches';
 import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
+import { usePagedList } from '../hooks/usePagedList';
 import type { SearchItem, Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 import { DEFAULT_GENRES, GenreCard, genreQuery, type Genre } from '../components/music/GenreCard';
@@ -229,7 +231,7 @@ export const SearchScreen = () => {
     setQuery(genreQuery(g));
     setFilter('all');
   };
-  const results = useAsync(() => api.search(q, toSearchType(filter)), [q, filter], {
+  const results = usePagedList<SearchItem>((cursor) => api.search(q, toSearchType(filter), cursor), [q, filter], {
     // Waits for the debounce to catch up, so switching chips mid-typing doesn't search a stale query.
     enabled: online && q.length > 0 && q === typed && filter !== 'genres',
   });
@@ -257,7 +259,7 @@ export const SearchScreen = () => {
   };
   const pickSuggestion = (s: string) => runSearch(s);
 
-  const items = q ? (results.data?.items ?? []) : [];
+  const items = q ? results.items : [];
   const tracks = items.filter((i): i is TrackHit => i.kind === 'track');
   const artists = items.filter((i): i is ArtistHit => i.kind === 'artist');
   // The Albums and Playlists chips ask the server for that type, so a playlist hit that comes back
@@ -268,6 +270,8 @@ export const SearchScreen = () => {
   const firstAlbum: SearchItem | undefined = albumItems[0];
   const firstItem: SearchItem | undefined = items[0];
   const topResult = pickTopResult(firstAlbum, firstItem);
+  // The All tab previews five songs; a chip shows every song loaded so far.
+  const listedTracks = filter === 'all' ? tracks.slice(0, 5) : tracks;
 
   // The songs on the phone (downloads and music folders), searched with the same query while offline.
   const deviceTracks = usePhoneTracks();
@@ -510,7 +514,7 @@ export const SearchScreen = () => {
                       </Pressable>
                     </View>
                     <View className="-mx-2.5 gap-0.5">
-                      {tracks.slice(0, 5).map((item, index) => (
+                      {listedTracks.map((item, index) => (
                         <SongRow
                           key={item.id}
                           track={item}
@@ -606,6 +610,11 @@ export const SearchScreen = () => {
                       })}
                     </View>
                   </View>
+                )}
+
+                {/* Offline search has no pages; a chip's list can ask for the next one. */}
+                {filter !== 'all' && results.hasMore && (
+                  <LoadMore loading={results.loadingMore} failed={!!results.loadMoreError} onPress={results.loadMore} />
                 )}
               </>
             )}

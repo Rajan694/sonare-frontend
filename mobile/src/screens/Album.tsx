@@ -11,12 +11,15 @@ import { DownloadAllButton } from '../components/music/DownloadAllButton';
 import { Badge } from '../components/ui/Badge';
 import { IconButton } from '../components/ui/IconButton';
 import { StateView } from '../components/ui/StateView';
+import { LoadMore } from '../components/ui/LoadMore';
 import { usePlayerStore } from '../store/player';
 import { albumMeta } from '../../../shared/catalog/meta';
 import { api } from '../data/api';
 import { useSavedAlbum } from '../data/savedAlbums';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
+import { usePagedList } from '../hooks/usePagedList';
+import type { Track } from '../data/types';
 import { songCount } from '../lib/format';
 import { playShuffled } from '../lib/playShuffled';
 import Icon from '../components/ui/Icon';
@@ -33,8 +36,8 @@ export const AlbumScreen = () => {
 
   const album = useAsync(() => api.album(id), [id]);
   const from = album.data ? { kind: 'Album', name: album.data.title } : undefined;
-  const tracksQuery = useAsync(() => api.albumTracks(id), [id]);
-  const tracks = tracksQuery.data?.items ?? [];
+  const tracksQuery = usePagedList<Track>((cursor) => api.albumTracks(id, cursor), [id]);
+  const tracks = tracksQuery.items;
   const info = album.data;
 
   const { isSaved: favourite, toggle: toggleFavourite } = useSavedAlbum(
@@ -191,6 +194,15 @@ export const AlbumScreen = () => {
             onRetry={tracksQuery.refetch}
             empty="No songs found for this album."
           />
+        }
+        ListFooterComponent={
+          tracksQuery.hasMore ? (
+            <LoadMore
+              loading={tracksQuery.loadingMore}
+              failed={!!tracksQuery.loadMoreError}
+              onPress={tracksQuery.loadMore}
+            />
+          ) : undefined
         }
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 160 }}
       />

@@ -198,7 +198,7 @@ navigation mock live in `test-utils/`.
 | `MOB-PLS-002`    | lists the user's playlists with their kind; tapping one opens it                       |
 | `MOB-PLS-003`    | creating a playlist names it and opens it                                              |
 | `MOB-PLS-004`    | deleting from a playlist's options asks first                                          |
-| `MOB-PLS-005`    | offline, playlists wait for Online Mode                                                |
+| `MOB-PLS-005`    | offline, a playlist this phone never saved is not listed                               |
 | `MOB-PL-001`     | the user's own playlist shows its length and plays from the start                      |
 | `MOB-PL-002`     | a public playlist has no owner options                                                 |
 | `MOB-PL-003`     | deleting the playlist from its options leaves the page once it is gone                 |
@@ -507,3 +507,43 @@ navigation mock live in `test-utils/`.
 | :------------- | :--------------------------------------------------------------------------------------- |
 | `MOB-AUTO-001` | the queue's last song asks once for similar songs and adds the new ones, which play next |
 | `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                |
+
+## `__tests__/paging.test.tsx`
+
+| ID             | Use case                                                                     |
+| :------------- | :--------------------------------------------------------------------------- |
+| `MOB-PAGE-001` | the first page loads, loadMore appends the next and drops ids already listed |
+| `MOB-PAGE-002` | a reply for older deps is dropped                                            |
+| `MOB-PAGE-003` | a failed loadMore is reported, keeps the songs loaded, and can be retried    |
+| `MOB-PAGE-004` | a chip list shows Load more and appends the next page                        |
+| `MOB-PAGE-005` | the All view keeps five songs and no Load more                               |
+| `MOB-PAGE-006` | a new query starts again from page 1                                         |
+| `MOB-PAGE-007` | a failed Load more says so, and Try again loads the page                     |
+| `MOB-PAGE-008` | the album list loads the next page, and Play uses every loaded song          |
+| `MOB-PAGE-009` | a YouTube playlist loads the next page under the songs                       |
+| `MOB-PAGE-010` | offline search has no Load more and never asks the server                    |
+| `MOB-PAGE-011` | a YouTube playlist that fails to load says why, and Try again loads it       |
+| `MOB-PAGE-012` | a YouTube playlist shows a spinner while its first page is on the way        |
+
+## `__tests__/offline-playlists.test.tsx`
+
+| ID             | Use case                                                                                       |
+| :------------- | :--------------------------------------------------------------------------------------------- |
+| `MOB-OFPL-001` | keeps the playlist list and its songs on the phone, keyed to this user, and reads them back    |
+| `MOB-OFPL-002` | signed out, or another user, sees nothing                                                      |
+| `MOB-OFPL-003` | reads a playlist again when its updatedAt moved, one at a time, and unchanged ones never again |
+| `MOB-OFPL-004` | a playlist that left the list takes its saved songs with it                                    |
+| `MOB-OFPL-005` | keeps the songs an own playlist screen just loaded                                             |
+| `MOB-OFPL-006` | the playlists screen lists the saved playlists with what plays on the phone, empty ones dimmed |
+| `MOB-OFPL-007` | an own playlist offline shows only what plays, and says how many need the internet             |
+| `MOB-OFPL-008` | offline an own playlist has no drag handles, no remove and no Add songs                        |
+| `MOB-OFPL-009` | playing offline uses the downloaded copy, and the queue skips the rest                         |
+| `MOB-OFPL-010` | a song in a music folder counts and plays too                                                  |
+| `MOB-OFPL-011` | an own playlist with nothing on the phone says so, without the need-the-internet line          |
+| `MOB-OFPL-012` | one missing song reads "1 song needs the internet"                                             |
+
+## `__tests__/queue-virtual.test.tsx`
+
+| ID              | Use case                                                 |
+| :-------------- | :------------------------------------------------------- |
+| `MOB-QVIRT-001` | a 2,000-song queue mounts a screenful of rows, not 2,000 |
