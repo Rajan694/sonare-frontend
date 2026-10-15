@@ -1,7 +1,6 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { View, ScrollView, Pressable } from 'react-native';
-import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
-import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/ui/Text';
 import { useNavigation } from '@react-navigation/native';
@@ -10,6 +9,8 @@ import { Header } from '../components/layout/Header';
 import { Artwork } from '../components/music/Artwork';
 import { Ambient } from '../components/music/Ambient';
 import { SourceGlyph } from '../components/music/SourceGlyph';
+import { DragHandle } from '../components/music/DragHandle';
+import { useRowDrag } from '../hooks/useRowDrag';
 import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { useModeStore } from '../store/mode';
@@ -17,7 +18,7 @@ import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { api } from '../data/api';
 import { requireAccount } from '../data/accountGate';
-import { AnimatedView, springs } from '../lib/motion';
+import { AnimatedView } from '../lib/motion';
 import { formatDuration, songCount } from '../lib/format';
 import { artworkUrl } from '../data/config';
 import { cn } from '../lib/cn';
@@ -271,29 +272,7 @@ const QueueRow = ({
   onRemove: () => void;
   onMove: (by: number) => void;
 }) => {
-  const dragY = useSharedValue(0);
-  // The end event carries no translation, so the last update's is kept here.
-  const lastY = useRef(0);
-  const [dragging, setDragging] = useState(false);
-  const pan = usePanGesture({
-    runOnJS: true,
-    disableReanimated: true,
-    minDistance: 0,
-    onBegin: () => {
-      lastY.current = 0;
-      setDragging(true);
-    },
-    onUpdate: (e) => {
-      lastY.current = e.translationY;
-      dragY.value = e.translationY;
-    },
-    onFinalize: () => {
-      setDragging(false);
-      dragY.value = withSpring(0, springs.slide);
-      onMove(Math.round(lastY.current / ROW_HEIGHT));
-    },
-  });
-  const style = useAnimatedStyle(() => ({ transform: [{ translateY: dragY.value }] }));
+  const { gesture, style, dragging } = useRowDrag(ROW_HEIGHT, onMove);
 
   return (
     <Animated.View style={[style, dragging && { zIndex: 10 }]}>
@@ -322,18 +301,7 @@ const QueueRow = ({
           onPress={onRemove}
           accessibilityLabel={`Remove ${track.title} from the queue`}
         />
-        <GestureDetector gesture={pan}>
-          <View
-            className="w-8 h-11 items-center justify-center"
-            accessible
-            accessibilityRole="adjustable"
-            accessibilityLabel={`Reorder ${track.title}`}
-            accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-            onAccessibilityAction={(e) => onMove(e.nativeEvent.actionName === 'increment' ? 1 : -1)}
-          >
-            <Icon name="drag" size={16} color="#5A5A66" />
-          </View>
-        </GestureDetector>
+        <DragHandle gesture={gesture} accessibilityLabel={`Reorder ${track.title}`} onMove={onMove} />
       </Pressable>
     </Animated.View>
   );

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, ScrollView, Pressable, Keyboard } from 'react-native';
+import { View, ScrollView, Pressable, Keyboard, Alert } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useNetInfo } from '@react-native-community/netinfo';
@@ -15,6 +15,7 @@ import { Artwork } from '../components/music/Artwork';
 import { StateView } from '../components/ui/StateView';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
+import { useLibraryStore } from '../store/library';
 import { usePhoneTracks } from '../store/localMusic';
 import { useRecentSearchesStore } from '../store/recentSearches';
 import { api } from '../data/api';
@@ -158,6 +159,9 @@ export const SearchScreen = () => {
   // A genre opened elsewhere (Library → Genres) arrives as `q`.
   const route = useRoute<any>();
   const linkedQuery: string | undefined = route.params?.q;
+  // An own playlist's "Add songs" opens this screen "adding to" it.
+  const addTo: string | undefined = route.params?.addTo;
+  const addToName: string | undefined = route.params?.addToName;
   useEffect(() => {
     if (!linkedQuery) return;
     setQuery(linkedQuery);
@@ -172,6 +176,53 @@ export const SearchScreen = () => {
   const connected = !!net.isConnected && net.isInternetReachable !== false;
   const modeOnline = mode === 'online';
   const online = modeOnline && connected;
+  // "Add to playlist" mode: only where the playlist can be written to.
+  const addMode = !!addTo && online;
+
+  // The songs already added to the playlist from here; the + turns into a check.
+  const [added, setAdded] = useState<Set<string>>(new Set());
+
+  const addTrack = async (track: Track) => {
+    if (!addTo) return;
+    setAdded((prev) => new Set(prev).add(track.id));
+    try {
+      await api.addToPlaylist(addTo, [track]);
+      useLibraryStore
+        .getState()
+        .reloadPlaylists()
+        .catch(() => {});
+    } catch (e: any) {
+      setAdded((prev) => {
+        const next = new Set(prev);
+        next.delete(track.id);
+        return next;
+      });
+      Alert.alert("Couldn't add the song", e?.message || 'Check your connection and try again.');
+    }
+  };
+
+  // Leaves add mode and opens the playlist with its new songs. Not goBack: this is a tab's
+  // first screen, and going back from it lands on Home, not on the playlist.
+  const doneAdding = () => {
+    const playlistId = addTo;
+    setAdded(new Set());
+    navigation.setParams({ addTo: undefined, addToName: undefined });
+    if (playlistId) navigation.navigate('Playlist', { id: playlistId });
+  };
+
+  const addButton = (track: Track) => {
+    const isAdded = added.has(track.id);
+    return (
+      <IconButton
+        icon={<Icon name={isAdded ? 'check' : 'plus'} size={18} color={isAdded ? '#00E28A' : '#9A9AA8'} />}
+        size={32}
+        onPress={() => addTrack(track)}
+        disabled={isAdded}
+        accessibilityLabel={isAdded ? `${track.title} added` : `Add ${track.title} to playlist`}
+      />
+    );
+  };
+
   const showGenres = online && (!q || filter === 'genres');
   const genres = useAsync(() => api.genres(), [], { enabled: showGenres });
   const openGenre = (g: Genre) => {
@@ -337,6 +388,24 @@ export const SearchScreen = () => {
             }}
             keyboardShouldPersistTaps="handled"
           >
+            {addMode && (
+              <View className="bg-s1 border border-ln rounded-md p-3.5 flex-row items-center gap-3">
+                <View className="flex-1 gap-0.5 min-w-0">
+                  <Text className="text-acc text-ll" numberOfLines={1}>
+                    Adding to {addToName ?? 'playlist'}
+                  </Text>
+                  <Text className="text-t3 text-bs">
+                    {added.size > 0
+                      ? `${added.size} added — search for more`
+                      : 'Search for songs and press + to add them'}
+                  </Text>
+                </View>
+                <Button variant="accent" size="sm" onPress={doneAdding}>
+                  Done
+                </Button>
+              </View>
+            )}
+
             {!q && recent.length > 0 && (
               <RecentSearches searches={recent} onPick={runSearch} onRemove={removeRecent} onClear={clearRecent} />
             )}
@@ -425,6 +494,7 @@ export const SearchScreen = () => {
                       <View className="w-[52px] h-[52px] rounded-full items-center justify-center bg-acc shadow-glow-acc flex-none">
                         <Icon name="play" size={22} color="#000000" />
                       </View>
+                      {addMode && topResult.kind === 'track' && addButton(topResult)}
                     </Pressable>
                   </View>
                 )}
@@ -450,6 +520,7 @@ export const SearchScreen = () => {
                             remember();
                             playTrack(item, tracks, { kind: 'Search', name: `“${q}”` });
                           }}
+                          trailing={addMode ? addButton(item) : undefined}
                         />
                       ))}
                     </View>

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, FlatList, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, FlatList, Pressable, Alert } from 'react-native';
+import Animated from 'react-native-reanimated';
 import { Text } from '../components/ui/Text';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Screen } from '../components/layout/Screen';
@@ -16,6 +17,7 @@ import { Ambient } from '../components/music/Ambient';
 import { StateView } from '../components/ui/StateView';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
+import { useModeStore } from '../store/mode';
 import { playlistMeta } from '../../../shared/catalog/meta';
 import { api, isOwnPlaylist } from '../data/api';
 import { artworkUrl } from '../data/config';
@@ -24,12 +26,16 @@ import { useSavedAlbum } from '../data/savedAlbums';
 import { songCount } from '../lib/format';
 import { playShuffled } from '../lib/playShuffled';
 import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
+import { DragHandle } from '../components/music/DragHandle';
+import { useRowDrag } from '../hooks/useRowDrag';
+import type { Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 
 export const PlaylistDetailScreen = () => {
   const navigation = useNavigation<any>();
   const { id } = useRoute<any>().params as { id: string };
   const own = isOwnPlaylist(id);
+  const online = useModeStore((state) => state.mode) === 'online';
   const playTrack = usePlayerStore((state) => state.playTrack);
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
@@ -53,21 +59,54 @@ export const PlaylistDetailScreen = () => {
   const tracksQuery = useAsync(() => (own ? api.myPlaylistTracks(id) : api.playlistTracks(id)), [id], {
     refetchOnFocus: own,
   });
-  const allTracks = tracksQuery.data?.items ?? [];
+  const playlistItems = tracksQuery.data?.items;
+  // An own playlist is edited on the phone first (remove / reorder), seeded from the query.
+  const [entries, setEntries] = useState<Track[]>([]);
+  useEffect(() => {
+    if (playlistItems) setEntries(playlistItems);
+  }, [playlistItems]);
+  // A drag on a row turns the list's own scrolling off, so the drag can't scroll it.
+  const [dragging, setDragging] = useState(false);
+  const allTracks = own ? entries : (playlistItems ?? []);
   const tracks = allTracks.filter((t) => t.source === 'server');
   const info = playlist.data;
 
   const totalDurationMs = tracks.reduce((sum, t) => sum + (t.durationMs || 0), 0);
   const durationMinutes = Math.round(totalDurationMs / 60000);
 
+  /** Drops the row straight away; a failure puts it back and says why. */
   const removeAt = async (index: number) => {
-    await api.removeFromPlaylist(id, index).catch(() => {});
-    tracksQuery.refetch();
-    playlist.refetch();
-    useLibraryStore
-      .getState()
-      .reloadPlaylists()
-      .catch(() => {});
+    const track = entries[index];
+    if (!track) return;
+    const previous = entries;
+    setEntries(entries.filter((_, i) => i !== index));
+    try {
+      await api.removeFromPlaylist(id, { entryId: track.entryId, index });
+      playlist.refetch();
+      useLibraryStore
+        .getState()
+        .reloadPlaylists()
+        .catch(() => {});
+    } catch (e: any) {
+      setEntries(previous);
+      Alert.alert("Couldn't remove the song", e?.message || 'Check your connection and try again.');
+    }
+  };
+
+  /** Moves the row at `index` by `by` places: shown at once, then saved; a failure restores it. */
+  const moveEntry = (index: number, by: number) => {
+    const track = entries[index];
+    const to = Math.max(0, Math.min(entries.length - 1, index + by));
+    if (!track || !track.entryId || to === index) return;
+    const previous = entries;
+    const next = [...entries];
+    const [moved] = next.splice(index, 1);
+    next.splice(to, 0, moved);
+    setEntries(next);
+    api.reorderPlaylist(id, { entryId: track.entryId, to }).catch((e: any) => {
+      setEntries(previous);
+      Alert.alert("Couldn't move the song", e?.message || 'Check your connection and try again.');
+    });
   };
 
   // Only leaves the screen once the playlist is really gone; a failure is reported instead.
@@ -105,6 +144,10 @@ export const PlaylistDetailScreen = () => {
     }
   };
 
+  // Opens search in "add to this playlist" mode; the songs are added from there.
+  const addSongs = () =>
+    navigation.navigate('Search', { screen: 'SearchRoot', params: { addTo: id, addToName: info?.name } });
+
   const playAll = () => {
     if (!tracks.length) return;
     if (shuffle) toggleShuffle();
@@ -131,7 +174,18 @@ export const PlaylistDetailScreen = () => {
           />
         }
         right={
-          <View className="flex-row items-center gap-1">
+          <View className="flex-row items-center gap-2">
+            {own && online && (
+              <Button
+                variant="outline"
+                size="sm"
+                icon={<Icon name="plus" size={16} color="#FFFFFF" />}
+                onPress={addSongs}
+                accessibilityLabel="Add songs"
+              >
+                Add songs
+              </Button>
+            )}
             {own && (
               <IconButton
                 icon={<Icon name="more" size={20} color="#FFFFFF" />}
@@ -145,7 +199,8 @@ export const PlaylistDetailScreen = () => {
 
       <FlatList
         data={tracks}
-        keyExtractor={(item, index) => `${item.id}:${index}`}
+        scrollEnabled={!(own && dragging)}
+        keyExtractor={(item, index) => item.entryId ?? `${item.id}:${index}`}
         ListHeaderComponent={
           <View>
             <View className="flex-row items-start px-5 pt-2 pb-4 gap-4">
@@ -243,33 +298,33 @@ export const PlaylistDetailScreen = () => {
             </View>
           </View>
         }
-        renderItem={({ item, index }) => (
-          <SongRow
-            track={item}
-            onPress={() => playTrack(item, tracks, from)}
-            isActive={currentTrack?.id === item.id}
-            index={index}
-            showIndex
-            extraAction={
-              own
-                ? {
-                    label: 'Remove from playlist',
-                    onPress: () => removeAt(allTracks.indexOf(item)),
-                  }
-                : undefined
-            }
-          />
-        )}
+        renderItem={({ item, index }) =>
+          own ? (
+            <OwnRow
+              track={item}
+              index={index}
+              isActive={currentTrack?.id === item.id}
+              onPress={() => playTrack(item, tracks, from)}
+              onRemove={() => removeAt(allTracks.indexOf(item))}
+              onMove={(by) => moveEntry(allTracks.indexOf(item), by)}
+              onDraggingChange={setDragging}
+            />
+          ) : (
+            <SongRow
+              track={item}
+              onPress={() => playTrack(item, tracks, from)}
+              isActive={currentTrack?.id === item.id}
+              index={index}
+              showIndex
+            />
+          )
+        }
         ListEmptyComponent={
           <StateView
             loading={tracksQuery.loading && !tracksQuery.data}
             error={tracksQuery.error}
             onRetry={tracksQuery.refetch}
-            empty={
-              own
-                ? 'This playlist is empty. Long-press any song and choose "Add to playlist".'
-                : 'No playable songs in this playlist.'
-            }
+            empty={own ? 'This playlist is empty. Tap Add songs to find some.' : 'No playable songs in this playlist.'}
           />
         }
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 160 }}
@@ -327,5 +382,44 @@ export const PlaylistDetailScreen = () => {
         </View>
       </Sheet>
     </Screen>
+  );
+};
+
+const ROW_HEIGHT = 60;
+
+/** One own-playlist row: the song, its drag handle, and the reorder animation. */
+const OwnRow = ({
+  track,
+  index,
+  isActive,
+  onPress,
+  onRemove,
+  onMove,
+  onDraggingChange,
+}: {
+  track: Track;
+  index: number;
+  isActive: boolean;
+  onPress: () => void;
+  onRemove: () => void;
+  onMove: (by: number) => void;
+  onDraggingChange: (dragging: boolean) => void;
+}) => {
+  const { gesture, style, dragging } = useRowDrag(ROW_HEIGHT, onMove);
+  // The list turns its scrolling off while a row is being dragged.
+  useEffect(() => onDraggingChange(dragging), [dragging, onDraggingChange]);
+
+  return (
+    <Animated.View style={[style, dragging && { zIndex: 10 }]}>
+      <SongRow
+        track={track}
+        onPress={onPress}
+        isActive={isActive}
+        index={index}
+        showIndex
+        extraAction={{ label: 'Remove from playlist', onPress: onRemove }}
+        trailing={<DragHandle gesture={gesture} accessibilityLabel={`Reorder ${track.title}`} onMove={onMove} />}
+      />
+    </Animated.View>
   );
 };

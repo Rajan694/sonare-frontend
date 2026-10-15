@@ -826,8 +826,59 @@ describe('Data Layer', () => {
       expect(del.ok).toBe(true);
       const add = await api.addToPlaylist('sonare:1', [song('yt:t1')]);
       expect(add.ok).toBe(true);
-      const rem = await api.removeFromPlaylist('sonare:1', 0);
+      const rem = await api.removeFromPlaylist('sonare:1', { index: 0 });
       expect(rem.ok).toBe(true);
+    });
+
+    it('MOB-DATA-059 removeFromPlaylist sends the row id when the list knows it, else the position', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ ok: true });
+        onload: (() => void) | null = null;
+        open(method: string, url: string) {
+          calls.push({ method, url, body: undefined });
+        }
+        setRequestHeader() {}
+        send(body: string) {
+          calls[calls.length - 1].body = JSON.parse(body);
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      await api.removeFromPlaylist('sonare:1', { entryId: 'row-1', index: 3 });
+      await api.removeFromPlaylist('sonare:1', { index: 2 });
+
+      expect(calls[0].method).toBe('DELETE');
+      expect(calls[0].url).toBe('http://localhost:3010/api/v1/me/playlists/sonare%3A1/tracks');
+      expect(calls[0].body).toEqual({ entryIds: ['row-1'] });
+      expect(calls[1].body).toEqual({ index: 2 });
+    });
+
+    it('MOB-DATA-060 reorderPlaylist PATCHes a row to its new position', async () => {
+      const calls: { method: string; url: string; body: unknown }[] = [];
+      class RecordingXHR {
+        status = 200;
+        responseText = JSON.stringify({ ok: true });
+        onload: (() => void) | null = null;
+        open(method: string, url: string) {
+          calls.push({ method, url, body: undefined });
+        }
+        setRequestHeader() {}
+        send(body: string) {
+          calls[calls.length - 1].body = JSON.parse(body);
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = RecordingXHR as never;
+
+      const res = await api.reorderPlaylist('sonare:1', { entryId: 'row-1', to: 2 });
+
+      expect(res.ok).toBe(true);
+      expect(calls[0].method).toBe('PATCH');
+      expect(calls[0].url).toBe('http://localhost:3010/api/v1/me/playlists/sonare%3A1/tracks/order');
+      expect(calls[0].body).toEqual({ entryId: 'row-1', to: 2 });
     });
 
     it('MOB-DATA-057 favouriteIds asks only for the ids, so the heart state needs no metadata', async () => {

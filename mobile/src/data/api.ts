@@ -344,11 +344,18 @@ export const api = {
       method: 'POST',
       body: { trackIds: tracks.map((t) => t.id), metas: trackMetas(tracks) },
     }),
-  removeFromPlaylist: (id: string, index: number) =>
+  /**
+   * Removes one playlist row: by its row id when the list knows it (the same song can be in
+   * the playlist twice), by its position otherwise.
+   */
+  removeFromPlaylist: (id: string, entry: { entryId?: string; index: number }) =>
     request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks`, {
       method: 'DELETE',
-      body: { index },
+      body: entry.entryId ? { entryIds: [entry.entryId] } : { index: entry.index },
     }),
+  /** Moves one playlist row (`entryId`) to position `to` (0-based, in the full list). */
+  reorderPlaylist: (id: string, body: { entryId: string; to: number }) =>
+    request<{ ok: boolean }>(`/me/playlists/${enc(id)}/tracks/order`, { method: 'PATCH', body }),
 };
 
 /** The user's own playlists live under /me; everything else is a YouTube playlist. */

@@ -471,6 +471,20 @@ navigation mock live in `test-utils/`.
 | `MOB-FOLD-004` | Offline Mode lists the downloads, then the songs of shown folders                         |
 | `MOB-FOLD-005` | the offline player and downloading offer the permission once each; blocked opens settings |
 
+## Own playlists
+
+| ID            | Use case                                                                        |
+| :------------ | :------------------------------------------------------------------------------ |
+| `MOB-OPL-001` | removing a song sends its row id and hides it at once                           |
+| `MOB-OPL-002` | a failed remove puts the song back and says why                                 |
+| `MOB-OPL-003` | moving a row with the increment action sends its new position                   |
+| `MOB-OPL-004` | a failed move restores the order and says why                                   |
+| `MOB-OPL-005` | a YouTube playlist has no drag handles and no Add songs button                  |
+| `MOB-OPL-006` | Add songs opens Search in add mode for this playlist                            |
+| `MOB-OPL-007` | Search in add mode adds a song and counts it                                    |
+| `MOB-OPL-008` | a failed add turns the button back and says why                                 |
+| `MOB-OPL-009` | Done leaves add mode, clearing the params and the count, and opens the playlist |
+
 ## `__tests__/server-wake.test.tsx`
 
 | ID             | Use case                                                                                             |
