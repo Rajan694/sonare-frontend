@@ -348,6 +348,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-OFPL-008` | offline Playlists does not show the New playlist button                                              |
 | `WEB-OFPL-009` | offline own playlist shows meta from the offline store and no Add songs button                       |
 | `WEB-OFPL-010` | offline own playlist shows empty-state message when songs aren't on device                           |
+| `WEB-OFPL-011` | offline Playlists counts the songs on this device and does not dim a playlist that has some          |
+| `WEB-OFPL-012` | offline own playlist lists only the songs on this device and says how many need the internet         |
 
 ## `test/screens/virtual-rows.test.tsx`
 

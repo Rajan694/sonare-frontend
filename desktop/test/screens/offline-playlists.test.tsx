@@ -1,5 +1,5 @@
 import React from 'react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, screen, within } from '@testing-library/react';
 import Playlists from '../../src/screens/Playlists';
 import PlaylistDetail from '../../src/screens/PlaylistDetail';
@@ -13,6 +13,7 @@ import {
   saveOfflinePlaylistSongs,
   getOfflinePlaylists,
 } from '../../src/storage/offlinePlaylists';
+import { localLibrary } from '../../src/storage/local';
 
 /**
  * Offline Playlists store + screen tests (DSK-4 Part 1, audit I7).
@@ -166,6 +167,18 @@ describe('Playlists screen in Offline Mode', () => {
     expect(within(link).getByText('No songs on this device')).toBeInTheDocument();
   });
 
+  it('WEB-OFPL-011 offline Playlists counts the songs on this device and does not dim a playlist that has some', async () => {
+    vi.spyOn(localLibrary, 'localIdFor').mockImplementation((id) => (id === 'yt:have' ? 'local:have' : null));
+    const mix = makePlaylist({ id: 'sonare:mix', name: 'Mix', kind: 'synced', trackCount: 3 });
+    seedAndSignIn([mix], {
+      'sonare:mix': [makeTrack({ id: 'yt:have' }), makeTrack({ id: 'yt:a' }), makeTrack({ id: 'yt:b' })],
+    });
+    renderWithProviders(<Playlists />, { mode: 'offline' });
+    const link = await screen.findByRole('link', { name: /Mix/ });
+    expect(within(link).getByText('1 of 3 songs on this device')).toBeInTheDocument();
+    expect(link).not.toHaveClass('opacity-60');
+  });
+
   it('WEB-OFPL-008 offline Playlists does not show the New playlist button', async () => {
     seedAndSignIn([makePlaylist({ id: 'sonare:x', name: 'Mix', kind: 'synced' })]);
     renderWithProviders(<Playlists />, { mode: 'offline' });
@@ -213,5 +226,33 @@ describe('PlaylistDetail screen in Offline Mode (own playlist)', () => {
     openOfflinePlaylist('sonare:chill');
     expect(await screen.findByText('No songs on this device')).toBeInTheDocument();
     expect(screen.getByText("None of this playlist's songs are on this device.")).toBeInTheDocument();
+  });
+
+  it('WEB-OFPL-012 offline own playlist lists only the songs on this device and says how many need the internet', async () => {
+    vi.spyOn(localLibrary, 'localIdFor').mockImplementation((id) => (id === 'yt:have' ? 'local:have' : null));
+    const pl = makePlaylist({ id: 'sonare:mix', name: 'Mix', kind: 'synced', trackCount: 3 });
+    const stored = {
+      userId: testUser.id,
+      playlists: [pl],
+      songs: {
+        'sonare:mix': {
+          updatedAt: 1_700_000_000_000,
+          songs: [
+            makeTrack({ id: 'yt:have', title: 'On Disk' }),
+            makeTrack({ id: 'yt:a', title: 'Online One' }),
+            makeTrack({ id: 'yt:b', title: 'Online Two' }),
+          ],
+        },
+      },
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(stored));
+    act(() => setSession('a', 'r', testUser));
+
+    openOfflinePlaylist('sonare:mix');
+    expect(await screen.findByRole('button', { name: 'Play On Disk' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Play Online One' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Play Online Two' })).not.toBeInTheDocument();
+    expect(screen.getByText('2 songs need the internet')).toBeInTheDocument();
+    expect(screen.getByText(/· 1 song(?!s)/)).toBeInTheDocument();
   });
 });

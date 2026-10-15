@@ -194,7 +194,9 @@ const Artist = () => {
               <div className="surf flex flex-col gap-3 p-5 rounded-xl">
                 <div className="flex items-center justify-between">
                   <span className="text-body-s text-t3">On this device</span>
-                  <span className="text-mono-s text-gold">{artist.localTrackCount} songs</span>
+                  <span className="text-mono-s text-gold">
+                    {artist.localTrackCount} {artist.localTrackCount === 1 ? 'song' : 'songs'}
+                  </span>
                 </div>
               </div>
             </div>

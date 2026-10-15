@@ -135,7 +135,11 @@ const Album = () => {
               album.artist
             )}
             {album.year ? ` · ${album.year}` : ''}
-            {album.trackCount ? ` · ${album.trackCount} songs` : tracks.length > 0 ? ` · ${tracks.length} songs` : ''}
+            {album.trackCount
+              ? ` · ${album.trackCount} ${album.trackCount === 1 ? 'song' : 'songs'}`
+              : tracks.length > 0
+                ? ` · ${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}`
+                : ''}
             {durationStr ? ` · ${durationStr}` : ''}
           </span>
 

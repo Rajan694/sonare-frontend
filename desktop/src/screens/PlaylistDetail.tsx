@@ -208,7 +208,7 @@ const PlaylistDetail = () => {
           <span className="text-display-m @[720px]:text-display text-t1 font-semibold truncate">{displayName}</span>
           <span className="text-body-m text-t2 truncate">
             {isOwn ? 'Made by you' : 'Curated playlist'}
-            {` · ${tracks.length} songs`}
+            {` · ${tracks.length} ${tracks.length === 1 ? 'song' : 'songs'}`}
             {durationStr ? ` · ${durationStr}` : ''}
           </span>
           {needsInternet > 0 && (

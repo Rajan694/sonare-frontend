@@ -166,7 +166,7 @@ const Playlists = () => {
                           ? 'No songs on this device'
                           : `${device.have} of ${device.total} songs on this device`
                         : playlist.trackCount
-                          ? `${playlist.trackCount} songs`
+                          ? `${playlist.trackCount} ${playlist.trackCount === 1 ? 'song' : 'songs'}`
                           : 'Playlist'}
                     </span>
                     <div className="mt-1 flex items-center gap-1.5 flex-wrap">

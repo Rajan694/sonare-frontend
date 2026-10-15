@@ -183,7 +183,7 @@ const Folders = () => {
 
                   <div className="flex items-center justify-between @[680px]:justify-end w-full @[680px]:w-auto gap-2 pt-2 @[680px]:pt-0 border-t @[680px]:border-t-0 border-ln">
                     <span className="@[680px]:hidden text-body-s text-t3 font-mono">
-                      {folder.trackCount} songs · {formatBytes(folder.bytes)}
+                      {folder.trackCount} {folder.trackCount === 1 ? 'song' : 'songs'} · {formatBytes(folder.bytes)}
                     </span>
                     <div className="flex items-center gap-1.5 ml-auto">
                       <IconButton
