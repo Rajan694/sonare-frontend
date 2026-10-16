@@ -47,6 +47,7 @@ import './sonare.css';
 
 // The web build's intro page at "/": its own chunk, so the music app doesn't load it.
 const Landing = lazy(() => import('./screens/Landing'));
+const Privacy = lazy(() => import('./screens/Privacy'));
 
 type Playback = Omit<player.PlaybackStatus, 'positionMs'>;
 
@@ -538,6 +539,16 @@ const App = () => {
               />
             ) : (
               <Route path="/" element={<Navigate to="/home" replace />} />
+            )}
+            {CAPS.landing && (
+              <Route
+                path="/privacy"
+                element={
+                  <Suspense fallback={<div className="min-h-[100dvh] bg-bg" />}>
+                    <Privacy />
+                  </Suspense>
+                }
+              />
             )}
             <Route element={<AppShell />}>
               <Route path="/home" element={<Home />} />

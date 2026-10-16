@@ -98,7 +98,7 @@ A pre-commit hook runs Prettier and ESLint on staged files with each app's own c
 
 - [desktop/README.md](desktop/README.md)
 - [mobile/README.md](mobile/README.md)
-- API contract: `../docs/api-contract.md` in the root repo
+- API response types: [shared/apiTypes.ts](shared/apiTypes.ts)
 
 ## Licence
 

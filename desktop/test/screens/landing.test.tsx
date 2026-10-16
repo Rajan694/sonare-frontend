@@ -2,6 +2,7 @@ import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, within } from '@testing-library/react';
 import Landing from '../../src/screens/Landing';
+import Privacy from '../../src/screens/Privacy';
 import { detectOs, featuredDownload, releaseLabel, DOWNLOADS } from '../../src/lib/downloads';
 import type { AppRelease } from '../../src/types';
 import { renderWithProviders } from '../helpers/render';
@@ -223,5 +224,39 @@ describe('download helpers', () => {
     expect(releaseLabel(items, DOWNLOADS.apk)).toBe('v1.2.0 · 5.3 MB');
     expect(releaseLabel(items, DOWNLOADS.exe)).toBeNull();
     expect(releaseLabel(null, DOWNLOADS.apk)).toBeNull();
+  });
+
+  it('WEB-LAND-012 the footer links to contact, bug reports, the privacy page, GitHub and the credits', async () => {
+    const { user, location } = renderWithProviders(<Landing />);
+    const footer = screen.getByRole('contentinfo');
+    expect(within(footer).getByRole('link', { name: 'Contact' })).toHaveAttribute('href', 'mailto:contact@sonare.vip');
+    expect(within(footer).getByRole('link', { name: 'Report a bug' })).toHaveAttribute(
+      'href',
+      'https://github.com/Rajan694/sonare/issues/new',
+    );
+    expect(within(footer).getByRole('link', { name: 'GitHub' })).toHaveAttribute(
+      'href',
+      'https://github.com/Rajan694/sonare',
+    );
+    for (const name of ['Piped', 'NewPipeExtractor', 'youtubei.js', 'LRCLIB']) {
+      expect(within(footer).getByRole('link', { name })).toBeInTheDocument();
+    }
+    await user.click(within(footer).getByRole('link', { name: 'Privacy' }));
+    expect(location()).toBe('/privacy');
+  });
+
+  it('WEB-LAND-013 the privacy page says what is stored, how to delete it, and whom to ask', () => {
+    const previousTitle = document.title;
+    const { unmount } = renderWithProviders(<Privacy />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Privacy policy' })).toBeInTheDocument();
+    expect(document.title).toBe('Privacy policy — Sonare');
+    expect(screen.getByText(/delete your account/i)).toBeInTheDocument();
+    const main = screen.getByRole('main');
+    expect(within(main).getByRole('link', { name: 'contact@sonare.vip' })).toHaveAttribute(
+      'href',
+      'mailto:contact@sonare.vip',
+    );
+    unmount();
+    expect(document.title).toBe(previousTitle);
   });
 });

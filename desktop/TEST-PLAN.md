@@ -444,6 +444,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAND-009` | switches the screenshots between Android and Linux                                 |
 | `WEB-LAND-010` | detectOs reads the platform, Android before Linux, ChromeOS as other               |
 | `WEB-LAND-011` | releaseLabel matches platform and format, and skips missing builds                 |
+| `WEB-LAND-012` | the footer links to contact, bug reports, the privacy page, GitHub and the credits |
+| `WEB-LAND-013` | the privacy page says what is stored, how to delete it, and whom to ask            |
 
 ## `test/screens/email-links.test.tsx`
 

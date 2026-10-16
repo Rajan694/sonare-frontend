@@ -1,4 +1,4 @@
-// Shapes the Sonare API returns (../../docs/api-contract.md), shared by the desktop/web app
+// Shapes the Sonare API returns (the backend's routes under /api/v1), shared by the desktop/web app
 // and the mobile app. Types only: no runtime code and no imports, so each app can pull it in
 // with `import type` / `export type *` and no bundler ever has to load this file.
 //
