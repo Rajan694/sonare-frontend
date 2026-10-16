@@ -32,6 +32,7 @@ import {
 } from '../store/searchSlice';
 import LoadMore from '../components/ui/LoadMore';
 import type { Track, Album, Artist, Playlist } from '../types';
+import { AiSearchPicks } from '../components/ai/AiSearchPicks';
 
 type ChipFilter = 'all' | SearchType;
 
@@ -272,6 +273,14 @@ const Search = () => {
                 if ((e.target as HTMLElement).closest('a, button')) dispatch(addRecent(debouncedQuery));
               }}
             >
+              {/* On demand: the AI turns the query into a few searches (components/ai) */}
+              {isOnline && (allActive || activeChip === 'songs') && (
+                <AiSearchPicks
+                  query={debouncedQuery}
+                  currentTrackId={currentTrack?.id}
+                  onPlay={(track, queue) => playTrack(track, queue, { kind: 'Search', name: 'AI picks' })}
+                />
+              )}
               {searchLoading || extrasLoading ? (
                 <div className="flex flex-col gap-2 animate-pulse pt-2">
                   {Array.from({ length: 6 }).map((_, i) => (

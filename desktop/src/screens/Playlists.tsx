@@ -7,6 +7,8 @@ import { useOfflinePlaylists } from '../storage/offlinePlaylists';
 import { localLibrary } from '../storage/local';
 import { requireAccount } from '../api/accountGate';
 import { createPlaylistWithPrompt } from '../api/newPlaylist';
+import { AiPlaylistDialog } from '../components/ai/AiPlaylistDialog';
+import { useAiEnabled } from '../components/ai/useAi';
 import Artwork from '../components/music/Artwork';
 import Button from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
@@ -41,6 +43,8 @@ const Playlists = () => {
   const countLabel = `${totalCount.toLocaleString()} ${totalCount === 1 ? 'playlist' : 'playlists'}`;
 
   const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist);
+  const aiEnabled = useAiEnabled();
+  const [aiOpen, setAiOpen] = React.useState(false);
 
   const createPlaylist = async () => {
     const created = await createPlaylistWithPrompt();
@@ -69,6 +73,11 @@ const Playlists = () => {
           </span>
         </div>
         <div className="flex items-center gap-2.5">
+          {!isOffline && aiEnabled && (
+            <Button variant="out" icon="sparkles" onClick={() => setAiOpen(true)}>
+              Create with AI
+            </Button>
+          )}
           {!isOffline && (
             <Button variant="acc" icon="plus" onClick={handleCreatePlaylist}>
               New playlist
@@ -192,6 +201,7 @@ const Playlists = () => {
               );
             })}
       </motion.div>
+      <AiPlaylistDialog open={aiOpen} onClose={() => setAiOpen(false)} />
     </motion.div>
   );
 };

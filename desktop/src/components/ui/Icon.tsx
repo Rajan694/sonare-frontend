@@ -69,6 +69,7 @@ import {
   ArrowUpDown,
   TrendingUp,
   Monitor,
+  Sparkles,
 } from 'lucide-react';
 
 const ICONS = {
@@ -140,6 +141,8 @@ const ICONS = {
   bluetooth: Bluetooth,
   'playlist-add': ListPlus,
   sort: ArrowUpDown,
+  // AI features.
+  sparkles: Sparkles,
 } as const;
 
 export type IconName = keyof typeof ICONS;

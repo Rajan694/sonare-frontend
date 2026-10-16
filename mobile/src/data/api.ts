@@ -6,6 +6,8 @@ import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
 import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
 import { ApiError, apiErrorFrom, createCatalogFallback, isYouTubeId, ytId } from '../../../shared/api/client';
+import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
+import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type {
   Album,
   AlbumMeta,
@@ -40,6 +42,13 @@ const buildUrl = (path: string, params?: Params): string => {
   return `${apiBase()}${path}${query ? `?${query}` : ''}`;
 };
 
+// An AI request found no provider answering (503 AI_UNAVAILABLE): App.tsx hides the AI features
+// until the next /app-config says otherwise.
+let aiUnavailableListener: (() => void) | null = null;
+export const onAiUnavailable = (listener: () => void): void => {
+  aiUnavailableListener = listener;
+};
+
 const request = async <T>(
   path: string,
   { method = 'GET', params, body, timeoutMs }: RequestOptions = {},
@@ -67,7 +76,9 @@ const request = async <T>(
   if (res.status === 204) return {} as T;
   const { json } = res;
   if (res.status < 200 || res.status >= 300) {
-    throw apiErrorFrom(res.status, json);
+    const err = apiErrorFrom(res.status, json);
+    if (err.code === 'AI_UNAVAILABLE') aiUnavailableListener?.();
+    throw err;
   }
   return json as T;
 };
@@ -279,6 +290,19 @@ export const api = {
       // A hung upload would hold the whole queue; time out and let sync.ts retry.
       timeoutMs: 15_000,
     }),
+
+  // AI (forReference/ai-briefs/CONTRACT.md in the root repo). The AI names songs; songSearch finds them.
+  aiYouMayLike: () => request<AiYouMayLike>('/me/ai/you-may-like'),
+  aiSearchPlan: (q: string) => request<AiSearchPlan>('/ai/search', { params: { q } }),
+  aiPlaylistDraft: (body: { prompt: string; count: number }) =>
+    request<AiPlaylistDraft>('/me/ai/playlist', { method: 'POST', body }),
+  /** Signed in or not; the token goes along when there is one. */
+  aiTitles: (items: PendingTitle[]) => request<AiTitleFixes>('/ai/titles', { method: 'POST', body: { items } }),
+  /** The songs on the first page of a song search (in-app YouTube first, like any search). */
+  songSearch: async (q: string): Promise<Track[]> => {
+    const page = await api.search(q, 'songs');
+    return page.items.filter((item): item is SearchItem & { kind: 'track' } => item.kind === 'track');
+  },
 
   // The user's playlists
   myPlaylists: () => request<Page<Playlist>>('/me/playlists'),

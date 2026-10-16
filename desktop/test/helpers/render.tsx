@@ -8,14 +8,16 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom';
 import search from '../../src/store/searchSlice';
 import ui from '../../src/store/uiSlice';
 import update from '../../src/store/updateSlice';
+import ai, { initialAiState, type AiState } from '../../src/store/aiSlice';
 import { ModeContext } from '../../src/store/modeContext';
 import { PlayerContext, defaultPlayerState, type PlayerStore } from '../../src/store/playerContext';
 import { setPlaybackPosition } from '../../src/store/playbackPosition';
 import { DialogHost } from '../../src/components/ui/Dialog';
 import type { Mode, PlayerState, Track } from '../../src/types';
 
-export const makeStore = () => {
-  return configureStore({ reducer: { search, ui, update } });
+/** `ai`: the AI slice to start from (AI is off unless a test turns it on). */
+export const makeStore = (ai0: Partial<AiState> = {}) => {
+  return configureStore({ reducer: { search, ui, update, ai }, preloadedState: { ai: { ...initialAiState, ...ai0 } } });
 };
 
 /**

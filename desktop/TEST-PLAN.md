@@ -933,6 +933,43 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
 | `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
 
+## `test/unit/sharedCatalog/sharedAi.test.ts`
+
+| ID           | Use case                                                                                                   |
+| :----------- | :--------------------------------------------------------------------------------------------------------- |
+| `WEB-AI-001` | looksMessy flags upload-style titles and leaves Topic channels and plain titles alone                      |
+| `WEB-AI-002` | applyTitleFix returns a known fix, else the input, and notes messy songs once                              |
+| `WEB-AI-003` | takePendingTitles spaces retries and gives up after three tries                                            |
+| `WEB-AI-004` | normalizeStreamItemToTrack shows a fix in place of the raw title and artist                                |
+| `WEB-AI-005` | bestMatch needs the title, prefers the artist, and skips unrelated results                                 |
+| `WEB-AI-006` | resolvePicks keeps found picks in order, once each, skipping failures and excluded ids                     |
+| `WEB-AI-007` | startTitleSync sends noted songs in batches while enabled, applies the answer, and saves it                |
+| `WEB-AI-008` | searchPlanSongs takes the first songs of each query in order, each song once by id and by title and artist |
+
+## `test/screens/ai-features.test.tsx`
+
+| ID             | Use case                                                                                         |
+| :------------- | :----------------------------------------------------------------------------------------------- |
+| `WEB-AIUI-001` | with AI off, or signed out, there is no AI on Home, Search or Playlists, and nothing asks the AI |
+| `WEB-AIUI-002` | an AI_UNAVAILABLE answer turns the AI features off                                               |
+| `WEB-AIUI-003` | shows the songs found for the picks, with their reasons, once per session                        |
+| `WEB-AIUI-004` | shows nothing for no picks, an error, or fewer than 3 songs found                                |
+| `WEB-AIUI-005` | asks only when tapped, runs the plan’s searches and lists their songs once each                  |
+| `WEB-AIUI-006` | a failed AI search says so in one line                                                           |
+| `WEB-AIUI-007` | makes the playlist from the songs found and opens it                                             |
+| `WEB-AIUI-008` | too few songs found: says so and makes nothing                                                   |
+| `WEB-AIUI-009` | Cancel while the AI is thinking closes it and makes nothing                                      |
+
+## `test/screens/ai-admin.test.tsx`
+
+| ID              | Use case                                                         |
+| :-------------- | :--------------------------------------------------------------- |
+| `WEB-AIADM-001` | lists providers in order with their status and never a key       |
+| `WEB-AIADM-002` | with nothing answering it says AI is hidden in the apps          |
+| `WEB-AIADM-003` | adds a provider with its key, and an edit without a key keeps it |
+| `WEB-AIADM-004` | check now, disable, move and delete call the backend             |
+| `WEB-AIADM-005` | shows calls, tokens in and out, by provider and by feature       |
+
 ## `test/desktop/appUpdate.test.ts`
 
 | ID        | Use case                                                                                            |

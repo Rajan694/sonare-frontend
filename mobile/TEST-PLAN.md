@@ -548,3 +548,17 @@ navigation mock live in `test-utils/`.
 | ID              | Use case                                                 |
 | :-------------- | :------------------------------------------------------- |
 | `MOB-QVIRT-001` | a 2,000-song queue mounts a screenful of rows, not 2,000 |
+
+## `__tests__/ai-features.test.tsx`
+
+| ID           | Use case                                                                                         |
+| :----------- | :----------------------------------------------------------------------------------------------- |
+| `MOB-AI-001` | with AI off, signed out, or offline there is no AI on Home or Playlists, and nothing asks the AI |
+| `MOB-AI-002` | the store follows app-config, and an AI_UNAVAILABLE answer turns AI off                          |
+| `MOB-AI-003` | shows the songs found for the picks, with their reasons, once per session                        |
+| `MOB-AI-004` | shows nothing for no picks, an error, or fewer than 3 songs found                                |
+| `MOB-AI-005` | asks only when tapped, runs the plan’s searches and lists their songs once each                  |
+| `MOB-AI-006` | a failed AI search says so in one line                                                           |
+| `MOB-AI-007` | makes the playlist from the songs found and opens it                                             |
+| `MOB-AI-008` | too few songs found: says so and makes nothing                                                   |
+| `MOB-AI-009` | Cancel while the AI is thinking makes nothing                                                    |
