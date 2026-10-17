@@ -32,6 +32,7 @@ import {
 } from '../store/searchSlice';
 import LoadMore from '../components/ui/LoadMore';
 import type { Track, Album, Artist, Playlist } from '../types';
+import { AiSearchPicks } from '../components/ai/AiSearchPicks';
 
 type ChipFilter = 'all' | SearchType;
 
@@ -101,11 +102,17 @@ const Search = () => {
 
   const isOnline = mode === 'online';
   const hasQuery = query.trim().length > 0;
-  const debouncedQuery = useDebounce(query.trim(), 300);
   const allActive = activeChip === 'all';
 
   // Map activeChip to searchSlice SearchType (when All, fetch songs as primary)
   const querySearchType: SearchType = activeChip === 'all' ? 'songs' : activeChip;
+
+  // Results load once typing pauses for half a second: each search is four requests and a
+  // screen of artwork, too much to spend on half-typed words (suggestions update sooner).
+  // Coming back to results already shown, they stay; arriving mid-word (typing in the header
+  // field opens this screen), the first letters wait like any others.
+  const typed = query.trim();
+  const debouncedQuery = useDebounce(typed, 500, resultsFor === searchKey(typed, querySearchType) ? typed : '');
 
   useEffect(() => {
     if (isOnline && debouncedQuery) {
@@ -130,9 +137,9 @@ const Search = () => {
   // All shows each kind from its own search, like the Android app. The extra searches only
   // run while All is the active chip.
   const extrasOn = isOnline && allActive && hasQuery;
-  const artistsSearch = useSearch(query, 'artists', undefined, extrasOn);
-  const albumsSearch = useSearch(query, 'albums', undefined, extrasOn);
-  const playlistsSearch = useSearch(query, 'playlists', undefined, extrasOn);
+  const artistsSearch = useSearch(debouncedQuery, 'artists', undefined, extrasOn);
+  const albumsSearch = useSearch(debouncedQuery, 'albums', undefined, extrasOn);
+  const playlistsSearch = useSearch(debouncedQuery, 'playlists', undefined, extrasOn);
 
   // Hits are told apart by the fields their own search returns. A playlist hit is album-shaped
   // (a `title` with `artist` as the owner/channel), so it is the album tests that let it through.
@@ -272,6 +279,14 @@ const Search = () => {
                 if ((e.target as HTMLElement).closest('a, button')) dispatch(addRecent(debouncedQuery));
               }}
             >
+              {/* On demand: the AI turns the query into a few searches (components/ai) */}
+              {isOnline && (allActive || activeChip === 'songs') && (
+                <AiSearchPicks
+                  query={debouncedQuery}
+                  currentTrackId={currentTrack?.id}
+                  onPlay={(track, queue) => playTrack(track, queue, { kind: 'Search', name: 'AI picks' })}
+                />
+              )}
               {searchLoading || extrasLoading ? (
                 <div className="flex flex-col gap-2 animate-pulse pt-2">
                   {Array.from({ length: 6 }).map((_, i) => (

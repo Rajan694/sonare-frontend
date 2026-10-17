@@ -11,6 +11,7 @@ import { Panel } from './components/Panel';
 import { ShareBars } from './components/ShareBars';
 import { StatTile } from './components/StatTile';
 import { StatusLine } from './components/StatusLine';
+import { AiUsagePanel } from './AiUsagePanel';
 
 const RANGES = [
   { id: '7', label: '7 days' },
@@ -118,7 +119,11 @@ const Overview = () => {
             <ColumnChart title="Sign-ups per day" points={daily((d) => d.signups)} empty="No sign-ups in this range" />
           </div>
 
-          <Panel title="Requests by app" subtitle={`Last ${data.days} days. Request logs are kept for 30 days.`}>
+          <Panel
+            className="mb-6"
+            title="Requests by app"
+            subtitle={`Last ${data.days} days. Request logs keep the newest 2.1 million requests (about 250 MB).`}
+          >
             {data.clients.length ? (
               <ShareBars
                 format={fmtCompact}
@@ -133,6 +138,8 @@ const Overview = () => {
               <p className="text-body-s text-t3">No requests logged yet.</p>
             )}
           </Panel>
+
+          <AiUsagePanel days={data.days} />
         </div>
       )}
     </>

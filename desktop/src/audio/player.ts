@@ -10,6 +10,7 @@ import { API_QUALITY, getSettings } from '../storage/settings';
 import { CAPS } from '../lib/caps';
 import { inAppYoutube, isInAppYoutubeAllowed } from '../youtube/inApp';
 import { isGooglevideo, StreamDownloadError, streamCache } from '../youtube/streamCache';
+import { songCache, songCacheKey } from './songCache';
 
 /**
  * Audio playback engine.
@@ -99,8 +100,12 @@ const DECODE_LOCAL_FILES = CAPS.localLibrary && window.NL_OS === 'Linux';
 // Longer or bigger files (DJ mixes, audiobooks, whole-album recordings) are streamed.
 const MAX_DECODE_MS = 15 * 60_000;
 const MAX_DECODE_BYTES = 60 * 1024 * 1024;
-/** Into a song, when the next one starts loading: not right at the start, which needs the bandwidth. */
-const PREPARE_AFTER_S = 5;
+/**
+ * How long before the end of a song the next one is looked up and loaded. Late, so a song that is
+ * skipped or stopped never costs the next one's download; still enough for gapless and the 6 s
+ * crossfade on a slow connection.
+ */
+const PREPARE_BEFORE_END_S = 15;
 
 const media = (slot: Slot) => slot.decoded ?? slot.audio;
 
@@ -590,37 +595,53 @@ const loadInto = async (slot: Slot, trackId: string, force: boolean): Promise<vo
       // Start the audio graph now, close to the click: the download below can outlast the click's
       // user activation, and an AudioContext created after that stays suspended (silent).
       if (DECODE_LOCAL_FILES && isInAppYoutubeAllowed()) void dsp.ensureGraph();
-      const resolved = await streamFor(trackId, force);
+      // Web: a song played before plays from the song cache, with no stream lookup or download.
+      // A retry (force) drops the saved copy, in case that is what failed.
+      const cacheKey = songCacheKey(trackId, getSettings().streamQuality);
+      if (force) await songCache.remove(cacheKey);
+      const saved = force ? null : await songCache.savedSrc(cacheKey);
       if (!isCurrent()) return;
-      slot.expiresAt = resolved.expiresAt;
-      slot.muxed = resolved.muxed;
-      if (!resolved.direct) {
-        src = resolved.url;
+      if (saved) {
+        slot.expiresAt = Number.POSITIVE_INFINITY;
+        slot.muxed = false;
+        src = saved;
       } else {
-        if (DECODE_LOCAL_FILES && isActive() && (await playWhileDownloading(slot, isCurrent, trackId, resolved, force)))
-          return;
+        const resolved = await streamFor(trackId, force);
         if (!isCurrent()) return;
-        let path: string | null = null;
-        try {
-          path = await downloadInApp(trackId, resolved, force);
-        } catch (err) {
-          console.warn(
-            '[in-app-yt] stream download failed, using the backend:',
-            err instanceof Error ? err.message : err,
-          );
-        }
-        if (!isCurrent()) return;
-        if (path) {
-          slot.expiresAt = Number.POSITIVE_INFINITY;
-          slot.muxed = false;
-          const fileSrc = await fileSource(slot, isCurrent, await streamCache.readFile(path, resolved.mimeType));
-          if (!fileSrc) return;
-          src = fileSrc;
+        slot.expiresAt = resolved.expiresAt;
+        slot.muxed = resolved.muxed;
+        if (!resolved.direct) {
+          src = songCache.tag(resolved.url, cacheKey);
         } else {
-          const res = await api.getBackendTrackStream(trackId, API_QUALITY[getSettings().streamQuality] ?? 'auto');
-          slot.expiresAt = res.expiresAt ?? 0;
-          slot.muxed = !!res.muxed;
-          src = absolute(res.url);
+          if (
+            DECODE_LOCAL_FILES &&
+            isActive() &&
+            (await playWhileDownloading(slot, isCurrent, trackId, resolved, force))
+          )
+            return;
+          if (!isCurrent()) return;
+          let path: string | null = null;
+          try {
+            path = await downloadInApp(trackId, resolved, force);
+          } catch (err) {
+            console.warn(
+              '[in-app-yt] stream download failed, using the backend:',
+              err instanceof Error ? err.message : err,
+            );
+          }
+          if (!isCurrent()) return;
+          if (path) {
+            slot.expiresAt = Number.POSITIVE_INFINITY;
+            slot.muxed = false;
+            const fileSrc = await fileSource(slot, isCurrent, await streamCache.readFile(path, resolved.mimeType));
+            if (!fileSrc) return;
+            src = fileSrc;
+          } else {
+            const res = await api.getBackendTrackStream(trackId, API_QUALITY[getSettings().streamQuality] ?? 'auto');
+            slot.expiresAt = res.expiresAt ?? 0;
+            slot.muxed = !!res.muxed;
+            src = absolute(res.url);
+          }
         }
       }
     }
@@ -867,8 +888,7 @@ function checkTransition() {
   if (!next || !m || m.paused || !Number.isFinite(m.duration) || m.duration <= 0) return;
   const rate = dsp.getDsp().speed || 1;
   const remaining = (m.duration - m.currentTime) / rate;
-  const due = m.currentTime >= PREPARE_AFTER_S || remaining < 30;
-  if (!due) return;
+  if (remaining > PREPARE_BEFORE_END_S) return;
 
   if (!wantStandby()) {
     prefetch(next.id);

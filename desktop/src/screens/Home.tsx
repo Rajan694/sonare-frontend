@@ -22,6 +22,7 @@ import { formatDuration } from '../lib/format';
 import Artwork from '../components/music/Artwork';
 import { cn } from '../lib/cn';
 import type { Track } from '../types';
+import { YouMayLike } from '../components/ai/YouMayLike';
 
 const Home = () => {
   const { mode, setMode } = useModeStore();
@@ -282,6 +283,9 @@ const Home = () => {
         </motion.div>
       )}
 
+      {/* AI picks from the listening history; renders nothing until there are some */}
+      {isOnline && <YouMayLike exclude={[...recentTracks, ...mostPlayed]} onPlay={handlePlay} />}
+
       {/* Trending shelf (Square cards) - Online only */}
       {isOnline && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
@@ -516,6 +520,8 @@ const PhoneHome = ({
           </div>
         </motion.div>
       )}
+
+      {isOnline && <YouMayLike phone exclude={recent} onPlay={onPlay} />}
 
       <motion.div className="flex flex-col gap-3" variants={staggerItem} transition={transition.normal}>
         <div className="shead">

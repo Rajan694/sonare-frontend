@@ -38,6 +38,10 @@ const playFrom = async (track: typeof a, queue: (typeof a)[]) => {
   await waitFor(() => expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ id: track.id })));
 };
 
+/** The playing song reaches `positionMs` of 200 s; the next one is prepared in the last 15 s. */
+const reach = (positionMs: number) =>
+  act(() => mockEventEmitter.emit('SonarePlayer.progress', { positionMs, durationMs: 200_000, bufferedMs: 0 }));
+
 describe('AudioEngine and the native player', () => {
   it('MOB-AUD-001 sends the Audio screen settings to the native player whenever they change', () => {
     act(() => useSettingsStore.setState({ eqPreset: 'Bass' }));
@@ -62,8 +66,16 @@ describe('AudioEngine and the native player', () => {
     expect(native.setAudioEffects).toHaveBeenLastCalledWith(expect.objectContaining({ enabled: false }));
   });
 
-  it('MOB-AUD-002 with gapless on, the next track is handed to the player once the current one loads', async () => {
+  it('MOB-AUD-002 with gapless on, the next track is handed to the player in the last 15 s of this one', async () => {
+    const stream = jest.mocked(api.stream);
+    stream.mockClear();
     await playFrom(a, [a, b, c]);
+    reach(100_000);
+    await new Promise((r) => setTimeout(r, 20));
+    // Nothing of the next song is fetched before then: a skip mustn't cost its download.
+    expect(native.setNext).not.toHaveBeenCalledWith(expect.objectContaining({ id: b.id }));
+    expect(stream.mock.calls.some(([id]) => id === b.id)).toBe(false);
+    reach(186_000);
     await waitFor(() =>
       expect(native.setNext).toHaveBeenLastCalledWith(
         expect.objectContaining({ id: b.id, url: expect.stringContaining(`/api/v1/stream/${b.id}`), album: 'One' }),
@@ -73,23 +85,26 @@ describe('AudioEngine and the native player', () => {
 
   it('MOB-AUD-003 when the player moves on by itself, the queue follows without loading the track again', async () => {
     await playFrom(a, [a, b, c]);
+    reach(190_000);
     await waitFor(() => expect(native.setNext).toHaveBeenLastCalledWith(expect.objectContaining({ id: b.id })));
     native.load.mockClear();
 
     act(() => mockEventEmitter.emit('SonarePlayer.advance', { mediaId: b.id }));
     expect(usePlayerStore.getState().currentTrack?.id).toBe(b.id);
-    // Then the one after it is prepared.
+    // Then the one after it is prepared, near the end of this one.
+    reach(190_000);
     await waitFor(() => expect(native.setNext).toHaveBeenLastCalledWith(expect.objectContaining({ id: c.id })));
     expect(native.load).not.toHaveBeenCalled();
 
     // Progress now belongs to the new track.
-    act(() => mockEventEmitter.emit('SonarePlayer.progress', { positionMs: 1234, durationMs: 200_000, bufferedMs: 0 }));
+    reach(1234);
     expect(usePlayerStore.getState().positionMs).toBe(1234);
   });
 
   it('MOB-AUD-004 with gapless and crossfade off, no next track is handed over', async () => {
     act(() => useSettingsStore.setState({ gapless: false }));
     await playFrom(a, [a, b, c]);
+    reach(190_000);
     await new Promise((r) => setTimeout(r, 20));
     expect(native.setNext).not.toHaveBeenCalledWith(expect.objectContaining({ id: b.id }));
     expect(native.setNext).toHaveBeenLastCalledWith(null);
@@ -102,6 +117,7 @@ describe('AudioEngine and the native player', () => {
 
   it('MOB-AUD-005 at the end of the queue the player is told there is nothing next', async () => {
     await playFrom(c, [a, b, c]);
+    reach(190_000);
     await waitFor(() => expect(native.setNext).toHaveBeenLastCalledWith(null));
   });
 
@@ -188,10 +204,11 @@ describe('streaming ahead', () => {
     ...extra,
   });
 
-  it("MOB-AUD-010 the next song's stream is looked up while this one plays, so skipping starts it without asking again", async () => {
+  it("MOB-AUD-010 the next song's stream is looked up in this one's last 15 s, so moving on starts it without asking again", async () => {
     const stream = jest.spyOn(api, 'stream').mockImplementation(async (id: string) => info(id) as never);
     await playFrom(a, [a, b, c]);
     const asked = () => stream.mock.calls.map((call) => call[0]);
+    reach(190_000);
     await waitFor(() => expect(asked()).toContain(b.id));
     // In the quality picked in Settings.
     expect(stream).toHaveBeenCalledWith(b.id, 'high');
@@ -199,7 +216,8 @@ describe('streaming ahead', () => {
     act(() => usePlayerStore.getState().playNext());
     await waitFor(() => expect(native.load).toHaveBeenLastCalledWith(expect.objectContaining({ id: b.id })));
     expect(asked()).not.toContain(b.id);
-    // …and the one after it is looked up in turn.
+    // …and the one after it is looked up in turn, near the end of this one.
+    reach(190_000);
     await waitFor(() => expect(asked()).toContain(c.id));
     stream.mockRestore();
     jest.spyOn(api, 'stream').mockImplementation(async (id: string) => ({ url: `/api/v1/stream/${id}` }) as never);

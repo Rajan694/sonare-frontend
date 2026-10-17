@@ -83,13 +83,19 @@ describe('useDebounce and useSearch', () => {
     expect(result.current).toBe('r');
     act(() => vi.advanceTimersByTime(1));
     expect(result.current).toBe('rad');
+
+    // Starting from another value: what was typed before the screen opened waits like the rest.
+    const started = renderHook(({ v }) => useDebounce(v, 500, ''), { initialProps: { v: 'tu' } });
+    expect(started.result.current).toBe('');
+    started.rerender({ v: 'tum' });
+    act(() => vi.advanceTimersByTime(500));
+    expect(started.result.current).toBe('tum');
   });
 
-  it('WEB-HOOK-007 useSearch sends one trimmed request for the final query', async () => {
+  it('WEB-HOOK-007 useSearch sends one trimmed request for the settled query', async () => {
     const rec = recordRequests();
     server.use(http.get(`${API}/search`, () => HttpResponse.json(page([makeTrack({ title: 'Karma Police' })]))));
     const { result, rerender } = renderHook(({ q }) => useSearch(q, 'songs'), { initialProps: { q: '' } });
-    rerender({ q: 'ka' });
     rerender({ q: 'karma ' });
     await waitFor(() => expect(result.current.data?.items[0].title).toBe('Karma Police'), { timeout: 2000 });
     rec.stop();

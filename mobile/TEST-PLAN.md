@@ -53,68 +53,69 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/data.test.tsx`
 
-| ID             | Use case                                                                                          |
-| :------------- | :------------------------------------------------------------------------------------------------ |
-| `MOB-DATA-001` | formats API_BASE and API_ORIGIN for default dev environment                                       |
-| `MOB-DATA-002` | absoluteUrl resolves relative paths and returns full URLs as-is; returns undefined for null       |
-| `MOB-DATA-003` | artworkUrl generates formatted artwork URL with size parameter                                    |
-| `MOB-DATA-004` | httpRequest performs GET request and parses JSON response                                         |
-| `MOB-DATA-005` | httpRequest handles non-JSON response gracefully                                                  |
-| `MOB-DATA-006` | httpRequest attaches X-Sonare-Client header for API_ORIGIN requests                               |
-| `MOB-DATA-007` | httpRequest handles network error with NetworkError                                               |
-| `MOB-DATA-008` | httpRequest handles timeout with NetworkError                                                     |
-| `MOB-DATA-009` | hydrate restores session from AsyncStorage                                                        |
-| `MOB-DATA-010` | hydrate falls back to guest mode on corrupted session                                             |
-| `MOB-DATA-011` | signIn authenticates user and saves session                                                       |
-| `MOB-DATA-012` | signUp registers user and saves session                                                           |
-| `MOB-DATA-013` | signOut calls server logout and clears local session                                              |
-| `MOB-DATA-014` | refresh rotates refresh token and updates session                                                 |
-| `MOB-DATA-015` | refresh clears session on 401 response                                                            |
-| `MOB-DATA-016` | refresh deduplicates concurrent refresh calls                                                     |
-| `MOB-DATA-017` | search queries catalog with query and type                                                        |
-| `MOB-DATA-018` | trending fetches trending tracks with limit and region                                            |
-| `MOB-DATA-019` | album and albumTracks fetch album details and tracklist                                           |
-| `MOB-DATA-020` | artist, artistTopTracks, artistAlbums fetch artist metadata                                       |
-| `MOB-DATA-021` | playlist and playlistTracks fetch public playlist data                                            |
-| `MOB-DATA-022` | stream fetches stream info with quality and format params                                         |
-| `MOB-DATA-023` | peaks and lyrics fetch audio peaks and synced lyrics                                              |
-| `MOB-DATA-024` | me, settings, and saveSettings manage user profile and preferences                                |
-| `MOB-DATA-025` | libraryTracks, favourites, setFavourite, setFollowing manage library entities                     |
-| `MOB-DATA-026` | recentlyPlayed and mostPlayed fetch listening history                                             |
-| `MOB-DATA-027` | reportPlays posts batch play events to /me/sync                                                   |
-| `MOB-DATA-028` | user playlist methods manage personal playlists                                                   |
-| `MOB-DATA-029` | auto-refreshes expired access token on 401 response                                               |
-| `MOB-DATA-030` | handles 204 No Content response                                                                   |
-| `MOB-DATA-031` | throws ApiError on non-2xx status with message and code                                           |
-| `MOB-DATA-032` | isOwnPlaylist identifies sonare-prefixed playlist IDs                                             |
-| `MOB-DATA-033` | hydrate loads settings from storage and server                                                    |
-| `MOB-DATA-034` | update saves settings locally and debounces server sync                                           |
-| `MOB-DATA-035` | sanitizes invalid settings values with pick helper                                                |
-| `MOB-DATA-036` | queuePlay adds pending play and triggers background upload                                        |
-| `MOB-DATA-037` | queuePlay stores a local file by fingerprint and a server song by bare id, for the signed-in user |
-| `MOB-DATA-038` | flush drops confirmed plays after successful reportPlays                                          |
-| `MOB-DATA-039` | flush schedules retry on network error and drops invalid 4xx errors                               |
-| `MOB-DATA-040` | startBackgroundSync wires its network and app-state triggers once, even if called twice           |
-| `MOB-DATA-041` | requireAccount executes immediately when signed in                                                |
-| `MOB-DATA-042` | requireAccount stores pending action and navigates to SignIn when guest                           |
-| `MOB-DATA-043` | takePendingAction executes and clears pending action                                              |
-| `MOB-DATA-044` | clearPendingAction clears pending action without executing                                        |
-| `MOB-DATA-045` | useAsync executes promise and provides data, loading, error, refetch                              |
-| `MOB-DATA-046` | useAsync respects enabled flag                                                                    |
-| `MOB-DATA-047` | useAsync re-runs when dependency changes or refetch is invoked                                    |
-| `MOB-DATA-048` | artGradients exports valid 3-color gradient arrays                                                |
-| `MOB-DATA-049` | signIn saves session to keychain and leaves AsyncStorage empty                                    |
-| `MOB-DATA-050` | hydrate migrates legacy AsyncStorage session to keychain                                          |
-| `MOB-DATA-051` | hydrate with nothing stored defaults to guest status                                              |
-| `MOB-DATA-052` | signOut resets keychain credentials and reverts status to guest                                   |
-| `MOB-DATA-053` | requestPasswordReset posts the email without a token; a server error is thrown with its message   |
-| `MOB-DATA-054` | resendVerification sends the access token                                                         |
-| `MOB-DATA-055` | a hand-made (Custom) EQ stays on the phone; gapless and normalization sync                        |
-| `MOB-DATA-056` | signing in keeps the phone's Custom EQ but takes the account's other settings                     |
-| `MOB-DATA-057` | favouriteIds asks only for the ids, so the heart state needs no metadata                          |
-| `MOB-DATA-058` | updatePlaylist PATCHes the name and description and returns the playlist                          |
-| `MOB-DATA-059` | removeFromPlaylist sends the row id when the list knows it, else the position                     |
-| `MOB-DATA-060` | reorderPlaylist PATCHes a row to its new position                                                 |
+| ID             | Use case                                                                                                |
+| :------------- | :------------------------------------------------------------------------------------------------------ |
+| `MOB-DATA-001` | formats API_BASE and API_ORIGIN for default dev environment                                             |
+| `MOB-DATA-002` | absoluteUrl resolves relative paths and returns full URLs as-is; returns undefined for null             |
+| `MOB-DATA-003` | artworkUrl generates formatted artwork URL with size parameter                                          |
+| `MOB-DATA-004` | httpRequest performs GET request and parses JSON response                                               |
+| `MOB-DATA-005` | httpRequest handles non-JSON response gracefully                                                        |
+| `MOB-DATA-006` | httpRequest attaches X-Sonare-Client header for API_ORIGIN requests                                     |
+| `MOB-DATA-007` | httpRequest handles network error with NetworkError                                                     |
+| `MOB-DATA-008` | httpRequest handles timeout with NetworkError                                                           |
+| `MOB-DATA-009` | hydrate restores session from AsyncStorage                                                              |
+| `MOB-DATA-010` | hydrate falls back to guest mode on corrupted session                                                   |
+| `MOB-DATA-011` | signIn authenticates user and saves session                                                             |
+| `MOB-DATA-012` | signUp registers user and saves session                                                                 |
+| `MOB-DATA-013` | signOut calls server logout and clears local session                                                    |
+| `MOB-DATA-014` | refresh rotates refresh token and updates session                                                       |
+| `MOB-DATA-015` | refresh clears session on 401 response                                                                  |
+| `MOB-DATA-016` | refresh deduplicates concurrent refresh calls                                                           |
+| `MOB-DATA-017` | search queries catalog with query and type                                                              |
+| `MOB-DATA-018` | trending fetches trending tracks with limit and region                                                  |
+| `MOB-DATA-019` | album and albumTracks fetch album details and tracklist                                                 |
+| `MOB-DATA-020` | artist, artistTopTracks, artistAlbums fetch artist metadata                                             |
+| `MOB-DATA-021` | playlist and playlistTracks fetch public playlist data                                                  |
+| `MOB-DATA-022` | stream fetches stream info with quality and format params                                               |
+| `MOB-DATA-023` | peaks and lyrics fetch audio peaks and synced lyrics                                                    |
+| `MOB-DATA-024` | me, settings, and saveSettings manage user profile and preferences                                      |
+| `MOB-DATA-025` | libraryTracks, favourites, setFavourite, setFollowing manage library entities                           |
+| `MOB-DATA-026` | recentlyPlayed and mostPlayed fetch listening history                                                   |
+| `MOB-DATA-027` | reportPlays posts batch play events to /me/sync                                                         |
+| `MOB-DATA-028` | user playlist methods manage personal playlists                                                         |
+| `MOB-DATA-029` | auto-refreshes expired access token on 401 response                                                     |
+| `MOB-DATA-030` | handles 204 No Content response                                                                         |
+| `MOB-DATA-031` | throws ApiError on non-2xx status with message and code                                                 |
+| `MOB-DATA-032` | isOwnPlaylist identifies sonare-prefixed playlist IDs                                                   |
+| `MOB-DATA-033` | hydrate loads settings from storage and server                                                          |
+| `MOB-DATA-034` | update saves settings locally and debounces server sync                                                 |
+| `MOB-DATA-035` | sanitizes invalid settings values with pick helper                                                      |
+| `MOB-DATA-036` | queuePlay adds pending play and triggers background upload                                              |
+| `MOB-DATA-037` | queuePlay stores a local file by fingerprint and a server song by bare id, for the signed-in user       |
+| `MOB-DATA-038` | flush drops confirmed plays after successful reportPlays                                                |
+| `MOB-DATA-039` | flush schedules retry on network error and drops invalid 4xx errors                                     |
+| `MOB-DATA-040` | startBackgroundSync wires its network and app-state triggers once, even if called twice                 |
+| `MOB-DATA-041` | requireAccount executes immediately when signed in                                                      |
+| `MOB-DATA-042` | requireAccount stores pending action and navigates to SignIn when guest                                 |
+| `MOB-DATA-043` | takePendingAction executes and clears pending action                                                    |
+| `MOB-DATA-044` | clearPendingAction clears pending action without executing                                              |
+| `MOB-DATA-045` | useAsync executes promise and provides data, loading, error, refetch                                    |
+| `MOB-DATA-046` | useAsync respects enabled flag                                                                          |
+| `MOB-DATA-047` | useAsync re-runs when dependency changes or refetch is invoked                                          |
+| `MOB-DATA-048` | artGradients exports valid 3-color gradient arrays                                                      |
+| `MOB-DATA-049` | signIn saves session to keychain and leaves AsyncStorage empty                                          |
+| `MOB-DATA-050` | hydrate migrates legacy AsyncStorage session to keychain                                                |
+| `MOB-DATA-051` | hydrate with nothing stored defaults to guest status                                                    |
+| `MOB-DATA-052` | signOut resets keychain credentials and reverts status to guest                                         |
+| `MOB-DATA-053` | requestPasswordReset posts the email without a token; a server error is thrown with its message         |
+| `MOB-DATA-054` | resendVerification sends the access token                                                               |
+| `MOB-DATA-055` | a hand-made (Custom) EQ stays on the phone; gapless and normalization sync                              |
+| `MOB-DATA-056` | signing in keeps the phone's Custom EQ but takes the account's other settings                           |
+| `MOB-DATA-057` | favouriteIds asks only for the ids, so the heart state needs no metadata                                |
+| `MOB-DATA-058` | updatePlaylist PATCHes the name and description and returns the playlist                                |
+| `MOB-DATA-059` | removeFromPlaylist sends the row id when the list knows it, else the position                           |
+| `MOB-DATA-060` | reorderPlaylist PATCHes a row to its new position                                                       |
+| `MOB-DATA-061` | an expired access token is refreshed before the call, and a 401 after another refresh reuses that token |
 
 ## `__tests__/lib.test.tsx`
 
@@ -316,20 +317,20 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/audio.test.tsx`
 
-| ID                     | Use case                                                                                             |
-| :--------------------- | :--------------------------------------------------------------------------------------------------- |
-| `MOB-AUD-001`          | sends the Audio screen settings to the native player whenever they change                            |
-| `MOB-AUD-002`          | with gapless on, the next track is handed to the player once the current one loads                   |
-| `MOB-AUD-003`          | when the player moves on by itself, the queue follows without loading the track again                |
-| `MOB-AUD-004`          | with gapless and crossfade off, no next track is handed over                                         |
-| `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                     |
-| `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                    |
-| `MOB-AUD-008`          | a stream url the player gave up on is reloaded fresh where it stopped, twice at most                 |
-| `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                       |
-| `MOB-AUD-010`          | the next song's stream is looked up while this one plays, so skipping starts it without asking again |
-| `MOB-AUD-011`          | a url refused mid-song is swapped for a fresh one of the same file, without reloading the song       |
-| `MOB-AUD-012`          | a streamed song is cached under its id and format, since its url changes every time                  |
-| `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                      |
+| ID                     | Use case                                                                                                 |
+| :--------------------- | :------------------------------------------------------------------------------------------------------- |
+| `MOB-AUD-001`          | sends the Audio screen settings to the native player whenever they change                                |
+| `MOB-AUD-002`          | with gapless on, the next track is handed to the player in the last 15 s of this one                     |
+| `MOB-AUD-003`          | when the player moves on by itself, the queue follows without loading the track again                    |
+| `MOB-AUD-004`          | with gapless and crossfade off, no next track is handed over                                             |
+| `MOB-AUD-005`          | at the end of the queue the player is told there is nothing next                                         |
+| `MOB-AUD-006`          | a move to a track the queue no longer has reloads the current one                                        |
+| `MOB-AUD-008`          | a stream url the player gave up on is reloaded fresh where it stopped, twice at most                     |
+| `MOB-AUD-009`          | each progress level covers the stretch since the last event; a seek is skipped                           |
+| `MOB-AUD-010`          | the next song's stream is looked up in this one's last 15 s, so moving on starts it without asking again |
+| `MOB-AUD-011`          | a url refused mid-song is swapped for a fresh one of the same file, without reloading the song           |
+| `MOB-AUD-012`          | a streamed song is cached under its id and format, since its url changes every time                      |
+| `MOB-AUDIO-RESUME-001` | a restored queue loads paused, at the saved position; the next load starts at 0                          |
 
 ## `__tests__/playback-extras.test.ts`
 
@@ -548,3 +549,17 @@ navigation mock live in `test-utils/`.
 | ID              | Use case                                                 |
 | :-------------- | :------------------------------------------------------- |
 | `MOB-QVIRT-001` | a 2,000-song queue mounts a screenful of rows, not 2,000 |
+
+## `__tests__/ai-features.test.tsx`
+
+| ID           | Use case                                                                                         |
+| :----------- | :----------------------------------------------------------------------------------------------- |
+| `MOB-AI-001` | with AI off, signed out, or offline there is no AI on Home or Playlists, and nothing asks the AI |
+| `MOB-AI-002` | the store follows app-config, and an AI_UNAVAILABLE answer turns AI off                          |
+| `MOB-AI-003` | shows the songs found for the picks, with their reasons, once per session                        |
+| `MOB-AI-004` | shows nothing for no picks, an error, or fewer than 3 songs found                                |
+| `MOB-AI-005` | asks only when tapped, runs the plan’s searches and lists their songs once each                  |
+| `MOB-AI-006` | a failed AI search says so in one line                                                           |
+| `MOB-AI-007` | makes the playlist from the songs found and opens it                                             |
+| `MOB-AI-008` | too few songs found: says so and makes nothing                                                   |
+| `MOB-AI-009` | Cancel while the AI is thinking makes nothing                                                    |

@@ -33,6 +33,22 @@ let advancedTo: string | null = null;
 /** The next track the native player holds; undefined when it holds nothing we know of. */
 let nextSent: string | null | undefined;
 let nextToken = 0;
+/** The track whose last 15 s already asked for the next one (once per track). */
+let nextDueFor: string | null = null;
+
+/**
+ * How long before the end of a song the next one is looked up and handed to the player, which
+ * then starts downloading it. Late, so a song that is skipped or stopped never costs the next
+ * one's download; still time for gapless and the crossfade.
+ */
+const PREPARE_BEFORE_END_MS = 15_000;
+
+/** The current song is in its last PREPARE_BEFORE_END_MS (at the playback speed). */
+const nearEnd = (): boolean => {
+  const { positionMs, durationMs } = usePlayerStore.getState();
+  if (!(durationMs > 0)) return false;
+  return (durationMs - positionMs) / (useAudioStore.getState().speed || 1) <= PREPARE_BEFORE_END_MS;
+};
 /** Reloads after the player gave up on a refused stream url; a couple per track. */
 let reloads: { trackId: string; count: number } | null = null;
 const MAX_RELOADS = 2;
@@ -141,12 +157,19 @@ const loadOptions = (track: Track, url: string): LoadOptions => {
 };
 
 /**
- * Hands the native player the track after the current one, so it can start it gapless or
- * crossfade into it. Only needed while one of those is on; otherwise the next track loads
- * when this one ends, as before.
+ * In the current song's last 15 s: looks up the next track's stream and, while gapless or
+ * crossfade is on, hands it to the native player so it can start it without a gap. Earlier, a
+ * next track the player already holds is taken back (the queue changed).
  */
 const prepareNext = async () => {
   const token = ++nextToken;
+  if (!nearEnd()) {
+    if (nextSent) {
+      SonarePlayer.setNext(null);
+      nextSent = null;
+    }
+    return;
+  }
   prefetchNext();
   const next = usePlayerStore.getState().upcomingTrack();
   const wanted =
@@ -195,6 +218,7 @@ const adopt = (id: string) => {
   if (adopted) watchWaveform(adopted);
   endedHandled = false;
   nextSent = undefined;
+  nextDueFor = null;
   prepareNext();
 };
 
@@ -231,6 +255,7 @@ const loadCurrent = async () => {
     watchWaveform(track);
     // load() clears whatever next track the player held.
     nextSent = undefined;
+    nextDueFor = null;
     prepareNext();
     // Paused while the stream was loading: nothing applied it yet, so apply it now.
     if (!usePlayerStore.getState().isPlaying) SonarePlayer.pause();
@@ -282,6 +307,10 @@ const startAudio = () => {
       noteLevel(listen.trackId, e.durationMs, prev!, e.positionMs, e.level);
     }
     lastProgress = { trackId: listen.trackId, positionMs: e.positionMs };
+    if (nextDueFor !== listen.trackId && nearEnd()) {
+      nextDueFor = listen.trackId;
+      prepareNext();
+    }
     const threshold = Math.min(PLAY_THRESHOLD_MS, player.durationMs / 2 || PLAY_THRESHOLD_MS);
     // History belongs to an account; guests just listen.
     if (!listen.counted && e.positionMs >= threshold && useAuthStore.getState().status === 'signedIn') {

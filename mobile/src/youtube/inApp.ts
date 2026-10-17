@@ -1,6 +1,7 @@
 import { Innertube, Log } from 'youtubei.js/react-native';
 import { createYoutubeiSource, probeRange, type YoutubeiSource } from '../../../shared/youtube/youtubeiSource';
 import { createCatalog } from '../../../shared/catalog/catalog';
+import { memoizeCatalog } from '../../../shared/catalog/memo';
 import type { InnertubeLike } from '../../../shared/youtube/innertubeLike';
 import { getYoutubeClients, subscribeAppConfig } from './appConfig';
 import { xhrFetch } from './xhrFetch';
@@ -31,7 +32,7 @@ const probeStream = async (url: string, contentLength: number): Promise<number> 
 
 const build = (yt: InnertubeLike) => {
   source = createYoutubeiSource(yt, { clients: getYoutubeClients(), probe: probeStream, newSession: newInnertube });
-  catalog = createCatalog(source);
+  catalog = memoizeCatalog(createCatalog(source));
 };
 
 // A new client order from /app-config applies from the next call; the session is kept.

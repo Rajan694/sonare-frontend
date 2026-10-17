@@ -4,7 +4,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { AppState } from 'react-native';
 import { apiBase, apiOrigin, absoluteUrl, artworkUrl } from '../src/data/config';
 import { httpRequest, NetworkError } from '../src/data/http';
-import { useAuthStore } from '../src/data/auth';
+import { accessTokenExpired, useAuthStore } from '../src/data/auth';
 import { api, ApiError, isOwnPlaylist } from '../src/data/api';
 import { useSettingsStore, API_QUALITY } from '../src/data/settings';
 import { queuePlay, startBackgroundSync, useSyncStatus, requestSync } from '../src/data/sync';
@@ -948,6 +948,63 @@ describe('Data Layer', () => {
 
       const res = await api.me();
       expect(res).toEqual({ ok: true });
+    });
+
+    it('MOB-DATA-061 an expired access token is refreshed before the call, and a 401 after another refresh reuses that token', async () => {
+      const jwt = (expSec: number) => `h.${btoa(JSON.stringify({ exp: expSec })).replace(/[=]+$/, '')}.s`;
+      const now = Math.floor(Date.now() / 1000);
+      expect(accessTokenExpired(jwt(now - 60))).toBe(true);
+      expect(accessTokenExpired(jwt(now + 600))).toBe(false);
+      expect(accessTokenExpired('not-a-jwt')).toBe(false);
+
+      const fresh = jwt(now + 900);
+      const sent: { url: string; auth: string }[] = [];
+      let refuse: string | null = null;
+      class AuthXHR {
+        status = 200;
+        responseText = '{}';
+        onload: (() => void) | null = null;
+        url = '';
+        auth = '';
+        open(_m: string, url: string) {
+          this.url = url;
+        }
+        setRequestHeader(name: string, value: string) {
+          if (name === 'Authorization') this.auth = value;
+        }
+        send() {
+          sent.push({ url: this.url, auth: this.auth });
+          if (this.url.endsWith('/auth/refresh')) {
+            this.responseText = JSON.stringify({ accessToken: fresh, refreshToken: 'r2' });
+          } else if (refuse && this.auth === `Bearer ${refuse}`) {
+            this.status = 401;
+            this.responseText = JSON.stringify({ error: { message: 'Token expired' } });
+            // Meanwhile another call refreshed the session.
+            useAuthStore.setState({ accessToken: fresh });
+          } else {
+            this.responseText = JSON.stringify({ ok: true });
+          }
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      global.XMLHttpRequest = AuthXHR as any;
+      const user = { id: 'u9', email: 'u9@test.com', displayName: 'U9' };
+      // An earlier test leaves refresh mocked in the store's state.
+      useAuthStore.setState({ refresh: useAuthStore.getInitialState().refresh });
+
+      // Launch with a token that ran out: one refresh first, then the call once.
+      useAuthStore.setState({ status: 'signedIn', accessToken: jwt(now - 60), refreshToken: 'r1', user });
+      await expect(api.me()).resolves.toEqual({ ok: true });
+      expect(sent.map((c) => c.url.replace(/^.*\/api\/v1/, ''))).toEqual(['/auth/refresh', '/me']);
+      expect(sent[1].auth).toBe(`Bearer ${fresh}`);
+
+      // Sent with a token another call has since replaced: retried with the new one, no second refresh.
+      sent.length = 0;
+      refuse = jwt(now + 600);
+      useAuthStore.setState({ accessToken: refuse, refreshToken: 'r2' });
+      await expect(api.me()).resolves.toEqual({ ok: true });
+      expect(sent.map((c) => c.url.replace(/^.*\/api\/v1/, ''))).toEqual(['/me', '/me']);
+      expect(sent[1].auth).toBe(`Bearer ${fresh}`);
     });
 
     it('MOB-DATA-030 handles 204 No Content response', async () => {

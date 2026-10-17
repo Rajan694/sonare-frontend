@@ -203,8 +203,9 @@ export const useAuthAsync = <T>(
   return useAsync(asyncFn, [user?.id, ready, ...deps], { enabled: shouldRun, initialData });
 };
 
-export const useDebounce = <T>(value: T, delayMs: number = 300): T => {
-  const [debounced, setDebounced] = useState(value);
+/** `value` once it has stopped changing for `delayMs`; `initial` until then (default: `value` itself). */
+export const useDebounce = <T>(value: T, delayMs: number = 300, initial: T = value): T => {
+  const [debounced, setDebounced] = useState(initial);
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebounced(value);
@@ -221,15 +222,16 @@ export const useTrending = (region: string = 'IN', limit: number = 50) => {
   return useAsync(() => api.getTrending(region, limit), [region, limit]);
 };
 
+/** One search; `query` should already be settled (the Search screen debounces what is typed). */
 export const useSearch = (
   query: string,
   type: 'songs' | 'albums' | 'artists' | 'playlists' | 'all' = 'all',
   cursor?: string,
   enabled: boolean = true,
 ) => {
-  const debouncedQuery = useDebounce(query.trim(), 300);
-  return useAsync(() => api.search(debouncedQuery, type, cursor), [debouncedQuery, type, cursor], {
-    enabled: enabled && debouncedQuery.length > 0,
+  const q = query.trim();
+  return useAsync(() => api.search(q, type, cursor), [q, type, cursor], {
+    enabled: enabled && q.length > 0,
   });
 };
 

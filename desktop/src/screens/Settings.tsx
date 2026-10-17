@@ -27,6 +27,7 @@ import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { formatBytes } from '../lib/format';
 import { isInAppYoutubeAllowed } from '../youtube/inApp';
 import { MAX_STREAM_CACHE_BYTES, streamCache } from '../youtube/streamCache';
+import { MAX_SONG_CACHE_BYTES, songCache } from '../audio/songCache';
 import { version as APP_VERSION } from '../../neutralino.config.json';
 import { useAppDispatch, useAppSelector } from '../store';
 import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
@@ -74,29 +75,37 @@ interface SectionDef {
   available: boolean;
 }
 
-/** The Linux window keeps the songs it streamed (300 MB, least recently played out first). */
-const StreamCacheRow = () => {
+/**
+ * Songs streamed recently, kept so they play again without a download (least recently played
+ * out first): the Linux window's stream cache (300 MB), or the browser's song cache (100 MB).
+ */
+const StreamCacheRow = ({
+  cache,
+  max,
+}: {
+  cache: { bytes: () => Promise<number>; clear: () => Promise<void> };
+  max: number;
+}) => {
   const [bytes, setBytes] = useState<number | null>(null);
   const [clearing, setClearing] = useState(false);
   useEffect(() => {
-    void streamCache
+    void cache
       .bytes()
       .then(setBytes)
       .catch(() => setBytes(null));
-  }, []);
+  }, [cache]);
   const clear = async () => {
     setClearing(true);
     try {
-      await streamCache.clear();
-      setBytes(await streamCache.bytes());
+      await cache.clear();
+      setBytes(await cache.bytes());
     } catch {
       showToast({ title: 'Could not clear the stream cache', icon: 'info' });
     } finally {
       setClearing(false);
     }
   };
-  const held =
-    bytes === null ? '' : bytes > 0 ? `${formatBytes(bytes)} of ${formatBytes(MAX_STREAM_CACHE_BYTES)} · ` : 'Empty · ';
+  const held = bytes === null ? '' : bytes > 0 ? `${formatBytes(bytes)} of ${formatBytes(max)} · ` : 'Empty · ';
   return (
     <Row icon="download" label="Stream cache" desc={`${held}songs you played recently, so they play again at once`}>
       <Button variant="out" size="sm" onClick={() => void clear()} disabled={clearing || !bytes}>
@@ -318,7 +327,8 @@ const Settings = () => {
           />
         </Row>
       </label>
-      {isInAppYoutubeAllowed() && <StreamCacheRow />}
+      {isInAppYoutubeAllowed() && <StreamCacheRow cache={streamCache} max={MAX_STREAM_CACHE_BYTES} />}
+      {CAPS.songCache && <StreamCacheRow cache={songCache} max={MAX_SONG_CACHE_BYTES} />}
     </div>
   );
 

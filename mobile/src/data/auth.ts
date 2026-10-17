@@ -29,6 +29,11 @@ interface AuthStore {
   signOut: () => Promise<void>;
   /** Swap the refresh token for a new pair; returns the new access token or null. */
   refresh: () => Promise<string | null>;
+  /**
+   * The access token to send: refreshed first when it has already run out (they last 15
+   * minutes), so a launch doesn't send every call once to be refused and then again.
+   */
+  usableAccessToken: () => Promise<string | null>;
   /** Emails a reset code (and link); the server answers ok whether or not the account exists. */
   requestPasswordReset: (email: string) => Promise<void>;
   /** Swaps the emailed reset code for a token that sets the new password (15 minutes). */
@@ -80,6 +85,17 @@ const authRequest = <T>(path: string, body: unknown, accessToken?: string | null
 
 let refreshing: Promise<string | null> | null = null;
 
+/** The access token's expiry has passed (or is under 30 s away). False when it can't be read. */
+export const accessTokenExpired = (token: string, now = Date.now()): boolean => {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const { exp } = JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '=')));
+    return typeof exp === 'number' && exp * 1000 < now + 30_000;
+  } catch {
+    return false;
+  }
+};
+
 export const useAuthStore = create<AuthStore>((set, get) => {
   const startSession = async (session: Session) => {
     await Keychain.setGenericPassword('session', JSON.stringify(session), {
@@ -95,11 +111,14 @@ export const useAuthStore = create<AuthStore>((set, get) => {
     method: 'POST' | 'PATCH' | 'DELETE' = 'POST',
   ): Promise<T> => {
     const fullPath = path.startsWith('/') ? path : `/auth/${path}`;
+    const sent = await get().usableAccessToken();
     try {
-      return await serverRequest<T>(method, fullPath, body, get().accessToken);
+      return await serverRequest<T>(method, fullPath, body, sent);
     } catch (e) {
       if (!(e instanceof AuthError) || e.status !== 401) throw e;
-      const token = await get().refresh();
+      // Another call may have refreshed while this one was out: use that token, don't rotate again.
+      const current = get().accessToken;
+      const token = current && current !== sent ? current : await get().refresh();
       if (!token) throw e;
       return serverRequest<T>(method, fullPath, body, token);
     }
@@ -195,6 +214,13 @@ export const useAuthStore = create<AuthStore>((set, get) => {
         refreshing = null;
       });
       return refreshing;
+    },
+
+    usableAccessToken: async () => {
+      const { accessToken } = get();
+      if (!accessToken || !accessTokenExpired(accessToken)) return accessToken;
+      // Offline or the backend is down: send the old one, and the call fails as it would have.
+      return (await get().refresh()) ?? get().accessToken;
     },
 
     requestPasswordReset: async (email) => {

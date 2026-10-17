@@ -13,6 +13,8 @@ export const DEFAULT_APP_CONFIG: AppConfig = {
   inAppYoutube: true,
   youtubeClients: ['VISIONOS'],
   updatedAt: 0,
+  // Off until the backend says a provider is answering.
+  ai: false,
 };
 
 const STORAGE_KEY = 'sonare.appConfig';
@@ -76,6 +78,7 @@ export async function loadAppConfig(): Promise<AppConfig> {
             ? parsed.youtubeClients
             : DEFAULT_APP_CONFIG.youtubeClients,
           updatedAt: typeof parsed.updatedAt === 'number' ? parsed.updatedAt : 0,
+          ai: parsed.ai === true,
         };
         notifyConfigChanged();
       }
@@ -102,6 +105,7 @@ export async function fetchAppConfig(): Promise<AppConfig> {
             ? res.json.youtubeClients
             : DEFAULT_APP_CONFIG.youtubeClients,
         updatedAt: typeof res.json.updatedAt === 'number' ? res.json.updatedAt : 0,
+        ai: res.json.ai === true,
       };
 
       currentConfig = fresh;

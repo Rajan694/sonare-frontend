@@ -114,13 +114,14 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .build()
       }
-    // Streams are audio only (a few MB a song), so load the whole song as soon as it starts
-    // instead of ExoPlayer's 50 s ahead: a slow or dropped connection mid-song then has
-    // minutes of audio to recover in, not seconds. The byte cap bounds hour-long mixes.
+    // Two minutes ahead instead of ExoPlayer's 50 s: a slow or dropped connection mid-song has
+    // that long to recover in. Not the whole song: a song skipped or stopped early then costs
+    // only what was buffered. Loading resumes in bursts once less than BUFFER_MIN_MS is left.
+    // The byte cap bounds high-bitrate files.
     val loadControl =
       DefaultLoadControl.Builder()
         .setBufferDurationsMs(
-          /* minBufferMs= */ BUFFER_AHEAD_MS,
+          /* minBufferMs= */ BUFFER_MIN_MS,
           /* maxBufferMs= */ BUFFER_AHEAD_MS,
           /* bufferForPlaybackMs= */ 1_500,
           /* bufferForPlaybackAfterRebufferMs= */ 3_000,
@@ -312,7 +313,8 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     @Volatile var pendingTransitions = Transitions()
     @Volatile var pendingSpeed = 1f
 
-    private const val BUFFER_AHEAD_MS = 15 * 60_000
+    private const val BUFFER_AHEAD_MS = 2 * 60_000
+    private const val BUFFER_MIN_MS = 90_000
     private const val BUFFER_BYTES = 24 * 1024 * 1024
     private const val LOAD_RETRIES = 8
   }
