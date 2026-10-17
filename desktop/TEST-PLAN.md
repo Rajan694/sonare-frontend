@@ -644,7 +644,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOOK-004` | when disabled it does not call and shows the initial data           |
 | `WEB-HOOK-005` | drops a slow response that arrives after the inputs changed         |
 | `WEB-HOOK-006` | useDebounce only passes on the last value after the delay           |
-| `WEB-HOOK-007` | useSearch sends one trimmed request for the final query             |
+| `WEB-HOOK-007` | useSearch sends one trimmed request for the settled query           |
 | `WEB-HOOK-008` | useSearch sends nothing for a blank query                           |
 | `WEB-HOOK-009` | useAuth follows sign-in and sign-out                                |
 | `WEB-HOOK-010` | account-only lists are not requested for a guest                    |
@@ -679,31 +679,33 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/player.test.ts`
 
-| ID               | Use case                                                                            |
-| :--------------- | :---------------------------------------------------------------------------------- |
-| `WEB-PLAYER-001` | resolves a stream at the chosen quality, points the element at it and plays         |
-| `WEB-PLAYER-002` | keeps an absolute stream url as it is                                               |
-| `WEB-PLAYER-003` | reuses a fresh url for the same track, and re-resolves one about to expire          |
-| `WEB-PLAYER-004` | a slow answer for a track the user already skipped does not replace the new one     |
-| `WEB-PLAYER-005` | a stream that cannot be resolved surfaces the server message                        |
-| `WEB-PLAYER-006` | reports buffering between waiting and playing                                       |
-| `WEB-PLAYER-007` | flags a muxed (video) fallback stream                                               |
-| `WEB-PLAYER-008` | a media error re-resolves the url once without showing an error                     |
-| `WEB-PLAYER-009` | a second media error on the same track shows "Playback failed"                      |
-| `WEB-PLAYER-010` | retry fetches a fresh url and plays again, even after giving up                     |
-| `WEB-PLAYER-011` | a blocked autoplay asks the user to press play instead of reporting a failure       |
-| `WEB-PLAYER-012` | toggle plays when paused and pauses when playing; does nothing with no track        |
-| `WEB-PLAYER-013` | seek clamps to the track and waits for a known duration                             |
-| `WEB-PLAYER-014` | notifies ended-listeners when a track finishes                                      |
-| `WEB-PLAYER-015` | a playback listener gets the current state at once and stops after unsubscribing    |
-| `WEB-PLAYER-016` | clamps, applies and remembers the volume                                            |
-| `WEB-PLAYER-017` | mute goes to 0 and unmute restores the previous level                               |
-| `WEB-PLAYER-018` | unmuting after muting by dragging to 0 goes back to full volume                     |
-| `WEB-PLAYER-019` | starts at the remembered volume; bad or out-of-range values fall back safely        |
-| `WEB-PLAYER-020` | gapless: the next song waits ready in a second element and starts as this one ends  |
-| `WEB-PLAYER-021` | with gapless and crossfade off, the next stream is looked up ahead and used         |
-| `WEB-PLAYER-022` | skipping to the prepared song takes it over without loading it again                |
-| `WEB-PLAYER-023` | a prepared song that is no longer next is dropped; one that fails loads at its turn |
+| ID               | Use case                                                                                      |
+| :--------------- | :-------------------------------------------------------------------------------------------- |
+| `WEB-PLAYER-001` | resolves a stream at the chosen quality, points the element at it and plays                   |
+| `WEB-PLAYER-002` | keeps an absolute stream url as it is                                                         |
+| `WEB-PLAYER-003` | reuses a fresh url for the same track, and re-resolves one about to expire                    |
+| `WEB-PLAYER-004` | a slow answer for a track the user already skipped does not replace the new one               |
+| `WEB-PLAYER-005` | a stream that cannot be resolved surfaces the server message                                  |
+| `WEB-PLAYER-006` | reports buffering between waiting and playing                                                 |
+| `WEB-PLAYER-007` | flags a muxed (video) fallback stream                                                         |
+| `WEB-PLAYER-008` | a media error re-resolves the url once without showing an error                               |
+| `WEB-PLAYER-009` | a second media error on the same track shows "Playback failed"                                |
+| `WEB-PLAYER-010` | retry fetches a fresh url and plays again, even after giving up                               |
+| `WEB-PLAYER-011` | a blocked autoplay asks the user to press play instead of reporting a failure                 |
+| `WEB-PLAYER-012` | toggle plays when paused and pauses when playing; does nothing with no track                  |
+| `WEB-PLAYER-013` | seek clamps to the track and waits for a known duration                                       |
+| `WEB-PLAYER-014` | notifies ended-listeners when a track finishes                                                |
+| `WEB-PLAYER-015` | a playback listener gets the current state at once and stops after unsubscribing              |
+| `WEB-PLAYER-016` | clamps, applies and remembers the volume                                                      |
+| `WEB-PLAYER-017` | mute goes to 0 and unmute restores the previous level                                         |
+| `WEB-PLAYER-018` | unmuting after muting by dragging to 0 goes back to full volume                               |
+| `WEB-PLAYER-019` | starts at the remembered volume; bad or out-of-range values fall back safely                  |
+| `WEB-PLAYER-020` | gapless: the next song waits ready in a second element and starts as this one ends            |
+| `WEB-PLAYER-021` | with gapless and crossfade off, the next stream is looked up ahead and used                   |
+| `WEB-PLAYER-022` | skipping to the prepared song takes it over without loading it again                          |
+| `WEB-PLAYER-023` | a prepared song that is no longer next is dropped; one that fails loads at its turn           |
+| `WEB-PLAYER-024` | nothing of the next song is fetched until 15 s before this one ends                           |
+| `WEB-PLAYER-025` | a saved song plays from the song cache without a stream lookup; others are tagged to be saved |
 
 ## `test/unit/plays-sync.test.ts`
 
@@ -917,6 +919,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-081` | recordPeak fills the bars a stretch of the song touches, keeping each bar's loudest level                         |
 | `WEB-CAT-082` | a waveform is finished only when every bar is heard, scaled so the loudest is 1                                   |
 | `WEB-CAT-083` | mergeHeardPeaks draws heard bars scaled to the loudest, the placeholder elsewhere                                 |
+| `WEB-CAT-084` | trending and search answers are reused until they expire; failures are not kept                                   |
 | `WEB-CAT-064` | playlist maps playlist details and video items to Piped Playlist shape                                            |
 | `WEB-CAT-065` | playlist strips VL prefix from playlist ID                                                                        |
 | `WEB-CAT-066` | playlistNextPage fetches continuation items and returns nextpage cursor                                           |
@@ -1000,6 +1003,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-078` | streamCache reports how much it holds, and clear empties it from disk                                        |
 | `DSK-079` | on Linux an in-app song starts from the first part of its download and grows to the whole file               |
 | `DSK-080` | runCommand gathers output and exit code, also from events sent before spawnProcess answers                   |
+| `DSK-081` | curlFetch asks for compression when curl has zlib and drops the decoded body's encoding headers              |
 | `DSK-064` | player downloads direct YouTube stream into streamCache and decodes via Web Audio on Linux                   |
 | `DSK-065` | player falls back to backend stream relay when direct YouTube stream download fails                          |
 | `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |

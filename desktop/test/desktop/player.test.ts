@@ -240,8 +240,8 @@ describe('crossfade on Linux', () => {
     await player.playTrackId(byTitle('one').id);
     player.setNext({ id: byTitle('two').id, album: 'B' }, 'A');
     const [first] = h.FakePlayback.made;
-    first.currentTime = 30;
-    // The ticker prepares the next song in the standby slot...
+    first.currentTime = 168;
+    // The ticker prepares the next song in the standby slot 15 s before the end...
     await vi.waitFor(() => expect(h.FakePlayback.made).toHaveLength(2), { timeout: 2000 });
     const second = h.FakePlayback.made[1];
     expect(second.paused).toBe(true);

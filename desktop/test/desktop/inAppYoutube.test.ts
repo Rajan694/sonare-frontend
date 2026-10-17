@@ -3,7 +3,7 @@ import { commands, emitNativeEvent, files, lib, resetFs, store, writeFile } from
 import { mp3Frames, webmOpus } from '../helpers/audioFixtures';
 import { makeTrack } from '../helpers/fixtures';
 import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';
-import { curlFetch, escapeCurlConfigValue, runCommand } from '../../src/youtube/curlFetch';
+import { _resetCurlFeatures, curlFetch, escapeCurlConfigValue, runCommand } from '../../src/youtube/curlFetch';
 import {
   inAppYoutube,
   isInAppYoutubeAllowed,
@@ -244,6 +244,41 @@ describe('in-app YouTube desktop transport and integration', () => {
     const buf = await response.arrayBuffer();
     expect(new Uint8Array(buf)).toEqual(new Uint8Array([10, 20, 30, 40, 50]));
     expect(response.url).toBe('https://example.com/audio');
+  });
+
+  it('DSK-081 curlFetch asks for compression when curl has zlib and drops the encoding headers of the decoded body', async () => {
+    _resetCurlFeatures();
+    let cfg = '';
+    commands.answer = (cmd) => {
+      if (cmd === 'curl -V')
+        return { exitCode: 0, stdOut: 'curl 8.5.0\nFeatures: alt-svc AsynchDNS HTTPS-proxy IPv6 libz SSL\n' };
+      cfg = new TextDecoder().decode(files.get(cmd.match(/^curl -K "([^"]+)"$/)![1])?.bytes ?? new Uint8Array());
+      writeFile(
+        cfg.match(/dump-header = "([^"\r\n]+)"/)![1],
+        'HTTP/2 200\r\ncontent-type: application/json\r\ncontent-encoding: gzip\r\ncontent-length: 9\r\n\r\n',
+      );
+      writeFile(cfg.match(/output = "([^"\r\n]+)"/)![1], new TextEncoder().encode('{"ok":true}'));
+      return fakeCurlDone(cmd, 200);
+    };
+    const response = await curlFetch('https://www.youtube.com/youtubei/v1/search', {
+      headers: { 'Accept-Encoding': 'gzip' },
+    });
+    expect(cfg.split('\n')).toContain('compressed');
+    expect(cfg.toLowerCase()).not.toContain('accept-encoding');
+    expect(response.headers.get('content-encoding')).toBeNull();
+    expect(response.headers.get('content-length')).toBeNull();
+    expect(await response.json()).toEqual({ ok: true });
+
+    // A curl without zlib (some Windows builds) is never asked to decompress.
+    _resetCurlFeatures();
+    commands.answer = (cmd) => {
+      if (cmd === 'curl -V') return { exitCode: 0, stdOut: 'curl 8.5.0\nFeatures: AsynchDNS IPv6 SSL\n' };
+      cfg = new TextDecoder().decode(files.get(cmd.match(/^curl -K "([^"]+)"$/)![1])?.bytes ?? new Uint8Array());
+      return fakeCurlDone(cmd, 200);
+    };
+    await curlFetch('https://www.youtube.com/youtubei/v1/search');
+    expect(cfg.split('\n')).not.toContain('compressed');
+    _resetCurlFeatures();
   });
 
   it('DSK-057 curlFetch throws on non-zero curl exit code and supports abort signals', async () => {

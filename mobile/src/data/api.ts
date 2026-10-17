@@ -1,5 +1,5 @@
 import { apiBase } from './config';
-import { useAuthStore } from './auth';
+import { accessTokenExpired, useAuthStore } from './auth';
 import { httpRequest } from './http';
 import { isInAppYoutubeEnabled } from '../youtube/appConfig';
 import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
@@ -65,11 +65,16 @@ const request = async <T>(
       timeoutMs,
     });
 
-  let res = await send(useAuthStore.getState().accessToken);
+  const auth = useAuthStore.getState();
+  const stored = auth.accessToken;
+  const sent = stored && accessTokenExpired(stored) ? await auth.usableAccessToken() : stored;
+  let res = await send(sent);
 
-  // Access tokens are short-lived: refresh once and retry.
+  // Access tokens are short-lived: refresh once and retry. When another call refreshed while
+  // this one was out, its new token is used instead of rotating the pair again.
   if (res.status === 401) {
-    const fresh = await useAuthStore.getState().refresh();
+    const current = useAuthStore.getState().accessToken;
+    const fresh = current && current !== sent ? current : await useAuthStore.getState().refresh();
     if (fresh) res = await send(fresh);
   }
 

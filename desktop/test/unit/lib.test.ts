@@ -28,6 +28,7 @@ describe('capabilities and formatting', () => {
       admin: true,
       landing: true,
       appUpdates: false,
+      songCache: true,
     });
     expect(CLIENT).toBe('web');
   });

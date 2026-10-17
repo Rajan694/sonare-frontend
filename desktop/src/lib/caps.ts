@@ -19,6 +19,8 @@ export const CAPS = {
   landing: !native,
   /** Settings → About checks for a newer build and downloads it; the web build lists them all. */
   appUpdates: native,
+  /** Songs played in the browser are kept by a service worker (the window has its stream cache). */
+  songCache: !native,
 } as const;
 
 /** Which app this is, sent as X-Sonare-Client for the admin analytics. */

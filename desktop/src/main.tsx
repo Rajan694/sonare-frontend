@@ -12,6 +12,7 @@ import { setAiAvailable } from './store/aiSlice';
 import { startTitleSync } from '../../shared/ai/titleSync';
 import type { TitleFix } from '../../shared/catalog/titleFixes';
 import { startWaveformTap } from './audio/waveform';
+import { songCache } from './audio/songCache';
 import { store } from './store';
 import './styles.css';
 
@@ -35,6 +36,9 @@ startTitleSync({
 
 // Songs nobody has uploaded a waveform for get theirs filled in as they play (audio/waveform.ts).
 startWaveformTap();
+
+// Web build: songs played once are kept (up to 100 MB) and play again without a download.
+songCache.register();
 
 // /admin is the web build's admin page: its own bundle, loaded only when asked for, and never
 // in the Linux window (where the music app's routes send /admin back home).

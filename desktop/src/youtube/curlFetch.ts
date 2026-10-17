@@ -74,6 +74,24 @@ export const runCommand = async (command: string): Promise<CommandResult> => {
   }
 };
 
+let compressionPromise: Promise<boolean> | null = null;
+
+/**
+ * Whether this curl can decompress (built with zlib): YouTube's JSON is 10-13 times smaller
+ * gzipped. Some Windows curl.exe builds have no zlib, and `compressed` would then fail every call.
+ */
+export const curlCanDecompress = (): Promise<boolean> => {
+  compressionPromise ??= runCommand(`${curlBinary()} -V`)
+    .then((r) => r.exitCode === 0 && /^Features:.*\blibz\b/im.test(r.stdOut))
+    .catch(() => false);
+  return compressionPromise;
+};
+
+/** Testing: check curl's features again. */
+export const _resetCurlFeatures = (): void => {
+  compressionPromise = null;
+};
+
 let fileCounter = 0;
 export const tempFileId = (): string => {
   fileCounter = (fileCounter + 1) % 1_000_000;
@@ -122,6 +140,9 @@ export const curlFetch = async (input: RequestInfo | URL, init?: RequestInit): P
   const method = (init?.method ?? request?.method ?? 'GET').toUpperCase();
   const headers = new Headers(request?.headers);
   new Headers(init?.headers).forEach((value, name) => headers.set(name, value));
+  // curl asks for compression itself (below) and hands back the decoded body.
+  headers.delete('accept-encoding');
+  const compressed = await curlCanDecompress();
   const body = init?.body ?? (request && method !== 'GET' && method !== 'HEAD' ? await request.text() : undefined);
 
   const dir = await curlTempDir();
@@ -143,6 +164,7 @@ export const curlFetch = async (input: RequestInfo | URL, init?: RequestInit): P
       `output = "${escapeCurlConfigValue(outPath)}"`,
       `dump-header = "${escapeCurlConfigValue(hdrPath)}"`,
     ];
+    if (compressed) config.push('compressed');
     headers.forEach((value, name) => config.push(`header = "${escapeCurlConfigValue(`${name}: ${value}`)}"`));
     if (bodyPath) {
       await writeBody(bodyPath, body!);
@@ -162,6 +184,11 @@ export const curlFetch = async (input: RequestInfo | URL, init?: RequestInit): P
       headers: resHeaders,
     } = parseDumpedHeaders(await filesystem.readFile(hdrPath).catch(() => ''));
     if (!status) throw new TypeError('curl returned no HTTP status');
+    // The body on disk is already decoded, so these would describe bytes that aren't there.
+    if (compressed && resHeaders.has('content-encoding')) {
+      resHeaders.delete('content-encoding');
+      resHeaders.delete('content-length');
+    }
     const data = NULL_BODY_STATUSES.has(status)
       ? null
       : await filesystem.readBinaryFile(outPath).catch(() => new ArrayBuffer(0));
