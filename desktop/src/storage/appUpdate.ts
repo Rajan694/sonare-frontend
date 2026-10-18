@@ -1,8 +1,8 @@
 import { filesystem, os } from '@neutralinojs/lib';
 import { api } from '../api/api';
 import { curlDownload } from '../youtube/curlFetch';
-import { findUpdate } from '../../../shared/releases';
-import { version as APP_VERSION } from '../../neutralino.config.json';
+import { findLatest, findUpdate } from '../../../shared/releases';
+import { APP_VERSION } from '../lib/buildInfo';
 import type { AppRelease, ReleasePlatform } from '../types';
 
 // Updates for the desktop window: the newest build uploaded on the admin page, downloaded with
@@ -25,10 +25,21 @@ export const installFormats = async (): Promise<string[]> => {
   return ['tar.gz', 'appimage', 'deb', 'rpm'];
 };
 
-/** The build to update to, or null when this one is the newest. */
-export const checkForUpdate = async (): Promise<AppRelease | null> => {
+export interface UpdateCheck {
+  /** The newest build for this computer (its notes are "What's new"), even if it is this one. */
+  latest: AppRelease | null;
+  /** `latest` when it is newer than this app, else null. */
+  update: AppRelease | null;
+}
+
+/** The newest build, and whether it is an update for this one. */
+export const checkForUpdate = async (): Promise<UpdateCheck> => {
   const { items } = await api.getReleases();
-  return findUpdate(items, desktopPlatform(), APP_VERSION, await installFormats());
+  const formats = await installFormats();
+  return {
+    latest: findLatest(items, desktopPlatform(), formats),
+    update: findUpdate(items, desktopPlatform(), APP_VERSION, formats),
+  };
 };
 
 const toHex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');

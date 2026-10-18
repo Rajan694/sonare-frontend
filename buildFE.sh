@@ -187,6 +187,11 @@ set_versions() {
         # can't commit its bump) and a build here agree, and it only ever goes up.
         local next_code
         next_code="$(version_code "$next")"
+        # ../release.sh writes the version before tagging, so a release builds what is there.
+        if [ "$next" = "$current" ] && [ "$next_code" = "$code" ]; then
+            echo "Android version:     $current (unchanged, a rebuild)"
+            return
+        fi
         if [ "$next_code" -le "$code" ]; then
             echo "Error: versionCode $next_code (from $next) is not above the current $code - phones"
             echo "       wouldn't take it as an update. Build a higher version."; exit 1

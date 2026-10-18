@@ -397,18 +397,35 @@ describe('email verification in settings', () => {
 });
 
 describe('about', () => {
-  it('WEB-SETTINGS-012 the web build lists no app downloads (the intro page has them) and asks for none', async () => {
-    let asked = false;
+  it('WEB-SETTINGS-012 the web build lists no app downloads (the intro page has them); "What\'s new" shows the latest release', async () => {
     server.use(
-      http.get(`${API}/releases`, () => {
-        asked = true;
-        return HttpResponse.json({ items: [] });
-      }),
+      http.get(`${API}/releases`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'l',
+              platform: 'linux',
+              format: 'deb',
+              version: '1.2.0',
+              fileName: 'sonare-linux-x64.deb',
+              sizeBytes: 1,
+              sha256: null,
+              notes: '## New\n- Faster search',
+              uploadedAt: '2026-10-15T00:00:00Z',
+              url: 'https://example.test/sonare-linux-x64.deb',
+            },
+          ],
+        }),
+      ),
     );
-    const { w } = openSettings('/settings?section=about');
+    const { w, user } = openSettings('/settings?section=about');
     expect(await w.findByText('About Sonare')).toBeInTheDocument();
+    expect(w.getByText(/^Version \d+\.\d+\.\d+ · Offline-first music player$/)).toBeInTheDocument();
     expect(w.queryByText('Get Sonare')).toBeNull();
     expect(w.queryByRole('link', { name: /^Download / })).toBeNull();
-    expect(asked).toBe(false);
+    expect(w.queryByRole('button', { name: /^Download \./ })).toBeNull();
+    await user.click(await w.findByRole('button', { name: "What's new" }));
+    const dialog = await screen.findByRole('dialog', { name: "What's new in Sonare 1.2.0" });
+    expect(within(dialog).getByText('Faster search')).toBeInTheDocument();
   });
 });

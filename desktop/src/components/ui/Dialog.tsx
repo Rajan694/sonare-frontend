@@ -252,7 +252,8 @@ const ReleaseNotesBody = ({ dialog }: { dialog: Extract<OpenDialog, { kind: 'rel
     Number.isNaN(date.getTime())
       ? null
       : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
-    release.sizeBytes ? formatBytes(release.sizeBytes) : null,
+    // The size is the download's, so only when the dialog offers it.
+    dialog.action && release.sizeBytes ? formatBytes(release.sizeBytes) : null,
   ].filter(Boolean);
 
   return (
@@ -285,12 +286,20 @@ const ReleaseNotesBody = ({ dialog }: { dialog: Extract<OpenDialog, { kind: 'rel
         )}
       </div>
       <div className="flex justify-end gap-2">
-        <Button type="button" variant="ghost" onClick={() => dialog.resolve(false)}>
-          Later
-        </Button>
-        <Button ref={actionRef} type="button" variant="acc" onClick={() => dialog.resolve(true)}>
-          {dialog.action}
-        </Button>
+        {dialog.action ? (
+          <>
+            <Button type="button" variant="ghost" onClick={() => dialog.resolve(false)}>
+              Later
+            </Button>
+            <Button ref={actionRef} type="button" variant="acc" onClick={() => dialog.resolve(true)}>
+              {dialog.action}
+            </Button>
+          </>
+        ) : (
+          <Button ref={actionRef} type="button" variant="acc" onClick={() => dialog.resolve(false)}>
+            Close
+          </Button>
+        )}
       </div>
     </>
   );

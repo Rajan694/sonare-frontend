@@ -28,10 +28,13 @@ import { formatBytes } from '../lib/format';
 import { isInAppYoutubeAllowed } from '../youtube/inApp';
 import { MAX_STREAM_CACHE_BYTES, streamCache } from '../youtube/streamCache';
 import { MAX_SONG_CACHE_BYTES, songCache } from '../audio/songCache';
-import { version as APP_VERSION } from '../../neutralino.config.json';
+import { APP_VERSION, DEV_BUILD } from '../lib/buildInfo';
+import { api } from '../api/api';
+import type { AppRelease } from '../types';
 import { useAppDispatch, useAppSelector } from '../store';
 import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
 import { releaseNotesDialog } from '../store/dialogs';
+import { compareVersions } from '../../../shared/releases';
 import { openUpdate, showUpdateFolder } from '../storage/appUpdate';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
@@ -686,20 +689,25 @@ const UpdatesCard = () => {
     if (online) void dispatch(checkForUpdates());
   }, [dispatch, online]);
 
-  const { status, release, progress, path, error } = update;
+  const { status, release, latest, progress, path, error } = update;
   const fileKind = release ? (FORMAT_LABELS[release.format] ?? release.format) : '';
 
-  // The changes, with the download one click away.
-  const showChanges = async () => {
-    if (!release) return;
-    const canDownload = status === 'available' || status === 'error';
-    if ((await releaseNotesDialog(release, canDownload ? `Download ${fileKind}` : 'Close')) && canDownload) {
-      void dispatch(downloadAppUpdate(release));
+  // The changes, with the download one click away when there is a newer build.
+  const showChanges = async (of: AppRelease) => {
+    const canDownload = of === release && (status === 'available' || status === 'error');
+    if ((await releaseNotesDialog(of, canDownload ? `Download ${fileKind}` : null)) && canDownload) {
+      void dispatch(downloadAppUpdate(of));
     }
   };
-  const whatsNew = (
-    <Button variant="out" size="sm" onClick={() => void showChanges()}>
-      What's new
+  const whatsNew = (of: AppRelease | null) =>
+    of && (
+      <Button variant="out" size="sm" onClick={() => void showChanges(of)}>
+        What's new
+      </Button>
+    );
+  const checkAgain = (
+    <Button variant="out" size="sm" onClick={() => void dispatch(checkForUpdates())}>
+      Check again
     </Button>
   );
 
@@ -709,11 +717,31 @@ const UpdatesCard = () => {
   } else if (status === 'checking' || status === 'idle') {
     row = <Row icon="loader" label="Checking for updates…" />;
   } else if (status === 'current') {
+    // On the latest release: its notes are this version's. Ahead of it (a local run): none.
+    const onLatest = latest?.version === APP_VERSION;
     row = (
-      <Row icon="check" label="Sonare is up to date" desc={`Version ${APP_VERSION} is the newest`}>
-        <Button variant="out" size="sm" onClick={() => void dispatch(checkForUpdates())}>
-          Check again
-        </Button>
+      <Row
+        icon="check"
+        label={onLatest ? "You're on the latest version" : 'Sonare is up to date'}
+        desc={`Version ${APP_VERSION} is the newest`}
+      >
+        <span className="flex items-center gap-2 flex-none">
+          {onLatest && whatsNew(latest)}
+          {checkAgain}
+        </span>
+      </Row>
+    );
+  } else if (status === 'dev' && latest) {
+    row = (
+      <Row
+        icon="info"
+        label="Development build"
+        desc={`Sonare ${latest.version} is the latest release · updates are off in local runs`}
+      >
+        <span className="flex items-center gap-2 flex-none">
+          {whatsNew(latest)}
+          {checkAgain}
+        </span>
       </Row>
     );
   } else if (status === 'available' && release) {
@@ -724,7 +752,7 @@ const UpdatesCard = () => {
         desc={`Version ${release.version} · ${formatBytes(release.sizeBytes)}`}
       >
         <span className="flex items-center gap-2 flex-none">
-          {whatsNew}
+          {whatsNew(release)}
           <Button variant="acc" size="sm" onClick={() => void dispatch(downloadAppUpdate(release))}>
             Download {fileKind}
           </Button>
@@ -758,7 +786,7 @@ const UpdatesCard = () => {
         desc={`Saved to ${path}. Close Sonare, then install it.`}
       >
         <span className="flex items-center gap-2 flex-none">
-          {whatsNew}
+          {whatsNew(release)}
           <Button variant="out" size="sm" onClick={() => void showUpdateFolder(path)}>
             Show in folder
           </Button>
@@ -794,13 +822,51 @@ const UpdatesCard = () => {
   );
 };
 
+/**
+ * The web build has no downloads here (the intro page at / offers them), but shows what the
+ * latest release changed. The web app is deployed with each release, so it is that version.
+ */
+const WebWhatsNew = () => {
+  const { mode } = useModeStore();
+  const [latest, setLatest] = useState<AppRelease | null>(null);
+  useEffect(() => {
+    if (mode === 'offline') return;
+    let alive = true;
+    api
+      .getReleases()
+      .then(({ items }) => {
+        // Every file of a release carries the same notes; the newest release's are wanted.
+        const newest = [...items].sort((a, b) => compareVersions(b.version, a.version))[0];
+        if (alive) setLatest(newest ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [mode]);
+  if (!latest) return null;
+  return (
+    <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
+      <Row icon="sparkles" label={`What's new in Sonare ${latest.version}`} desc="The changes in the latest release">
+        <Button variant="out" size="sm" onClick={() => void releaseNotesDialog(latest)}>
+          What's new
+        </Button>
+      </Row>
+    </div>
+  );
+};
+
 const AboutSection = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-        <Row icon="info" label="About Sonare" desc={`Version ${APP_VERSION} · Offline-first music player`} />
+        <Row
+          icon="info"
+          label="About Sonare"
+          desc={`Version ${APP_VERSION}${DEV_BUILD ? ' (development build)' : ''} · Offline-first music player`}
+        />
       </div>
-      {CAPS.appUpdates && <UpdatesCard />}
+      {CAPS.appUpdates ? <UpdatesCard /> : <WebWhatsNew />}
     </div>
   );
 };

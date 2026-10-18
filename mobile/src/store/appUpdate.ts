@@ -2,9 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { api } from '../data/api';
 import type { AppRelease } from '../data/types';
-import { appVersion } from '../native/SonareBuild';
+import { appVersion, isLocalBuild } from '../native/SonareBuild';
 import { SonareUpdates } from '../native/SonareUpdates';
-import { findUpdate } from '../../../shared/releases';
+import { findLatest, findUpdate } from '../../../shared/releases';
 
 /**
  * Settings → About: whether a newer APK was uploaded on the admin page, its download (Android's
@@ -15,12 +15,16 @@ import { findUpdate } from '../../../shared/releases';
 const SAVED_KEY = 'sonare.updateDownload';
 const POLL_MS = 500;
 
-export type UpdateStatus = 'idle' | 'checking' | 'current' | 'available' | 'downloading' | 'downloaded' | 'error';
+/** 'dev': a local build (Metro or a dev APK), which is never offered the release APK. */
+export type UpdateStatus =
+  'idle' | 'checking' | 'current' | 'dev' | 'available' | 'downloading' | 'downloaded' | 'error';
 
 interface AppUpdateStore {
   status: UpdateStatus;
   /** The newer build, once one is found. */
   release: AppRelease | null;
+  /** The newest build, newer or not: its notes are "What's new". */
+  latest: AppRelease | null;
   /** 0..1 while downloading. */
   progress: number;
   error: string | null;
@@ -80,6 +84,7 @@ export const useAppUpdateStore = create<AppUpdateStore>((set, get) => {
   return {
     status: 'idle',
     release: null,
+    latest: null,
     progress: 0,
     error: null,
     downloadId: null,
@@ -89,11 +94,17 @@ export const useAppUpdateStore = create<AppUpdateStore>((set, get) => {
       set({ status: 'checking', error: null });
       try {
         const { items } = await api.releases();
+        const latest = findLatest(items, 'android', ['apk']);
         const release = findUpdate(items, 'android', appVersion, ['apk']);
         if (!release) {
-          set({ status: 'current', release: null });
+          set({ status: 'current', release: null, latest });
           return;
         }
+        if (isLocalBuild) {
+          set({ status: 'dev', release: null, latest });
+          return;
+        }
+        set({ latest });
         set({ release });
         // A download of this build from before (maybe before a restart).
         const saved = JSON.parse((await AsyncStorage.getItem(SAVED_KEY)) ?? 'null') as {
@@ -143,5 +154,12 @@ export const useAppUpdateStore = create<AppUpdateStore>((set, get) => {
 
 export const resetAppUpdateForTesting = () => {
   stopPolling();
-  useAppUpdateStore.setState({ status: 'idle', release: null, progress: 0, error: null, downloadId: null });
+  useAppUpdateStore.setState({
+    status: 'idle',
+    release: null,
+    latest: null,
+    progress: 0,
+    error: null,
+    downloadId: null,
+  });
 };

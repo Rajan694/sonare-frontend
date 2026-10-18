@@ -195,6 +195,11 @@ function Set-Versions {
         }
         # The versionCode follows from the version, so CI releases and builds here agree.
         $newCode = Get-VersionCode $next
+        # ..\release.ps1 writes the version before tagging, so a release builds what is there.
+        if ($next -eq $current -and $newCode -eq [int]$code) {
+            Write-Host "Android version:     $current (unchanged, a rebuild)"
+            return
+        }
         if ($newCode -le [int]$code) {
             Write-Host "Error: versionCode $newCode (from $next) is not above the current $code - phones"
             Write-Host "       wouldn't take it as an update. Build a higher version."; exit 1

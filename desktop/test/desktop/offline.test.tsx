@@ -75,6 +75,7 @@ import Folders from '../../src/screens/Folders';
 import Settings from '../../src/screens/Settings';
 import { localLibrary, getLocalSnapshot } from '../../src/storage/local';
 import { getSettings, updateSettings } from '../../src/storage/settings';
+import { APP_VERSION } from '../../src/lib/buildInfo';
 
 const MUSIC = '/home/me/Music';
 const mode = () => screen.getByTestId('mode').textContent;
@@ -239,6 +240,40 @@ describe('switching to Offline Mode', () => {
     expect(within(dialog).getByRole('button', { name: 'Download .tar.gz' })).toBeInTheDocument();
     await user.click(within(dialog).getByRole('button', { name: 'Later' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  });
+  it('DSK-053b on the latest release About says so, offers its notes and no download', async () => {
+    server.listen({ onUnhandledRequest: 'bypass' });
+    onTestFinished(() => {
+      server.resetHandlers();
+      server.close();
+    });
+    server.use(
+      http.get(`${API}/releases`, () =>
+        HttpResponse.json({
+          items: [
+            {
+              id: 'n',
+              platform: 'linux',
+              format: 'tar.gz',
+              version: APP_VERSION,
+              fileName: 'sonare-linux-x64.tar.gz',
+              sizeBytes: 2_000_000,
+              sha256: 'x',
+              notes: '- Faster search',
+              uploadedAt: '2026-10-11T00:00:00Z',
+            },
+          ],
+        }),
+      ),
+    );
+    const { container, user } = renderWithProviders(<Settings />, { route: '/settings?section=about' });
+    const wide = within(container.firstElementChild!.children[1] as HTMLElement);
+    expect(await wide.findByText("You're on the latest version")).toBeInTheDocument();
+    expect(wide.queryByRole('button', { name: /^Download \./ })).toBeNull();
+    await user.click(wide.getByRole('button', { name: "What's new" }));
+    const dialog = await screen.findByRole('dialog', { name: `What's new in Sonare ${APP_VERSION}` });
+    expect(within(dialog).getByText('Faster search')).toBeInTheDocument();
+    expect(within(dialog).queryByRole('button', { name: /^Download \./ })).toBeNull();
   });
 });
 

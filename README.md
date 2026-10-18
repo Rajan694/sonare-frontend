@@ -60,6 +60,8 @@ the latest release through the backend's `/releases`, so every release must carr
   `mobile/android/app/build.gradle`, and its `versionCode` follows from it (1.2.3 → 1002003)
   so phones install it as an update and CI release builds agree with local ones. A lower version than the current one is refused, and a
   failed build puts the version files back. Commit the changed version files afterwards.
+  Releases don't bump here: `../release.sh` writes the version first, and the release build
+  keeps it (see `../docs/DEPLOYMENT.md`). Settings → About reads these files.
 - Desktop builds are single files with the app embedded (`neu build --embed-resources`),
   made in a temporary copy of `desktop/`, so a running `./runFE.sh web` is not disturbed.
   Installed builds keep their data in the user's data directory, not next to the binary.

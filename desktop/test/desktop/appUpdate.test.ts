@@ -9,7 +9,7 @@ vi.mock('../../neutralino.config.json', () => ({ version: '1.2.0' }));
 
 const { checkForUpdate, downloadUpdate, installFormats, openUpdate, showUpdateFolder } =
   await import('../../src/storage/appUpdate');
-const { compareVersions, findUpdate } = await import('../../../shared/releases');
+const { compareVersions, findLatest, findUpdate } = await import('../../../shared/releases');
 
 useMockServer();
 
@@ -80,6 +80,9 @@ describe('app updates', () => {
     expect(findUpdate(list, 'linux', '1.2.0', ['appimage'])).toBeNull();
     expect(findUpdate(list, 'linux', '1.3.0', ['deb', 'tar.gz'])).toBeNull();
     expect(findUpdate(list, 'windows', '1.2.0', ['exe'])?.id).toBe('w');
+    // The newest build is found even when this app is already on it.
+    expect(findLatest(list, 'linux', ['deb', 'tar.gz'])?.id).toBe('b');
+    expect(findLatest(list, 'linux', ['appimage'])).toBeNull();
   });
 
   it('DSK-070 the install kind comes first: AppImage, the .deb in /opt/sonare, else the archive; Windows the .exe', async () => {
@@ -102,9 +105,12 @@ describe('app updates', () => {
       ),
     );
     // The newest one, even if it only comes as another kind of file.
-    expect((await checkForUpdate())?.version).toBe('1.4.0');
+    expect((await checkForUpdate()).update?.version).toBe('1.4.0');
     server.use(http.get(`${API}/releases`, () => HttpResponse.json({ items: [release({ version: '1.2.0' })] })));
-    expect(await checkForUpdate()).toBeNull();
+    // Already on it: no update, but the release (its notes) is still there for "What's new".
+    const same = await checkForUpdate();
+    expect(same.update).toBeNull();
+    expect(same.latest?.version).toBe('1.2.0');
   });
 
   it('DSK-072 a download lands in Downloads once its checksum matches, with progress, and can be opened', async () => {
