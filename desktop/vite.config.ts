@@ -37,6 +37,12 @@ const neutralinoGlobalsPort = (): Plugin => {
  * "access to other apps and services on this device", so the built page only loads the
  * globals script when it is itself on localhost. Build only: in dev `neu run` still finds
  * and rewrites the plain tag.
+ *
+ * The url gets a new query every load. The script carries Neutralino's one-time token, and
+ * WebKitGTK's disk cache learns a page's subresources and fetches the ones it saw on earlier
+ * loads before the page asks for them. With the release window's fixed port that url never
+ * changed, so from about the third launch WebKit's early fetch took the token and the page got
+ * an empty one (NE_CL_IVCTOKN, no native API). A url seen only once is never fetched early.
  */
 const neutralinoGlobalsLocalOnly = (): Plugin => ({
   name: 'neutralino-globals-local-only',
@@ -46,7 +52,7 @@ const neutralinoGlobalsLocalOnly = (): Plugin => ({
       /<script src="(http:\/\/localhost:\d+\/__neutralino_globals\.js)"><\/script>/,
       (_, src: string) =>
         `<script>if (/^(localhost|127\\.0\\.0\\.1)$/.test(location.hostname)) ` +
-        `document.write('<script src="${src}"><\\/script>');</script>`,
+        `document.write('<script src="${src}?l=' + Date.now() + '"><\\/script>');</script>`,
     );
   },
 });

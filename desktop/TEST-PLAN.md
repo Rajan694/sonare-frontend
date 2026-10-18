@@ -1010,6 +1010,13 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-066` | downloads manager routes YouTube stream chunk requests through curlFetch with Range headers                  |
 | `DSK-067` | api catalog methods query inApp catalog first and fall back to backend endpoints on failure                  |
 
+## `test/desktop/tray.test.ts`
+
+| ID        | Use case                                                                                              |
+| :-------- | :---------------------------------------------------------------------------------------------------- |
+| `DSK-083` | the tray shows the current track and Play or Pause, and greys the controls out when nothing is loaded |
+| `DSK-084` | Play/Pause, Next and Previous in the tray reach the player until it unbinds                           |
+
 ## `test/app/restore.test.tsx`
 
 | ID                | Use case                                                                     |
