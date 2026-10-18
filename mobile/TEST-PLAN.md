@@ -63,11 +63,11 @@ navigation mock live in `test-utils/`.
 | `MOB-DATA-006` | httpRequest attaches X-Sonare-Client header for API_ORIGIN requests                                     |
 | `MOB-DATA-007` | httpRequest handles network error with NetworkError                                                     |
 | `MOB-DATA-008` | httpRequest handles timeout with NetworkError                                                           |
-| `MOB-DATA-009` | hydrate restores session from AsyncStorage                                                              |
+| `MOB-DATA-009` | hydrate restores session from Keychain, or migrates from AsyncStorage                                   |
 | `MOB-DATA-010` | hydrate falls back to guest mode on corrupted session                                                   |
-| `MOB-DATA-011` | signIn authenticates user and saves session                                                             |
+| `MOB-DATA-011` | signIn authenticates user and saves session to keychain not AsyncStorage                                |
 | `MOB-DATA-012` | signUp registers user and saves session                                                                 |
-| `MOB-DATA-013` | signOut calls server logout and clears local session                                                    |
+| `MOB-DATA-013` | signOut calls server logout and clears keychain and session                                             |
 | `MOB-DATA-014` | refresh rotates refresh token and updates session                                                       |
 | `MOB-DATA-015` | refresh clears session on 401 response                                                                  |
 | `MOB-DATA-016` | refresh deduplicates concurrent refresh calls                                                           |
@@ -165,7 +165,7 @@ navigation mock live in `test-utils/`.
 | `MOB-NAV-004` | signing in loads the library, then finishes what the guest was doing             |
 | `MOB-NAV-005` | a mode change shows a toast that goes away after a few seconds                   |
 | `MOB-NAV-006` | shows Home, Library, Playlists and Search, starts on Home, and switches on press |
-| `MOB-NAV-007` | the active tab is green online and gold offline                                  |
+| `MOB-NAV-007` | the active tab is green in both modes (M01 / M02: navigation is not a source)    |
 
 ## `__tests__/screens-browse.test.tsx`
 
@@ -175,7 +175,7 @@ navigation mock live in `test-utils/`.
 | `MOB-HOME-002`   | with a song loaded, the continue card pauses and resumes it                            |
 | `MOB-HOME-003`   | a guest is invited to sign in and no account data is requested                         |
 | `MOB-HOME-004`   | trending plays within the chart; when the music service is down it says so and retries |
-| `MOB-HOME-005`   | choosing Offline asks first; the header opens search and settings                      |
+| `MOB-HOME-005`   | choosing Offline asks first; the header opens search, and the profile opens settings   |
 | `MOB-HOME-006`   | offline, it lists the downloaded songs and asks the server for nothing                 |
 | `MOB-SEARCH-001` | typing searches once the user pauses, and shows a top result and songs                 |
 | `MOB-SEARCH-002` | tapping a song plays it with the other results queued                                  |
@@ -231,7 +231,7 @@ navigation mock live in `test-utils/`.
 | `MOB-NP-011`     | a song whose lyrics cannot be found shows a disabled Lyrics button; while unknown it is enabled   |
 | `MOB-Q-001`      | shows what is next, counts server songs, and plays a tapped song                                  |
 | `MOB-Q-002`      | "Clear queue" keeps only the current song; then it says the queue has ended                       |
-| `MOB-Q-003`      | a song's menu can remove it from the queue                                                        |
+| `MOB-Q-003`      | a song's × removes it from the queue                                                              |
 | `MOB-Q-004`      | saving the queue creates a playlist with every queued song, named "Queue 1"                       |
 | `MOB-Q-005`      | a failed save says why; shuffle and repeat work from here                                         |
 | `MOB-Q-006`      | an empty queue says so                                                                            |
@@ -416,6 +416,7 @@ navigation mock live in `test-utils/`.
 | `MOB-UPD-004` | a finished download from before a restart is offered for install straight away            |
 | `MOB-UPD-005` | Settings → About shows the version, the update, what's new and, once allowed, installs it |
 | `MOB-UPD-006` | Offline mode does not check                                                               |
+| `MOB-UPD-007` | on the latest release About says so and shows its notes, with no download                 |
 
 ## `__tests__/sync-batches.test.ts`
 

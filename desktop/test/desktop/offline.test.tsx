@@ -241,7 +241,7 @@ describe('switching to Offline Mode', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Later' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
   });
-  it('DSK-053b on the latest release About says so, offers its notes and no download', async () => {
+  it('DSK-082 on the latest release About says so, offers its notes and no download', async () => {
     server.listen({ onUnhandledRequest: 'bypass' });
     onTestFinished(() => {
       server.resetHandlers();

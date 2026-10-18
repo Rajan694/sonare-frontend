@@ -199,6 +199,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                      |
 | `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
 | `DSK-053` | About in the desktop app checks for a newer build; "What's new" shows its changes in a dialog |
+| `DSK-082` | on the latest release About says so, offers its notes and no download                         |
 | `DSK-054` | the desktop settings have no server address and no appearance section                         |
 | `DSK-075` | an address saved by an older build's server setting is ignored                                |
 | `DSK-032` | with no folders it invites the user to add one, using the folder picker                       |
@@ -252,33 +253,33 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/library-catalog.test.tsx`
 
-| ID                | Use case                                                                              |
-| :---------------- | :------------------------------------------------------------------------------------ |
-| `WEB-LIBRARY-001` | lists the saved songs with a count; Play all plays them in order                      |
-| `WEB-LIBRARY-002` | shuffle plays every saved song in some order                                          |
-| `WEB-LIBRARY-003` | sorts by title (case-insensitive), then reverses on a second click; sorts by duration |
-| `WEB-LIBRARY-004` | filtering to "On device" on the web leaves nothing, and says so                       |
-| `WEB-LIBRARY-005` | grid view shows the songs as cards that play in the list                              |
-| `WEB-LIBRARY-006` | tabs are reflected in the address, and the address opens a tab                        |
-| `WEB-LIBRARY-007` | followed artists link to their pages; empty albums and artists say so                 |
-| `WEB-LIBRARY-008` | an old ?view=favourites link opens Songs                                              |
-| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs works                       |
-| `WEB-LIBRARY-010` | genres link to a search for that genre                                                |
-| `WEB-LIBRARY-014` | an empty Songs list shows the empty state, not a chart                                |
-| `WEB-ALBUM-001`   | shows the album, its artist link, year, size and total length                         |
-| `WEB-ALBUM-002`   | play and shuffle play the whole album                                                 |
-| `WEB-ALBUM-003`   | an unknown album shows "Album not found" with the reason                              |
-| `WEB-ALBUM-004`   | hearting an album saves it, and a failed un-heart puts the heart back                 |
-| `WEB-ALBUM-007`   | an album already saved in the library starts hearted                                  |
-| `WEB-ALBUM-005`   | a guest hearting an album is asked to sign up                                         |
-| `WEB-ALBUM-006`   | "More options" opens the menu for all the album's songs                               |
-| `WEB-ARTIST-001`  | shows the album count and the top songs, without a listener figure                    |
-| `WEB-ARTIST-002`  | playing a popular song queues all of the artist's top songs                           |
-| `WEB-ARTIST-003`  | follow and unfollow, with the button following the saved state                        |
-| `WEB-ARTIST-004`  | a failed follow is undone                                                             |
-| `WEB-ARTIST-005`  | an artist with no songs says so and disables play; an unknown artist is "not found"   |
-| `WEB-LIBRARY-011` | artists from liked and playlisted songs show their song count; followed ones say so   |
-| `WEB-LIBRARY-012` | genres show the browse categories and search for their query                          |
+| ID                | Use case                                                                                 |
+| :---------------- | :--------------------------------------------------------------------------------------- |
+| `WEB-LIBRARY-001` | lists the saved songs with a count; Play all plays them in order                         |
+| `WEB-LIBRARY-002` | shuffle plays every saved song in some order                                             |
+| `WEB-LIBRARY-003` | sorts by title (case-insensitive), then reverses on a second click; sorts by duration    |
+| `WEB-LIBRARY-004` | filtering to "On device" on the web leaves nothing, and says so                          |
+| `WEB-LIBRARY-005` | grid view shows the songs as cards that play in the list                                 |
+| `WEB-LIBRARY-006` | tabs are reflected in the address, and the address opens a tab                           |
+| `WEB-LIBRARY-007` | followed artists link to their pages; empty albums and artists say so                    |
+| `WEB-LIBRARY-008` | an old ?view=favourites link opens Songs                                                 |
+| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs works                          |
+| `WEB-LIBRARY-010` | genres link to a search for that genre                                                   |
+| `WEB-LIBRARY-014` | an empty Songs list shows the empty state, not a chart                                   |
+| `WEB-ALBUM-001`   | shows the album, its artist link, year, size and total length                            |
+| `WEB-ALBUM-002`   | play and shuffle play the whole album                                                    |
+| `WEB-ALBUM-003`   | an unknown album shows "Album not found" with the reason                                 |
+| `WEB-ALBUM-004`   | hearting an album saves it, and a failed un-heart puts the heart back                    |
+| `WEB-ALBUM-007`   | an album already saved in the library starts hearted                                     |
+| `WEB-ALBUM-005`   | a guest hearting an album is asked to sign up                                            |
+| `WEB-ALBUM-006`   | "More options" opens the menu for all the album's songs                                  |
+| `WEB-ARTIST-001`  | shows the album count, the top five songs and the discography, without a listener figure |
+| `WEB-ARTIST-002`  | playing a popular song queues all of the artist's top songs                              |
+| `WEB-ARTIST-003`  | follow and unfollow, with the button following the saved state                           |
+| `WEB-ARTIST-004`  | a failed follow is undone                                                                |
+| `WEB-ARTIST-005`  | an artist with no songs says so and disables play; an unknown artist is "not found"      |
+| `WEB-LIBRARY-011` | artists from liked and playlisted songs show their song count; followed ones say so      |
+| `WEB-LIBRARY-012` | genres show the browse categories and search for their query                             |
 
 ## `test/screens/player-screens.test.tsx`
 
@@ -390,27 +391,27 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/settings-downloads.test.tsx`
 
-| ID                 | Use case                                                                                           |
-| :----------------- | :------------------------------------------------------------------------------------------------- |
-| `WEB-SETTINGS-001` | a guest is offered to create an account or sign in                                                 |
-| `WEB-SETTINGS-002` | a signed-in user sees their profile and can sign out                                               |
-| `WEB-SETTINGS-003` | the web build shows no desktop-only sections, on either layout                                     |
-| `WEB-SETTINGS-004` | playback: streaming quality and the two switches change the settings                               |
-| `WEB-SETTINGS-005` | choosing a section updates the address and shows it                                                |
-| `WEB-SETTINGS-006` | download quality choices follow the file format                                                    |
-| `WEB-SETTINGS-007` | shows download progress counts and links to the Downloads page                                     |
-| `WEB-SETTINGS-008` | choosing a download folder confirms it; cancelling says nothing; a failure is reported             |
-| `WEB-SETTINGS-009` | a picked folder shows its name and can be reset to the default                                     |
-| `WEB-SETTINGS-010` | an unverified user verifies with the emailed code or sends a new one; verified users see no prompt |
-| `WEB-DLPAGE-001`   | with nothing downloaded it says so and where files go                                              |
-| `WEB-DLPAGE-002`   | in-progress rows show their state, size and progress, with the right control                       |
-| `WEB-DLPAGE-003`   | finished downloads are counted, and play as a queue of downloads                                   |
-| `WEB-DLPAGE-004`   | "Save again" re-saves the kept copy, and explains when there is none                               |
-| `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result                 |
-| `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                            |
-| `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                                       |
-| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; there is no output row                            |
-| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them) and asks for none                   |
+| ID                 | Use case                                                                                              |
+| :----------------- | :---------------------------------------------------------------------------------------------------- |
+| `WEB-SETTINGS-001` | a guest is offered to create an account or sign in                                                    |
+| `WEB-SETTINGS-002` | a signed-in user sees their profile and can sign out                                                  |
+| `WEB-SETTINGS-003` | the web build shows no desktop-only sections, on either layout                                        |
+| `WEB-SETTINGS-004` | playback: streaming quality and the two switches change the settings                                  |
+| `WEB-SETTINGS-005` | choosing a section updates the address and shows it                                                   |
+| `WEB-SETTINGS-006` | download quality choices follow the file format                                                       |
+| `WEB-SETTINGS-007` | shows download progress counts and links to the Downloads page                                        |
+| `WEB-SETTINGS-008` | choosing a download folder confirms it; cancelling says nothing; a failure is reported                |
+| `WEB-SETTINGS-009` | a picked folder shows its name and can be reset to the default                                        |
+| `WEB-SETTINGS-010` | an unverified user verifies with the emailed code or sends a new one; verified users see no prompt    |
+| `WEB-DLPAGE-001`   | with nothing downloaded it says so and where files go                                                 |
+| `WEB-DLPAGE-002`   | in-progress rows show their state, size and progress, with the right control                          |
+| `WEB-DLPAGE-003`   | finished downloads are counted, and play as a queue of downloads                                      |
+| `WEB-DLPAGE-004`   | "Save again" re-saves the kept copy, and explains when there is none                                  |
+| `WEB-DLPAGE-005`   | deleting asks first, warns that the browser keeps its file, and reports the result                    |
+| `WEB-DLPAGE-006`   | cancelling an unfinished download needs no file warning                                               |
+| `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                                          |
+| `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; there is no output row                               |
+| `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them); "What's new" shows the latest release |
 
 ## `test/screens/signin.test.tsx`
 
@@ -426,7 +427,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SIGNIN-008` | leaving without signing in forgets the guest's action                                   |
 | `WEB-SIGNIN-009` | "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in |
 | `WEB-SIGNIN-010` | a wrong code or a rate limit shows why, and "Back to sign in" returns to the form       |
-| `WEB-SIGNIN-011` | after signing up, the emailed code can be entered before going on                       |
+| `WEB-SIGNIN-011` | after signing up, the emailed code can be entered before going on, or skipped           |
 | `WEB-SIGNIN-012` | "Skip for now" goes on unverified                                                       |
 
 ## `test/screens/landing.test.tsx`
@@ -555,33 +556,33 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/downloads.test.ts`
 
-| ID           | Use case                                                                           |
-| :----------- | :--------------------------------------------------------------------------------- |
-| `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                |
-| `WEB-DL-002` | uses the quality and format from settings                                          |
-| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title.webm" |
-| `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                 |
-| `WEB-DL-005` | with no size from the server, a short final range ends the download                |
-| `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes         |
-| `WEB-DL-007` | tells the user once the whole batch is saved                                       |
-| `WEB-DL-008` | refuses a video-only stream with a clear reason                                    |
-| `WEB-DL-009` | fails with a permission message when the folder cannot be written                  |
-| `WEB-DL-010` | an expired stream url (403) is re-resolved and the same file continues             |
-| `WEB-DL-011` | gives up after the server keeps refusing fresh urls                                |
-| `WEB-DL-012` | pausing keeps the bytes so far, and resuming asks only for the rest                |
-| `WEB-DL-013` | starts over when the server now serves a different file than the part holds        |
-| `WEB-DL-014` | a server that ignores Range on resume does not duplicate bytes                     |
-| `WEB-DL-015` | a part that already holds the whole file (416) is finished without re-downloading  |
-| `WEB-DL-016` | a dropped connection is retried after a pause and the download completes           |
-| `WEB-DL-017` | downloads interrupted by closing the app carry on at the next start                |
-| `WEB-DL-018` | asking again for a failed download retries it instead of adding a duplicate        |
-| `WEB-DL-019` | deleting a finished download removes its file and the list entry                   |
-| `WEB-DL-020` | a file that has moved is only removed from the list, with the reason               |
-| `WEB-DL-021` | removing an unfinished download throws away its partial data                       |
-| `WEB-DL-022` | removeMany counts files that could not be deleted                                  |
-| `WEB-DL-023` | "save again" hands the kept copy to the browser, and reports when there is none    |
-| `WEB-DL-024` | pause all and resume all act on every unfinished download                          |
-| `WEB-DL-025` | a download becomes a playable track with its metadata                              |
+| ID           | Use case                                                                                     |
+| :----------- | :------------------------------------------------------------------------------------------- |
+| `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                          |
+| `WEB-DL-002` | uses the quality and format from settings                                                    |
+| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm" |
+| `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                           |
+| `WEB-DL-005` | with no size from the server, a short final range ends the download                          |
+| `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes                   |
+| `WEB-DL-007` | tells the user once the whole batch is saved                                                 |
+| `WEB-DL-008` | refuses a video-only stream with a clear reason                                              |
+| `WEB-DL-009` | fails with a permission message when the folder cannot be written                            |
+| `WEB-DL-010` | an expired stream url (403) is re-resolved and the same file continues                       |
+| `WEB-DL-011` | gives up after the server keeps refusing fresh urls                                          |
+| `WEB-DL-012` | pausing keeps the bytes so far, and resuming asks only for the rest                          |
+| `WEB-DL-013` | starts over when the server now serves a different file than the part holds                  |
+| `WEB-DL-014` | a server that ignores Range on resume does not duplicate bytes                               |
+| `WEB-DL-015` | a part that already holds the whole file (416) is finished without re-downloading            |
+| `WEB-DL-016` | a dropped connection is retried after a pause and the download completes                     |
+| `WEB-DL-017` | downloads interrupted by closing the app carry on at the next start                          |
+| `WEB-DL-018` | asking again for a failed download retries it instead of adding a duplicate                  |
+| `WEB-DL-019` | deleting a finished download removes its file and the list entry                             |
+| `WEB-DL-020` | a file that has moved is only removed from the list, with the reason                         |
+| `WEB-DL-021` | removing an unfinished download throws away its partial data                                 |
+| `WEB-DL-022` | removeMany counts files that could not be deleted                                            |
+| `WEB-DL-023` | "save again" hands the kept copy to the browser, and reports when there is none              |
+| `WEB-DL-024` | pause all and resume all act on every unfinished download                                    |
+| `WEB-DL-025` | a download becomes a playable track with its metadata                                        |
 
 ## `test/unit/dsp.test.ts`
 
@@ -658,24 +659,24 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/lib.test.ts`
 
-| ID            | Use case                                                                                        |
-| :------------ | :---------------------------------------------------------------------------------------------- |
-| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ or update check, and includes admin |
-| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour              |
-| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                          |
-| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                  |
-| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                       |
-| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                           |
-| `WEB-LIB-007` | is online when either probe answers                                                             |
-| `WEB-LIB-008` | is offline when both probes fail or time out                                                    |
-| `WEB-LIB-009` | sends an error with its type, stack and page                                                    |
-| `WEB-LIB-010` | turns strings and objects into readable messages                                                |
-| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                       |
-| `WEB-LIB-012` | sends nothing while offline                                                                     |
-| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                         |
-| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                    |
-| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                         |
-| `WEB-LIB-016` | turns GitHub's generated notes into headings and items without links or authors                 |
+| ID            | Use case                                                                                                           |
+| :------------ | :----------------------------------------------------------------------------------------------------------------- |
+| `WEB-LIB-001` | the web build has no local library, offline mode, native EQ or update check, and includes admin and the intro page |
+| `WEB-LIB-002` | cn merges Tailwind classes and knows the custom type scale is a size, not a colour                                 |
+| `WEB-LIB-003` | formatDuration shows m:ss and treats bad input as 0:00                                                             |
+| `WEB-LIB-004` | formatBytes picks KB, MB or GB                                                                                     |
+| `WEB-LIB-005` | placeholder waveforms are bounded and repeatable per seed                                                          |
+| `WEB-LIB-006` | reports offline immediately when the browser says so, without probing                                              |
+| `WEB-LIB-007` | is online when either probe answers                                                                                |
+| `WEB-LIB-008` | is offline when both probes fail or time out                                                                       |
+| `WEB-LIB-009` | sends an error with its type, stack and page                                                                       |
+| `WEB-LIB-010` | turns strings and objects into readable messages                                                                   |
+| `WEB-LIB-011` | ignores aborts, ResizeObserver noise and network failures                                                          |
+| `WEB-LIB-012` | sends nothing while offline                                                                                        |
+| `WEB-LIB-013` | the same message is sent at most once a minute, and at most 20 per page                                            |
+| `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                                       |
+| `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                                            |
+| `WEB-LIB-016` | turns GitHub's generated notes into headings and items without links or authors                                    |
 
 ## `test/unit/player.test.ts`
 

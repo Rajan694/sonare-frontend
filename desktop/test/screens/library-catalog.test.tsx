@@ -354,11 +354,12 @@ describe('artist', () => {
     );
   };
 
-  it('WEB-ARTIST-001 shows listeners and albums, the top five songs and the discography', async () => {
+  it('WEB-ARTIST-001 shows the album count, the top five songs and the discography, without a listener figure', async () => {
     artistServer();
     openArtist();
     expect(await screen.findByText('Radiohead')).toBeInTheDocument();
     expect(screen.getByText('9 albums')).toBeInTheDocument();
+    expect(screen.queryByText(/listener/i)).toBeNull();
     expect(await screen.findAllByRole('row')).toHaveLength(5);
     expect(await screen.findByRole('link', { name: /Kid A/ })).toHaveAttribute('href', '/album/yt:kida');
   });
