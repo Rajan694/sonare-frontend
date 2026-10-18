@@ -74,10 +74,15 @@ export const getAppConfig = (): AppConfig => activeConfig;
 /**
  * youtubei.js (with its JS parser and protobuf) is about 40% of the app's code and only the
  * desktop window uses it, so it loads on first use instead of with the web app.
+ *
+ * It's the package's prebuilt bundle, not its ES modules: Rollup orders youtubei.js's circular
+ * modules wrongly, and the release chunk threw "Cannot access '…' before initialization" as it
+ * loaded (a namespace object built before the TabbedFeed class), so every in-app call fell back
+ * to the backend. Vite's dev server doesn't bundle, so only release builds broke.
  */
-let youtubeiPromise: Promise<typeof import('youtubei.js')> | null = null;
+let youtubeiPromise: Promise<typeof import('youtubei.js/web.bundle')> | null = null;
 const loadYoutubei = () => {
-  youtubeiPromise ??= import('youtubei.js').then((mod) => {
+  youtubeiPromise ??= import('youtubei.js/web.bundle').then((mod) => {
     // youtubei.js logs a parser warning for every unknown node; keep only errors.
     mod.Log.setLevel(mod.Log.Level.ERROR);
     return mod;
