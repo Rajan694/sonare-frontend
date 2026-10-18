@@ -205,6 +205,61 @@ export interface PipedHealthTestResult {
   error?: string;
 }
 
+/** An AI provider as the admin page sees it: never its key, only the last four characters. */
+export interface AdminAiProvider {
+  id: string;
+  name: string;
+  baseUrl: string;
+  model: string;
+  keyHint: string;
+  enabled: boolean;
+  position: number;
+  status: 'ok' | 'down' | 'unknown';
+  lastCheckedAt: number | null;
+  lastOkAt: number | null;
+  lastError: string | null;
+  retryAt: number | null;
+  latencyMs: number | null;
+}
+
+export interface AdminAiProviders {
+  providers: AdminAiProvider[];
+  /** Some enabled provider is answering: the apps show their AI features. */
+  available: boolean;
+}
+
+export interface AiProviderInput {
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  model: string;
+}
+
+export interface AiCheckResult {
+  ok: boolean;
+  ms: number;
+  error?: string;
+  provider: AdminAiProvider;
+}
+
+export type AiFeature = 'you-may-like' | 'search' | 'playlist' | 'titles' | 'health';
+
+export interface AiUsageTotals {
+  calls: number;
+  failures: number;
+  promptTokens: number;
+  completionTokens: number;
+}
+
+/** GET /admin/analytics/ai: by UTC day. */
+export interface AiUsage {
+  days: number;
+  totals: AiUsageTotals;
+  byProvider: (AiUsageTotals & { providerId: string; name: string })[];
+  byFeature: (AiUsageTotals & { feature: AiFeature })[];
+  series: (AiUsageTotals & { day: string })[];
+}
+
 // ---- Calls ----
 
 export const adminApi = {
@@ -260,5 +315,35 @@ export const adminApi = {
 
   testPipedUrl(url: string) {
     return call<PipedHealthTestResult>('/settings/piped-test', { method: 'POST', body: { url } });
+  },
+
+  aiProviders() {
+    return call<AdminAiProviders>('/ai/providers');
+  },
+
+  addAiProvider(input: AiProviderInput) {
+    return call<AdminAiProvider>('/ai/providers', { method: 'POST', body: input });
+  },
+
+  /** Leave `apiKey` out to keep the current key. */
+  updateAiProvider(id: string, update: Partial<AiProviderInput> & { enabled?: boolean }) {
+    return call<AdminAiProvider>(`/ai/providers/${encodeURIComponent(id)}`, { method: 'PATCH', body: update });
+  },
+
+  deleteAiProvider(id: string) {
+    return call<{ ok: boolean }>(`/ai/providers/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  },
+
+  checkAiProvider(id: string) {
+    return call<AiCheckResult>(`/ai/providers/${encodeURIComponent(id)}/check`, { method: 'POST' });
+  },
+
+  /** Every provider id, in the new failover order. */
+  orderAiProviders(ids: string[]) {
+    return call<AdminAiProviders>('/ai/providers/order', { method: 'PUT', body: { ids } });
+  },
+
+  aiUsage(days: number) {
+    return call<AiUsage>('/analytics/ai', { params: { days } });
   },
 };

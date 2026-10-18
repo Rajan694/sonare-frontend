@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import search, { initialSearchState, type SearchState, type SearchType } from './searchSlice';
 import ui from './uiSlice';
 import update from './updateSlice';
+import ai, { initialAiState } from './aiSlice';
 import { sanitizeRecentSearches } from '../../../shared/search/recentSearches';
 
 const SAVED_SEARCH_KEY = 'sonare_search';
@@ -43,10 +44,11 @@ const savedSidebarCollapsed = (): boolean => {
 };
 
 export const store = configureStore({
-  reducer: { search, ui, update },
+  reducer: { search, ui, update, ai },
   preloadedState: {
     search: { ...savedSearch(), recent: savedRecentSearches() },
     ui: { queueOpen: false, sidebarCollapsed: savedSidebarCollapsed() },
+    ai: initialAiState,
   },
 });
 

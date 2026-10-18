@@ -1,9 +1,9 @@
 import { storage } from '@neutralinojs/lib';
-import { Innertube, Log } from 'youtubei.js';
 import { isNeutralino } from '../neutralino';
 import { curlFetch } from './curlFetch';
 import { createYoutubeiSource, probeRange, type YoutubeiSource } from '../../../shared/youtube/youtubeiSource';
 import { createCatalog } from '../../../shared/catalog/catalog';
+import { memoizeCatalog } from '../../../shared/catalog/memo';
 import type { InnertubeLike } from '../../../shared/youtube/innertubeLike';
 import type { AppConfig } from '../../../shared/apiTypes';
 
@@ -12,9 +12,6 @@ import type { AppConfig } from '../../../shared/apiTypes';
 // web build and Neutralino's browser mode never do; they use the backend as before.
 
 export type { AppConfig };
-
-// youtubei.js logs a parser warning for every unknown node; keep only errors.
-Log.setLevel(Log.Level.ERROR);
 
 export const DEFAULT_APP_CONFIG: AppConfig = { inAppYoutube: true, youtubeClients: ['VISIONOS'], updatedAt: 0 };
 
@@ -74,9 +71,25 @@ export const setAppConfig = async (config: AppConfig): Promise<void> => {
 
 export const getAppConfig = (): AppConfig => activeConfig;
 
-const newInnertube = async (): Promise<InnertubeLike> =>
+/**
+ * youtubei.js (with its JS parser and protobuf) is about 40% of the app's code and only the
+ * desktop window uses it, so it loads on first use instead of with the web app.
+ */
+let youtubeiPromise: Promise<typeof import('youtubei.js')> | null = null;
+const loadYoutubei = () => {
+  youtubeiPromise ??= import('youtubei.js').then((mod) => {
+    // youtubei.js logs a parser warning for every unknown node; keep only errors.
+    mod.Log.setLevel(mod.Log.Level.ERROR);
+    return mod;
+  });
+  return youtubeiPromise;
+};
+
+const newInnertube = async (): Promise<InnertubeLike> => {
+  const { Innertube } = await loadYoutubei();
   // VISIONOS urls need no deciphering, so the player script isn't downloaded or parsed.
-  (await Innertube.create({ retrieve_player: false, fetch: curlFetch })) as unknown as InnertubeLike;
+  return (await Innertube.create({ retrieve_player: false, fetch: curlFetch })) as unknown as InnertubeLike;
+};
 
 /** HTTP status of a 1 KB ranged GET on a stream url (through curl, like the download itself). */
 const probeStream = async (url: string, contentLength: number): Promise<number> => {
@@ -91,7 +104,7 @@ const buildCatalog = (yt: InnertubeLike) => {
     probe: probeStream,
     newSession: newInnertube,
   });
-  catalog = createCatalog(source);
+  catalog = memoizeCatalog(createCatalog(source));
 };
 
 /** Drop the session so the next call starts a new one (new client order, or a failed start). */

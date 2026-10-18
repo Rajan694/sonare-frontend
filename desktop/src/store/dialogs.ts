@@ -30,7 +30,7 @@ export type OpenDialog =
   | { id: number; kind: 'prompt'; options: PromptOptions; resolve: (value: string | null) => void }
   | { id: number; kind: 'confirm'; options: ConfirmOptions; resolve: (ok: boolean) => void }
   | { id: number; kind: 'addToPlaylist'; tracks: Track[]; resolve: () => void }
-  | { id: number; kind: 'releaseNotes'; release: AppRelease; action: string; resolve: (act: boolean) => void };
+  | { id: number; kind: 'releaseNotes'; release: AppRelease; action: string | null; resolve: (act: boolean) => void };
 
 let current: OpenDialog | null = null;
 let nextId = 1;
@@ -103,7 +103,8 @@ export const addToPlaylistDialog = (tracks: Track[]): Promise<void> => {
 };
 
 /** What changed in a newer build; resolves true when `action` (e.g. "Download") was pressed. */
-export const releaseNotesDialog = (release: AppRelease, action: string): Promise<boolean> => {
+/** A release's changes; `action` (e.g. its download) resolves true, null leaves only Close. */
+export const releaseNotesDialog = (release: AppRelease, action: string | null = null): Promise<boolean> => {
   cancelCurrent();
   return new Promise((resolve) => {
     set({

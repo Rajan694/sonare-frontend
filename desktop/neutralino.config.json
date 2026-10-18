@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/neutralinojs/neutralinojs/main/schemas/neutralino.config.schema.json",
   "applicationId": "app.sonare.desktop",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "defaultMode": "window",
   "port": 47823,
   "documentRoot": "/resources/",

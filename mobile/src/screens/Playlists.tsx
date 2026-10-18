@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, FlatList, Pressable, RefreshControl } from 'react-native';
+import { View, FlatList, Pressable, RefreshControl, Alert } from 'react-native';
 import { Text } from '../components/ui/Text';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useNetInfo } from '@react-native-community/netinfo';
@@ -25,6 +25,8 @@ import { cn } from '../lib/cn';
 import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
 import type { Playlist } from '../data/types';
 import Icon from '../components/ui/Icon';
+import { AiPlaylistSheet } from '../components/ai/AiPlaylistSheet';
+import { useAiEnabled } from '../store/ai';
 
 export const PlaylistsScreen = () => {
   const navigation = useNavigation<any>();
@@ -33,6 +35,8 @@ export const PlaylistsScreen = () => {
   const playlists = useLibraryStore((state) => state.playlists);
   const [error, setError] = useState<Error | null>(null);
   const [creating, setCreating] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const aiEnabled = useAiEnabled();
   const [name, setName] = useState('');
   // The options sheet keeps its playlist while it slides away, so the title doesn't blank out.
   const [options, setOptions] = useState<Playlist | null>(null);
@@ -89,11 +93,20 @@ export const PlaylistsScreen = () => {
         }
         right={
           online ? (
-            <IconButton
-              icon={<Icon name="plus" size={20} color="#FFFFFF" />}
-              onPress={startCreating}
-              accessibilityLabel="New playlist"
-            />
+            <View className="flex-row items-center gap-1">
+              {aiEnabled && (
+                <IconButton
+                  icon={<Icon name="sparkles" size={20} color="#00E28A" />}
+                  onPress={() => setAiOpen(true)}
+                  accessibilityLabel="Create with AI"
+                />
+              )}
+              <IconButton
+                icon={<Icon name="plus" size={20} color="#FFFFFF" />}
+                onPress={startCreating}
+                accessibilityLabel="New playlist"
+              />
+            </View>
           ) : undefined
         }
       />
@@ -204,6 +217,16 @@ export const PlaylistsScreen = () => {
           </Button>
         </View>
       </Sheet>
+
+      <AiPlaylistSheet
+        visible={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onCreated={(id, songs) => {
+          navigation.navigate('Playlist', { id });
+          if (songs === null)
+            Alert.alert('The playlist was made', "But its songs couldn't be added. Try adding them again.");
+        }}
+      />
 
       <Sheet visible={optionsOpen} onClose={() => setOptionsOpen(false)}>
         <View className="px-6 pb-6 gap-2">

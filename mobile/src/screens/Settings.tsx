@@ -18,7 +18,7 @@ import Icon from '../components/ui/Icon';
 import { usePlayerSheets } from '../components/music/PlayerSheets';
 import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
 import { useAppUpdateStore } from '../store/appUpdate';
-import { appVersion } from '../native/SonareBuild';
+import { appVersion, isLocalBuild } from '../native/SonareBuild';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { Sheet } from '../components/ui/Sheet';
 import { parseReleaseNotes } from '../../../shared/releaseNotes';
@@ -471,7 +471,7 @@ const StreamCacheRow = () => {
 };
 
 const AboutSection = ({ online }: { online: boolean }) => {
-  const { status, release, progress, error, check, download, install } = useAppUpdateStore();
+  const { status, release, latest, progress, error, check, download, install } = useAppUpdateStore();
   const [notesOpen, setNotesOpen] = React.useState(false);
 
   // Look each time Settings opens (a download in progress carries on).
@@ -498,8 +498,17 @@ const AboutSection = ({ online }: { online: boolean }) => {
     desc = 'Switch to Online to check for a newer version';
   } else if (status === 'current') {
     icon = 'check';
-    label = 'Sonare is up to date';
+    label = latest?.version === appVersion ? "You're on the latest version" : 'Sonare is up to date';
     desc = `Version ${appVersion} is the newest`;
+    action = (
+      <Button variant="outline" size="sm" onPress={() => check()}>
+        Check again
+      </Button>
+    );
+  } else if (status === 'dev' && latest) {
+    icon = 'info';
+    label = 'Development build';
+    desc = `Sonare ${latest.version} is the latest release · updates are off in local runs`;
     action = (
       <Button variant="outline" size="sm" onPress={() => check()}>
         Check again
@@ -538,7 +547,14 @@ const AboutSection = ({ online }: { online: boolean }) => {
     );
   }
 
-  const hasNotes = online && !!release && (status === 'available' || status === 'downloaded');
+  // A newer build's changes, or (on the latest release, or a local run) the latest release's.
+  const notesRelease =
+    release && (status === 'available' || status === 'downloaded')
+      ? release
+      : (status === 'current' && latest?.version === appVersion) || status === 'dev'
+        ? latest
+        : null;
+  const hasNotes = online && !!notesRelease;
   const notesAction =
     status === 'available'
       ? { label: 'Download', run: () => download() }
@@ -548,10 +564,10 @@ const AboutSection = ({ online }: { online: boolean }) => {
 
   return (
     <View className="gap-2">
-      {release && (
+      {notesRelease && (
         <ReleaseNotesSheet
           visible={notesOpen && hasNotes}
-          release={release}
+          release={notesRelease}
           action={notesAction?.label}
           onAction={() => {
             setNotesOpen(false);
@@ -568,7 +584,10 @@ const AboutSection = ({ online }: { online: boolean }) => {
           </View>
           <View className="flex-1 gap-0.5 min-w-0">
             <Text className="text-tm font-medium text-t1">Sonare</Text>
-            <Text className="text-bs text-t3">Version {appVersion}</Text>
+            <Text className="text-bs text-t3">
+              Version {appVersion}
+              {isLocalBuild ? ' (development build)' : ''}
+            </Text>
           </View>
         </View>
         <View className="px-4 py-3.5 gap-2.5" accessibilityLabel="Updates">
@@ -635,7 +654,8 @@ const ReleaseNotesSheet = ({
     Number.isNaN(date.getTime())
       ? null
       : date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }),
-    formatSize(release.sizeBytes),
+    // The size is the download's, so only when the sheet offers it.
+    action ? formatSize(release.sizeBytes) : null,
   ]
     .filter(Boolean)
     .join(' · ');
@@ -675,7 +695,7 @@ const ReleaseNotesSheet = ({
         </ScrollView>
         <View className="flex-row gap-2.5">
           <Button variant="outline" className="flex-1" onPress={onClose}>
-            Later
+            {action ? 'Later' : 'Close'}
           </Button>
           {action ? (
             <Button variant="accent" className="flex-1" onPress={onAction}>

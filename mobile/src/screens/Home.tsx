@@ -23,6 +23,7 @@ import { formatDuration } from '../lib/format';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
+import { YouMayLike } from '../components/ai/YouMayLike';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -252,6 +253,9 @@ export const HomeScreen = () => {
                   </View>
                 </View>
               )}
+
+              {/* AI picks from the listening history; renders nothing until there are some */}
+              <YouMayLike exclude={[...recentTracks, ...favouriteTracks]} />
 
               {/* Favourites shelf */}
               {favouriteTracks.length > 0 && (

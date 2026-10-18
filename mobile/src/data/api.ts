@@ -1,11 +1,13 @@
 import { apiBase } from './config';
-import { useAuthStore } from './auth';
+import { accessTokenExpired, useAuthStore } from './auth';
 import { httpRequest } from './http';
 import { isInAppYoutubeEnabled } from '../youtube/appConfig';
 import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
 import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
 import { ApiError, apiErrorFrom, createCatalogFallback, isYouTubeId, ytId } from '../../../shared/api/client';
+import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
+import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type {
   Album,
   AlbumMeta,
@@ -40,6 +42,13 @@ const buildUrl = (path: string, params?: Params): string => {
   return `${apiBase()}${path}${query ? `?${query}` : ''}`;
 };
 
+// An AI request found no provider answering (503 AI_UNAVAILABLE): App.tsx hides the AI features
+// until the next /app-config says otherwise.
+let aiUnavailableListener: (() => void) | null = null;
+export const onAiUnavailable = (listener: () => void): void => {
+  aiUnavailableListener = listener;
+};
+
 const request = async <T>(
   path: string,
   { method = 'GET', params, body, timeoutMs }: RequestOptions = {},
@@ -56,18 +65,25 @@ const request = async <T>(
       timeoutMs,
     });
 
-  let res = await send(useAuthStore.getState().accessToken);
+  const auth = useAuthStore.getState();
+  const stored = auth.accessToken;
+  const sent = stored && accessTokenExpired(stored) ? await auth.usableAccessToken() : stored;
+  let res = await send(sent);
 
-  // Access tokens are short-lived: refresh once and retry.
+  // Access tokens are short-lived: refresh once and retry. When another call refreshed while
+  // this one was out, its new token is used instead of rotating the pair again.
   if (res.status === 401) {
-    const fresh = await useAuthStore.getState().refresh();
+    const current = useAuthStore.getState().accessToken;
+    const fresh = current && current !== sent ? current : await useAuthStore.getState().refresh();
     if (fresh) res = await send(fresh);
   }
 
   if (res.status === 204) return {} as T;
   const { json } = res;
   if (res.status < 200 || res.status >= 300) {
-    throw apiErrorFrom(res.status, json);
+    const err = apiErrorFrom(res.status, json);
+    if (err.code === 'AI_UNAVAILABLE') aiUnavailableListener?.();
+    throw err;
   }
   return json as T;
 };
@@ -279,6 +295,19 @@ export const api = {
       // A hung upload would hold the whole queue; time out and let sync.ts retry.
       timeoutMs: 15_000,
     }),
+
+  // AI (forReference/ai-briefs/CONTRACT.md in the root repo). The AI names songs; songSearch finds them.
+  aiYouMayLike: () => request<AiYouMayLike>('/me/ai/you-may-like'),
+  aiSearchPlan: (q: string) => request<AiSearchPlan>('/ai/search', { params: { q } }),
+  aiPlaylistDraft: (body: { prompt: string; count: number }) =>
+    request<AiPlaylistDraft>('/me/ai/playlist', { method: 'POST', body }),
+  /** Signed in or not; the token goes along when there is one. */
+  aiTitles: (items: PendingTitle[]) => request<AiTitleFixes>('/ai/titles', { method: 'POST', body: { items } }),
+  /** The songs on the first page of a song search (in-app YouTube first, like any search). */
+  songSearch: async (q: string): Promise<Track[]> => {
+    const page = await api.search(q, 'songs');
+    return page.items.filter((item): item is SearchItem & { kind: 'track' } => item.kind === 'track');
+  },
 
   // The user's playlists
   myPlaylists: () => request<Page<Playlist>>('/me/playlists'),

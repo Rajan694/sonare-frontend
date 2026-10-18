@@ -11,3 +11,6 @@ export const isDevApk = native?.dev === true;
 
 /** versionName from android/app/build.gradle (Settings → About and the update check). */
 export const appVersion: string = native?.version ?? '0.0.0';
+
+/** Run from Metro (a debug build) or a dev APK: Settings says so and offers no update. */
+export const isLocalBuild = (__DEV__ && process.env.NODE_ENV !== 'test') || isDevApk;

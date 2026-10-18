@@ -27,6 +27,7 @@ import type { SearchItem, Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 import { DEFAULT_GENRES, GenreCard, genreQuery, type Genre } from '../components/music/GenreCard';
 import { groupLocalByAlbum, groupLocalByArtist, searchLocalTracks } from '../lib/localSearch';
+import { AiSearchPicks } from '../components/ai/AiSearchPicks';
 
 const ONLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'genres'] as const;
 const OFFLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'folders'] as const;
@@ -421,6 +422,11 @@ export const SearchScreen = () => {
                   Searching Sonare library · {items.length ? `${items.length} results` : 'searching...'}
                 </Text>
               </View>
+            )}
+
+            {/* On demand: the AI turns the query into a few searches (components/ai) */}
+            {online && q.length > 0 && !showGenres && (filter === 'all' || filter === 'songs') && (
+              <AiSearchPicks key={q} query={q} />
             )}
 
             {showGenres ? (

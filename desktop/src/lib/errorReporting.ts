@@ -1,5 +1,6 @@
 import { API_BASE } from '../api/auth';
 import { CLIENT } from './caps';
+import { APP_VERSION } from './buildInfo';
 
 // Sends uncaught errors and unhandled rejections to the backend, where they show on the admin
 // page's Errors section. React 19 reports uncaught render errors through window.reportError,
@@ -52,7 +53,7 @@ export const reportError = (value: unknown, level: 'error' | 'warning' = 'error'
       ),
       stack: err.stack?.slice(0, 16_000),
       page: location.pathname,
-      appVersion: import.meta.env.VITE_APP_VERSION || undefined,
+      appVersion: APP_VERSION,
       context,
     }),
     keepalive: true,

@@ -2,6 +2,8 @@ import { serverFetch } from './serverFetch';
 import { API_BASE, getAccessToken, onAuthChange, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
 import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo } from '../types';
+import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
+import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type { LyricsScript } from '../storage/devicePrefs';
 import { inAppYoutube, isInAppYoutubeAllowed, loadCachedConfig, setAppConfig, type AppConfig } from '../youtube/inApp';
 import { trackThumbUrl } from '../../../shared/catalog/images';
@@ -55,6 +57,13 @@ export const loadErrorMessage = (err: unknown): string => {
   // fetch rejects with a TypeError when the request never reached the server.
   if (err instanceof TypeError) return "Can't reach the Sonare server.";
   return err instanceof Error ? err.message : 'Something went wrong.';
+};
+
+// An AI request found no provider answering (503 AI_UNAVAILABLE): main.tsx hides the AI
+// features until the next /app-config says otherwise.
+let aiUnavailableListener: (() => void) | null = null;
+export const onAiUnavailable = (listener: () => void): void => {
+  aiUnavailableListener = listener;
 };
 
 interface RequestOptions extends RequestInit {
@@ -118,7 +127,11 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
     return {} as T;
   }
 
-  if (!res.ok) throw apiErrorFrom(res.status, data);
+  if (!res.ok) {
+    const err = apiErrorFrom(res.status, data);
+    if (err.code === 'AI_UNAVAILABLE') aiUnavailableListener?.();
+    throw err;
+  }
 
   return data as T;
 };
@@ -138,14 +151,19 @@ export const api = {
     return request<AppConfig>('/app-config', { skipAuth: true, cache: 'no-cache' });
   },
 
-  /** Fetch the admin's in-app YouTube settings (desktop window only); the cached copy stays on failure. */
-  async syncAppConfig() {
+  /**
+   * Fetch the admin's settings for the apps: in-app YouTube (applied in the desktop window only;
+   * the cached copy stays on failure) and whether AI is on. Null when it couldn't be fetched.
+   */
+  async syncAppConfig(): Promise<AppConfig | null> {
     await loadCachedConfig();
-    if (window.NL_MODE !== 'window') return;
     try {
-      await setAppConfig(await this.getAppConfig());
+      const config = await this.getAppConfig();
+      if (window.NL_MODE === 'window') await setAppConfig(config);
+      return config;
     } catch {
       // Offline, or an older backend without /app-config: keep what we have.
+      return null;
     }
   },
 
@@ -435,6 +453,30 @@ export const api = {
     return request<Page<Playlist>>('/me/playlists');
   },
 
+  // AI (forReference/ai-briefs/CONTRACT.md in the root repo). The AI names songs; songSearch finds them.
+  aiYouMayLike() {
+    return request<AiYouMayLike>('/me/ai/you-may-like');
+  },
+
+  aiSearchPlan(q: string) {
+    return request<AiSearchPlan>('/ai/search', { params: { q } });
+  },
+
+  aiPlaylistDraft(body: { prompt: string; count: number }) {
+    return request<AiPlaylistDraft>('/me/ai/playlist', { method: 'POST', body: JSON.stringify(body) });
+  },
+
+  /** Signed in or not; the token goes along when there is one. */
+  aiTitles(items: PendingTitle[]) {
+    return request<AiTitleFixes>('/ai/titles', { method: 'POST', body: JSON.stringify({ items }) });
+  },
+
+  /** The songs on the first page of a song search (in-app YouTube first, like any search). */
+  async songSearch(q: string): Promise<Track[]> {
+    const page = await api.search(q, 'songs');
+    return page.items.filter((item): item is Track => 'durationMs' in item);
+  },
+
   createPlaylist(body: { name: string; kind?: 'local' | 'synced' | 'online'; description?: string }) {
     return request<Playlist>('/me/playlists', {
       method: 'POST',
@@ -516,17 +558,20 @@ export const api = {
 };
 
 /**
- * Keep the admin's in-app YouTube settings fresh in the desktop window: now, and whenever the
- * window comes back into view, at most every 5 minutes.
+ * Keep the admin's settings for the apps fresh: now, whenever the window comes back into view,
+ * and while it's in view, at most every 5 minutes. `onConfig` gets each one fetched.
  */
-export const startAppConfigSync = (): void => {
+export const startAppConfigSync = (onConfig: (config: AppConfig) => void): void => {
   let last = 0;
   const sync = () => {
     if (Date.now() - last < 5 * 60_000) return;
     last = Date.now();
-    void api.syncAppConfig();
+    void api.syncAppConfig().then((config) => config && onConfig(config));
   };
   sync();
+  setInterval(() => {
+    if (document.visibilityState === 'visible') sync();
+  }, 60_000);
   window.addEventListener('focus', sync);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') sync();

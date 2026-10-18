@@ -12,6 +12,7 @@ import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
+import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.mobile.MainActivity
@@ -77,7 +78,11 @@ class SonarePlaybackService : MediaSessionService() {
     session =
       MediaSession.Builder(this, QueueForwardingPlayer(engine.active, engine))
         .setSessionActivity(openApp)
-        .setBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkSource))
+        // Cached: without it every notification and session update downloads the artwork again
+        // (the default loader is wrapped the same way; a custom one isn't).
+        .setBitmapLoader(
+          CacheBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkSource)),
+        )
         .build()
     // A crossfade hands playback to the other player; the session (notification, lock
     // screen, the app's controller) follows it.

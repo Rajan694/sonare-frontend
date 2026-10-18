@@ -126,4 +126,14 @@ describe('app updates on Android', () => {
     expect(getByText('Updates need Online mode')).toBeTruthy();
     expect(releases).not.toHaveBeenCalled();
   });
+
+  it('MOB-UPD-007 on the latest release About says so and shows its notes, with no download', async () => {
+    uploaded([apk({ version: '1.0.1' })]);
+    const { getByText, findByText, queryByText } = render(<SettingsScreen />);
+    expect(await findByText("You're on the latest version")).toBeTruthy();
+    expect(queryByText('Download')).toBeNull();
+    fireEvent.press(getByText("What's new"));
+    expect(await findByText("What's new in Sonare 1.0.1")).toBeTruthy();
+    expect(getByText('Faster start')).toBeTruthy();
+  });
 });

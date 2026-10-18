@@ -298,13 +298,13 @@ describe('volume', () => {
 });
 
 describe('the next song', () => {
-  /** Plays yt:a, names yt:b as next, and moves 10 s into yt:a, where the next one is prepared. */
-  const intoFirstSong = async (player: Awaited<ReturnType<typeof freshPlayer>>) => {
+  /** Plays yt:a, names yt:b as next, and moves to 10 s before yt:a ends, where the next one is prepared. */
+  const intoFirstSong = async (player: Awaited<ReturnType<typeof freshPlayer>>, at = 190) => {
     await player.playTrackId('yt:a');
     player.setNext({ id: 'yt:b', album: null }, null);
     const first = audio();
     first.duration = 200;
-    first.currentTime = 10;
+    first.currentTime = at;
     first.fire('timeupdate');
     return first;
   };
@@ -374,5 +374,45 @@ describe('the next song', () => {
     first.fire('ended');
     expect(ended).toHaveBeenCalledTimes(1);
     expect(player.getStatus().trackId).toBe('yt:a');
+  });
+
+  it('WEB-PLAYER-024 nothing of the next song is fetched until 15 s before this one ends', async () => {
+    streamEndpoint();
+    const player = await freshPlayer();
+    const rec = recordRequests();
+    const first = await intoFirstSong(player, 100);
+    await new Promise((r) => setTimeout(r, 30));
+    expect(rec.paths().filter((p) => p.includes('yt%3Ab'))).toHaveLength(0);
+    expect(created).toHaveLength(1);
+    first.currentTime = 186;
+    first.fire('timeupdate');
+    await vi.waitFor(() => expect(created[1]?.src).toContain('yt:b'));
+    rec.stop();
+  });
+});
+
+describe('the song cache (web)', () => {
+  it('WEB-PLAYER-025 a saved song plays from the song cache without a stream lookup; others are tagged to be saved', async () => {
+    streamEndpoint();
+    const saved = new Set(['/__sonare_song/yt%3Aa%3Ahigh']);
+    vi.stubGlobal('caches', {
+      open: async () => ({ match: async (url: string) => (saved.has(url) ? {} : undefined), delete: async () => true }),
+    });
+    Object.defineProperty(navigator, 'serviceWorker', { value: { controller: {} }, configurable: true });
+    try {
+      const player = await freshPlayer();
+      const rec = recordRequests();
+      await player.playTrackId('yt:a');
+      expect(audio().getAttribute('src')).toBe('/__sonare_song/yt%3Aa%3Ahigh');
+      expect(rec.paths().filter((p) => p.includes('/stream'))).toHaveLength(0);
+
+      await player.playTrackId('yt:b');
+      expect(audio().src).toContain('/api/v1/stream/yt:b');
+      expect(new URL(audio().src).searchParams.get('sonare_ck')).toBe('yt:b:high');
+      rec.stop();
+    } finally {
+      vi.unstubAllGlobals();
+      Reflect.deleteProperty(navigator, 'serviceWorker');
+    }
   });
 });
