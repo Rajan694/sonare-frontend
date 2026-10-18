@@ -14,6 +14,7 @@ import { api } from './api/api';
 import { getCurrentUser, initDevAuth, onAuthChange } from './api/auth';
 import { accountQueue, queueChanged, savedQueue, setQueueSource } from './storage/playerPersist';
 import { bindMediaSession, showInMediaSession, showPositionInMediaSession } from './audio/mediaSession';
+import { bindTray, showInTray } from './neutralino';
 import type { SavedQueue } from '../../shared/player/savedQueue';
 import * as player from './audio/player';
 import { maybeRecordPlay, resetPlay } from './api/plays';
@@ -211,6 +212,17 @@ const App = () => {
   }, []);
 
   useEffect(() => showInMediaSession(currentTrack, playback.playing), [currentTrack, playback.playing]);
+
+  // The same controls in the window's tray menu.
+  useEffect(() => {
+    return bindTray({
+      togglePlay: () => actionsRef.current.togglePlay(),
+      next: () => actionsRef.current.next(),
+      previous: () => actionsRef.current.previous(),
+    });
+  }, []);
+
+  useEffect(() => showInTray(currentTrack, playback.playing), [currentTrack, playback.playing]);
 
   useEffect(() => {
     if (playerState.queue.length || queueSavedAt.current) queueChanged();
