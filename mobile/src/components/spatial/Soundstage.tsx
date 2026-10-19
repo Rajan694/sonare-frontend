@@ -15,7 +15,14 @@ import Svg, {
 import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import { Text } from '../ui/Text';
 import { cn } from '../../lib/cn';
-import { toPolar, directionLabel, distanceLabel, type SpatialCustom } from '../../../../shared/spatial';
+import {
+  toPolar,
+  directionLabel,
+  distanceLabel,
+  pointToPosition,
+  stageGeometry,
+  type SpatialCustom,
+} from '../../../../shared/spatial';
 
 interface SoundstageProps {
   custom: SpatialCustom;
@@ -25,18 +32,18 @@ interface SoundstageProps {
 }
 
 const DISC_RADIUS = 95; // SVG coordinate units (-120..120 viewBox)
+const VIEW_HALF = 120;
 
 export const Soundstage: React.FC<SoundstageProps> = ({ custom, disabled = false, variant = 'default', onChange }) => {
   const [size, setSize] = useState(240);
   const accent = variant === 'gold' ? '#FFC24D' : '#00E28A';
 
   const polar = toPolar(custom.x, custom.y);
-  const spreadRad = ((custom.width / 100) * 80 * Math.PI) / 360;
-
-  // Virtual speaker positions
-  const azL = polar.azimuth - spreadRad;
-  const azR = polar.azimuth + spreadRad;
-  const dist = polar.distance * DISC_RADIUS;
+  // The virtual speakers where the audio puts them.
+  const stage = stageGeometry(custom);
+  const azL = stage.azimuth - stage.spread;
+  const azR = stage.azimuth + stage.spread;
+  const dist = stage.distance * DISC_RADIUS;
 
   const spkLX = Math.sin(azL) * dist;
   const spkLY = -Math.cos(azL) * dist;
@@ -48,20 +55,10 @@ export const Soundstage: React.FC<SoundstageProps> = ({ custom, disabled = false
 
   const handleTouch = (locationX: number, locationY: number, commit: boolean) => {
     if (disabled || size <= 0) return;
-    const cx = size / 2;
-    const cy = size / 2;
-    const dx = (locationX - cx) / (size / 2);
-    const dy = -(locationY - cy) / (size / 2); // Invert Y so front is +
-
-    let r = Math.hypot(dx, dy);
-    if (r < 0.1) r = 0.1;
-    let nx = dx;
-    let ny = dy;
-    if (r > 1.0) {
-      nx = dx / r;
-      ny = dy / r;
-    }
-    onChange({ x: nx, y: ny }, { commit });
+    // The disc is smaller than the drawing (room for the labels): its edge is distance 1.
+    const radius = (size / 2) * (DISC_RADIUS / VIEW_HALF);
+    const { x, y } = pointToPosition(locationX - size / 2, locationY - size / 2, radius);
+    onChange({ x, y }, { commit });
   };
 
   const pan = usePanGesture({

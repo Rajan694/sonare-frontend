@@ -32,8 +32,9 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
     onChange({ x, y }, { commit: true });
   };
 
+  // Back to the starting position; the sliders stay as they are.
   const handleReset = () => {
-    onChange(DEFAULT_SPATIAL.custom, { commit: true });
+    onChange({ x: DEFAULT_SPATIAL.custom.x, y: DEFAULT_SPATIAL.custom.y }, { commit: true });
   };
 
   return (
@@ -44,13 +45,13 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
           <Text className="text-ls font-medium text-t2">Quick placement</Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Reset spatial soundstage"
+            accessibilityLabel="Reset position"
             disabled={disabled}
             onPress={handleReset}
             className="flex-row items-center gap-1 opacity-80"
           >
             <Icon name="reset" size={12} color="#9A9AA8" />
-            <Text className="text-bs font-medium text-t3">Reset</Text>
+            <Text className="text-bs font-medium text-t3">Reset position</Text>
           </Pressable>
         </View>
 

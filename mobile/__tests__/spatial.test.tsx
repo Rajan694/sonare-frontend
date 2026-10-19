@@ -6,7 +6,7 @@ import { useSpatialStore } from '../src/store/spatial';
 import { SonarePlayer } from '../src/native/SonarePlayer';
 import { AudioEngine } from '../src/components/music/AudioEngine';
 import { SpatialAudioSection } from '../src/components/spatial/SpatialAudioSection';
-import { DEFAULT_SPATIAL, resolveSpatial, toPolar } from '../../shared/spatial';
+import { DEFAULT_SPATIAL, SPATIAL_PRESETS, resolveSpatial, toPolar } from '../../shared/spatial';
 
 const native = NativeModules.SonarePlayer as Record<string, jest.Mock>;
 
@@ -310,22 +310,24 @@ describe('Spatial Audio Mobile', () => {
 
     const { getByText, getByLabelText } = render(<SpatialAudioSection />);
 
+    // Names, descriptions and decay times are the ones the audio uses.
     expect(getByText('Concert')).toBeTruthy();
-    expect(getByText('1.2s RT60')).toBeTruthy();
-    expect(getByText('Natural stage width with balanced early reflections')).toBeTruthy();
+    expect(getByText('1.5 s decay')).toBeTruthy();
+    expect(getByText(SPATIAL_PRESETS.concert.description)).toBeTruthy();
 
-    expect(getByText('Cafe')).toBeTruthy();
-    expect(getByText('0.6s RT60')).toBeTruthy();
+    expect(getByText('Café')).toBeTruthy();
+    expect(getByText('0.6 s decay')).toBeTruthy();
 
-    expect(getByText('Cathedral Hall')).toBeTruthy();
-    expect(getByText('2.1s RT60')).toBeTruthy();
+    expect(getByText('Hall')).toBeTruthy();
+    expect(getByText('2.2 s decay')).toBeTruthy();
+    expect(getByLabelText('Concert spatial preset').props.accessibilityState.checked).toBe(true);
 
-    // Select Cafe
-    fireEvent.press(getByLabelText('Cafe spatial preset'));
+    // Select Café
+    fireEvent.press(getByLabelText('Café spatial preset'));
     expect(useSpatialStore.getState().preset).toBe('cafe');
 
-    // Select Cathedral Hall
-    fireEvent.press(getByLabelText('Cathedral Hall spatial preset'));
+    // Select Hall
+    fireEvent.press(getByLabelText('Hall spatial preset'));
     expect(useSpatialStore.getState().preset).toBe('hall');
   });
 
@@ -391,19 +393,20 @@ describe('Spatial Audio Mobile', () => {
     fireEvent(disc, 'accessibilityAction', { nativeEvent: { actionName: 'decrement' } });
     expect(useSpatialStore.getState().custom.y).toBeCloseTo(0.5);
 
-    // Direct touch gesture on disc (responder move & release)
+    // Direct touch gesture on disc (responder move & release). The 240 dp drawing holds a disc of
+    // radius 95 dp (95 of its 120 units), whose edge is distance 1: the marker lands under the finger.
     const touchTarget = getByTestId('soundstage-disc');
     fireEvent(touchTarget, 'responderMove', {
       nativeEvent: { locationX: 180, locationY: 60 },
     });
-    expect(useSpatialStore.getState().custom.x).toBeCloseTo(0.5);
-    expect(useSpatialStore.getState().custom.y).toBeCloseTo(0.5);
+    expect(useSpatialStore.getState().custom.x).toBeCloseTo(60 / 95);
+    expect(useSpatialStore.getState().custom.y).toBeCloseTo(60 / 95);
 
     fireEvent(touchTarget, 'responderRelease', {
-      nativeEvent: { locationX: 180, locationY: 60 },
+      nativeEvent: { locationX: 120, locationY: 25 },
     });
-    expect(useSpatialStore.getState().custom.x).toBeCloseTo(0.5);
-    expect(useSpatialStore.getState().custom.y).toBeCloseTo(0.5);
+    expect(useSpatialStore.getState().custom.x).toBeCloseTo(0);
+    expect(useSpatialStore.getState().custom.y).toBeCloseTo(1);
   });
 
   it('MOB-SPATIAL-015 SpatialControls renders quick placement buttons and sliders for distance, width, intensity, ambience', () => {
@@ -434,9 +437,11 @@ describe('Spatial Audio Mobile', () => {
     expect(useSpatialStore.getState().custom.x).toBeCloseTo(0);
     expect(useSpatialStore.getState().custom.y).toBeCloseTo(0.5);
 
-    // Reset button
-    fireEvent.press(getByLabelText('Reset spatial soundstage'));
-    expect(useSpatialStore.getState().custom).toEqual(DEFAULT_SPATIAL.custom);
+    // Reset position: back to the starting position, the sliders stay
+    act(() => useSpatialStore.getState().setCustom({ width: 12 }));
+    fireEvent.press(getByLabelText('Reset position'));
+    expect(useSpatialStore.getState().custom).toEqual({ ...DEFAULT_SPATIAL.custom, width: 12 });
+    act(() => useSpatialStore.getState().setCustom({ width: DEFAULT_SPATIAL.custom.width }));
 
     // Sliders accessibility adjust
     const widthSlider = getByLabelText('Soundstage width');
@@ -455,5 +460,17 @@ describe('Spatial Audio Mobile', () => {
     fireEvent(distanceSlider, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     const polar = toPolar(useSpatialStore.getState().custom.x, useSpatialStore.getState().custom.y);
     expect(polar.distance).toBeCloseTo(0.41, 2);
+  });
+
+  it('MOB-SPATIAL-016 leaving the Audio screen ends Compare', () => {
+    act(() => {
+      useSpatialStore.setState({ ...DEFAULT_SPATIAL, enabled: true, bypass: false });
+    });
+    const { getByLabelText, unmount } = render(<SpatialAudioSection />);
+    fireEvent.press(getByLabelText('Compare spatial audio bypass'));
+    expect(useSpatialStore.getState().bypass).toBe(true);
+    unmount();
+    expect(useSpatialStore.getState().bypass).toBe(false);
+    expect(useSpatialStore.getState().enabled).toBe(true);
   });
 });

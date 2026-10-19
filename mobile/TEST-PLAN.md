@@ -584,3 +584,4 @@ navigation mock live in `test-utils/`.
 | `MOB-SPATIAL-013` | SpatialAudioSection compare button toggles bypass and displays bypass indicator banner                        |
 | `MOB-SPATIAL-014` | Soundstage renders 2D disc with polar readout and handles touch or accessibility adjustment                   |
 | `MOB-SPATIAL-015` | SpatialControls renders quick placement buttons and sliders for distance, width, intensity, ambience          |
+| `MOB-SPATIAL-016` | leaving the Audio screen ends Compare                                                                         |

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Pressable } from 'react-native';
 import { Text } from '../ui/Text';
 import { Switch } from '../ui/Switch';
@@ -24,6 +24,9 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
   const bypass = useSpatialStore((s) => s.bypass);
 
   const { setEnabled, setMode, setPreset, setCustom, setBypass } = useSpatialStore.getState();
+
+  // Compare is a momentary check: leaving the screen ends it, so nobody stays on the original.
+  useEffect(() => () => useSpatialStore.getState().setBypass(false), []);
 
   return (
     <View className={cn('bg-s1 border border-ln rounded-xl p-4 gap-4', className)}>
@@ -116,7 +119,7 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
       {/* Mode Content */}
       <View className={cn(!enabled && 'opacity-50')}>
         {mode === 'presets' ? (
-          <View className="gap-1">
+          <View className="gap-1" accessibilityRole="radiogroup" accessibilityLabel="Spatial preset">
             <SpatialPresetCard
               preset="concert"
               active={preset === 'concert'}
