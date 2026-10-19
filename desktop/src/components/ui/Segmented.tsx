@@ -16,12 +16,20 @@ interface SegmentedProps {
   onChange: (id: string) => void;
   color?: 'acc' | 'gold';
   className?: string;
+  layoutId?: string;
 }
 
-export const Segmented = ({ options, value, onChange, color = 'acc', className }: SegmentedProps) => {
+export const Segmented = ({
+  options,
+  value,
+  onChange,
+  color = 'acc',
+  className,
+  layoutId = 'seg-pill-bg',
+}: SegmentedProps) => {
   const activeClass = color === 'acc' ? 'seg-on-cloud' : 'seg-on-dev';
   return (
-    <LayoutGroup>
+    <LayoutGroup id={layoutId}>
       <span className={cn('seg', className)}>
         {options.map((opt) => {
           const isActive = value === opt.id;
@@ -37,7 +45,7 @@ export const Segmented = ({ options, value, onChange, color = 'acc', className }
               {isActive && (
                 <motion.span
                   className="absolute inset-0 rounded-full -z-10"
-                  layoutId="seg-pill-bg"
+                  layoutId={layoutId}
                   transition={transition.spring}
                   aria-hidden
                 />

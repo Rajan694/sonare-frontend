@@ -564,3 +564,24 @@ navigation mock live in `test-utils/`.
 | `MOB-AI-007` | makes the playlist from the songs found and opens it                                             |
 | `MOB-AI-008` | too few songs found: says so and makes nothing                                                   |
 | `MOB-AI-009` | Cancel while the AI is thinking makes nothing                                                    |
+
+## `__tests__/spatial.test.tsx`
+
+| ID                | Use case                                                                                                      |
+| :---------------- | :------------------------------------------------------------------------------------------------------------ |
+| `MOB-SPATIAL-001` | spatial store initializes with default disabled state and concert preset                                      |
+| `MOB-SPATIAL-002` | hydrate loads saved spatial settings from AsyncStorage and sanitizes invalid values                           |
+| `MOB-SPATIAL-003` | setEnabled updates state and persists to AsyncStorage                                                         |
+| `MOB-SPATIAL-004` | setMode switches between presets and custom stage and persists                                                |
+| `MOB-SPATIAL-005` | setPreset updates active preset and persists                                                                  |
+| `MOB-SPATIAL-006` | setCustom updates custom stage coordinates and sliders with bounds clamping and resetCustom restores defaults |
+| `MOB-SPATIAL-007` | setBypass toggles temporary bypass in memory without persisting to AsyncStorage                               |
+| `MOB-SPATIAL-008` | AudioEngine pushes initial spatial settings on mount                                                          |
+| `MOB-SPATIAL-009` | AudioEngine forwards updated spatial store changes to SonarePlayer using headModel renderer                   |
+| `MOB-SPATIAL-010` | SonarePlayer.setSpatialAudio delegates to NativeModules.SonarePlayer.setSpatialAudio                          |
+| `MOB-SPATIAL-011` | SpatialAudioSection renders title, badges, enabled switch, and dimmed content when disabled                   |
+| `MOB-SPATIAL-012` | SpatialPresetCard renders preset metadata and handles selection                                               |
+| `MOB-SPATIAL-013` | SpatialAudioSection compare button toggles bypass and displays bypass indicator banner                        |
+| `MOB-SPATIAL-014` | Soundstage renders 2D disc with polar readout and handles touch or accessibility adjustment                   |
+| `MOB-SPATIAL-015` | SpatialControls renders quick placement buttons and sliders for distance, width, intensity, ambience          |
+| `MOB-SPATIAL-016` | leaving the Audio screen ends Compare                                                                         |

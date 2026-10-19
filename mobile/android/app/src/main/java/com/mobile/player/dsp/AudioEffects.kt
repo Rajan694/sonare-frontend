@@ -9,6 +9,10 @@ object AudioEffects {
   var settings: DspSettings = DspSettings()
     private set
 
+  @Volatile
+  var spatialParams: SpatialStageParams = SpatialStageParams()
+    private set
+
   /** Bumped on every change so processors know to recompute their filters. */
   @Volatile
   var version: Long = 0
@@ -17,6 +21,12 @@ object AudioEffects {
   @Synchronized
   fun update(next: DspSettings) {
     settings = next
+    version++
+  }
+
+  @Synchronized
+  fun updateSpatial(next: SpatialStageParams) {
+    spatialParams = next
     version++
   }
 }

@@ -1,6 +1,18 @@
 import React from 'react';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
-import { FolderX, BarChart3, Moon, Sun, LogOut, Speaker, Usb, Server, Settings } from 'lucide-react-native';
+import {
+  FolderX,
+  BarChart3,
+  Moon,
+  Sun,
+  LogOut,
+  Speaker,
+  Usb,
+  Server,
+  Settings,
+  Compass,
+  RotateCcw,
+} from 'lucide-react-native';
 
 /**
  * The design system's own icon set (design-system/screens/*.html): 24px glyphs drawn with a
@@ -644,6 +656,8 @@ const LUCIDE = {
   speaker: Speaker,
   usb: Usb,
   server: Server,
+  compass: Compass,
+  reset: RotateCcw,
 } as const;
 
 export type IconName = keyof typeof GLYPHS | keyof typeof LUCIDE;

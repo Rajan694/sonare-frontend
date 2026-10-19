@@ -39,6 +39,7 @@ data class DspSettings(
 class DspChain(private val sampleRate: Int, private val channels: Int) {
   private val bands = Array(DspSettings.EQ_BANDS.size) { Biquad(channels) }
   private val bass = Biquad(channels)
+  val spatialStage = SpatialStage(sampleRate)
   private var settings = DspSettings()
   private var width = 1.0
 
@@ -94,9 +95,14 @@ class DspChain(private val sampleRate: Int, private val channels: Int) {
     width = 1.0 + next.virtualizer.coerceIn(0.0, 100.0) / 100.0 * 1.5
   }
 
+  fun updateSpatial(params: SpatialStageParams) {
+    spatialStage.update(params)
+  }
+
   fun reset() {
     bands.forEach { it.reset() }
     bass.reset()
+    spatialStage.reset()
     compGainDb = 0.0
     delay.forEach { it.fill(0.0) }
     delayPos = 0
@@ -112,7 +118,7 @@ class DspChain(private val sampleRate: Int, private val channels: Int) {
   /** The [latencyFrames] frames still held back, processed; call at the end of a stream. */
   fun drain(): FloatArray {
     val out = FloatArray(lookahead * channels)
-    if (!settings.enabled) return out
+    if (!settings.enabled && !spatialStage.isActive) return out
     val silent = DoubleArray(channels)
     for (f in 0 until lookahead) limitAndDelay(silent, 1.0, out, f * channels)
     return out
@@ -120,28 +126,34 @@ class DspChain(private val sampleRate: Int, private val channels: Int) {
 
   /** Processes `frames` frames of `samples` (interleaved) in place. */
   fun process(samples: FloatArray, frames: Int) {
-    if (!settings.enabled) return
+    if (!settings.enabled && !spatialStage.isActive) return
     val frame = DoubleArray(channels)
     for (f in 0 until frames) {
       val base = f * channels
       for (c in 0 until channels) {
         var x = samples[base + c].toDouble()
-        for (band in bands) if (!band.isIdentity) x = band.process(x, c)
-        if (!bass.isIdentity) x = bass.process(x, c)
+        if (settings.enabled) {
+          for (band in bands) if (!band.isIdentity) x = band.process(x, c)
+          if (!bass.isIdentity) x = bass.process(x, c)
+        }
         frame[c] = x
       }
 
-      if (channels == 2 && width != 1.0) {
+      if (channels == 2 && settings.enabled && width != 1.0) {
         val mid = (frame[0] + frame[1]) * 0.5
         val side = (frame[0] - frame[1]) * 0.5 * width
         frame[0] = mid + side
         frame[1] = mid - side
       }
 
+      if (channels == 2) {
+        spatialStage.process(frame)
+      }
+
       var peak = 0.0
       for (c in 0 until channels) peak = max(peak, abs(frame[c]))
 
-      val comp = if (settings.normalization) compressorGain(peak) else 1.0
+      val comp = if (settings.normalization && settings.enabled) compressorGain(peak) else 1.0
       limitAndDelay(frame, comp, samples, base)
     }
   }

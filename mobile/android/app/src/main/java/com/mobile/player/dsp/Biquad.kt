@@ -16,6 +16,7 @@ class Biquad(private val channels: Int) {
     PEAKING,
     LOW_SHELF,
     HIGH_SHELF,
+    LOWPASS,
   }
 
   private var b0 = 1.0
@@ -32,8 +33,12 @@ class Biquad(private val channels: Int) {
   var isIdentity = true
     private set
 
-  fun set(type: Type, sampleRate: Int, frequency: Double, gainDb: Double, q: Double = 1.1) {
-    isIdentity = gainDb == 0.0
+  fun set(type: Type, sampleRate: Int, frequency: Double, gainDb: Double = 0.0, q: Double = 1.1) {
+    if (type == Type.LOWPASS) {
+      isIdentity = frequency >= sampleRate * 0.49
+    } else {
+      isIdentity = gainDb == 0.0
+    }
     if (isIdentity) {
       b0 = 1.0
       b1 = 0.0
@@ -53,6 +58,15 @@ class Biquad(private val channels: Int) {
     val na1: Double
     val na2: Double
     when (type) {
+      Type.LOWPASS -> {
+        val alpha = sinW / (2.0 * q)
+        nb0 = (1.0 - cosW) / 2.0
+        nb1 = 1.0 - cosW
+        nb2 = (1.0 - cosW) / 2.0
+        na0 = 1.0 + alpha
+        na1 = -2.0 * cosW
+        na2 = 1.0 - alpha
+      }
       Type.PEAKING -> {
         val alpha = sinW / (2.0 * q)
         nb0 = 1.0 + alpha * a

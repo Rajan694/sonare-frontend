@@ -14,6 +14,9 @@ import { getSettings, subscribeSettings, updateSettings } from '../storage/setti
  */
 
 import { CUSTOM_PRESET, EQ_BANDS, EQ_PRESETS } from '../../../shared/settings';
+import { resolveSpatial } from '../../../shared/spatial';
+import { getSpatial, getSpatialBypass, setSpatialSupport, subscribeSpatial } from './spatial';
+import { createSpatialStage, probeSpatialRenderer, type SpatialStage } from './spatialStage';
 
 export { CUSTOM_PRESET, EQ_BANDS, EQ_PRESETS };
 export const EQ_LABELS = ['32', '64', '150', '400', '1k', '2.4k', '6k', '14k'] as const;
@@ -81,9 +84,11 @@ interface Graph {
   comp: DynamicsCompressorNode;
   /** Last in the chain: keeps EQ and bass boost from clipping, like Android's −1 dBFS limiter. */
   limiter: DynamicsCompressorNode;
+  spatial?: SpatialStage;
 }
 
 let graph: Graph | null = null;
+let currentRenderer: 'hrtf' | 'headModel' | 'none' = 'none';
 /** The player's elements: two, so the next song can be ready (gapless) or fade in (crossfade). */
 const elements = new Set<HTMLAudioElement>();
 /** Each element's level in the chain, which crossfades ramp; volume stays on the element. */
@@ -122,7 +127,19 @@ const apply = () => {
   const norm = getSettings().normalization;
   graph.comp.threshold.setTargetAtTime(norm ? -24 : 0, t, 0.02);
   graph.comp.ratio.setTargetAtTime(norm ? 4 : 1, t, 0.02);
+
+  if (graph.spatial) {
+    const s = getSpatial();
+    const bypass = getSpatialBypass();
+    const params = resolveSpatial(s, {
+      bypass,
+      renderer: currentRenderer === 'none' ? 'headModel' : currentRenderer,
+    });
+    graph.spatial.apply(params);
+  }
 };
+
+subscribeSpatial(() => apply());
 
 const emit = () => {
   persist();
@@ -216,17 +233,43 @@ export const ensureGraph = async (): Promise<void> => {
     rl.connect(merge, 0, 0);
     rr.connect(merge, 0, 1);
     lr.connect(merge, 0, 1);
-    merge.connect(comp);
     comp.connect(limiter);
     limiter.connect(ctx.destination);
 
-    graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp, limiter };
+    let spatial: SpatialStage | undefined;
+    try {
+      spatial = createSpatialStage(ctx);
+      merge.connect(spatial.input);
+      spatial.output.connect(comp);
+    } catch {
+      merge.connect(comp);
+      setSpatialSupport('none');
+    }
+
+    graph = { ctx, input, level, bands, bass, ll, rl, lr, rr, comp, limiter, spatial };
     for (const a of elements) routeElement(graph, a);
     apply();
     if (ctx.state === 'suspended') await ctx.resume();
+
+    if (spatial) {
+      probeSpatialRenderer(ctx.sampleRate)
+        .then((kind) => {
+          currentRenderer = kind;
+          setSpatialSupport(kind);
+          if (graph?.spatial) {
+            graph.spatial.setRenderer(kind);
+            apply();
+          }
+        })
+        .catch(() => {
+          currentRenderer = 'headModel';
+          setSpatialSupport('headModel');
+        });
+    }
   } catch {
     // Web Audio unavailable: playback continues unprocessed.
     graph = null;
+    setSpatialSupport('none');
   }
 };
 
@@ -238,6 +281,8 @@ export const graphInput = async (): Promise<{ ctx: AudioContext; input: AudioNod
 
 /** The pre-EQ level meter, once the graph exists. */
 export const levelMeter = (): AnalyserNode | null => graph?.level ?? null;
+
+export const getSpatialStage = (): SpatialStage | undefined => graph?.spatial;
 
 export const getDsp = (): DspState => {
   return state;

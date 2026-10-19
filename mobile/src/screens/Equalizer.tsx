@@ -13,6 +13,7 @@ import { CUSTOM_PRESET, EQ_PRESETS, useSettingsStore } from '../data/settings';
 import { EQ_LABELS, EQ_MAX_DB, SPEEDS, currentGains, useAudioStore } from '../store/audio';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
+import { SpatialAudioSection } from '../components/spatial/SpatialAudioSection';
 
 const formatDb = (db: number) => (db > 0 ? `+${db}` : db < 0 ? `−${-db}` : '0');
 /** 0.75×, 1.0×, 1.25×, 1.5× */
@@ -226,6 +227,9 @@ export const EqualizerScreen = () => {
             />
           </View>
         </View>
+
+        {/* Spatial Audio & Soundstage */}
+        <SpatialAudioSection variant={variant} />
       </ScrollView>
     </Screen>
   );

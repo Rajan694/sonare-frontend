@@ -14,6 +14,8 @@ import { deviceUriFor } from '../../store/localMusic';
 import { refreshInAppSession } from '../../youtube/inApp';
 import { noteLevel, saveWaveforms, watchWaveform } from '../../store/waveforms';
 import { watchPlayerPersistence } from '../../store/playerPersist';
+import { useSpatialStore } from '../../store/spatial';
+import { resolveSpatial } from '../../../../shared/spatial';
 
 // A play counts once the listener has heard 30s, or half of anything shorter. Asking for
 // a stream url doesn't count, or skipping through a queue would inflate every count.
@@ -208,6 +210,24 @@ const pushAudioSettings = () => {
   SonarePlayer.setTransitions({ crossfadeMs: audio.crossfade ? CROSSFADE_MS : 0, gapless: settings.gapless });
 };
 
+/** Sends the spatial audio settings to the native player. */
+const pushSpatialSettings = () => {
+  const spatial = useSpatialStore.getState();
+  const params = resolveSpatial(
+    {
+      enabled: spatial.enabled,
+      mode: spatial.mode,
+      preset: spatial.preset,
+      custom: spatial.custom,
+    },
+    {
+      bypass: spatial.bypass,
+      renderer: 'headModel',
+    },
+  );
+  SonarePlayer.setSpatialAudio(params);
+};
+
 /** The native player already plays `id` (it moved on by itself): take it over without reloading. */
 const adopt = (id: string) => {
   advancedTo = null;
@@ -381,6 +401,11 @@ const startAudio = () => {
   useAudioStore.subscribe((state, prev) => {
     pushAudioSettings();
     if (state.crossfade !== prev.crossfade) prepareNext();
+  });
+  pushSpatialSettings();
+  useSpatialStore.getState().hydrate();
+  useSpatialStore.subscribe(() => {
+    pushSpatialSettings();
   });
   useSettingsStore.subscribe((state, prev) => {
     if (

@@ -18,6 +18,7 @@ import {
   CUSTOM_PRESET,
 } from '../audio/dsp';
 import { useSettings, updateSettings } from '../storage/settings';
+import { SpatialAudioSection } from '../components/spatial/SpatialAudioSection';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -33,9 +34,9 @@ const Equalizer = () => {
   const variant = isOffline ? 'gold' : 'acc';
 
   return (
-    <div className="@container flex flex-col p-5 @sm:p-8 @3xl:p-10 gap-6 overflow-y-auto h-full w-full max-w-[1280px] mx-auto select-none">
+    <div className="@container flex flex-col p-5 @sm:p-8 @3xl:p-10 pb-12 gap-6 min-h-full shrink-0 w-full max-w-[1280px] mx-auto select-none">
       {/* Header with Title and EQ Bypass Switch */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4 flex-none shrink-0">
         <div className="flex flex-col gap-1">
           <h1 className="phone-shell-hide text-h2 @sm:text-display-m font-bold text-t1 tracking-tight">Audio</h1>
           <span className="text-body-s @sm:text-body-m text-t2">Equalizer, effects and audio configuration</span>
@@ -78,7 +79,7 @@ const Equalizer = () => {
       </div>
 
       {/* Main Grid: EQ card (left) + Settings Toggles (right) */}
-      <div className="grid grid-cols-1 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-start">
+      <div className="grid grid-cols-1 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-start shrink-0">
         {/* Left Column: Graphic EQ + Bass Boost & Virtualizer */}
         <div className="surf p-4 @sm:p-6 flex flex-col gap-6 w-full overflow-hidden">
           <div className="flex items-center justify-between">
@@ -229,6 +230,9 @@ const Equalizer = () => {
           </div>
         </div>
       </div>
+
+      {/* Spatial Audio & Soundstage Section */}
+      <SpatialAudioSection variant={variant} className="shrink-0" />
     </div>
   );
 };
