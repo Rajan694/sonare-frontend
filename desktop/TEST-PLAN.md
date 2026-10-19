@@ -308,6 +308,12 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-004`     | bass boost, virtualizer and speed apply and show their values                          |
 | `WEB-EQ-005`     | gapless and normalization switches update the account settings                         |
 | `WEB-EQ-006`     | the crossfade switch turns crossfade on; gapless then says it skips one album          |
+| `WEB-EQ-007`     | toggling spatial audio enables presets and soundstage controls                         |
+| `WEB-EQ-008`     | selecting spatial presets switches active acoustic profile                             |
+| `WEB-EQ-009`     | switching to custom soundstage mode displays the 2D disc and controls                  |
+| `WEB-EQ-010`     | dragging soundstage marker or using arrow keys updates custom coordinates              |
+| `WEB-EQ-011`     | spatial controls sliders adjust distance, width, intensity, and ambience               |
+| `WEB-EQ-012`     | compare bypass button toggles temporary bypass without altering settings               |
 | `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                               |
 | `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in                  |
 | `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                           |

@@ -18,6 +18,7 @@ import {
   CUSTOM_PRESET,
 } from '../audio/dsp';
 import { useSettings, updateSettings } from '../storage/settings';
+import { SpatialAudioSection } from '../components/spatial/SpatialAudioSection';
 
 const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
@@ -229,6 +230,9 @@ const Equalizer = () => {
           </div>
         </div>
       </div>
+
+      {/* Spatial Audio & Soundstage Section */}
+      <SpatialAudioSection variant={variant} />
     </div>
   );
 };

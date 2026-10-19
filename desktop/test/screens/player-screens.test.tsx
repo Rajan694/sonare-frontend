@@ -9,6 +9,7 @@ import { bindAccountGateNavigator, takePendingAction } from '../../src/api/accou
 import { updateDevicePrefs } from '../../src/storage/devicePrefs';
 import { clearSession, setSession } from '../../src/api/auth';
 import { getDsp, setDsp, EQ_PRESETS } from '../../src/audio/dsp';
+import { getSpatial, setSpatial, getSpatialBypass, setSpatialBypass } from '../../src/audio/spatial';
 import { getSettings, updateSettings } from '../../src/storage/settings';
 import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
@@ -418,6 +419,8 @@ describe('equalizer', () => {
   beforeEach(() => {
     setDsp({ enabled: true, preset: 'Flat', gains: [...EQ_PRESETS.Flat], bassBoost: 0, virtualizer: 0, speed: 1 });
     updateSettings({ gapless: false, normalization: true });
+    setSpatial({ enabled: false, mode: 'presets', preset: 'concert' });
+    setSpatialBypass(false);
   });
 
   it('WEB-EQ-001 picking a preset moves the faders to its curve', async () => {
@@ -473,5 +476,69 @@ describe('equalizer', () => {
     await user.click(screen.getByRole('switch', { name: 'Toggle crossfade' }));
     expect(getDsp().crossfade).toBe(true);
     expect(screen.getByText('No crossfade between tracks of one album')).toBeInTheDocument();
+  });
+
+  it('WEB-EQ-007 toggling spatial audio enables presets and soundstage controls', async () => {
+    const { user } = renderWithProviders(<Equalizer />);
+    expect(getSpatial().enabled).toBe(false);
+    await user.click(screen.getByRole('switch', { name: 'Toggle spatial audio' }));
+    expect(getSpatial().enabled).toBe(true);
+  });
+
+  it('WEB-EQ-008 selecting spatial presets switches active acoustic profile', async () => {
+    setSpatial({ enabled: true, mode: 'presets', preset: 'concert' });
+    const { user } = renderWithProviders(<Equalizer />);
+    await user.click(screen.getByRole('radio', { name: /Cafe/i }));
+    expect(getSpatial().preset).toBe('cafe');
+    await user.click(screen.getByRole('radio', { name: /Cathedral Hall/i }));
+    expect(getSpatial().preset).toBe('hall');
+  });
+
+  it('WEB-EQ-009 switching to custom soundstage mode displays the 2D disc and controls', async () => {
+    setSpatial({ enabled: true, mode: 'presets' });
+    const { user } = renderWithProviders(<Equalizer />);
+    await user.click(screen.getByRole('button', { name: 'Custom Soundstage' }));
+    expect(getSpatial().mode).toBe('custom');
+    expect(screen.getByRole('application', { name: /Soundstage 2D position disc/i })).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Soundstage distance' })).toBeInTheDocument();
+    expect(screen.getByRole('slider', { name: 'Soundstage width' })).toBeInTheDocument();
+  });
+
+  it('WEB-EQ-010 dragging soundstage marker or using arrow keys updates custom coordinates', async () => {
+    setSpatial({ enabled: true, mode: 'custom', custom: { x: 0, y: 0.3, intensity: 70, ambience: 30, width: 60 } });
+    const { user } = renderWithProviders(<Equalizer />);
+    const disc = screen.getByRole('application', { name: /Soundstage 2D position disc/i });
+    disc.focus();
+    const prevY = getSpatial().custom.y;
+    await user.keyboard('{ArrowUp}{ArrowUp}');
+    expect(getSpatial().custom.y).toBeGreaterThan(prevY);
+
+    await user.click(screen.getByRole('button', { name: 'Behind' }));
+    expect(getSpatial().custom.y).toBeLessThan(0);
+  });
+
+  it('WEB-EQ-011 spatial controls sliders adjust distance, width, intensity, and ambience', async () => {
+    setSpatial({ enabled: true, mode: 'custom', custom: { x: 0, y: 0.4, intensity: 70, ambience: 30, width: 60 } });
+    const { user } = renderWithProviders(<Equalizer />);
+    const widthSlider = screen.getByRole('slider', { name: 'Soundstage width' });
+    widthSlider.focus();
+    await user.keyboard('{End}');
+    expect(getSpatial().custom.width).toBe(100);
+
+    const intensitySlider = screen.getByRole('slider', { name: 'Spatial intensity' });
+    intensitySlider.focus();
+    await user.keyboard('{Home}');
+    expect(getSpatial().custom.intensity).toBe(0);
+  });
+
+  it('WEB-EQ-012 compare bypass button toggles temporary bypass without altering settings', async () => {
+    setSpatial({ enabled: true, mode: 'presets', preset: 'concert' });
+    const { user } = renderWithProviders(<Equalizer />);
+    expect(getSpatialBypass()).toBe(false);
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    expect(getSpatialBypass()).toBe(true);
+    expect(getSpatial().enabled).toBe(true);
+    await user.click(screen.getByRole('button', { name: 'Bypassed (Original)' }));
+    expect(getSpatialBypass()).toBe(false);
   });
 });

@@ -70,6 +70,8 @@ import {
   TrendingUp,
   Monitor,
   Sparkles,
+  Compass,
+  RotateCcw,
 } from 'lucide-react';
 
 const ICONS = {
@@ -143,6 +145,8 @@ const ICONS = {
   sort: ArrowUpDown,
   // AI features.
   sparkles: Sparkles,
+  compass: Compass,
+  reset: RotateCcw,
 } as const;
 
 export type IconName = keyof typeof ICONS;
