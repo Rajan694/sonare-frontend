@@ -1,4 +1,5 @@
 import { EmitterSubscription, NativeEventEmitter, NativeModules } from 'react-native';
+import type { SpatialParams } from '../../../shared/spatial';
 
 /**
  * The app's own native player (android/app/src/main/java/com/mobile/player): Media3 in a
@@ -78,6 +79,7 @@ interface NativeSonarePlayer {
   setTransitions(options: Transitions): void;
   setSpeed(speed: number): void;
   setAudioEffects(options: AudioEffects): void;
+  setSpatialAudio(options: SpatialParams): void;
 }
 
 const native = NativeModules.SonarePlayer as NativeSonarePlayer | undefined;
@@ -115,6 +117,7 @@ export const SonarePlayer = {
   /** Pitch is preserved. */
   setSpeed: (speed: number) => native?.setSpeed(speed),
   setAudioEffects: (options: AudioEffects) => native?.setAudioEffects(options),
+  setSpatialAudio: (options: SpatialParams) => native?.setSpatialAudio(options),
 
   onState: (handler: (e: PlayerStateEvent) => void) => on('state', handler),
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),

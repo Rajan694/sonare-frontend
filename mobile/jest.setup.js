@@ -12,6 +12,7 @@ const mockSonarePlayerNative = {
   setTransitions: jest.fn(),
   setSpeed: jest.fn(),
   setAudioEffects: jest.fn(),
+  setSpatialAudio: jest.fn(),
 };
 
 const mockSonareUpdatesNative = {
@@ -400,6 +401,9 @@ jest.mock('react-native-svg', () => {
     G: 'G',
     Defs: 'Defs',
     LinearGradient: 'LinearGradient',
+    RadialGradient: 'RadialGradient',
+    Polygon: 'Polygon',
+    Text: 'Text',
     Stop: 'Stop',
   };
 });
