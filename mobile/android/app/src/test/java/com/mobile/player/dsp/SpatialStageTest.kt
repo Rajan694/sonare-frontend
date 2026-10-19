@@ -222,4 +222,119 @@ class SpatialStageTest {
       assertTrue("Limiter must clamp peak below or near limit", abs(s) <= 1.05f)
     }
   }
+
+  /** Seeded pink-ish noise, half shared by both channels (music-like correlation). */
+  private fun musicLikeNoise(frames: Int, seed: Long = 7): Array<DoubleArray> {
+    val rnd = java.util.Random(seed)
+    fun pink(): DoubleArray {
+      var b0 = 0.0
+      var b1 = 0.0
+      var b2 = 0.0
+      return DoubleArray(frames) {
+        val w = rnd.nextDouble() * 2 - 1
+        b0 = 0.99765 * b0 + w * 0.099046
+        b1 = 0.963 * b1 + w * 0.2965164
+        b2 = 0.57 * b2 + w * 1.0526913
+        (b0 + b1 + b2 + w * 0.1848) * 0.05
+      }
+    }
+    val common = pink()
+    val l = pink()
+    val r = pink()
+    val g = sqrt(0.5)
+    return arrayOf(DoubleArray(frames) { g * (common[it] + l[it]) }, DoubleArray(frames) { g * (common[it] + r[it]) })
+  }
+
+  @Test
+  fun `switching on again after a fade-out starts clean, without the old reverb tail`() {
+    val stage = SpatialStage(rate)
+    val on = SpatialEffects.resolve(active = true, ambience = 100.0, intensity = 100.0, room = SpatialEffects.ROOM_HALL)
+    stage.update(on)
+    stage.reset()
+    val frame = DoubleArray(2)
+    for (i in 0 until rate / 2) {
+      frame[0] = 0.5 * sin(2.0 * PI * 300.0 * i / rate)
+      frame[1] = frame[0]
+      stage.process(frame)
+    }
+    // Off: fades out over 100 ms, then goes idle.
+    stage.update(on.copy(active = false))
+    for (i in 0 until rate / 4) {
+      frame[0] = 0.0
+      frame[1] = 0.0
+      stage.process(frame)
+    }
+    assertFalse(stage.isActive)
+
+    // On again with silence in: the hall's 2.2 s tail must not come back.
+    stage.update(on)
+    var peak = 0.0
+    for (i in 0 until rate / 4) {
+      frame[0] = 0.0
+      frame[1] = 0.0
+      stage.process(frame)
+      peak = maxOf(peak, abs(frame[0]), abs(frame[1]))
+    }
+    assertEquals(0.0, peak, 1e-9)
+  }
+
+  @Test
+  fun `the head shadows the far ear of either virtual speaker`() {
+    // Source at the right with a narrow stage: both speakers sit right of the listener, so the
+    // left ear is the far ear for the left speaker too.
+    fun earLevels(input: Int): Pair<Double, Double> {
+      val stage = SpatialStage(rate)
+      stage.update(SpatialEffects.resolve(active = true, azimuth = PI / 2, width = 0.0, ambience = 0.0))
+      stage.reset()
+      val frames = rate / 4
+      val l = DoubleArray(frames)
+      val r = DoubleArray(frames)
+      for (i in 0 until frames) {
+        val s = 0.3 * sin(2.0 * PI * 9000.0 * i / rate)
+        val frame = if (input == 0) doubleArrayOf(s, 0.0) else doubleArrayOf(0.0, s)
+        stage.process(frame)
+        l[i] = frame[0]
+        r[i] = frame[1]
+      }
+      return levelDb(l.copyOfRange(frames / 2, frames)) to levelDb(r.copyOfRange(frames / 2, frames))
+    }
+    for (speaker in 0..1) {
+      val (left, right) = earLevels(speaker)
+      assertTrue("speaker $speaker: left ear ($left dB) must be shadowed vs right ($right dB)", left < right - 3.0)
+    }
+  }
+
+  @Test
+  fun `spatial audio keeps the loudness of the original within 1·5 dB`() {
+    val frames = rate * 3
+    val (inL, inR) = musicLikeNoise(frames)
+    var inPower = 0.0
+    for (i in frames / 3 until frames) inPower += inL[i] * inL[i] + inR[i] * inR[i]
+    val inDb = 10 * log10(inPower)
+
+    val cases = listOf(
+      SpatialEffects.resolve(active = true, room = SpatialEffects.ROOM_STAGE, distance = 0.5, width = 75.0, intensity = 85.0, ambience = 55.0),
+      SpatialEffects.resolve(active = true, room = SpatialEffects.ROOM_CAFE, distance = 0.45, width = 95.0, intensity = 70.0, ambience = 40.0),
+      SpatialEffects.resolve(active = true, room = SpatialEffects.ROOM_HALL, distance = 0.7, width = 55.0, intensity = 90.0, ambience = 70.0),
+    ) + listOf(0.0, PI / 2, PI, -PI / 2).flatMap { az ->
+      listOf(0.2, 0.9).map { d -> SpatialEffects.resolve(active = true, azimuth = az, distance = d, room = SpatialEffects.ROOM_STUDIO) }
+    }
+    for (params in cases) {
+      val stage = SpatialStage(rate)
+      stage.update(params)
+      stage.reset()
+      var outPower = 0.0
+      val frame = DoubleArray(2)
+      for (i in 0 until frames) {
+        frame[0] = inL[i]
+        frame[1] = inR[i]
+        stage.process(frame)
+        if (i >= frames / 3) outPower += frame[0] * frame[0] + frame[1] * frame[1]
+      }
+      val diff = 10 * log10(outPower) - inDb
+      assertTrue("${params.roomId()} az=${params.azimuth} d=${params.distance}: $diff dB", abs(diff) <= 1.5)
+    }
+  }
+
+  private fun SpatialStageParams.roomId() = "rt60=$rt60Low"
 }

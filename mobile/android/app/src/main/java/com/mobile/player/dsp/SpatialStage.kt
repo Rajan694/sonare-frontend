@@ -59,6 +59,8 @@ class SpatialStage(private val sampleRate: Int) {
     private val lineBuffers = Array(8) { i -> DoubleArray(delays[i]) }
     private val lineIndices = IntArray(8)
     private val dampPrev = DoubleArray(8)
+    // Reused every sample: the audio thread must not allocate.
+    private val feedback = DoubleArray(8)
     private val lineGains = DoubleArray(8) { i ->
       10.0.pow((-3.0 * delays[i]) / (rt60Low * sampleRate))
     }
@@ -116,7 +118,15 @@ class SpatialStage(private val sampleRate: Int) {
       val d = dampCoeff
       val oneMinusD = 1.0 - d
 
-      val fb = doubleArrayOf(fb0, fb1, fb2, fb3, fb4, fb5, fb6, fb7)
+      val fb = feedback
+      fb[0] = fb0
+      fb[1] = fb1
+      fb[2] = fb2
+      fb[3] = fb3
+      fb[4] = fb4
+      fb[5] = fb5
+      fb[6] = fb6
+      fb[7] = fb7
       for (i in 0 until 8) {
         val inVal = delayedInput + fb[i] * lineGains[i]
         val dVal = oneMinusD * inVal + d * dampPrev[i]
@@ -143,9 +153,12 @@ class SpatialStage(private val sampleRate: Int) {
   private val delayRL = FractionalDelayLine(512)
   private val delayRR = FractionalDelayLine(512)
 
-  // Head-shadow filters: high-shelf at 2500 Hz per contralateral path
+  // Head-shadow filters, high shelf at 2500 Hz: shadowXY is speaker X heard at ear Y. Whichever
+  // ear is on the far side of the head from a speaker gets the shadow (and the delay).
+  private val shadowLL = Biquad(1)
   private val shadowLR = Biquad(1)
   private val shadowRL = Biquad(1)
+  private val shadowRR = Biquad(1)
 
   // Direct path filters
   private val rearShelf = Biquad(2)
@@ -180,6 +193,14 @@ class SpatialStage(private val sampleRate: Int) {
 
   private var dryGain = 1.0
   private var wetGain = 0.0
+  /** preGain + trim as a gain, recomputed with the filters every 32 frames. */
+  private var wetLinear = 1.0
+  /** The early reflections' delays in frames, recomputed when the parameters change. */
+  private var erFrames = erFramesFor(targetParams)
+
+  private fun erFramesFor(p: SpatialStageParams) = IntArray(p.earlyReflections.size) { i ->
+    (p.earlyReflections[i].delayMs * sampleRate / 1000.0 + 0.5).toInt().coerceIn(0, erBufferSize - 1)
+  }
 
   private var filterCountdown = 0
   private val fdnOutBuf = DoubleArray(2)
@@ -212,6 +233,7 @@ class SpatialStage(private val sampleRate: Int) {
   fun update(params: SpatialStageParams) {
     val old = targetParams
     targetParams = params
+    erFrames = erFramesFor(params)
 
     val roomChanged = old.rt60Low != params.rt60Low ||
       old.dampingHz != params.dampingHz ||
@@ -226,13 +248,37 @@ class SpatialStage(private val sampleRate: Int) {
     }
   }
 
+  /** Has faded out and dropped its state; the next [process] that is active starts clean. */
+  private var idle = true
+
+  private fun clearState() {
+    delayLL.reset()
+    delayLR.reset()
+    delayRL.reset()
+    delayRR.reset()
+    shadowLL.reset()
+    shadowLR.reset()
+    shadowRL.reset()
+    shadowRR.reset()
+    rearShelf.reset()
+    toneFilter.reset()
+    airLPF.reset()
+    activeFdn.reset()
+    oldFdn = null
+    fdnCrossfadeProgress = 1.0
+    erBuffer.fill(0.0)
+    erPos = 0
+  }
+
   fun reset() {
     delayLL.reset()
     delayLR.reset()
     delayRL.reset()
     delayRR.reset()
+    shadowLL.reset()
     shadowLR.reset()
     shadowRL.reset()
+    shadowRR.reset()
     rearShelf.reset()
     toneFilter.reset()
     airLPF.reset()
@@ -258,9 +304,15 @@ class SpatialStage(private val sampleRate: Int) {
 
   fun process(frame: DoubleArray) {
     if (!targetParams.active && wetGain == 0.0) {
+      if (!idle) {
+        // Faded out: forget the old audio, or the next switch-on would replay its reverb tail.
+        clearState()
+        idle = true
+      }
       dryGain = 1.0
       return
     }
+    idle = false
 
     // 1. Crossfade dry and wet (100 ms)
     if (targetParams.active) {
@@ -316,19 +368,17 @@ class SpatialStage(private val sampleRate: Int) {
     val delaySamplesRR = itdFactorRContra * MAX_ITD * sampleRate
 
     // Speaker L:
-    delayLL.write(inL)
+    delayLL.write(if (shadowLL.isIdentity) inL else shadowLL.process(inL, 0))
     val directLL = delayLL.read(delaySamplesLL)
 
-    val contraL = shadowLR.process(inL, 0)
-    delayLR.write(contraL)
+    delayLR.write(if (shadowLR.isIdentity) inL else shadowLR.process(inL, 0))
     val directLR = delayLR.read(delaySamplesLR)
 
     // Speaker R:
-    delayRR.write(inR)
+    delayRR.write(if (shadowRR.isIdentity) inR else shadowRR.process(inR, 0))
     val directRR = delayRR.read(delaySamplesRR)
 
-    val contraR = shadowRL.process(inR, 0)
-    delayRL.write(contraR)
+    delayRL.write(if (shadowRL.isIdentity) inR else shadowRL.process(inR, 0))
     val directRL = delayRL.read(delaySamplesRL)
 
     // Combined direct path at ears:
@@ -380,8 +430,7 @@ class SpatialStage(private val sampleRate: Int) {
     val ers = targetParams.earlyReflections
     for (i in 0 until ers.size) {
       val er = ers[i]
-      val delayFrames = (er.delayMs * sampleRate / 1000.0 + 0.5).toInt()
-      val idx = (erPos - delayFrames + erBufferSize) % erBufferSize
+      val idx = (erPos - erFrames[i] + erBufferSize) % erBufferSize
       val s = erBuffer[idx] * er.gain
       if (er.channel == "L") erL += s else erR += s
     }
@@ -391,10 +440,8 @@ class SpatialStage(private val sampleRate: Int) {
     val revTotalR = revOutR * smoothGRev + erR * smoothGEr
 
     // 7. Combine wet path + trim + headroom pre-gain
-    val trimLinear = 10.0.pow(smoothTrimDb / 20.0)
-    val preGainLinear = 10.0.pow(targetParams.preGainDb / 20.0)
-    val wetL = (directOutL + revTotalL) * trimLinear * preGainLinear
-    val wetR = (directOutR + revTotalR) * trimLinear * preGainLinear
+    val wetL = (directOutL + revTotalL) * wetLinear
+    val wetR = (directOutR + revTotalR) * wetLinear
 
     // 8. Crossfade with dry
     frame[0] = inL * dryGain + wetL * wetGain
@@ -404,16 +451,15 @@ class SpatialStage(private val sampleRate: Int) {
   private fun updateFilters() {
     val azL = smoothAzimuth - smoothSpread
     val azR = smoothAzimuth + smoothSpread
+    // A speaker on the right (sin > 0) shadows the left ear, and the other way round.
     val sinL = sin(azL)
-    val itdFactorLContra = max(0.0, -sinL)
-    val shadowGainLR = -6.0 * itdFactorLContra
-
     val sinR = sin(azR)
-    val itdFactorR = max(0.0, sinR)
-    val shadowGainRL = -6.0 * itdFactorR
+    shadowLL.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, sinL))
+    shadowLR.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, -sinL))
+    shadowRL.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, sinR))
+    shadowRR.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, -sinR))
 
-    shadowLR.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, shadowGainLR)
-    shadowRL.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, shadowGainRL)
+    wetLinear = 10.0.pow((smoothTrimDb + targetParams.preGainDb) / 20.0)
 
     rearShelf.set(Biquad.Type.HIGH_SHELF, sampleRate, 3500.0, smoothRearShelfDb)
 

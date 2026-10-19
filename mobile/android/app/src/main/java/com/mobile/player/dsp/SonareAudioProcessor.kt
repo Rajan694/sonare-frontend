@@ -49,7 +49,8 @@ class SonareAudioProcessor : BaseAudioProcessor() {
       seenVersion = version
     }
 
-    if (chain == null || (!AudioEffects.settings.enabled && !AudioEffects.spatialParams.active)) {
+    // The spatial stage stays "active" while it fades out, so switching it off doesn't cut.
+    if (chain == null || (!AudioEffects.settings.enabled && !chain.spatialStage.isActive)) {
       output.put(input)
       output.flip()
       return
@@ -107,7 +108,7 @@ class SonareAudioProcessor : BaseAudioProcessor() {
   override fun onQueueEndOfStream() {
     // The limiter holds back a few milliseconds; let them out so the track's end isn't cut.
     val chain = chain ?: return
-    if (!AudioEffects.settings.enabled && !AudioEffects.spatialParams.active) return
+    if (!AudioEffects.settings.enabled && !chain.spatialStage.isActive) return
     val tail = chain.drain()
     val float = inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT
     val output = replaceOutputBuffer(tail.size * if (float) 4 else 2)

@@ -164,8 +164,9 @@ object SpatialEffects {
     "studio" to ROOM_STUDIO,
   )
 
+  /** Same as HEADMODEL_POWER_TABLE in shared/spatial.ts. */
   private val HEADMODEL_POWER_TABLE = doubleArrayOf(
-    1.0, 1.01, 1.03, 1.06, 1.1, 1.14, 1.15, 1.12, 1.08, 1.03, 0.98, 0.94, 0.9,
+    2.15, 2.19, 2.28, 2.3, 2.3, 2.45, 2.47, 2.4, 2.23, 2.06, 2.06, 2.03, 2.05,
   )
 
   fun getDirectPower(azimuthRad: Double): Double {
@@ -217,7 +218,8 @@ object SpatialEffects {
     val hAz = getDirectPower(azimuth)
     val p = gDir * gDir * hAz + gRev * gRev * room.Re + gEr * gEr * room.Eer
     val effectiveP = max(1e-4, p)
-    val trimDb = (-10.0 * log10(effectiveP)).coerceIn(-6.0, 1.5)
+    // As in shared/spatial.ts: trim also makes up for the -3 dB pre-gain.
+    val trimDb = (-10.0 * log10(effectiveP)).coerceIn(-6.0, 1.5) + 3.0
 
     return SpatialStageParams(
       active = active,
