@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { cn } from '../../lib/cn';
 import Icon from '../ui/Icon';
 import { Switch } from '../ui/Switch';
@@ -25,6 +25,12 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
   const spatial = useSpatial();
   const bypass = useSpatialBypass();
   const support = useSpatialSupport();
+  const gold = variant === 'gold';
+  // Without Web Audio there is nothing to process with.
+  const disabled = !spatial.enabled || support === 'none';
+
+  // Compare is a momentary check: leaving the screen ends it, so nobody stays on the original.
+  useEffect(() => () => setSpatialBypass(false), []);
 
   const handleModeChange = (modeId: string) => {
     setSpatial({ mode: modeId as SpatialMode });
@@ -39,13 +45,11 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
       case 'hrtf':
         return 'HRTF 3D';
       case 'headModel':
-        return 'Stereo Stage';
-      case 'pending':
-        return 'Detecting…';
+        return 'Head model';
       case 'none':
-        return 'Direct';
+        return 'Unavailable';
       default:
-        return 'HRTF';
+        return 'Starts on play';
     }
   };
 
@@ -59,17 +63,21 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
             {/* Renderer indicator badge */}
             <span
               className={cn(
-                'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-caption font-mono font-medium',
+                'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-mono-s border',
                 support === 'hrtf'
-                  ? 'bg-acc/10 text-acc border border-acc/20'
-                  : 'bg-surf-3 text-t3 border border-ln/40',
+                  ? gold
+                    ? 'bg-goldbg text-gold border-gold/20'
+                    : 'bg-accbg text-acc border-acc/20'
+                  : 'bg-s3 text-t3 border-ln',
               )}
             >
-              <span className={cn('w-1.5 h-1.5 rounded-full', support === 'hrtf' ? 'bg-acc' : 'bg-t4')} />
+              <span
+                className={cn('w-1.5 h-1.5 rounded-full', support === 'hrtf' ? (gold ? 'bg-gold' : 'bg-acc') : 'bg-t4')}
+              />
               {getRendererLabel()}
             </span>
             {/* Headphones recommendation badge */}
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-caption text-t3 bg-surf-3/60 border border-ln/30">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-label-s text-t3 bg-s3 border border-ln">
               <Icon name="headphones" size={11} />
               <span>Headphones recommended</span>
             </span>
@@ -79,20 +87,15 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
 
         {/* Master toggles: Compare (Bypass) and Master Enable */}
         <div className="flex items-center gap-3 self-end @sm:self-auto flex-none">
-          {spatial.enabled && (
+          {spatial.enabled && support !== 'none' && (
             <button
               type="button"
               aria-pressed={bypass}
               onClick={() => setSpatialBypass(!bypass)}
-              className={cn(
-                'chip chip-xs h-8 px-3 text-caption font-medium transition-colors cursor-pointer',
-                bypass
-                  ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 ring-1 ring-amber-500/30'
-                  : 'bg-surf-3 text-t2 hover:text-t1 border-ln',
-              )}
+              className={cn('chip chip-sm h-8 transition-colors', bypass && 'chip-on')}
               title="Temporarily bypass spatial processing to compare with original audio"
             >
-              {bypass ? 'Bypassed (Original)' : 'Compare'}
+              {bypass ? 'Hearing original' : 'Compare'}
             </button>
           )}
 
@@ -101,6 +104,7 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
             <Switch
               variant={variant}
               checked={spatial.enabled}
+              disabled={support === 'none'}
               onCheckedChange={(enabled) => setSpatial({ enabled })}
               aria-label="Toggle spatial audio"
             />
@@ -122,43 +126,42 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
         />
 
         {spatial.enabled && bypass && (
-          <span className="text-caption text-amber-400 font-medium animate-pulse">
-            Spatial processing currently bypassed for A/B comparison
+          <span className="text-label-s text-t2" aria-live="polite">
+            Playing the original sound for comparison
           </span>
         )}
       </div>
 
+      {support === 'none' && (
+        <p className="text-body-s text-t3">
+          Spatial audio needs Web Audio, which isn't available here, so playback stays unprocessed.
+        </p>
+      )}
+      {support === 'headModel' && spatial.enabled && (
+        <p className="text-body-s text-t3">
+          Binaural (HRTF) data isn't available on this system, so a simpler head model is used: left and right still
+          work, front and back are less distinct.
+        </p>
+      )}
+
       {/* Mode Content */}
       {spatial.mode === 'presets' ? (
-        <div className="grid grid-cols-1 @md:grid-cols-3 gap-3.5">
-          <SpatialPresetCard
-            preset="concert"
-            active={spatial.preset === 'concert'}
-            disabled={!spatial.enabled}
-            onSelect={handlePresetSelect}
-          />
-          <SpatialPresetCard
-            preset="cafe"
-            active={spatial.preset === 'cafe'}
-            disabled={!spatial.enabled}
-            onSelect={handlePresetSelect}
-          />
-          <SpatialPresetCard
-            preset="hall"
-            active={spatial.preset === 'hall'}
-            disabled={!spatial.enabled}
-            onSelect={handlePresetSelect}
-          />
+        <div role="radiogroup" aria-label="Spatial preset" className="grid grid-cols-1 @md:grid-cols-3 gap-3.5">
+          {(['concert', 'cafe', 'hall'] as const).map((preset) => (
+            <SpatialPresetCard
+              key={preset}
+              preset={preset}
+              active={spatial.preset === preset}
+              disabled={disabled}
+              variant={variant}
+              onSelect={handlePresetSelect}
+            />
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-1 @2xl:grid-cols-[280px_minmax(0,1fr)] gap-6 items-start">
-          <Soundstage custom={spatial.custom} disabled={!spatial.enabled} onChange={setSpatialCustom} />
-          <SpatialControls
-            custom={spatial.custom}
-            disabled={!spatial.enabled}
-            variant={variant}
-            onChange={setSpatialCustom}
-          />
+          <Soundstage custom={spatial.custom} disabled={disabled} variant={variant} onChange={setSpatialCustom} />
+          <SpatialControls custom={spatial.custom} disabled={disabled} variant={variant} onChange={setSpatialCustom} />
         </div>
       )}
     </div>

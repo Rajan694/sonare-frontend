@@ -29,8 +29,9 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
     onChange({ x, y }, { commit: true });
   };
 
+  // Back to the starting position; the sliders stay as they are.
   const handleReset = () => {
-    onChange(DEFAULT_SPATIAL.custom, { commit: true });
+    onChange({ x: DEFAULT_SPATIAL.custom.x, y: DEFAULT_SPATIAL.custom.y }, { commit: true });
   };
 
   return (
@@ -43,10 +44,10 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
             type="button"
             disabled={disabled}
             onClick={handleReset}
-            className="inline-flex items-center gap-1.5 text-caption font-medium text-t3 hover:text-t1 disabled:opacity-40 transition-colors"
+            className="inline-flex items-center gap-1.5 text-label-s font-medium text-t3 hover:text-t1 disabled:opacity-40 transition-colors"
           >
             <Icon name="reset" size={12} />
-            <span>Reset</span>
+            <span>Reset position</span>
           </button>
         </div>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -54,7 +55,7 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
             type="button"
             disabled={disabled}
             onClick={() => setCardinal(0, 0.5)}
-            className="chip chip-xs h-7 px-2.5 text-caption"
+            className="chip chip-sm h-7 disabled:opacity-40"
           >
             Front
           </button>
@@ -62,7 +63,7 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
             type="button"
             disabled={disabled}
             onClick={() => setCardinal(-0.5, 0)}
-            className="chip chip-xs h-7 px-2.5 text-caption"
+            className="chip chip-sm h-7 disabled:opacity-40"
           >
             Left
           </button>
@@ -70,7 +71,7 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
             type="button"
             disabled={disabled}
             onClick={() => setCardinal(0.5, 0)}
-            className="chip chip-xs h-7 px-2.5 text-caption"
+            className="chip chip-sm h-7 disabled:opacity-40"
           >
             Right
           </button>
@@ -78,7 +79,7 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
             type="button"
             disabled={disabled}
             onClick={() => setCardinal(0, -0.6)}
-            className="chip chip-xs h-7 px-2.5 text-caption"
+            className="chip chip-sm h-7 disabled:opacity-40"
           >
             Behind
           </button>
@@ -86,7 +87,7 @@ export const SpatialControls: React.FC<SpatialControlsProps> = ({
             type="button"
             disabled={disabled}
             onClick={() => setCardinal(0, 0.2)}
-            className="chip chip-xs h-7 px-2.5 text-caption"
+            className="chip chip-sm h-7 disabled:opacity-40"
           >
             Near Field
           </button>

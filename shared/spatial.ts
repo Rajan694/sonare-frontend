@@ -67,8 +67,8 @@ export interface SpatialParams {
   gDir: number; // linear
   gRev: number; // linear
   gEr: number; // linear
-  trimDb: number; // dB
-  preGainDb: number; // headroom in dB (-3 dB)
+  trimDb: number; // dB, applied at the end of the wet path; makes up for preGainDb too
+  preGainDb: number; // dB, applied at the start of the wet path only (headroom), -3
   room: RoomDefinition;
   roomId: RoomId;
   earlyReflections: EarlyReflection[];
@@ -326,6 +326,21 @@ export function withDistance(custom: SpatialCustom, d: number): SpatialCustom {
   };
 }
 
+/**
+ * A point on the soundstage disc, relative to its centre and in the same units as its radius
+ * (screen coordinates, so +dy is down), as a source position: +y front, kept 0.1..1 from the
+ * listener.
+ */
+export function pointToPosition(dx: number, dy: number, radius: number): { x: number; y: number } {
+  if (!(radius > 0)) return { x: 0, y: 0.1 };
+  const x = dx / radius;
+  const y = -dy / radius;
+  const r = Math.hypot(x, y);
+  if (r < 1e-6) return { x: 0, y: 0.1 };
+  const scale = clamp(r, 0.1, 1) / r;
+  return { x: x * scale, y: y * scale };
+}
+
 export function shortestArc(fromRad: number, toRad: number): number {
   let diff = (toRad - fromRad) % (2 * Math.PI);
   if (diff > Math.PI) diff -= 2 * Math.PI;
@@ -353,11 +368,13 @@ export function distanceLabel(distance: number): 'Close' | 'Near' | 'Mid' | 'Far
   return 'Far';
 }
 
-// 15-degree step direct path power table (0° to 180°)
-const HRTF_POWER_TABLE = [1.0, 1.02, 1.08, 1.15, 1.25, 1.3, 1.35, 1.28, 1.18, 1.05, 0.95, 0.9, 0.88];
-const HEADMODEL_POWER_TABLE = [1.0, 1.01, 1.03, 1.06, 1.1, 1.14, 1.15, 1.12, 1.08, 1.03, 0.98, 0.94, 0.9];
+// Power of the direct path (two virtual speakers, both ears) relative to the input, every 15°
+// from front (0°) to back (180°). Measured in Chromium with pink noise at 50% L/R correlation
+// (music-like); fully decorrelated or mono input lands within about ±1.2 dB of it.
+const HRTF_POWER_TABLE = [1.59, 1.63, 1.62, 1.67, 1.69, 1.68, 1.71, 1.57, 1.47, 1.3, 1.18, 1.14, 1.11];
+const HEADMODEL_POWER_TABLE = [2.15, 2.19, 2.28, 2.3, 2.3, 2.45, 2.47, 2.4, 2.23, 2.06, 2.06, 2.03, 2.05];
 
-function getDirectPower(azimuthRad: number, renderer: 'hrtf' | 'headModel' | 'none'): number {
+export function getDirectPower(azimuthRad: number, renderer: 'hrtf' | 'headModel' | 'none'): number {
   if (renderer === 'none') return 1.0;
   const table = renderer === 'hrtf' ? HRTF_POWER_TABLE : HEADMODEL_POWER_TABLE;
   const deg = (Math.abs(azimuthRad) * 180) / Math.PI;
@@ -438,13 +455,15 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
   const gRev = sendGain * intensityFactor;
   const gEr = sendGain * intensityFactor;
 
-  // Trim: clamp(-10 * log10(P), -6, +1.5)
+  // The wet path is turned down by preGainDb on its way in (headroom for the HRTF's near-ear
+  // boost) and back up by trimDb on its way out, which also evens out its power P against the
+  // dry signal: preGainDb + trimDb ≈ −10·log10(P), clamped to −6..+1.5 dB. So Compare and
+  // switching spatial audio on or off don't change the loudness.
   const H_az = getDirectPower(azimuth, renderer);
   const P = gDir ** 2 * H_az + gRev ** 2 * room.Re + gEr ** 2 * room.Eer;
   const effectiveP = Math.max(1e-4, P);
-  const trimDb = clamp(-10 * Math.log10(effectiveP), -6, 1.5);
-
-  const preGainDb = -3; // 3 dB headroom
+  const preGainDb = -3;
+  const trimDb = clamp(-10 * Math.log10(effectiveP), -6, 1.5) - preGainDb;
 
   return {
     active,
@@ -474,4 +493,10 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
     sendLowCutHz: room.sendLowCutHz,
     sizeScale: room.sizeScale,
   };
+}
+
+/** Where the Custom soundstage puts its two virtual speakers, as the audio does, for drawing it. */
+export function stageGeometry(custom: SpatialCustom): { azimuth: number; distance: number; spread: number } {
+  const p = resolveSpatial({ ...DEFAULT_SPATIAL, enabled: true, mode: 'custom', custom });
+  return { azimuth: p.azimuth, distance: p.distance, spread: p.spread };
 }

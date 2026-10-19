@@ -269,6 +269,7 @@ export const ensureGraph = async (): Promise<void> => {
   } catch {
     // Web Audio unavailable: playback continues unprocessed.
     graph = null;
+    setSpatialSupport('none');
   }
 };
 

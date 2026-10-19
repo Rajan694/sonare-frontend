@@ -9,7 +9,7 @@ import { bindAccountGateNavigator, takePendingAction } from '../../src/api/accou
 import { updateDevicePrefs } from '../../src/storage/devicePrefs';
 import { clearSession, setSession } from '../../src/api/auth';
 import { getDsp, setDsp, EQ_PRESETS } from '../../src/audio/dsp';
-import { getSpatial, setSpatial, getSpatialBypass, setSpatialBypass } from '../../src/audio/spatial';
+import { getSpatial, setSpatial, getSpatialBypass, setSpatialBypass, setSpatialSupport } from '../../src/audio/spatial';
 import { getSettings, updateSettings } from '../../src/storage/settings';
 import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
@@ -488,9 +488,10 @@ describe('equalizer', () => {
   it('WEB-EQ-008 selecting spatial presets switches active acoustic profile', async () => {
     setSpatial({ enabled: true, mode: 'presets', preset: 'concert' });
     const { user } = renderWithProviders(<Equalizer />);
-    await user.click(screen.getByRole('radio', { name: /Cafe/i }));
+    await user.click(screen.getByRole('radio', { name: /Café/i }));
     expect(getSpatial().preset).toBe('cafe');
-    await user.click(screen.getByRole('radio', { name: /Cathedral Hall/i }));
+    expect(screen.getByRole('radio', { name: /Café/i })).toHaveAttribute('aria-checked', 'true');
+    await user.click(screen.getByRole('radio', { name: /Hall/i }));
     expect(getSpatial().preset).toBe('hall');
   });
 
@@ -538,7 +539,58 @@ describe('equalizer', () => {
     await user.click(screen.getByRole('button', { name: 'Compare' }));
     expect(getSpatialBypass()).toBe(true);
     expect(getSpatial().enabled).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Bypassed (Original)' }));
+    await user.click(screen.getByRole('button', { name: 'Hearing original' }));
     expect(getSpatialBypass()).toBe(false);
+  });
+
+  it('WEB-EQ-013 the soundstage marker lands under the pointer: the disc edge is the farthest distance', () => {
+    setSpatial({ enabled: true, mode: 'custom', custom: { x: 0, y: 0.3, intensity: 70, ambience: 30, width: 60 } });
+    renderWithProviders(<Equalizer />);
+    const svg = screen.getByRole('application', { name: /Soundstage 2D position disc/i }).querySelector('svg')!;
+    // 240 px square: the disc (radius 95 of the 120-unit half viewBox) is 95 px around (120, 120).
+    svg.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 240, height: 240, right: 240, bottom: 240 }) as DOMRect;
+    svg.setPointerCapture = vi.fn();
+    svg.releasePointerCapture = vi.fn();
+
+    fireEvent.pointerDown(svg, { pointerId: 1, button: 0, clientX: 120, clientY: 25 });
+    expect(getSpatial().custom.x).toBeCloseTo(0, 5);
+    expect(getSpatial().custom.y).toBeCloseTo(1, 5);
+
+    // Half way out to the right, then let go there.
+    fireEvent.pointerMove(svg, { pointerId: 1, clientX: 167.5, clientY: 120 });
+    fireEvent.pointerUp(svg, { pointerId: 1, clientX: 167.5, clientY: 120 });
+    expect(getSpatial().custom.x).toBeCloseTo(0.5, 5);
+    expect(getSpatial().custom.y).toBeCloseTo(0, 5);
+    expect(screen.getByText(/Right \(90°\)/)).toBeInTheDocument();
+  });
+
+  it('WEB-EQ-014 leaving the Audio screen ends Compare, and Reset position keeps the sliders', async () => {
+    setSpatial({ enabled: true, mode: 'custom', custom: { x: 0.6, y: -0.5, intensity: 20, ambience: 90, width: 10 } });
+    const { user, unmount } = renderWithProviders(<Equalizer />);
+    await user.click(screen.getByRole('button', { name: 'Reset position' }));
+    expect(getSpatial().custom).toMatchObject({ x: 0, y: 0.4, intensity: 20, ambience: 90, width: 10 });
+
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    expect(getSpatialBypass()).toBe(true);
+    unmount();
+    expect(getSpatialBypass()).toBe(false);
+  });
+
+  it('WEB-EQ-015 without Web Audio the section says so and spatial audio cannot be switched on', () => {
+    setSpatialSupport('none');
+    try {
+      renderWithProviders(<Equalizer />);
+      expect(screen.getByText(/needs Web Audio/)).toBeInTheDocument();
+      expect(screen.getByRole('switch', { name: 'Toggle spatial audio' })).toBeDisabled();
+    } finally {
+      setSpatialSupport('pending');
+    }
+  });
+
+  it('WEB-EQ-016 in offline mode the spatial preset cards use the gold accent', () => {
+    setSpatial({ enabled: true, mode: 'presets', preset: 'hall' });
+    renderWithProviders(<Equalizer />, { mode: 'offline' });
+    expect(screen.getByRole('radio', { name: /Hall/i })).toHaveClass('border-gold');
   });
 });

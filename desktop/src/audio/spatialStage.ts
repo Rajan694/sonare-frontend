@@ -9,6 +9,12 @@ export interface SpatialStage {
   apply: (params: SpatialParams) => void;
   setRenderer: (kind: SpatialRendererKind) => void;
   _internal?: {
+    preGain: GainNode;
+    wetSend: GainNode;
+    hrtfSplit: ChannelSplitterNode;
+    headModelSplit: ChannelSplitterNode;
+    /** Speaker L at the left and right ear, speaker R at the left and right ear. */
+    headShadows: BiquadFilterNode[];
     dryGain: GainNode;
     wetGain: GainNode;
     trimGain: GainNode;
@@ -32,6 +38,36 @@ export function setProbeSpatialRendererForTesting(fn: (() => Promise<SpatialRend
   customProbeFn = fn;
 }
 
+/**
+ * What an HRTF panner placed at the right ear made of an impulse. HRTF data gives a quieter,
+ * later left ear (Chromium: ~12 dB, ~0.75 ms); without it the left ear is silent (equal-power
+ * panning) or everything is (WebKit missing its HRTF database).
+ */
+export function classifyProbeResponse(
+  left: Float32Array,
+  right: Float32Array,
+  sampleRate: number,
+): SpatialRendererKind {
+  let peakL = 0;
+  let peakR = 0;
+  let peakAtL = 0;
+  let peakAtR = 0;
+  let energyL = 0;
+  let energyR = 0;
+  for (let i = 0; i < left.length; i++) {
+    const al = Math.abs(left[i]);
+    const ar = Math.abs(right[i]);
+    if (al > peakL) [peakL, peakAtL] = [al, i];
+    if (ar > peakR) [peakR, peakAtR] = [ar, i];
+    energyL += left[i] * left[i];
+    energyR += right[i] * right[i];
+  }
+  const lagMs = ((peakAtL - peakAtR) / sampleRate) * 1000;
+  const ildDb = 10 * Math.log10(energyR / Math.max(energyL, 1e-20));
+  const isHrtf = peakL > 1e-4 && peakR > 1e-4 && ildDb >= 6 && lagMs >= 0.2 && lagMs <= 1.5;
+  return isHrtf ? 'hrtf' : 'headModel';
+}
+
 export async function probeSpatialRenderer(sampleRate = 48000, timeoutMs = 2000): Promise<SpatialRendererKind> {
   if (customProbeFn) return customProbeFn();
   if (cachedRendererProbe) return cachedRendererProbe;
@@ -43,7 +79,7 @@ export async function probeSpatialRenderer(sampleRate = 48000, timeoutMs = 2000)
 
   try {
     const probePromise = new Promise<SpatialRendererKind>((resolve) => {
-      const length = Math.round(0.01 * sampleRate); // 10 ms
+      const length = Math.round(0.02 * sampleRate); // 20 ms: the response peaks ~7 ms in
       const oCtx = new OfflineAudioContext(2, length, sampleRate);
       if (typeof oCtx.createPanner !== 'function') {
         return resolve('headModel');
@@ -72,32 +108,9 @@ export async function probeSpatialRenderer(sampleRate = 48000, timeoutMs = 2000)
 
       oCtx
         .startRendering()
-        .then((rendered) => {
-          const left = rendered.getChannelData(0);
-          const right = rendered.getChannelData(1);
-
-          let maxL = 0;
-          let maxR = 0;
-          let onsetL = -1;
-          let onsetR = -1;
-
-          for (let i = 0; i < rendered.length; i++) {
-            const al = Math.abs(left[i]);
-            const ar = Math.abs(right[i]);
-            if (al > maxL) maxL = al;
-            if (ar > maxR) maxR = ar;
-            if (al > 0.01 && onsetL < 0) onsetL = i;
-            if (ar > 0.01 && onsetR < 0) onsetR = i;
-          }
-
-          const minLag = Math.max(1, Math.floor(15 * (sampleRate / 48000)));
-          const maxLag = Math.ceil(45 * (sampleRate / 48000));
-          const lag = onsetL - onsetR;
-
-          const isHrtf = maxL > 1e-4 && maxR > 1e-4 && maxR / maxL >= 1.95 && lag >= minLag && lag <= maxLag;
-
-          resolve(isHrtf ? 'hrtf' : 'headModel');
-        })
+        .then((rendered) =>
+          resolve(classifyProbeResponse(rendered.getChannelData(0), rendered.getChannelData(1), sampleRate)),
+        )
         .catch(() => resolve('headModel'));
     });
 
@@ -134,21 +147,19 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
   const input = ctx.createGain();
   const output = ctx.createGain();
 
-  // 1. Headroom pre-gain (-3 dB)
-  const preGain = ctx.createGain();
-  preGain.gain.value = Math.pow(10, -3 / 20);
-  input.connect(preGain);
-
-  // 2. Dry path for crossfade / bypass
+  // 1. Dry path for crossfade / bypass: untouched, so the stage is transparent while off.
   const dryGain = ctx.createGain();
   dryGain.gain.value = 1.0; // starts dry until active
-  preGain.connect(dryGain);
+  input.connect(dryGain);
   dryGain.connect(output);
 
-  // 3. Wet send node
+  // 2. Wet path: headroom pre-gain (trim makes up for it), then the send to the renderers and
+  // the reverb. Only input -> preGain is ever cut (when idle), so the wet chain stays wired.
+  const preGain = ctx.createGain();
+  preGain.gain.value = Math.pow(10, -3 / 20);
   const wetSend = ctx.createGain();
   preGain.connect(wetSend);
-  let wetConnected = true;
+  let wetConnected = false;
 
   // Wet return and trim
   const wetGain = ctx.createGain();
@@ -182,7 +193,6 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
 
   // Split wetSend into L and R for speakers
   const split = ctx.createChannelSplitter(2);
-  wetSend.connect(split);
 
   // HRTF Panner path
   let hasPanner = typeof ctx.createPanner === 'function';
@@ -207,9 +217,6 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
 
       split.connect(pannerL, 0);
       split.connect(pannerR, 1);
-
-      pannerL.connect(rearShelf);
-      pannerR.connect(rearShelf);
     } catch {
       hasPanner = false;
       pannerL = null;
@@ -217,54 +224,60 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
     }
   }
 
-  // Head-model fallback path (DelayNode + Biquad head shadow per ear)
+  // Head-model fallback path: each virtual speaker reaches each ear through a head-shadow shelf
+  // and a delay; whichever ear is on the far side of the head gets the shadow and the delay.
   const headModelSplit = ctx.createChannelSplitter(2);
   const headModelMerge = ctx.createChannelMerger(2);
   const delayLL = ctx.createDelay();
   const delayLR = ctx.createDelay();
   const delayRL = ctx.createDelay();
   const delayRR = ctx.createDelay();
-  const shadowLR = ctx.createBiquadFilter();
-  const shadowRL = ctx.createBiquadFilter();
-  shadowLR.type = 'highshelf';
-  shadowRL.type = 'highshelf';
-  shadowLR.frequency.value = 2500;
-  shadowRL.frequency.value = 2500;
+  const shadow = () => {
+    const f = ctx.createBiquadFilter();
+    f.type = 'highshelf';
+    f.frequency.value = 2500;
+    f.gain.value = 0;
+    return f;
+  };
+  // shadowXY: speaker X heard at ear Y.
+  const shadowLL = shadow();
+  const shadowLR = shadow();
+  const shadowRL = shadow();
+  const shadowRR = shadow();
 
-  // L input -> delayLL -> merge ch 0 (L)
-  // L input -> shadowLR -> delayLR -> merge ch 1 (R)
-  headModelSplit.connect(delayLL, 0);
+  // Speaker L (input ch 0) -> left ear (merge ch 0) and right ear (merge ch 1)
+  headModelSplit.connect(shadowLL, 0);
   headModelSplit.connect(shadowLR, 0);
+  shadowLL.connect(delayLL);
   shadowLR.connect(delayLR);
   delayLL.connect(headModelMerge, 0, 0);
   delayLR.connect(headModelMerge, 0, 1);
 
-  // R input -> delayRR -> merge ch 1 (R)
-  // R input -> shadowRL -> delayRL -> merge ch 0 (L)
-  headModelSplit.connect(delayRR, 1);
+  // Speaker R (input ch 1) -> right ear (merge ch 1) and left ear (merge ch 0)
+  headModelSplit.connect(shadowRR, 1);
   headModelSplit.connect(shadowRL, 1);
+  shadowRR.connect(delayRR);
   shadowRL.connect(delayRL);
   delayRR.connect(headModelMerge, 0, 1);
   delayRL.connect(headModelMerge, 0, 0);
 
-  // Select between HRTF and Head Model via gains if both exist
+  // Select between HRTF and Head Model. Only the selected renderer is fed, so the other one
+  // costs nothing; the select gains keep its output silent while it rings out.
   const hrtfSelect = ctx.createGain();
   const headModelSelect = ctx.createGain();
-  hrtfSelect.gain.value = hasPanner ? 1.0 : 0.0;
-  headModelSelect.gain.value = hasPanner ? 0.0 : 1.0;
+  hrtfSelect.gain.value = 0.0;
+  headModelSelect.gain.value = 0.0;
 
   if (pannerL && pannerR) {
-    // If panners exist, they connect through hrtfSelect
-    pannerL.disconnect();
-    pannerR.disconnect();
     pannerL.connect(hrtfSelect);
     pannerR.connect(hrtfSelect);
     hrtfSelect.connect(rearShelf);
   }
 
-  wetSend.connect(headModelSplit);
   headModelMerge.connect(headModelSelect);
   headModelSelect.connect(rearShelf);
+
+  let renderer: SpatialRendererKind | null = null;
 
   // Reverb path: mono sum -> convolver -> gRevGain -> trimGain
   const monoSum = ctx.createGain();
@@ -358,24 +371,21 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
       setPannerPosition(pannerR, xR, 0, zR, t);
     }
 
-    // Head model ITD / shadow updates
-    // Woodworth max ITD ≈ 0.66 ms (0.00066 s)
+    if (renderer !== 'headModel') return;
+    // Head model: a speaker on the right (sin > 0) reaches the left ear late and shadowed, and
+    // the other way round. Woodworth max ITD ≈ 0.66 ms.
     const MAX_ITD = 0.00066;
-    // For Spk L:
-    const sinL = Math.sin(azL);
-    const itdFactorL = Math.max(0, sinL); // when > 0, source is on the right, so left ear lags
-    const itdFactorLContra = Math.max(0, -sinL); // when < 0, source is on the left, right ear lags
-    delayLL.delayTime.setValueAtTime(itdFactorL * MAX_ITD, t);
-    delayLR.delayTime.setValueAtTime(itdFactorLContra * MAX_ITD, t);
-    shadowLR.gain.setValueAtTime(-6.0 * itdFactorLContra, t);
-
-    // For Spk R:
-    const sinR = Math.sin(azR);
-    const itdFactorR = Math.max(0, sinR);
-    const itdFactorRContra = Math.max(0, -sinR);
-    delayRL.delayTime.setValueAtTime(itdFactorR * MAX_ITD, t);
-    delayRR.delayTime.setValueAtTime(itdFactorRContra * MAX_ITD, t);
-    shadowRL.gain.setValueAtTime(-6.0 * itdFactorR, t);
+    const right = (az: number) => Math.max(0, Math.sin(az));
+    const left = (az: number) => Math.max(0, -Math.sin(az));
+    const ramp = (param: AudioParam, value: number) => param.setTargetAtTime(value, t, 0.015);
+    ramp(delayLL.delayTime, right(azL) * MAX_ITD);
+    ramp(delayLR.delayTime, left(azL) * MAX_ITD);
+    ramp(delayRL.delayTime, right(azR) * MAX_ITD);
+    ramp(delayRR.delayTime, left(azR) * MAX_ITD);
+    ramp(shadowLL.gain, -6.0 * right(azL));
+    ramp(shadowLR.gain, -6.0 * left(azL));
+    ramp(shadowRL.gain, -6.0 * right(azR));
+    ramp(shadowRR.gain, -6.0 * left(azR));
   }
 
   function startSmoothMotion() {
@@ -421,22 +431,17 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
   function apply(params: SpatialParams) {
     const t = ctx.currentTime;
 
-    // Room switch (cached IR)
-    switchRoom(params.room);
-
     // Crossfade dry <-> wet (100 ms linear)
     if (params.active) {
+      // Room switch (cached IR); while off the reverb isn't built or changed.
+      switchRoom(params.room);
       if (disconnectTimer !== null) {
         clearTimeout(disconnectTimer);
         disconnectTimer = null;
       }
       if (!wetConnected) {
-        try {
-          preGain.connect(wetSend);
-          wetConnected = true;
-        } catch {
-          // Ignore
-        }
+        input.connect(preGain);
+        wetConnected = true;
       }
 
       wetGain.gain.cancelScheduledValues(t);
@@ -453,17 +458,13 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
       wetGain.gain.linearRampToValueAtTime(0.0, t + 0.1);
       dryGain.gain.linearRampToValueAtTime(1.0, t + 0.1);
 
-      if (disconnectTimer === null) {
+      // Once faded out, stop feeding the wet path so the renderers and reverb go idle.
+      if (disconnectTimer === null && wetConnected) {
         disconnectTimer = setTimeout(() => {
-          if (!params.active && wetConnected) {
-            try {
-              wetSend.disconnect();
-              wetConnected = false;
-            } catch {
-              // Ignore
-            }
-          }
           disconnectTimer = null;
+          if (!wetConnected) return;
+          input.disconnect(preGain);
+          wetConnected = false;
         }, 110);
       }
     }
@@ -499,15 +500,27 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
   }
 
   function setRenderer(kind: SpatialRendererKind) {
+    const next: SpatialRendererKind = kind === 'hrtf' && hasPanner ? 'hrtf' : 'headModel';
+    if (next === renderer) return;
     const t = ctx.currentTime;
-    if (kind === 'hrtf' && hasPanner) {
+    if (renderer === 'hrtf') wetSend.disconnect(split);
+    if (renderer === 'headModel') wetSend.disconnect(headModelSplit);
+    renderer = next;
+    if (next === 'hrtf') {
+      wetSend.connect(split);
       hrtfSelect.gain.setValueAtTime(1.0, t);
       headModelSelect.gain.setValueAtTime(0.0, t);
     } else {
+      wetSend.connect(headModelSplit);
       hrtfSelect.gain.setValueAtTime(0.0, t);
       headModelSelect.gain.setValueAtTime(1.0, t);
+      updateSpeakerPositions(currentAzimuth, currentSpread);
     }
   }
+
+  // HRTF until the probe says otherwise: the panners must exist (and load their HRTF data)
+  // from the start.
+  setRenderer('hrtf');
 
   return {
     input,
@@ -515,6 +528,11 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
     apply,
     setRenderer,
     _internal: {
+      preGain,
+      wetSend,
+      hrtfSplit: split,
+      headModelSplit,
+      headShadows: [shadowLL, shadowLR, shadowRL, shadowRR],
       dryGain,
       wetGain,
       trimGain,

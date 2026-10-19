@@ -314,6 +314,10 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-010`     | dragging soundstage marker or using arrow keys updates custom coordinates              |
 | `WEB-EQ-011`     | spatial controls sliders adjust distance, width, intensity, and ambience               |
 | `WEB-EQ-012`     | compare bypass button toggles temporary bypass without altering settings               |
+| `WEB-EQ-013`     | the soundstage marker lands under the pointer: the disc edge is the farthest distance  |
+| `WEB-EQ-014`     | leaving the Audio screen ends Compare, and Reset position keeps the sliders            |
+| `WEB-EQ-015`     | without Web Audio the section says so and spatial audio cannot be switched on          |
+| `WEB-EQ-016`     | in offline mode the spatial preset cards use the gold accent                           |
 | `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                               |
 | `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in                  |
 | `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                           |
@@ -618,22 +622,28 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-022` | spatial stage convolver switches impulse response buffers on room change and reuses cached buffers |
 | `WEB-DSP-023` | renderer fallback selects head-model path when HRTF is unavailable or probe returns headModel      |
 | `WEB-DSP-024` | probeSpatialRenderer detects HRTF or falls back safely to head-model                               |
+| `WEB-DSP-025` | spatial audio off is transparent: the dry path takes the input as is, nothing feeds the wet path   |
+| `WEB-DSP-026` | switching spatial audio on again after its wet path went idle feeds the whole wet chain again      |
+| `WEB-DSP-027` | only the selected renderer is fed; the head model shadows the far ear of both speakers             |
+| `WEB-DSP-028` | the renderer probe accepts a real HRTF response and rejects equal-power or silent ones             |
+| `WEB-DSP-029` | without Web Audio, spatial audio reports that it is unsupported                                    |
 
 ## `test/unit/spatial.test.ts`
 
-| ID                | Use case                                                                               |
-| :---------------- | :------------------------------------------------------------------------------------- |
-| `WEB-SPATIAL-001` | defaults are disabled and use concert preset                                           |
-| `WEB-SPATIAL-002` | sanitizeSpatial rejects junk and clamps (x, y) into the unit disc                      |
-| `WEB-SPATIAL-003` | polar round-trip maps angles correctly, including behind (0, -1)                       |
-| `WEB-SPATIAL-004` | shortestArc from 350° to 10° passes through 0° with +20° difference                    |
-| `WEB-SPATIAL-005` | directionLabel and distanceLabel format human readouts                                 |
-| `WEB-SPATIAL-006` | presets resolve to distinct acoustic parameters                                        |
-| `WEB-SPATIAL-007` | reverb-to-direct ratio rises with distance                                             |
-| `WEB-SPATIAL-008` | trim stays within bounds [-6 dB, +1.5 dB] and estimated level stays within ±1.5 dB     |
-| `WEB-SPATIAL-009` | rear shelf is capped at -2 dB under HRTF renderer                                      |
-| `WEB-SPATIAL-010` | bypass makes spatial stage inactive without clearing settings                          |
-| `WEB-SPATIAL-016` | desktop spatial store manages settings, continuous custom updates, bypass, and support |
+| ID                | Use case                                                                                 |
+| :---------------- | :--------------------------------------------------------------------------------------- |
+| `WEB-SPATIAL-001` | defaults are disabled and use concert preset                                             |
+| `WEB-SPATIAL-002` | sanitizeSpatial rejects junk and clamps (x, y) into the unit disc                        |
+| `WEB-SPATIAL-003` | polar round-trip maps angles correctly, including behind (0, -1)                         |
+| `WEB-SPATIAL-004` | shortestArc from 350° to 10° passes through 0° with +20° difference                      |
+| `WEB-SPATIAL-005` | directionLabel and distanceLabel format human readouts                                   |
+| `WEB-SPATIAL-006` | presets resolve to distinct acoustic parameters                                          |
+| `WEB-SPATIAL-007` | reverb-to-direct ratio rises with distance                                               |
+| `WEB-SPATIAL-008` | the wet path is level-matched to the original: pre-gain + trim cancel its power ±1.5 dB  |
+| `WEB-SPATIAL-009` | rear shelf is capped at -2 dB under HRTF renderer                                        |
+| `WEB-SPATIAL-010` | bypass makes spatial stage inactive without clearing settings                            |
+| `WEB-SPATIAL-016` | desktop spatial store manages settings, continuous custom updates, bypass, and support   |
+| `WEB-SPATIAL-017` | a disc point maps to a position (edge = farthest, up = front); drawn stage matches audio |
 
 ## `test/unit/spatialReverb.test.ts`
 

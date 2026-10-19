@@ -557,4 +557,134 @@ describe('audio graph', () => {
     res = await probeSpatialRenderer();
     expect(res).toBe('headModel');
   });
+
+  it('WEB-DSP-025 spatial audio off is transparent: the dry path takes the input as is and nothing feeds the wet path', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    spatialStore.setSpatial({ enabled: false });
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const stage = d.getSpatialStage()!;
+    const internal = stage._internal!;
+
+    expect(routes.some((r) => r.from === stage.input && r.to === internal.dryGain)).toBe(true);
+    expect(routes.some((r) => r.to === internal.dryGain && r.from === internal.preGain)).toBe(false);
+    expect(routes.some((r) => r.from === stage.input && r.to === internal.preGain)).toBe(false);
+    expect(internal.getCurrentConvolver()).toBeNull();
+  });
+
+  it('WEB-DSP-026 switching spatial audio on again after its wet path went idle feeds the whole wet chain again', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    spatialStore.setSpatial({ enabled: false });
+    spatialStore.setSpatialBypass(false);
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const stage = d.getSpatialStage()!;
+    const internal = stage._internal!;
+    const fed = () => routes.some((r) => r.from === stage.input && r.to === internal.preGain);
+    const wired = () =>
+      routes.some((r) => r.from === internal.preGain && r.to === internal.wetSend) &&
+      routes.some(
+        (r) => r.from === internal.wetSend && (r.to === internal.hrtfSplit || r.to === internal.headModelSplit),
+      );
+
+    vi.useFakeTimers();
+    try {
+      spatialStore.setSpatial({ enabled: true });
+      expect(fed()).toBe(true);
+
+      // Compare held past the fade, then released: the wet path is cut, then fed again.
+      spatialStore.setSpatialBypass(true);
+      vi.advanceTimersByTime(200);
+      expect(fed()).toBe(false);
+      spatialStore.setSpatialBypass(false);
+      expect(fed()).toBe(true);
+      expect(wired()).toBe(true);
+
+      // Same for switching it off and on.
+      spatialStore.setSpatial({ enabled: false });
+      vi.advanceTimersByTime(200);
+      spatialStore.setSpatial({ enabled: true });
+      expect(fed()).toBe(true);
+      expect(wired()).toBe(true);
+
+      // Back on within the fade: the pending cut is cancelled.
+      spatialStore.setSpatial({ enabled: false });
+      spatialStore.setSpatial({ enabled: true });
+      vi.advanceTimersByTime(200);
+      expect(fed()).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('WEB-DSP-027 only the selected renderer is fed, and the head model shadows the far ear of both speakers', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const stage = d.getSpatialStage()!;
+    const internal = stage._internal!;
+    const feeds = (to: unknown) => routes.some((r) => r.from === internal.wetSend && r.to === to);
+
+    stage.setRenderer('hrtf');
+    expect(feeds(internal.hrtfSplit)).toBe(true);
+    expect(feeds(internal.headModelSplit)).toBe(false);
+
+    stage.setRenderer('headModel');
+    expect(feeds(internal.hrtfSplit)).toBe(false);
+    expect(feeds(internal.headModelSplit)).toBe(true);
+
+    // A narrow stage at the right: both speakers are right of the listener, so the left ear is
+    // the far ear for each of them.
+    spatialStore.setSpatial({ enabled: true, mode: 'custom' });
+    spatialStore.setSpatialCustom({ x: 0.8, y: 0, width: 0, intensity: 100 });
+    for (let i = 0; i < 200; i++) await new Promise((r) => setTimeout(r, 0));
+    await vi.waitFor(() => expect(internal.getCurrentAzimuth()).toBeCloseTo(Math.PI / 2, 2));
+    const [lAtLeft, lAtRight, rAtLeft, rAtRight] = internal.headShadows.map((f) => f.gain.value);
+    expect(lAtLeft).toBeLessThan(-3);
+    expect(rAtLeft).toBeLessThan(-3);
+    expect(lAtRight).toBeCloseTo(0, 5);
+    expect(rAtRight).toBeCloseTo(0, 5);
+  });
+
+  it('WEB-DSP-028 the renderer probe accepts a real HRTF response and rejects equal-power or silent ones', async () => {
+    const { classifyProbeResponse } = await import('../../src/audio/spatialStage');
+    const rate = 48000;
+    const response = (peakL: number, atL: number, peakR: number, atR: number) => {
+      const left = new Float32Array(960);
+      const right = new Float32Array(960);
+      left[atL] = peakL;
+      right[atR] = peakR;
+      return [left, right] as const;
+    };
+    // Chromium: the left ear ~14 dB quieter and ~0.77 ms (37 samples) later.
+    expect(classifyProbeResponse(...response(0.12, 328, 0.6, 291), rate)).toBe('hrtf');
+    // Equal-power panning: nothing at the left ear.
+    expect(classifyProbeResponse(...response(0, 0, 0.7, 0), rate)).toBe('headModel');
+    // No HRTF data yet: silence.
+    expect(classifyProbeResponse(...response(0, 0, 0, 0), rate)).toBe('headModel');
+    // Both ears alike: not a source at the right.
+    expect(classifyProbeResponse(...response(0.5, 300, 0.5, 300), rate)).toBe('headModel');
+  });
+
+  it('WEB-DSP-029 without Web Audio, spatial audio reports that it is unsupported', async () => {
+    vi.stubGlobal(
+      'AudioContext',
+      class {
+        constructor() {
+          throw new Error('no web audio');
+        }
+      },
+    );
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    expect(spatialStore.getSpatialSupport()).toBe('none');
+  });
 });

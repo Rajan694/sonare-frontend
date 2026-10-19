@@ -5,7 +5,10 @@ import {
   directionLabel,
   distanceLabel,
   fromPolar,
+  getDirectPower,
+  pointToPosition,
   resolveSpatial,
+  stageGeometry,
   sanitizeSpatial,
   shortestArc,
   toPolar,
@@ -179,32 +182,47 @@ describe('spatial audio shared model', () => {
     expect(ratioFar).toBeGreaterThan(ratioNear);
   });
 
-  it('WEB-SPATIAL-008 trim stays within bounds [-6 dB, +1.5 dB] and estimated level stays within ±1.5 dB', () => {
-    for (const preset of ['concert', 'cafe', 'hall'] as const) {
-      const p = resolveSpatial({
-        enabled: true,
-        mode: 'presets',
-        preset,
-        custom: DEFAULT_SPATIAL.custom,
-      });
-      expect(p.trimDb).toBeGreaterThanOrEqual(-6.0);
-      expect(p.trimDb).toBeLessThanOrEqual(1.5);
-    }
-
-    // Grid of custom positions
-    for (const d of [0.1, 0.5, 1.0]) {
-      for (const angle of [0, Math.PI / 2, Math.PI]) {
-        const { x, y } = fromPolar(angle, d);
-        const p = resolveSpatial({
-          enabled: true,
-          mode: 'custom',
-          preset: 'concert',
-          custom: { x, y, intensity: 70, ambience: 40, width: 60 },
-        });
-        expect(p.trimDb).toBeGreaterThanOrEqual(-6.0);
-        expect(p.trimDb).toBeLessThanOrEqual(1.5);
+  it('WEB-SPATIAL-008 the wet path is level-matched to the original: pre-gain + trim cancel its power within ±1.5 dB', () => {
+    const check = (p: ReturnType<typeof resolveSpatial>, renderer: 'hrtf' | 'headModel') => {
+      // The pre-gain is headroom only: the trim gives it back.
+      expect(p.preGainDb).toBe(-3);
+      const net = p.preGainDb + p.trimDb;
+      expect(net).toBeGreaterThanOrEqual(-6.0);
+      expect(net).toBeLessThanOrEqual(1.5);
+      const power =
+        p.gDir ** 2 * getDirectPower(p.azimuth, renderer) + p.gRev ** 2 * p.room.Re + p.gEr ** 2 * p.room.Eer;
+      expect(Math.abs(net + 10 * Math.log10(power))).toBeLessThanOrEqual(1.5);
+    };
+    for (const renderer of ['hrtf', 'headModel'] as const) {
+      for (const preset of ['concert', 'cafe', 'hall'] as const) {
+        check(
+          resolveSpatial({ enabled: true, mode: 'presets', preset, custom: DEFAULT_SPATIAL.custom }, { renderer }),
+          renderer,
+        );
+      }
+      for (const d of [0.1, 0.5, 1.0]) {
+        for (const angle of [0, Math.PI / 2, Math.PI]) {
+          const { x, y } = fromPolar(angle, d);
+          const custom = { x, y, intensity: 70, ambience: 40, width: 60 };
+          check(resolveSpatial({ enabled: true, mode: 'custom', preset: 'concert', custom }, { renderer }), renderer);
+        }
       }
     }
+  });
+
+  it('WEB-SPATIAL-017 a point on the disc maps to a position (edge = farthest, up = front), and the drawn stage matches the audio', () => {
+    expect(pointToPosition(0, -95, 95)).toEqual({ x: 0, y: 1 });
+    const right = pointToPosition(47.5, 0, 95);
+    expect(right.x).toBeCloseTo(0.5, 10);
+    expect(right.y).toBeCloseTo(0, 10);
+    // Outside the disc: on its edge. On the listener: pushed out to the minimum distance.
+    expect(Math.hypot(...Object.values(pointToPosition(300, 300, 95)))).toBeCloseTo(1, 10);
+    expect(pointToPosition(0, 0, 95)).toEqual({ x: 0, y: 0.1 });
+    expect(Math.hypot(...Object.values(pointToPosition(2, 0, 95)))).toBeCloseTo(0.1, 10);
+
+    const custom = { x: 0.3, y: -0.4, intensity: 55, ambience: 20, width: 80 };
+    const audio = resolveSpatial({ ...DEFAULT_SPATIAL, enabled: true, mode: 'custom', custom });
+    expect(stageGeometry(custom)).toEqual({ azimuth: audio.azimuth, distance: audio.distance, spread: audio.spread });
   });
 
   it('WEB-SPATIAL-009 rear shelf is capped at -2 dB under HRTF renderer', () => {
