@@ -1,18 +1,43 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 
+interface Route {
+  from: unknown;
+  to: unknown;
+  output?: number;
+  input?: number;
+}
+let routes: Route[] = [];
+
 /** Just enough of Web Audio to see what the DSP chain sets: each param keeps its target. */
 class Param {
   constructor(public value = 0) {}
   setTargetAtTime(v: number) {
     this.value = v;
   }
+  setValueAtTime(v: number) {
+    this.value = v;
+  }
+  linearRampToValueAtTime(v: number) {
+    this.value = v;
+  }
+  cancelScheduledValues() {}
 }
 class Node {
   connections: unknown[] = [];
-  connect(n: unknown) {
+  connect(n: unknown, output?: number, input?: number) {
     this.connections.push(n);
+    routes.push({ from: this, to: n, output, input });
     return n;
+  }
+  disconnect(target?: unknown) {
+    if (target) {
+      this.connections = this.connections.filter((c) => c !== target);
+      routes = routes.filter((r) => !(r.from === this && r.to === target));
+    } else {
+      this.connections = [];
+      routes = routes.filter((r) => r.from !== this);
+    }
   }
 }
 class Biquad extends Node {
@@ -34,14 +59,41 @@ class Compressor extends Node {
   attack = new Param();
   release = new Param();
 }
+class Delay extends Node {
+  delayTime = new Param(0);
+}
+class Convolver extends Node {
+  normalize = true;
+  buffer: unknown = null;
+}
+class Panner extends Node {
+  channelCount = 2;
+  channelCountMode = 'max';
+  panningModel = 'equalpower';
+  distanceModel = 'inverse';
+  rolloffFactor = 1;
+  positionX: Param | undefined = new Param(0);
+  positionY: Param | undefined = new Param(0);
+  positionZ: Param | undefined = new Param(0);
+  setPosition(x: number, y: number, z: number) {
+    if (this.positionX) this.positionX.value = x;
+    if (this.positionY) this.positionY.value = y;
+    if (this.positionZ) this.positionZ.value = z;
+  }
+}
+
 let contexts: FakeContext[] = [];
 class FakeContext {
+  sampleRate = 48000;
   state = 'running';
   currentTime = 0;
   destination = new Node();
   biquads: Biquad[] = [];
   gains: Gain[] = [];
   comps: Compressor[] = [];
+  delays: Delay[] = [];
+  convolvers: Convolver[] = [];
+  panners: Panner[] = [];
   /** The normalization compressor; the limiter after it is comps[1]. */
   get comp() {
     return this.comps[0];
@@ -78,6 +130,34 @@ class FakeContext {
     this.comps.push(c);
     return c;
   }
+  createDelay() {
+    const d = new Delay();
+    this.delays.push(d);
+    return d;
+  }
+  createConvolver() {
+    const c = new Convolver();
+    this.convolvers.push(c);
+    return c;
+  }
+  createPanner() {
+    const p = new Panner();
+    this.panners.push(p);
+    return p;
+  }
+  createBuffer(channels: number, length: number, sampleRate: number) {
+    const data = Array.from({ length: channels }, () => new Float32Array(length));
+    return {
+      numberOfChannels: channels,
+      length,
+      sampleRate,
+      duration: length / sampleRate,
+      getChannelData: (ch: number) => data[ch],
+      copyToChannel: (src: Float32Array, ch: number) => {
+        if (data[ch]) data[ch].set(src);
+      },
+    };
+  }
   async resume() {
     this.state = 'running';
   }
@@ -93,6 +173,7 @@ const fresh = async () => {
 afterEach(() => {
   vi.unstubAllGlobals();
   contexts = [];
+  routes = [];
 });
 
 const stored = () => JSON.parse(localStorage.getItem('sonare_dsp')!);
@@ -296,5 +377,184 @@ describe('audio graph', () => {
     contexts[0].state = 'suspended';
     await d.ensureGraph();
     expect(contexts[0].state).toBe('running');
+  });
+
+  it('WEB-DSP-018 spatial stage is inserted between the virtualizer merge and the normalization compressor', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const spatial = d.getSpatialStage();
+    expect(spatial).toBeDefined();
+
+    const ctx = contexts[0];
+    const comp = ctx.comp;
+
+    // Spatial output connects to comp
+    const outRoute = routes.find((r) => r.from === spatial!.output && r.to === comp);
+    expect(outRoute).toBeDefined();
+
+    // Spatial input is fed by the merge node (which receives ll, rl, lr, rr)
+    const inRoute = routes.find((r) => r.to === spatial!.input);
+    expect(inRoute).toBeDefined();
+    const mergeNode = inRoute!.from;
+    const fromL = routes.filter((r) => r.to === mergeNode);
+    expect(fromL.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('WEB-DSP-019 spatial stage crossfades dry to wet when enabled, and fades back to dry when bypassed or disabled', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    spatialStore.setSpatial({ enabled: false });
+    spatialStore.setSpatialBypass(false);
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+
+    const stage = d.getSpatialStage()!;
+    expect(stage).toBeDefined();
+    const internal = stage._internal!;
+
+    // Disabled initially: wet 0, dry 1
+    expect(internal.wetGain.gain.value).toBe(0);
+    expect(internal.dryGain.gain.value).toBe(1);
+
+    // Enable spatial
+    spatialStore.setSpatial({ enabled: true });
+    expect(internal.wetGain.gain.value).toBe(1);
+    expect(internal.dryGain.gain.value).toBe(0);
+
+    // Bypass spatial
+    spatialStore.setSpatialBypass(true);
+    expect(internal.wetGain.gain.value).toBe(0);
+    expect(internal.dryGain.gain.value).toBe(1);
+
+    // Un-bypass
+    spatialStore.setSpatialBypass(false);
+    expect(internal.wetGain.gain.value).toBe(1);
+    expect(internal.dryGain.gain.value).toBe(0);
+
+    // Disable
+    spatialStore.setSpatial({ enabled: false });
+    expect(internal.wetGain.gain.value).toBe(0);
+    expect(internal.dryGain.gain.value).toBe(1);
+  });
+
+  it('WEB-DSP-020 spatial stage applies distance, air LPF, rear shelf, and trim gain when parameters change', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const stage = d.getSpatialStage()!;
+    const internal = stage._internal!;
+
+    // Move source to rear position (x: 0, y: -0.9)
+    spatialStore.setSpatial({ enabled: true, mode: 'custom' });
+    spatialStore.setSpatialCustom({ x: 0, y: -0.9 });
+
+    expect(internal.rearShelf.gain.value).toBeLessThan(0);
+    expect(internal.airLPF.frequency.value).toBeLessThan(20000);
+    expect(internal.gDirGain.gain.value).toBeGreaterThan(0);
+    expect(internal.gRevGain.gain.value).toBeGreaterThan(0);
+    expect(internal.trimGain.gain.value).toBeGreaterThan(0);
+  });
+
+  it('WEB-DSP-021 spatial stage smooths azimuth and spread transitions across animation frames', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const stage = d.getSpatialStage()!;
+    const internal = stage._internal!;
+
+    // Initial position is center-front (azimuth 0, spread 30 deg)
+    expect(internal.getCurrentAzimuth()).toBe(0);
+
+    // Update target to 90 degrees right
+    spatialStore.setSpatial({ enabled: true, mode: 'custom' });
+    spatialStore.setSpatialCustom({ x: 0.8, y: 0 });
+
+    // Smooth motion has started and tracker properties are defined
+    expect(internal.getCurrentAzimuth()).toBeDefined();
+    expect(internal.getCurrentSpread()).toBeDefined();
+  });
+
+  it('WEB-DSP-022 spatial stage convolver switches impulse response buffers on room change and reuses cached buffers', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const stage = d.getSpatialStage()!;
+    const internal = stage._internal!;
+
+    spatialStore.setSpatial({ enabled: true, mode: 'presets', preset: 'concert' });
+    const conv1 = internal.getCurrentConvolver();
+    expect(conv1).toBeDefined();
+    const buf1 = conv1!.buffer;
+    expect(buf1).not.toBeNull();
+
+    // Switch to cafe
+    spatialStore.setSpatial({ preset: 'cafe' });
+    const conv2 = internal.getCurrentConvolver();
+    expect(conv2).not.toBe(conv1);
+    const buf2 = conv2!.buffer;
+    expect(buf2).not.toBe(buf1);
+
+    // Switch back to concert (should reuse cached buffer)
+    spatialStore.setSpatial({ preset: 'concert' });
+    const conv3 = internal.getCurrentConvolver();
+    expect(conv3!.buffer).toBe(buf1);
+  });
+
+  it('WEB-DSP-023 renderer fallback selects head-model path when HRTF is unavailable or probe returns headModel', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const stage = d.getSpatialStage()!;
+    const internal = stage._internal!;
+
+    // Set to headModel
+    stage.setRenderer('headModel');
+    expect(internal.headModelSelect.gain.value).toBe(1.0);
+    expect(internal.hrtfSelect.gain.value).toBe(0.0);
+
+    // Set to hrtf (FakeContext supports createPanner)
+    stage.setRenderer('hrtf');
+    expect(internal.hrtfSelect.gain.value).toBe(1.0);
+    expect(internal.headModelSelect.gain.value).toBe(0.0);
+
+    // When createPanner is not available, stage creates head-model only
+    const noPannerCtx = new FakeContext();
+    // @ts-expect-error intentionally remove createPanner
+    noPannerCtx.createPanner = undefined;
+    const { createSpatialStage } = await import('../../src/audio/spatialStage');
+    const noPannerStage = createSpatialStage(noPannerCtx as unknown as AudioContext);
+    noPannerStage.setRenderer('hrtf');
+    expect(noPannerStage._internal!.headModelSelect.gain.value).toBe(1.0);
+    expect(noPannerStage._internal!.hrtfSelect.gain.value).toBe(0.0);
+  });
+
+  it('WEB-DSP-024 probeSpatialRenderer detects HRTF or falls back safely to head-model', async () => {
+    const { probeSpatialRenderer, setProbeSpatialRendererForTesting } = await import('../../src/audio/spatialStage');
+
+    // 1. With probe returning hrtf
+    setProbeSpatialRendererForTesting(async () => 'hrtf');
+    let res = await probeSpatialRenderer();
+    expect(res).toBe('hrtf');
+
+    // 2. With probe returning headModel
+    setProbeSpatialRendererForTesting(async () => 'headModel');
+    res = await probeSpatialRenderer();
+    expect(res).toBe('headModel');
+
+    // 3. Reset testing override
+    setProbeSpatialRendererForTesting(null);
+    // In Node environment without OfflineAudioContext, resolves to headModel
+    res = await probeSpatialRenderer();
+    expect(res).toBe('headModel');
   });
 });

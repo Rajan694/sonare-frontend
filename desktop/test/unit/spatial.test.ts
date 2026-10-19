@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { act, renderHook } from '@testing-library/react';
 import {
   DEFAULT_SPATIAL,
   directionLabel,
@@ -11,6 +12,11 @@ import {
   withDistance,
   type SpatialSettings,
 } from '../../../shared/spatial';
+
+const freshSpatial = async () => {
+  vi.resetModules();
+  return await import('../../src/audio/spatial');
+};
 
 describe('spatial audio shared model', () => {
   it('WEB-SPATIAL-001 defaults are disabled and use concert preset', () => {
@@ -243,5 +249,64 @@ describe('spatial audio shared model', () => {
     const bypassed = resolveSpatial(settings, { bypass: true });
     expect(bypassed.active).toBe(false);
     expect(bypassed.roomId).toBe('hall');
+  });
+
+  it('WEB-SPATIAL-016 desktop spatial store manages settings, continuous custom updates, bypass, and support', async () => {
+    localStorage.clear();
+    let mod = await freshSpatial();
+    expect(mod.getSpatial()).toEqual(DEFAULT_SPATIAL);
+    expect(mod.getSpatialBypass()).toBe(false);
+    expect(mod.getSpatialSupport()).toBe('pending');
+
+    const { result: spatialHook } = renderHook(() => mod.useSpatial());
+    const { result: bypassHook } = renderHook(() => mod.useSpatialBypass());
+    const { result: supportHook } = renderHook(() => mod.useSpatialSupport());
+
+    expect(spatialHook.current.enabled).toBe(false);
+    expect(bypassHook.current).toBe(false);
+    expect(supportHook.current).toBe('pending');
+
+    act(() => {
+      mod.setSpatial({ enabled: true, preset: 'cafe' });
+    });
+    expect(mod.getSpatial().enabled).toBe(true);
+    expect(mod.getSpatial().preset).toBe('cafe');
+    expect(spatialHook.current.enabled).toBe(true);
+    expect(spatialHook.current.preset).toBe('cafe');
+    expect(JSON.parse(localStorage.getItem('sonare_spatial')!).preset).toBe('cafe');
+
+    // Continuous update with commit: false updates memory state without updating localStorage
+    act(() => {
+      mod.setSpatialCustom({ x: 0.3, y: 0.6 }, { commit: false });
+    });
+    expect(mod.getSpatial().custom.x).toBeCloseTo(0.3, 2);
+    expect(spatialHook.current.custom.x).toBeCloseTo(0.3, 2);
+    expect(JSON.parse(localStorage.getItem('sonare_spatial')!).custom.x).toBe(0);
+
+    // Continuous update with commit: true persists
+    act(() => {
+      mod.setSpatialCustom({ intensity: 90 }, { commit: true });
+    });
+    expect(mod.getSpatial().custom.intensity).toBe(90);
+    expect(JSON.parse(localStorage.getItem('sonare_spatial')!).custom.intensity).toBe(90);
+
+    // Bypass
+    act(() => {
+      mod.setSpatialBypass(true);
+    });
+    expect(mod.getSpatialBypass()).toBe(true);
+    expect(bypassHook.current).toBe(true);
+
+    // Support
+    act(() => {
+      mod.setSpatialSupport('hrtf');
+    });
+    expect(mod.getSpatialSupport()).toBe('hrtf');
+    expect(supportHook.current).toBe('hrtf');
+
+    // Unreadable localStorage falls back to defaults
+    localStorage.setItem('sonare_spatial', '{corrupted json');
+    mod = await freshSpatial();
+    expect(mod.getSpatial()).toEqual(DEFAULT_SPATIAL);
   });
 });

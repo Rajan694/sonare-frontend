@@ -586,40 +586,48 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/dsp.test.ts`
 
-| ID            | Use case                                                                               |
-| :------------ | :------------------------------------------------------------------------------------- |
-| `WEB-DSP-001` | starts on the Sonare preset, and restores a saved curve                                |
-| `WEB-DSP-002` | a saved curve with the wrong number of bands, or unreadable, falls back to the default |
-| `WEB-DSP-003` | moving a band clamps it to ±12 dB, switches to Custom and is remembered                |
-| `WEB-DSP-004` | choosing a preset loads its curve and saves the preset to the account                  |
-| `WEB-DSP-005` | an unknown preset name changes nothing                                                 |
-| `WEB-DSP-006` | releasing a fader commits the current preset name                                      |
-| `WEB-DSP-007` | adopts the account's preset after sign-in, unless the user has a custom curve          |
-| `WEB-DSP-008` | useDsp re-renders on changes                                                           |
-| `WEB-DSP-009` | playback speed reaches the element and keeps the pitch                                 |
-| `WEB-DSP-010` | builds 8 EQ bands (low shelf, peaks, high shelf) and applies the curve                 |
-| `WEB-DSP-011` | turning the EQ off flattens every stage without tearing the graph down                 |
-| `WEB-DSP-012` | the virtualizer widens stereo: full width is 2.5x, zero is untouched                   |
-| `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through                   |
-| `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                                     |
-| `WEB-DSP-015` | a suspended context is resumed on the next play                                        |
-| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                              |
-| `WEB-DSP-017` | the output ends in a hard limiter at -1 dB, normalization on or off                    |
+| ID            | Use case                                                                                           |
+| :------------ | :------------------------------------------------------------------------------------------------- |
+| `WEB-DSP-001` | starts on the Sonare preset, and restores a saved curve                                            |
+| `WEB-DSP-002` | a saved curve with the wrong number of bands, or unreadable, falls back to the default             |
+| `WEB-DSP-003` | moving a band clamps it to ±12 dB, switches to Custom and is remembered                            |
+| `WEB-DSP-004` | choosing a preset loads its curve and saves the preset to the account                              |
+| `WEB-DSP-005` | an unknown preset name changes nothing                                                             |
+| `WEB-DSP-006` | releasing a fader commits the current preset name                                                  |
+| `WEB-DSP-007` | adopts the account's preset after sign-in, unless the user has a custom curve                      |
+| `WEB-DSP-008` | useDsp re-renders on changes                                                                       |
+| `WEB-DSP-009` | playback speed reaches the element and keeps the pitch                                             |
+| `WEB-DSP-010` | builds 8 EQ bands (low shelf, peaks, high shelf) and applies the curve                             |
+| `WEB-DSP-011` | turning the EQ off flattens every stage without tearing the graph down                             |
+| `WEB-DSP-012` | the virtualizer widens stereo: full width is 2.5x, zero is untouched                               |
+| `WEB-DSP-013` | loudness normalization is a gentle compressor; off is a pass-through                               |
+| `WEB-DSP-014` | without Web Audio, playback carries on unprocessed                                                 |
+| `WEB-DSP-015` | a suspended context is resumed on the next play                                                    |
+| `WEB-DSP-016` | the waveform level meter hears every source before the EQ                                          |
+| `WEB-DSP-017` | the output ends in a hard limiter at -1 dB, normalization on or off                                |
+| `WEB-DSP-018` | spatial stage is inserted between the virtualizer merge and the normalization compressor           |
+| `WEB-DSP-019` | spatial stage crossfades dry to wet when enabled, and fades back to dry when bypassed or disabled  |
+| `WEB-DSP-020` | spatial stage applies distance, air LPF, rear shelf, and trim gain when parameters change          |
+| `WEB-DSP-021` | spatial stage smooths azimuth and spread transitions across animation frames                       |
+| `WEB-DSP-022` | spatial stage convolver switches impulse response buffers on room change and reuses cached buffers |
+| `WEB-DSP-023` | renderer fallback selects head-model path when HRTF is unavailable or probe returns headModel      |
+| `WEB-DSP-024` | probeSpatialRenderer detects HRTF or falls back safely to head-model                               |
 
 ## `test/unit/spatial.test.ts`
 
-| ID                | Use case                                                                           |
-| :---------------- | :--------------------------------------------------------------------------------- |
-| `WEB-SPATIAL-001` | defaults are disabled and use concert preset                                       |
-| `WEB-SPATIAL-002` | sanitizeSpatial rejects junk and clamps (x, y) into the unit disc                  |
-| `WEB-SPATIAL-003` | polar round-trip maps angles correctly, including behind (0, -1)                   |
-| `WEB-SPATIAL-004` | shortestArc from 350° to 10° passes through 0° with +20° difference                |
-| `WEB-SPATIAL-005` | directionLabel and distanceLabel format human readouts                             |
-| `WEB-SPATIAL-006` | presets resolve to distinct acoustic parameters                                    |
-| `WEB-SPATIAL-007` | reverb-to-direct ratio rises with distance                                         |
-| `WEB-SPATIAL-008` | trim stays within bounds [-6 dB, +1.5 dB] and estimated level stays within ±1.5 dB |
-| `WEB-SPATIAL-009` | rear shelf is capped at -2 dB under HRTF renderer                                  |
-| `WEB-SPATIAL-010` | bypass makes spatial stage inactive without clearing settings                      |
+| ID                | Use case                                                                               |
+| :---------------- | :------------------------------------------------------------------------------------- |
+| `WEB-SPATIAL-001` | defaults are disabled and use concert preset                                           |
+| `WEB-SPATIAL-002` | sanitizeSpatial rejects junk and clamps (x, y) into the unit disc                      |
+| `WEB-SPATIAL-003` | polar round-trip maps angles correctly, including behind (0, -1)                       |
+| `WEB-SPATIAL-004` | shortestArc from 350° to 10° passes through 0° with +20° difference                    |
+| `WEB-SPATIAL-005` | directionLabel and distanceLabel format human readouts                                 |
+| `WEB-SPATIAL-006` | presets resolve to distinct acoustic parameters                                        |
+| `WEB-SPATIAL-007` | reverb-to-direct ratio rises with distance                                             |
+| `WEB-SPATIAL-008` | trim stays within bounds [-6 dB, +1.5 dB] and estimated level stays within ±1.5 dB     |
+| `WEB-SPATIAL-009` | rear shelf is capped at -2 dB under HRTF renderer                                      |
+| `WEB-SPATIAL-010` | bypass makes spatial stage inactive without clearing settings                          |
+| `WEB-SPATIAL-016` | desktop spatial store manages settings, continuous custom updates, bypass, and support |
 
 ## `test/unit/spatialReverb.test.ts`
 
