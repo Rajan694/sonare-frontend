@@ -606,6 +606,31 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-016` | the waveform level meter hears every source before the EQ                              |
 | `WEB-DSP-017` | the output ends in a hard limiter at -1 dB, normalization on or off                    |
 
+## `test/unit/spatial.test.ts`
+
+| ID                | Use case                                                                           |
+| :---------------- | :--------------------------------------------------------------------------------- |
+| `WEB-SPATIAL-001` | defaults are disabled and use concert preset                                       |
+| `WEB-SPATIAL-002` | sanitizeSpatial rejects junk and clamps (x, y) into the unit disc                  |
+| `WEB-SPATIAL-003` | polar round-trip maps angles correctly, including behind (0, -1)                   |
+| `WEB-SPATIAL-004` | shortestArc from 350° to 10° passes through 0° with +20° difference                |
+| `WEB-SPATIAL-005` | directionLabel and distanceLabel format human readouts                             |
+| `WEB-SPATIAL-006` | presets resolve to distinct acoustic parameters                                    |
+| `WEB-SPATIAL-007` | reverb-to-direct ratio rises with distance                                         |
+| `WEB-SPATIAL-008` | trim stays within bounds [-6 dB, +1.5 dB] and estimated level stays within ±1.5 dB |
+| `WEB-SPATIAL-009` | rear shelf is capped at -2 dB under HRTF renderer                                  |
+| `WEB-SPATIAL-010` | bypass makes spatial stage inactive without clearing settings                      |
+
+## `test/unit/spatialReverb.test.ts`
+
+| ID                | Use case                                                |
+| :---------------- | :------------------------------------------------------ |
+| `WEB-SPATIAL-011` | renderImpulse produces deterministic output across runs |
+| `WEB-SPATIAL-012` | energy is normalized to sum(h^2) = 1 per channel        |
+| `WEB-SPATIAL-013` | energy decay curve gives RT60 within ±20%               |
+| `WEB-SPATIAL-014` | early reflection taps land at the right sample offsets  |
+| `WEB-SPATIAL-015` | impulse response lengths follow Cafe < Concert < Hall   |
+
 ## `test/unit/waveform.test.tsx`
 
 | ID             | Use case                                                                                |
