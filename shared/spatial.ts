@@ -368,11 +368,25 @@ export function distanceLabel(distance: number): 'Close' | 'Near' | 'Mid' | 'Far
   return 'Far';
 }
 
+/**
+ * The head model (the renderer without HRTF data): each virtual speaker reaches the ear on the
+ * far side of the head later, quieter and duller, scaled by how far off-centre the speaker is
+ * (|sin azimuth|). The shadow has to start low and the far ear be quieter overall: an ear that
+ * hears the far speaker nearly as loud as the near one barely moves the sound off the original,
+ * and its 0.4–0.7 ms lag alone points the 0.8–2 kHz band to the wrong side.
+ */
+export const HEAD_MODEL = {
+  maxItdSec: 0.00066, // Woodworth, at 90°
+  shadowHz: 1200, // high shelf on the far ear
+  shadowDb: -14, // at 90°
+  farEarDb: -3, // broadband, at 90°
+};
+
 // Power of the direct path (two virtual speakers, both ears) relative to the input, every 15°
 // from front (0°) to back (180°). Measured in Chromium with pink noise at 50% L/R correlation
 // (music-like); fully decorrelated or mono input lands within about ±1.2 dB of it.
 const HRTF_POWER_TABLE = [1.59, 1.63, 1.62, 1.67, 1.69, 1.68, 1.71, 1.57, 1.47, 1.3, 1.18, 1.14, 1.11];
-const HEADMODEL_POWER_TABLE = [2.15, 2.19, 2.28, 2.3, 2.3, 2.45, 2.47, 2.4, 2.23, 2.06, 2.06, 2.03, 2.05];
+const HEADMODEL_POWER_TABLE = [2.13, 2.19, 2.54, 2.34, 2.25, 2.21, 2.21, 2.2, 2.24, 2.32, 2.52, 2.18, 2.13];
 
 export function getDirectPower(azimuthRad: number, renderer: 'hrtf' | 'headModel' | 'none'): number {
   if (renderer === 'none') return 1.0;
@@ -449,8 +463,9 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
   const gDirDb = -1.5 * distance;
   const gDir = Math.pow(10, gDirDb / 20);
 
-  // Send level: from -30 dB up to (room.sendLevelDb + 3 dB)
-  const sendDb = -30 + (room.sendLevelDb + 3 - -30) * ambienceFactor;
+  // Send level: from -24 dB up to (room.sendLevelDb + 12 dB). Any lower and the room is lost
+  // under the direct sound: the presets sounded like the original.
+  const sendDb = -24 + (room.sendLevelDb + 12 - -24) * ambienceFactor;
   const sendGain = Math.pow(10, sendDb / 20);
   const gRev = sendGain * intensityFactor;
   const gEr = sendGain * intensityFactor;

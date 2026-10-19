@@ -17,6 +17,16 @@ import kotlin.math.sqrt
  */
 class SpatialStage(private val sampleRate: Int) {
 
+  companion object {
+    // Same as HEAD_MODEL in shared/spatial.ts: the far ear's delay, shadow and level drop at 90°.
+    // Shallower, and the far ear hears the other speaker nearly as loud: the sound barely moves
+    // off the original, and its 0.4–0.7 ms lag alone points the 0.8–2 kHz band to the wrong side.
+    const val MAX_ITD = 0.00066
+    const val SHADOW_HZ = 1200.0
+    const val SHADOW_DB = -14.0
+    const val FAR_EAR_DB = -3.0
+  }
+
   private class FractionalDelayLine(maxSamples: Int) {
     private val buffer = DoubleArray(maxSamples)
     private var writePos = 0
@@ -153,12 +163,17 @@ class SpatialStage(private val sampleRate: Int) {
   private val delayRL = FractionalDelayLine(512)
   private val delayRR = FractionalDelayLine(512)
 
-  // Head-shadow filters, high shelf at 2500 Hz: shadowXY is speaker X heard at ear Y. Whichever
-  // ear is on the far side of the head from a speaker gets the shadow (and the delay).
+  // Head-shadow filters, a high shelf at SHADOW_HZ: shadowXY is speaker X heard at ear Y.
+  // Whichever ear is on the far side of the head from a speaker gets the shadow, the level drop
+  // (farXY) and the delay.
   private val shadowLL = Biquad(1)
   private val shadowLR = Biquad(1)
   private val shadowRL = Biquad(1)
   private val shadowRR = Biquad(1)
+  private var farLL = 1.0
+  private var farLR = 1.0
+  private var farRL = 1.0
+  private var farRR = 1.0
 
   // Direct path filters
   private val rearShelf = Biquad(2)
@@ -350,8 +365,7 @@ class SpatialStage(private val sampleRate: Int) {
     val inL = frame[0]
     val inR = frame[1]
 
-    // 4. Head-model delays and shadow filters
-    val MAX_ITD = 0.00066
+    // 4. Head-model delays, level drops and shadow filters
     val azL = smoothAzimuth - smoothSpread
     val azR = smoothAzimuth + smoothSpread
 
@@ -369,17 +383,17 @@ class SpatialStage(private val sampleRate: Int) {
 
     // Speaker L:
     delayLL.write(if (shadowLL.isIdentity) inL else shadowLL.process(inL, 0))
-    val directLL = delayLL.read(delaySamplesLL)
+    val directLL = delayLL.read(delaySamplesLL) * farLL
 
     delayLR.write(if (shadowLR.isIdentity) inL else shadowLR.process(inL, 0))
-    val directLR = delayLR.read(delaySamplesLR)
+    val directLR = delayLR.read(delaySamplesLR) * farLR
 
     // Speaker R:
     delayRR.write(if (shadowRR.isIdentity) inR else shadowRR.process(inR, 0))
-    val directRR = delayRR.read(delaySamplesRR)
+    val directRR = delayRR.read(delaySamplesRR) * farRR
 
     delayRL.write(if (shadowRL.isIdentity) inR else shadowRL.process(inR, 0))
-    val directRL = delayRL.read(delaySamplesRL)
+    val directRL = delayRL.read(delaySamplesRL) * farRL
 
     // Combined direct path at ears:
     var earL = directLL + directRL
@@ -454,10 +468,14 @@ class SpatialStage(private val sampleRate: Int) {
     // A speaker on the right (sin > 0) shadows the left ear, and the other way round.
     val sinL = sin(azL)
     val sinR = sin(azR)
-    shadowLL.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, sinL))
-    shadowLR.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, -sinL))
-    shadowRL.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, sinR))
-    shadowRR.set(Biquad.Type.HIGH_SHELF, sampleRate, 2500.0, -6.0 * max(0.0, -sinR))
+    shadowLL.set(Biquad.Type.HIGH_SHELF, sampleRate, SHADOW_HZ, SHADOW_DB * max(0.0, sinL))
+    shadowLR.set(Biquad.Type.HIGH_SHELF, sampleRate, SHADOW_HZ, SHADOW_DB * max(0.0, -sinL))
+    shadowRL.set(Biquad.Type.HIGH_SHELF, sampleRate, SHADOW_HZ, SHADOW_DB * max(0.0, sinR))
+    shadowRR.set(Biquad.Type.HIGH_SHELF, sampleRate, SHADOW_HZ, SHADOW_DB * max(0.0, -sinR))
+    farLL = 10.0.pow(FAR_EAR_DB * max(0.0, sinL) / 20.0)
+    farLR = 10.0.pow(FAR_EAR_DB * max(0.0, -sinL) / 20.0)
+    farRL = 10.0.pow(FAR_EAR_DB * max(0.0, sinR) / 20.0)
+    farRR = 10.0.pow(FAR_EAR_DB * max(0.0, -sinR) / 20.0)
 
     wetLinear = 10.0.pow((smoothTrimDb + targetParams.preGainDb) / 20.0)
 

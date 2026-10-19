@@ -14,6 +14,7 @@ import { api } from './api/api';
 import { getCurrentUser, initDevAuth, onAuthChange } from './api/auth';
 import { accountQueue, queueChanged, savedQueue, setQueueSource } from './storage/playerPersist';
 import { bindMediaSession, showInMediaSession, showPositionInMediaSession } from './audio/mediaSession';
+import { bindMpris, showInMpris, showPositionInMpris } from './audio/mpris';
 import { bindTray, showInTray } from './neutralino';
 import type { SavedQueue } from '../../shared/player/savedQueue';
 import * as player from './audio/player';
@@ -198,20 +199,30 @@ const App = () => {
     });
   }, []);
 
-  // Lock screen, notification and media-key controls.
+  // Lock screen, notification and media-key controls; on Linux the media keys come through
+  // MPRIS (audio/mpris.ts).
   useEffect(() => {
-    return bindMediaSession({
+    const controls = {
       play: () => {
         if (!player.getStatus().playing) actionsRef.current.togglePlay();
       },
       pause: () => player.pause(),
       next: () => actionsRef.current.next(),
       previous: () => actionsRef.current.previous(),
-      seekTo: (positionMs) => actionsRef.current.seek(positionMs),
-    });
+      seekTo: (positionMs: number) => actionsRef.current.seek(positionMs),
+    };
+    const unbindSession = bindMediaSession(controls);
+    const unbindMpris = bindMpris(controls);
+    return () => {
+      unbindSession();
+      unbindMpris();
+    };
   }, []);
 
-  useEffect(() => showInMediaSession(currentTrack, playback.playing), [currentTrack, playback.playing]);
+  useEffect(() => {
+    showInMediaSession(currentTrack, playback.playing);
+    showInMpris(currentTrack, playback.playing);
+  }, [currentTrack, playback.playing]);
 
   // The same controls in the window's tray menu.
   useEffect(() => {
@@ -238,6 +249,7 @@ const App = () => {
       // A restored queue shows its saved position until it plays.
       if (!resume.current) setPlaybackPosition(s.positionMs);
       showPositionInMediaSession(s.positionMs, s.durationMs);
+      showPositionInMpris(s.positionMs, s.durationMs);
       if (s.playing && Date.now() - lastPositionSave.current >= 5000) {
         lastPositionSave.current = Date.now();
         queueChanged();

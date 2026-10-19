@@ -20,6 +20,7 @@
     "os.open",
     "os.execCommand",
     "os.spawnProcess",
+    "os.updateSpawnedProcess",
     "os.getPath",
     "os.getEnv",
     "os.showFolderDialog",

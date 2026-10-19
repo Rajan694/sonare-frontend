@@ -51,7 +51,6 @@ const setTray = (): void => {
       { id: 'NEXT', text: 'Next', isDisabled: idle },
       { id: 'PREVIOUS', text: 'Previous', isDisabled: idle },
       { id: 'SEP2', text: '-' },
-      { id: 'VERSION', text: 'Get version' },
       { id: 'QUIT', text: 'Quit' },
     ],
   };
@@ -86,12 +85,6 @@ const onTrayMenuItemClicked = (event: CustomEvent<{ id: string }>): void => {
       break;
     case 'PREVIOUS':
       trayActions?.previous();
-      break;
-    case 'VERSION':
-      void os.showMessageBox(
-        'Version information',
-        `Neutralinojs server: v${window.NL_VERSION} | Neutralinojs client: v${window.NL_CVERSION}`,
-      );
       break;
     case 'QUIT':
       void app.exit();

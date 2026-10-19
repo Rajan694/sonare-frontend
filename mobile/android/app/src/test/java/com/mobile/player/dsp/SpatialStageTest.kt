@@ -305,6 +305,28 @@ class SpatialStageTest {
   }
 
   @Test
+  fun `a sound at the right is clearly quieter at the left ear in the 1-2 kHz band too`() {
+    // There the far ear hears it 0.4–0.7 ms late, which reads as the other side leading unless
+    // the far ear is also clearly quieter.
+    val stage = SpatialStage(rate)
+    stage.update(SpatialEffects.resolve(active = true, azimuth = PI / 2, width = 0.0, ambience = 0.0))
+    stage.reset()
+    val frames = rate / 4
+    val l = DoubleArray(frames)
+    val r = DoubleArray(frames)
+    for (i in 0 until frames) {
+      val s = 0.3 * sin(2.0 * PI * 1500.0 * i / rate)
+      val frame = doubleArrayOf(s, s)
+      stage.process(frame)
+      l[i] = frame[0]
+      r[i] = frame[1]
+    }
+    val left = levelDb(l.copyOfRange(frames / 2, frames))
+    val right = levelDb(r.copyOfRange(frames / 2, frames))
+    assertTrue("left ear ($left dB) must be at least 6 dB under the right ($right dB)", left < right - 6.0)
+  }
+
+  @Test
   fun `spatial audio keeps the loudness of the original within 1·5 dB`() {
     val frames = rate * 3
     val (inL, inR) = musicLikeNoise(frames)

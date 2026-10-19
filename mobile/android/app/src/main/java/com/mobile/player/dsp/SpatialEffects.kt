@@ -166,7 +166,7 @@ object SpatialEffects {
 
   /** Same as HEADMODEL_POWER_TABLE in shared/spatial.ts. */
   private val HEADMODEL_POWER_TABLE = doubleArrayOf(
-    2.15, 2.19, 2.28, 2.3, 2.3, 2.45, 2.47, 2.4, 2.23, 2.06, 2.06, 2.03, 2.05,
+    2.13, 2.19, 2.54, 2.34, 2.25, 2.21, 2.21, 2.2, 2.24, 2.32, 2.52, 2.18, 2.13,
   )
 
   fun getDirectPower(azimuthRad: Double): Double {
@@ -210,7 +210,8 @@ object SpatialEffects {
     val gDirDb = -1.5 * dClamped
     val gDir = 10.0.pow(gDirDb / 20.0)
 
-    val sendDb = -30.0 + (room.sendLevelDb + 3.0 - -30.0) * ambienceFactor
+    // As in shared/spatial.ts.
+    val sendDb = -24.0 + (room.sendLevelDb + 12.0 - -24.0) * ambienceFactor
     val sendGain = 10.0.pow(sendDb / 20.0)
     val gRev = sendGain * intensityFactor
     val gEr = sendGain * intensityFactor

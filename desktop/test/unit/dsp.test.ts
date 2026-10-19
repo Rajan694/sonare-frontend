@@ -621,7 +621,7 @@ describe('audio graph', () => {
     }
   });
 
-  it('WEB-DSP-027 only the selected renderer is fed, and the head model shadows the far ear of both speakers', async () => {
+  it("WEB-DSP-027 only the selected renderer is fed, and the head model shadows and quietens each speaker's far ear", async () => {
     vi.stubGlobal('AudioContext', FakeContext);
     const d = await fresh();
     const spatialStore = await import('../../src/audio/spatial');
@@ -646,10 +646,18 @@ describe('audio graph', () => {
     for (let i = 0; i < 200; i++) await new Promise((r) => setTimeout(r, 0));
     await vi.waitFor(() => expect(internal.getCurrentAzimuth()).toBeCloseTo(Math.PI / 2, 2));
     const [lAtLeft, lAtRight, rAtLeft, rAtRight] = internal.headShadows.map((f) => f.gain.value);
-    expect(lAtLeft).toBeLessThan(-3);
-    expect(rAtLeft).toBeLessThan(-3);
+    expect(lAtLeft).toBeLessThan(-6);
+    expect(rAtLeft).toBeLessThan(-6);
     expect(lAtRight).toBeCloseTo(0, 5);
     expect(rAtRight).toBeCloseTo(0, 5);
+    // The shadow starts low enough to cover 0.8–2 kHz, where a far ear nearly as loud as the
+    // near one, 0.4–0.7 ms late, puts the sound on the wrong side.
+    for (const f of internal.headShadows) expect(f.frequency.value).toBeLessThanOrEqual(1500);
+    const [farLAtLeft, farLAtRight, farRAtLeft, farRAtRight] = internal.headFarGains.map((g) => g.gain.value);
+    expect(farLAtLeft).toBeLessThan(Math.pow(10, -1.5 / 20));
+    expect(farRAtLeft).toBeLessThan(Math.pow(10, -1.5 / 20));
+    expect(farLAtRight).toBeCloseTo(1, 5);
+    expect(farRAtRight).toBeCloseTo(1, 5);
   });
 
   it('WEB-DSP-028 the renderer probe accepts a real HRTF response and rejects equal-power or silent ones', async () => {
@@ -686,5 +694,46 @@ describe('audio graph', () => {
     d.bindElement(document.createElement('audio'));
     await d.ensureGraph();
     expect(spatialStore.getSpatialSupport()).toBe('none');
+  });
+
+  it('WEB-DSP-030 the renderer probe keeps its source playing well past the impulse, so WebKitGTK renders it', async () => {
+    // WebKitGTK's HRTF panner goes silent as soon as its source ends, and convolves in
+    // 512-frame blocks: a lone one-frame impulse never comes out, and HRTF looked missing.
+    let sent: Float32Array | null = null;
+    let rendered = 0;
+    class FakeOffline {
+      destination = new Node();
+      constructor(_channels: number, length: number) {
+        rendered = length;
+      }
+      createPanner() {
+        return new Panner();
+      }
+      createBuffer(_channels: number, length: number) {
+        const data = new Float32Array(length);
+        return { getChannelData: () => data };
+      }
+      createBufferSource() {
+        return Object.assign(new Node(), {
+          buffer: null as { getChannelData: () => Float32Array } | null,
+          start() {
+            sent = this.buffer!.getChannelData();
+          },
+        });
+      }
+      startRendering() {
+        return Promise.reject(new Error('not rendered'));
+      }
+    }
+    vi.stubGlobal('OfflineAudioContext', FakeOffline);
+    vi.resetModules();
+    const { probeSpatialRenderer } = await import('../../src/audio/spatialStage');
+    expect(await probeSpatialRenderer(48000)).toBe('headModel');
+
+    const impulse = sent!.indexOf(1);
+    expect(impulse).toBeGreaterThanOrEqual(0);
+    expect(sent!.length - impulse).toBeGreaterThanOrEqual(1024);
+    // The render covers the response, which peaks ~7 ms after the impulse.
+    expect(rendered).toBeGreaterThanOrEqual(impulse + 0.02 * 48000);
   });
 });

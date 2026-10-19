@@ -624,9 +624,10 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-024` | probeSpatialRenderer detects HRTF or falls back safely to head-model                               |
 | `WEB-DSP-025` | spatial audio off is transparent: the dry path takes the input as is, nothing feeds the wet path   |
 | `WEB-DSP-026` | switching spatial audio on again after its wet path went idle feeds the whole wet chain again      |
-| `WEB-DSP-027` | only the selected renderer is fed; the head model shadows the far ear of both speakers             |
+| `WEB-DSP-027` | only the selected renderer is fed; the head model shadows and quietens each speaker's far ear      |
 | `WEB-DSP-028` | the renderer probe accepts a real HRTF response and rejects equal-power or silent ones             |
 | `WEB-DSP-029` | without Web Audio, spatial audio reports that it is unsupported                                    |
+| `WEB-DSP-030` | the renderer probe keeps its source playing well past the impulse, so WebKitGTK renders it         |
 
 ## `test/unit/spatial.test.ts`
 
@@ -1065,6 +1066,17 @@ request a test did not mock (`test/helpers/server.ts`).
 | :-------- | :---------------------------------------------------------------------------------------------------- |
 | `DSK-083` | the tray shows the current track and Play or Pause, and greys the controls out when nothing is loaded |
 | `DSK-084` | Play/Pause, Next and Previous in the tray reach the player until it unbinds                           |
+
+## `test/desktop/mpris.test.ts`
+
+| ID        | Use case                                                                                   |
+| :-------- | :----------------------------------------------------------------------------------------- |
+| `DSK-085` | starts one Python helper on Linux and hands its commands to the player until unbound       |
+| `DSK-086` | tells the helper what is playing, once per change, including what played before it started |
+| `DSK-087` | sends the position on a jump or every 5 s, as the helper keeps time by itself              |
+| `DSK-088` | a helper that cannot run (no Python, no session bus) is left alone                         |
+| `DSK-089` | does nothing outside the Linux window                                                      |
+| `DSK-090` | the page pings its helper while it runs and stops it as the page goes                      |
 
 ## `test/app/restore.test.tsx`
 

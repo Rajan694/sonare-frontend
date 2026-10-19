@@ -1,5 +1,5 @@
 import { renderImpulse, type ImpulseResponse } from '../../../shared/spatialReverb';
-import { shortestArc, type SpatialParams } from '../../../shared/spatial';
+import { HEAD_MODEL, shortestArc, type SpatialParams } from '../../../shared/spatial';
 
 export type SpatialRendererKind = 'hrtf' | 'headModel';
 
@@ -15,6 +15,8 @@ export interface SpatialStage {
     headModelSplit: ChannelSplitterNode;
     /** Speaker L at the left and right ear, speaker R at the left and right ear. */
     headShadows: BiquadFilterNode[];
+    /** The far ear's level drop, in the same order. */
+    headFarGains: GainNode[];
     dryGain: GainNode;
     wetGain: GainNode;
     trimGain: GainNode;
@@ -79,7 +81,11 @@ export async function probeSpatialRenderer(sampleRate = 48000, timeoutMs = 2000)
 
   try {
     const probePromise = new Promise<SpatialRendererKind>((resolve) => {
-      const length = Math.round(0.02 * sampleRate); // 20 ms: the response peaks ~7 ms in
+      // WebKitGTK's HRTF panner convolves in 512-frame blocks and goes silent as soon as its
+      // source ends, so a one-frame impulse never comes out and HRTF looks missing: keep the
+      // source playing (silence) well past the impulse. The response peaks ~7 ms after it.
+      const at = 512;
+      const length = at + Math.round(0.03 * sampleRate);
       const oCtx = new OfflineAudioContext(2, length, sampleRate);
       if (typeof oCtx.createPanner !== 'function') {
         return resolve('headModel');
@@ -98,8 +104,8 @@ export async function probeSpatialRenderer(sampleRate = 48000, timeoutMs = 2000)
         panner.setPosition(1, 0, 0);
       }
 
-      const buf = oCtx.createBuffer(1, 1, sampleRate);
-      buf.getChannelData(0)[0] = 1.0;
+      const buf = oCtx.createBuffer(1, length, sampleRate);
+      buf.getChannelData(0)[at] = 1.0;
       const src = oCtx.createBufferSource();
       src.buffer = buf;
       src.connect(panner);
@@ -224,8 +230,8 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
     }
   }
 
-  // Head-model fallback path: each virtual speaker reaches each ear through a head-shadow shelf
-  // and a delay; whichever ear is on the far side of the head gets the shadow and the delay.
+  // Head-model fallback path: each virtual speaker reaches each ear through a head-shadow shelf,
+  // a level drop and a delay; whichever ear is on the far side of the head gets all three.
   const headModelSplit = ctx.createChannelSplitter(2);
   const headModelMerge = ctx.createChannelMerger(2);
   const delayLL = ctx.createDelay();
@@ -235,29 +241,33 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
   const shadow = () => {
     const f = ctx.createBiquadFilter();
     f.type = 'highshelf';
-    f.frequency.value = 2500;
+    f.frequency.value = HEAD_MODEL.shadowHz;
     f.gain.value = 0;
     return f;
   };
-  // shadowXY: speaker X heard at ear Y.
+  // shadowXY / farXY: speaker X heard at ear Y.
   const shadowLL = shadow();
   const shadowLR = shadow();
   const shadowRL = shadow();
   const shadowRR = shadow();
+  const farLL = ctx.createGain();
+  const farLR = ctx.createGain();
+  const farRL = ctx.createGain();
+  const farRR = ctx.createGain();
 
   // Speaker L (input ch 0) -> left ear (merge ch 0) and right ear (merge ch 1)
   headModelSplit.connect(shadowLL, 0);
   headModelSplit.connect(shadowLR, 0);
-  shadowLL.connect(delayLL);
-  shadowLR.connect(delayLR);
+  shadowLL.connect(farLL).connect(delayLL);
+  shadowLR.connect(farLR).connect(delayLR);
   delayLL.connect(headModelMerge, 0, 0);
   delayLR.connect(headModelMerge, 0, 1);
 
   // Speaker R (input ch 1) -> right ear (merge ch 1) and left ear (merge ch 0)
   headModelSplit.connect(shadowRR, 1);
   headModelSplit.connect(shadowRL, 1);
-  shadowRR.connect(delayRR);
-  shadowRL.connect(delayRL);
+  shadowRR.connect(farRR).connect(delayRR);
+  shadowRL.connect(farRL).connect(delayRL);
   delayRR.connect(headModelMerge, 0, 1);
   delayRL.connect(headModelMerge, 0, 0);
 
@@ -372,20 +382,25 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
     }
 
     if (renderer !== 'headModel') return;
-    // Head model: a speaker on the right (sin > 0) reaches the left ear late and shadowed, and
-    // the other way round. Woodworth max ITD ≈ 0.66 ms.
-    const MAX_ITD = 0.00066;
+    // Head model: a speaker on the right (sin > 0) reaches the left ear late, quieter and
+    // shadowed, and the other way round.
+    const { maxItdSec, shadowDb, farEarDb } = HEAD_MODEL;
     const right = (az: number) => Math.max(0, Math.sin(az));
     const left = (az: number) => Math.max(0, -Math.sin(az));
     const ramp = (param: AudioParam, value: number) => param.setTargetAtTime(value, t, 0.015);
-    ramp(delayLL.delayTime, right(azL) * MAX_ITD);
-    ramp(delayLR.delayTime, left(azL) * MAX_ITD);
-    ramp(delayRL.delayTime, right(azR) * MAX_ITD);
-    ramp(delayRR.delayTime, left(azR) * MAX_ITD);
-    ramp(shadowLL.gain, -6.0 * right(azL));
-    ramp(shadowLR.gain, -6.0 * left(azL));
-    ramp(shadowRL.gain, -6.0 * right(azR));
-    ramp(shadowRR.gain, -6.0 * left(azR));
+    const db = (v: number) => Math.pow(10, v / 20);
+    ramp(delayLL.delayTime, right(azL) * maxItdSec);
+    ramp(delayLR.delayTime, left(azL) * maxItdSec);
+    ramp(delayRL.delayTime, right(azR) * maxItdSec);
+    ramp(delayRR.delayTime, left(azR) * maxItdSec);
+    ramp(shadowLL.gain, shadowDb * right(azL));
+    ramp(shadowLR.gain, shadowDb * left(azL));
+    ramp(shadowRL.gain, shadowDb * right(azR));
+    ramp(shadowRR.gain, shadowDb * left(azR));
+    ramp(farLL.gain, db(farEarDb * right(azL)));
+    ramp(farLR.gain, db(farEarDb * left(azL)));
+    ramp(farRL.gain, db(farEarDb * right(azR)));
+    ramp(farRR.gain, db(farEarDb * left(azR)));
   }
 
   function startSmoothMotion() {
@@ -533,6 +548,7 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
       hrtfSplit: split,
       headModelSplit,
       headShadows: [shadowLL, shadowLR, shadowRL, shadowRR],
+      headFarGains: [farLL, farLR, farRL, farRR],
       dryGain,
       wetGain,
       trimGain,
