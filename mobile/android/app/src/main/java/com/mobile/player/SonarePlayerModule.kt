@@ -23,6 +23,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.mobile.player.dsp.AudioEffects
 import com.mobile.player.dsp.DspSettings
 import com.mobile.player.dsp.LevelMeter
+import com.mobile.player.dsp.SpatialEffects
 
 /**
  * JS face of [SonarePlaybackService]. Talks to the service through a MediaController, which
@@ -279,6 +280,13 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
         normalization = options.hasKey("normalization") && options.getBoolean("normalization"),
       ),
     )
+  }
+
+  /** Spatial audio stage parameters for the audio processor. */
+  @ReactMethod
+  fun setSpatialAudio(options: ReadableMap) {
+    val params = SpatialEffects.fromReadableMap(options)
+    AudioEffects.updateSpatial(params)
   }
 
   @ReactMethod fun play() = withController { it.play() }
