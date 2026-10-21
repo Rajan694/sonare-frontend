@@ -233,6 +233,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOME-005`   | a trending shelf card plays within the trending list                                         |
 | `WEB-HOME-006`   | "See all" shows the full trending shelf                                                      |
 | `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry                |
+| `WEB-HOME-009`   | shows "Haven't played in a while" shelf and plays with the shelf as queue                    |
+| `WEB-HOME-010`   | "Haven't played in a while" shelf is hidden when empty, on error, for guests, or offline     |
+| `WEB-HOME-011`   | phone layout renders "Haven't played in a while" shelf and plays with the shelf as queue     |
 | `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre searches for its query         |
 | `WEB-SEARCH-002` | shows a top result and songs, with a result count                                            |
 | `WEB-SEARCH-003` | the top result plays within the results                                                      |
@@ -494,6 +497,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-API-018` | does not try to refresh a guest request that gets 401                            |
 | `WEB-API-019` | explains upstream outages, unreachable servers and other failures in plain words |
 | `WEB-API-020` | saving an album or following an artist sends what the app knows about it         |
+| `WEB-API-021` | queries not-played-lately with limit parameter                                   |
 
 ## `test/unit/audioDemux.test.ts`
 
@@ -687,25 +691,28 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/hooks.test.tsx`
 
-| ID             | Use case                                                            |
-| :------------- | :------------------------------------------------------------------ |
-| `WEB-HOOK-001` | starts loading, then exposes the data                               |
-| `WEB-HOOK-002` | exposes a failure as error and stops loading                        |
-| `WEB-HOOK-003` | refetch runs the request again and clears the previous error        |
-| `WEB-HOOK-004` | when disabled it does not call and shows the initial data           |
-| `WEB-HOOK-005` | drops a slow response that arrives after the inputs changed         |
-| `WEB-HOOK-006` | useDebounce only passes on the last value after the delay           |
-| `WEB-HOOK-007` | useSearch sends one trimmed request for the settled query           |
-| `WEB-HOOK-008` | useSearch sends nothing for a blank query                           |
-| `WEB-HOOK-009` | useAuth follows sign-in and sign-out                                |
-| `WEB-HOOK-010` | account-only lists are not requested for a guest                    |
-| `WEB-HOOK-011` | account data loads after sign-in and is cleared on sign-out         |
-| `WEB-HOOK-012` | a user's own playlist comes from /me, a public one from the catalog |
-| `WEB-HOOK-013` | a guest opening someone's own-playlist link makes no /me request    |
-| `WEB-HOOK-014` | useMyPlaylists refetches when playlists change anywhere in the app  |
-| `WEB-HOOK-015` | the favourites list refetches after a heart is saved elsewhere      |
-| `WEB-HOOK-016` | lyrics for a local file are never requested from the server         |
-| `WEB-HOOK-017` | lyrics requests name the song; errors surface as the hook error     |
+| ID             | Use case                                                                             |
+| :------------- | :----------------------------------------------------------------------------------- |
+| `WEB-HOOK-001` | starts loading, then exposes the data                                                |
+| `WEB-HOOK-002` | exposes a failure as error and stops loading                                         |
+| `WEB-HOOK-003` | refetch runs the request again and clears the previous error                         |
+| `WEB-HOOK-004` | when disabled it does not call and shows the initial data                            |
+| `WEB-HOOK-005` | drops a slow response that arrives after the inputs changed                          |
+| `WEB-HOOK-006` | useDebounce only passes on the last value after the delay                            |
+| `WEB-HOOK-007` | useSearch sends one trimmed request for the settled query                            |
+| `WEB-HOOK-008` | useSearch sends nothing for a blank query                                            |
+| `WEB-HOOK-009` | useAuth follows sign-in and sign-out                                                 |
+| `WEB-HOOK-010` | account-only lists are not requested for a guest                                     |
+| `WEB-HOOK-011` | account data loads after sign-in and is cleared on sign-out                          |
+| `WEB-HOOK-012` | a user's own playlist comes from /me, a public one from the catalog                  |
+| `WEB-HOOK-013` | a guest opening someone's own-playlist link makes no /me request                     |
+| `WEB-HOOK-014` | useMyPlaylists refetches when playlists change anywhere in the app                   |
+| `WEB-HOOK-015` | the favourites list refetches after a heart is saved elsewhere                       |
+| `WEB-HOOK-016` | lyrics for a local file are never requested from the server                          |
+| `WEB-HOOK-017` | lyrics requests name the song; errors surface as the hook error                      |
+| `WEB-HOOK-018` | useLibrarySongs paging and loadAll                                                   |
+| `WEB-HOOK-019` | useLibrarySongs: enabled=false prevents fetching                                     |
+| `WEB-HOOK-020` | useNotPlayedLately: fetches when signed in and enabled, skips for guests or disabled |
 
 ## `test/unit/lib.test.ts`
 

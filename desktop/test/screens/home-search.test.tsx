@@ -30,6 +30,7 @@ useMockServer(
       { id: 'g2', name: 'Qawwali' },
     ]),
   ),
+  http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([]))),
 );
 
 afterEach(() => {
@@ -141,6 +142,82 @@ describe('home', () => {
     await user.click(screen.getByRole('button', { name: /See all/ }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: /^Play Hit/ })).toHaveLength(12));
     expect(screen.getByRole('button', { name: /Show less/ })).toBeInTheDocument();
+  });
+
+  it("WEB-HOME-009 shows 'Haven't played in a while' shelf and plays with the shelf as queue", async () => {
+    setSession('a', 'r', testUser);
+    const unplayed = [
+      makeTrack({ id: 'yt:un1', title: 'Old Gold', artist: 'Classic' }),
+      makeTrack({ id: 'yt:un2', title: 'Vintage Vibe', artist: 'Retro' }),
+    ];
+    server.use(
+      http.get(`${API}/me/not-played-lately`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('limit')).toBe('20');
+        return HttpResponse.json(page(unplayed));
+      }),
+    );
+    const player = makePlayer();
+    const { user } = renderWithProviders(<Home />, { player });
+    expect(await screen.findByText("Haven't played in a while")).toBeInTheDocument();
+    expect(screen.getByText('Old Gold')).toBeInTheDocument();
+    expect(screen.getByText('Vintage Vibe')).toBeInTheDocument();
+
+    const playBtn = screen.getByRole('button', { name: 'Play Old Gold' });
+    await user.click(playBtn);
+    expect(player.playTrack).toHaveBeenCalledWith(unplayed[0], unplayed);
+  });
+
+  it("WEB-HOME-010 'Haven't played in a while' shelf is hidden when empty, on error, for guests, or offline", async () => {
+    // 1. As guest
+    const { unmount } = renderWithProviders(<Home />);
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+    unmount();
+
+    // 2. Signed in, but empty list
+    setSession('a', 'r', testUser);
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([]))));
+    const { unmount: unmount2 } = renderWithProviders(<Home />);
+    await waitFor(() => expect(screen.getByText('Welcome back, Test Listener')).toBeInTheDocument());
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+    unmount2();
+
+    // 3. Signed in, but server error
+    server.use(http.get(`${API}/me/not-played-lately`, () => apiError(500, 'SERVER_ERROR')));
+    const { unmount: unmount3 } = renderWithProviders(<Home />);
+    await waitFor(() => expect(screen.getByText('Welcome back, Test Listener')).toBeInTheDocument());
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+    unmount3();
+
+    // 4. Signed in with data, but offline mode
+    server.use(
+      http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([makeTrack({ title: 'Old Song' })]))),
+    );
+    renderWithProviders(<Home />, { mode: 'offline' });
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+  });
+
+  it("WEB-HOME-011 phone layout renders 'Haven't played in a while' shelf and plays with the shelf as queue", async () => {
+    setSession('a', 'r', testUser);
+    const unplayed = [makeTrack({ id: 'yt:un1', title: 'Phone Old Gold', artist: 'Classic' })];
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page(unplayed))));
+    const oldWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 400, configurable: true });
+    window.dispatchEvent(new Event('resize'));
+
+    try {
+      const player = makePlayer();
+      const { user } = renderWithProviders(<Home />, { player });
+      expect(await screen.findByText("Haven't played in a while")).toBeInTheDocument();
+      expect(screen.getByText('Phone Old Gold')).toBeInTheDocument();
+
+      const playBtn = screen.getByRole('button', { name: 'Play Phone Old Gold' });
+      await user.click(playBtn);
+      expect(player.playTrack).toHaveBeenCalledWith(unplayed[0], unplayed);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: oldWidth, configurable: true });
+      window.dispatchEvent(new Event('resize'));
+    }
   });
 });
 

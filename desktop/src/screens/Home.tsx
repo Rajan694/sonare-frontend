@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useTrending, useRecentlyPlayed, useMostPlayed, useAuth } from '../api/hooks';
+import { useTrending, useRecentlyPlayed, useNotPlayedLately, useMostPlayed, useAuth } from '../api/hooks';
 import { loadErrorMessage } from '../api/api';
 import { useLocalLibrary, resolveLocalRefs } from '../storage/local';
 import { useRecentPlays } from '../storage/recentPlays';
@@ -40,11 +40,15 @@ const Home = () => {
   const [allTrending, setAllTrending] = useState(false);
   const [allRecent, setAllRecent] = useState(false);
   const { data: recentData, error: recentError, refetch: refetchRecent } = useRecentlyPlayed(allRecent ? 50 : 10);
+  const { data: notPlayedData, error: notPlayedError } = useNotPlayedLately(20, isOnline);
   const { data: mostPlayedData } = useMostPlayed({ limit: 10 });
 
   const local = useLocalLibrary();
   const recentPlays = useRecentPlays();
   const trendingTracks = isOnline ? trendingData?.items || [] : local.tracks;
+
+  const notPlayedTracks =
+    isOnline && user && !notPlayedError && notPlayedData?.items ? resolveLocalRefs(notPlayedData.items, local) : [];
 
   const hasRealRecent = !!(recentData?.items && recentData.items.length > 0);
   const serverRecent = hasRealRecent
@@ -118,6 +122,7 @@ const Home = () => {
         trendingLoading={trendingLoading}
         trendingFailed={trendingFailed}
         recent={recentTracks}
+        notPlayed={notPlayedTracks}
         localCount={local.tracks.length}
         onPlay={handlePlay}
         retry={retryButton}
@@ -286,6 +291,27 @@ const Home = () => {
       {/* AI picks from the listening history; renders nothing until there are some */}
       {isOnline && <YouMayLike exclude={[...recentTracks, ...mostPlayed]} onPlay={handlePlay} />}
 
+      {/* Haven't played in a while shelf - Online and signed in only */}
+      {isOnline && notPlayedTracks.length > 0 && (
+        <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
+          <div className="shead">
+            <span className="text-h2 text-t1 font-semibold">Haven't played in a while</span>
+          </div>
+          <div className="flex gap-4 overflow-x-auto no-scrollbar pb-2">
+            {notPlayedTracks.map((track, i) => (
+              <Card
+                key={track.id}
+                title={track.title}
+                subtitle={track.artist}
+                artVariant={`a${((i % 12) + 1) as 1}`}
+                thumbnail={trackArtwork(track, 140)}
+                onPlay={() => handlePlay(track, notPlayedTracks)}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* Trending shelf (Square cards) - Online only */}
       {isOnline && (
         <motion.div className="flex flex-col gap-3.5" variants={staggerItem} transition={transition.normal}>
@@ -395,6 +421,7 @@ const PhoneHome = ({
   trendingFailed,
   trendingError,
   recent,
+  notPlayed,
   localCount,
   onPlay,
   retry,
@@ -406,6 +433,7 @@ const PhoneHome = ({
   trendingFailed: boolean;
   trendingError: unknown;
   recent: Track[];
+  notPlayed: Track[];
   localCount: number;
   onPlay: (track: Track, queue: Track[]) => void;
   retry: React.ReactNode;
@@ -522,6 +550,27 @@ const PhoneHome = ({
       )}
 
       {isOnline && <YouMayLike phone exclude={recent} onPlay={onPlay} />}
+
+      {isOnline && notPlayed.length > 0 && (
+        <motion.div className="flex flex-col gap-3" variants={staggerItem} transition={transition.normal}>
+          <div className="shead">
+            <span className="text-h2 text-t1 font-semibold">Haven't played in a while</span>
+          </div>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-5 px-5">
+            {notPlayed.map((t, i) => (
+              <Card
+                key={t.id}
+                title={t.title}
+                subtitle={t.artist}
+                width={132}
+                artVariant={`a${((i % 12) + 1) as 1}`}
+                thumbnail={trackArtwork(t, 300)}
+                onPlay={() => onPlay(t, notPlayed)}
+              />
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       <motion.div className="flex flex-col gap-3" variants={staggerItem} transition={transition.normal}>
         <div className="shead">

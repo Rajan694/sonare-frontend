@@ -287,6 +287,14 @@ describe('api client: expired access tokens', () => {
     expect(localStorage.getItem('sonare_refresh_token')).toBe('refresh-1');
   });
 
+  it('WEB-API-021 queries not-played-lately with limit parameter', async () => {
+    const rec = recordRequests();
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([]))));
+    await api.getNotPlayedLately(20);
+    rec.stop();
+    expect(rec.paths()).toEqual(['GET /me/not-played-lately?limit=20']);
+  });
+
   it('WEB-API-018 does not try to refresh a guest request that gets 401', async () => {
     let refreshes = 0;
     server.use(

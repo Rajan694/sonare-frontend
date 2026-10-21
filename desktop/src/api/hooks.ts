@@ -464,6 +464,10 @@ export const useRecentlyPlayed = (limit: number = 20) => {
   return useAuthAsync(() => api.getRecentlyPlayed(limit), [limit], { accountOnly: true });
 };
 
+export const useNotPlayedLately = (limit: number = 20, enabled: boolean = true) => {
+  return useAuthAsync(() => api.getNotPlayedLately(limit), [limit], { accountOnly: true, enabled });
+};
+
 export const useMostPlayed = (params?: { limit?: number; window?: '30d' }) => {
   return useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], { accountOnly: true });
 };

@@ -449,6 +449,10 @@ export const api = {
     return request<Page<Track>>('/me/recently-played', { params: { limit } });
   },
 
+  getNotPlayedLately(limit: number = 20) {
+    return request<Page<Track>>('/me/not-played-lately', { params: { limit } });
+  },
+
   getMostPlayed(params?: { limit?: number; window?: '30d' }) {
     return request<Page<Track>>('/me/most-played', { params });
   },

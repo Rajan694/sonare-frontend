@@ -57,6 +57,7 @@ describe('home offline', () => {
     // The online-only shelves stay away offline.
     expect(screen.queryByText('Trending locally this week')).not.toBeInTheDocument();
     expect(screen.queryByText('Most played')).not.toBeInTheDocument();
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
     expect(screen.getByText('Songs on device')).toBeInTheDocument();
   });
 });

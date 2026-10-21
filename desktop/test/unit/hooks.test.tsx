@@ -10,6 +10,7 @@ import {
   useLibraryTracks,
   useLyrics,
   useMyPlaylists,
+  useNotPlayedLately,
   usePlaylist,
   useSearch,
 } from '../../src/api/hooks';
@@ -260,5 +261,34 @@ describe('account data', () => {
     expect(result.current.items).toHaveLength(0);
     expect(rec.paths().filter((p) => p.startsWith('GET /me/library/tracks'))).toHaveLength(0);
     rec.stop();
+  });
+
+  it('WEB-HOOK-020 useNotPlayedLately: fetches when signed in and enabled, skips for guests or disabled', async () => {
+    const unplayed = makeTrack({ id: 'yt:old', title: 'Old Favourite' });
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([unplayed]))));
+
+    // 1. Guest: does not fetch
+    const guestRec = recordRequests();
+    const { result: guestResult } = renderHook(() => useNotPlayedLately(20));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(guestResult.current.data).toBeNull();
+    expect(guestRec.paths().filter((p) => p.startsWith('GET /me/not-played-lately'))).toHaveLength(0);
+    guestRec.stop();
+
+    // 2. Signed in: fetches
+    setSession('a', 'r', testUser);
+    const authedRec = recordRequests();
+    const { result: authedResult } = renderHook(() => useNotPlayedLately(20));
+    await waitFor(() => expect(authedResult.current.data?.items).toEqual([unplayed]));
+    expect(authedRec.paths()).toContain('GET /me/not-played-lately?limit=20');
+    authedRec.stop();
+
+    // 3. Disabled: does not fetch even when signed in
+    const disabledRec = recordRequests();
+    const { result: disabledResult } = renderHook(() => useNotPlayedLately(20, false));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(disabledResult.current.loading).toBe(false);
+    expect(disabledRec.paths().filter((p) => p.startsWith('GET /me/not-played-lately'))).toHaveLength(0);
+    disabledRec.stop();
   });
 });
