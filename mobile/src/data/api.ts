@@ -121,6 +121,13 @@ export const api = {
       (c) => c.trending('IN', limit),
       () => request('/trending', { params: { region: 'IN', limit } }),
     ),
+  track: (id: string) =>
+    localFirst<Track>(
+      'track',
+      (c) => c.track(ytId(id)),
+      () => request(`/tracks/${enc(id)}`),
+      id,
+    ),
   album: (id: string) =>
     localFirst<Album>(
       'album',

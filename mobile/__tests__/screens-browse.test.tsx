@@ -504,6 +504,63 @@ describe('Search', () => {
     expect(useRecentSearchesStore.getState().searches).toEqual([]);
     expect(queryByLabelText('Search for kendrick')).toBeNull();
   });
+
+  it('MOB-SEARCH-014 pasting a YouTube song link shows one song row, plays on tap, and skips normal search', async () => {
+    const song = makeTrack({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley' });
+    const trackSpy = stub('track', async () => song);
+    const searchSpy = stub('search', async () => page([]));
+
+    const { getByLabelText, findByText, queryByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+    expect(await findByText('Never Gonna Give You Up')).toBeTruthy();
+    expect(queryByText('Songs')).toBeNull();
+    expect(queryByText('Playlists')).toBeNull();
+    expect(trackSpy).toHaveBeenCalledWith('yt:dQw4w9WgXcQ');
+    expect(searchSpy).not.toHaveBeenCalled();
+
+    fireEvent.press(getByLabelText('Never Gonna Give You Up by Rick Astley'));
+    expect(usePlayerStore.getState().currentTrack?.id).toBe('yt:dQw4w9WgXcQ');
+  });
+
+  it('MOB-SEARCH-015 pasting a YouTube playlist link shows owner and song count and navigates to Playlist', async () => {
+    const pl = {
+      ...makePlaylist({ id: 'yt:PL12345', name: 'Chill Vibes', trackCount: 42 }),
+      owner: 'Lofi Girl',
+    };
+    const playlistSpy = stub('playlist', async () => pl as any);
+    const searchSpy = stub('search', async () => page([]));
+
+    const { getByLabelText, getByText, findByText, queryByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'https://www.youtube.com/playlist?list=PL12345');
+
+    expect(await findByText('Chill Vibes')).toBeTruthy();
+    expect(getByText('Lofi Girl · 42 songs')).toBeTruthy();
+    expect(queryByText('Playlists')).toBeNull();
+    expect(playlistSpy).toHaveBeenCalledWith('yt:PL12345');
+    expect(searchSpy).not.toHaveBeenCalled();
+
+    fireEvent.press(getByLabelText('Playlist Chill Vibes'));
+    expect(nav.navigate).toHaveBeenCalledWith('Playlist', { id: 'yt:PL12345' });
+  });
+
+  it('MOB-SEARCH-016 pasting an invalid YouTube link shows error; plain text still searches', async () => {
+    const trackSpy = stub('track', async () => {
+      throw new Error('Not found');
+    });
+    const searchSpy = stub('search', async () => page([]));
+
+    const { getByLabelText, findByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'https://www.youtube.com/watch?v=unknown1234');
+
+    expect(await findByText("Couldn't open this link")).toBeTruthy();
+    expect(trackSpy).toHaveBeenCalledWith('yt:unknown1234');
+    expect(searchSpy).not.toHaveBeenCalled();
+
+    // Plain text resumes normal search
+    fireEvent.changeText(getByLabelText('Search all music'), 'daft punk');
+    await waitFor(() => expect(searchSpy).toHaveBeenCalledWith('daft punk', 'all', undefined));
+  });
 });
 
 describe('Library', () => {

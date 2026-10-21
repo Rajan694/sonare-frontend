@@ -192,6 +192,9 @@ navigation mock live in `test-utils/`.
 | `MOB-SEARCH-011` | offline, the Albums and Artists chips group the matches                                |
 | `MOB-SEARCH-012` | online with no network, the phone is searched and the server is not                    |
 | `MOB-SEARCH-013` | recent searches fill and search, × removes one, Clear empties the list                 |
+| `MOB-SEARCH-014` | pasting a YouTube song link shows one song row, plays on tap, and skips normal search  |
+| `MOB-SEARCH-015` | pasting a YouTube playlist link shows owner and song count and navigates to Playlist   |
+| `MOB-SEARCH-016` | pasting an invalid YouTube link shows error; plain text still searches                 |
 | `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                    |
 | `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                             |
 | `MOB-LIB-S-003`  | the sort chip opens a sheet of orders; picking one refetches                           |
