@@ -16,6 +16,7 @@ import type {
   Lyrics,
   Page,
   Playlist,
+  SavedPlaylist,
   SearchItem,
   StreamInfo,
   Track,
@@ -272,6 +273,7 @@ export const api = {
       method: 'DELETE',
       body: { ids },
     }),
+  savedPlaylists: () => request<Page<SavedPlaylist>>('/me/saved-playlists'),
   /** Albums the user has saved (hearted). */
   libraryAlbums: () => request<Page<Album>>('/me/library/albums'),
   setAlbumFavourite: (albumId: string, favourite: boolean, meta?: AlbumMeta) =>

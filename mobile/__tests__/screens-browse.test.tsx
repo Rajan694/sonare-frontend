@@ -654,6 +654,31 @@ describe('Playlists', () => {
     expect(getByText('No playlists on this phone. Go online to load your playlists.')).toBeTruthy();
     expect(queryByLabelText('Gym')).toBeNull();
   });
+
+  it('MOB-PLS-006 renders "Saved from YouTube" section and navigates to playlist on press', async () => {
+    signIn();
+    const myPl = makePlaylist({ id: 'sonare:mine', name: 'My Own Playlist', kind: 'online' });
+    useLibraryStore.setState({ playlists: [myPl] });
+    jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockResolvedValue();
+
+    const savedYt = {
+      id: 'yt:PLxyz123',
+      name: 'Ambient Chill',
+      owner: 'Chill Channel',
+      trackCount: 42,
+      addedAt: Date.now(),
+    };
+    const savedSpy = stub('savedPlaylists', async () => page([savedYt]));
+
+    const { findByText, getByText, getByLabelText } = render(<PlaylistsScreen />);
+    expect(await findByText('Saved from YouTube')).toBeTruthy();
+    expect(savedSpy).toHaveBeenCalled();
+    expect(getByText('Ambient Chill')).toBeTruthy();
+    expect(getByText('Chill Channel · 42 songs')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Ambient Chill'));
+    expect(nav.navigate).toHaveBeenCalledWith('Playlist', { id: 'yt:PLxyz123' });
+  });
 });
 
 describe('Playlist, album and artist pages', () => {
@@ -706,21 +731,25 @@ describe('Playlist, album and artist pages', () => {
     await waitFor(() => expect(nav.goBack).toHaveBeenCalled());
   });
 
-  it('MOB-PL-004 the favourite button on a playlist saves it', async () => {
+  it('MOB-PL-004 the favourite button on a playlist saves it using saved-playlists state', async () => {
     signIn();
     route.params = { id: 'yt:PL1' };
     stub('playlist', async () => makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }));
     stub('playlistTracks', async () => page(songs));
-    const anyCall = jest.fn();
-    for (const k of Object.keys(api) as (keyof typeof api)[])
-      if (!['playlist', 'playlistTracks'].includes(k)) jest.spyOn(api, k).mockImplementation(anyCall as never);
+    const savedSpy = stub('savedPlaylists', async () => page([]));
+    const albumsSpy = stub('libraryAlbums', async () => page([]));
+    const setAlbumFavSpy = stub('setAlbumFavourite', async () => ({ ok: true }));
+
     const { findByLabelText } = render(<PlaylistDetailScreen />);
     fireEvent.press(await findByLabelText('Favourite playlist'));
-    expect(anyCall).toHaveBeenCalled();
-    // Saved the same way as an album: the library lists it with the saved albums.
-    // Saved like an album, with what the app knows about it.
+
+    // Reads savedPlaylists() for playlist ids (not libraryAlbums)
+    expect(savedSpy).toHaveBeenCalled();
+    expect(albumsSpy).not.toHaveBeenCalled();
+
+    // Saves like an album with playlist metadata
     await waitFor(() =>
-      expect(api.setAlbumFavourite).toHaveBeenCalledWith(
+      expect(setAlbumFavSpy).toHaveBeenCalledWith(
         'yt:PL1',
         true,
         expect.objectContaining({ title: expect.any(String) }),
@@ -779,6 +808,35 @@ describe('Playlist, album and artist pages', () => {
     fireEvent.press(getByText('Save'));
     expect(await findByText('That name is taken')).toBeTruthy();
     expect(getByLabelText('Playlist name').props.value).toBe('Taken');
+  });
+
+  it('MOB-PL-008 Unsave on a saved playlist uses savedPlaylists and removes it', async () => {
+    signIn();
+    route.params = { id: 'yt:PL_saved' };
+    stub('playlist', async () => makePlaylist({ id: 'yt:PL_saved', name: 'Hits', kind: 'online' }));
+    stub('playlistTracks', async () => page(songs));
+    const savedSpy = stub('savedPlaylists', async () =>
+      page([
+        {
+          id: 'yt:PL_saved',
+          name: 'Hits',
+          owner: 'Channel',
+          trackCount: 2,
+          addedAt: Date.now(),
+        },
+      ]),
+    );
+    const albumsSpy = stub('libraryAlbums', async () => page([]));
+    const setAlbumFavSpy = stub('setAlbumFavourite', async () => ({ ok: true }));
+
+    const { findByLabelText } = render(<PlaylistDetailScreen />);
+    const favButton = await findByLabelText('Favourite playlist');
+
+    expect(savedSpy).toHaveBeenCalled();
+    expect(albumsSpy).not.toHaveBeenCalled();
+
+    fireEvent.press(favButton);
+    await waitFor(() => expect(setAlbumFavSpy).toHaveBeenCalledWith('yt:PL_saved', false, expect.anything()));
   });
 
   it('MOB-ALB-001 an album shows its artist link and year, and shuffle plays it all', async () => {

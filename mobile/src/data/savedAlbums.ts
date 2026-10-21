@@ -13,7 +13,11 @@ import type { AlbumMeta } from './types';
 export const useSavedAlbum = (id: string, reason: string, meta?: AlbumMeta) => {
   // Saved albums are per account: read them for whoever is signed in.
   const userId = useAuthStore((state) => state.user?.id);
-  const saved = useAsync(async () => api.libraryAlbums(), [userId], { enabled: !!userId });
+  const isPlaylist = !id.startsWith('yt:OLAK5uy_');
+  const saved = useAsync(async () => (isPlaylist ? api.savedPlaylists() : api.libraryAlbums()), [userId, isPlaylist], {
+    enabled: !!userId,
+    refetchOnFocus: true,
+  });
   const [override, setOverride] = useState<boolean | null>(null);
   useEffect(() => setOverride(null), [id, userId]);
   const isSaved = override ?? !!saved.data?.items?.some((a) => a.id === id);

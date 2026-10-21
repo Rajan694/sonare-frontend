@@ -202,13 +202,15 @@ navigation mock live in `test-utils/`.
 | `MOB-PLS-003`    | creating a playlist names it and opens it                                              |
 | `MOB-PLS-004`    | deleting from a playlist's options asks first                                          |
 | `MOB-PLS-005`    | offline, a playlist this phone never saved is not listed                               |
+| `MOB-PLS-006`    | renders "Saved from YouTube" section and navigates to playlist on press                |
 | `MOB-PL-001`     | the user's own playlist shows its length and plays from the start                      |
 | `MOB-PL-002`     | a public playlist has no owner options                                                 |
 | `MOB-PL-003`     | deleting the playlist from its options leaves the page once it is gone                 |
-| `MOB-PL-004`     | the favourite button on a playlist saves it                                            |
+| `MOB-PL-004`     | the favourite button on a playlist saves it using saved-playlists state                |
 | `MOB-PL-005`     | your own playlist has no favourite button                                              |
 | `MOB-PL-006`     | renaming your own playlist saves it, refreshes the screen and the library              |
 | `MOB-PL-007`     | a refused rename shows the error and leaves the sheet open                             |
+| `MOB-PL-008`     | Unsave on a saved playlist uses savedPlaylists and removes it                          |
 | `MOB-ALB-001`    | an album shows its artist link and year, and shuffle plays it all                      |
 | `MOB-ALB-002`    | "Add to queue" appends the whole album                                                 |
 | `MOB-ALB-003`    | the favourite button on an album saves it                                              |
