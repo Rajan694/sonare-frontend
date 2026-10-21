@@ -20,7 +20,9 @@ interface LibraryStore {
   createPlaylist: (name: string) => Promise<Playlist>;
   /** Rejects if the server refuses; the playlist stays listed until it is really gone. */
   deletePlaylist: (id: string) => Promise<void>;
-  addToPlaylist: (playlistId: string, track: Track) => Promise<void>;
+  addToPlaylist: (playlistId: string, track: Track | Track[]) => Promise<void>;
+  /** Bulk un-favourite tracks optimistically; rolls back if server fails. */
+  removeFavourites: (trackIds: string[]) => Promise<void>;
 }
 
 /** Artist pages from the in-app catalog can't ask the backend who you follow; this list answers. */
@@ -101,9 +103,25 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   },
 
   addToPlaylist: async (playlistId, track) => {
-    await api.addToPlaylist(playlistId, [track]);
+    const tracks = Array.isArray(track) ? track : [track];
+    await api.addToPlaylist(playlistId, tracks);
     await get()
       .reloadPlaylists()
       .catch(() => {});
+  },
+
+  removeFavourites: async (trackIds: string[]) => {
+    const prev = get().favouriteIds;
+    const next = { ...prev };
+    for (const id of trackIds) {
+      delete next[id];
+    }
+    set({ favouriteIds: next });
+    try {
+      await api.deleteTrackFavourites(trackIds);
+    } catch (e) {
+      set({ favouriteIds: prev });
+      throw e;
+    }
   },
 }));

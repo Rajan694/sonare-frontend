@@ -1,4 +1,5 @@
 import React from 'react';
+import { Alert, BackHandler } from 'react-native';
 import { act, fireEvent, render, renderHook, waitFor } from '@testing-library/react-native';
 import { LibraryScreen } from '../src/screens/Library';
 import { usePagedTracks } from '../src/data/hooks';
@@ -400,5 +401,266 @@ describe('Library screen — offline Albums and Artists', () => {
     const { currentTrack, queue } = usePlayerStore.getState();
     expect(currentTrack?.artist).toBe('Radiohead');
     expect(queue.every((t) => t.artist === 'Radiohead')).toBe(true);
+  });
+});
+
+/** M2: Library — Multi-select in song tabs (Songs / Favourites) */
+
+describe('Library screen — multi-select (M2)', () => {
+  const t1 = makeTrack({ id: 'yt:s1', title: 'Song One', artist: 'Artist One' });
+  const t2 = makeTrack({ id: 'yt:s2', title: 'Song Two', artist: 'Artist Two' });
+  const t3 = makeTrack({ id: 'yt:s3', title: 'Song Three', artist: 'Artist Three' });
+
+  const pressAlertButton = async (text: string) => {
+    const calls = (Alert.alert as jest.Mock).mock.calls;
+    const buttons = calls[calls.length - 1][2] as {
+      text: string;
+      onPress?: () => unknown;
+    }[];
+    await act(async () => {
+      await buttons.find((b) => b.text === text)!.onPress?.();
+    });
+  };
+
+  beforeEach(() => {
+    signIn();
+    online();
+    jest.spyOn(api, 'libraryTracks').mockResolvedValue(page([t1, t2, t3], 3) as never);
+  });
+
+  it('MOB-LIBR-022 Select button enters selection mode with count and checkboxes', async () => {
+    const { getByLabelText, getByText, findByText, UNSAFE_getByType } = render(<LibraryScreen />);
+    const FlatList = require('react-native').FlatList;
+    expect(await findByText('Song One')).toBeTruthy();
+
+    const listBefore = UNSAFE_getByType(FlatList);
+    expect(listBefore.props.contentContainerStyle.paddingBottom).toBe(140);
+
+    const selectBtn = getByLabelText('Select');
+    fireEvent.press(selectBtn);
+
+    // Padding grows in selection mode to clear the selection action bar
+    const listAfter = UNSAFE_getByType(FlatList);
+    expect(listAfter.props.contentContainerStyle.paddingBottom).toBe(196);
+
+    // Header shows count
+    expect(getByText('0 selected')).toBeTruthy();
+    expect(getByText('Select all')).toBeTruthy();
+    expect(getByText('Cancel')).toBeTruthy();
+
+    // Rows have checkbox role
+    const row1 = getByLabelText('Song One by Artist One');
+    expect(row1.props.accessibilityRole).toBe('checkbox');
+    expect(row1.props.accessibilityState).toEqual({ checked: false });
+  });
+
+  it('MOB-LIBR-023 tapping and long-pressing rows toggles selection in selection mode', async () => {
+    const { getByLabelText, getByText, findByText } = render(<LibraryScreen />);
+    expect(await findByText('Song One')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Select'));
+
+    const row1 = getByLabelText('Song One by Artist One');
+    const row2 = getByLabelText('Song Two by Artist Two');
+
+    // Tap to select row 1
+    fireEvent.press(row1);
+    expect(getByText('1 selected')).toBeTruthy();
+    expect(row1.props.accessibilityState).toEqual({ checked: true });
+
+    // Long press to select row 2
+    fireEvent(row2, 'longPress');
+    expect(getByText('2 selected')).toBeTruthy();
+    expect(row2.props.accessibilityState).toEqual({ checked: true });
+
+    // Tap row 1 again to deselect
+    fireEvent.press(row1);
+    expect(getByText('1 selected')).toBeTruthy();
+    expect(row1.props.accessibilityState).toEqual({ checked: false });
+  });
+
+  it('MOB-LIBR-024 Select all toggles selecting and deselecting all loaded rows', async () => {
+    const { getByLabelText, getByText, findByText } = render(<LibraryScreen />);
+    expect(await findByText('Song One')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Select'));
+    expect(getByText('0 selected')).toBeTruthy();
+
+    // Select all selects all 3 display tracks
+    fireEvent.press(getByText('Select all'));
+    expect(getByText('3 selected')).toBeTruthy();
+
+    // Select all again toggles back to 0
+    fireEvent.press(getByText('Select all'));
+    expect(getByText('0 selected')).toBeTruthy();
+  });
+
+  it('MOB-LIBR-025 Cancel button and Android hardware back button exit selection mode', async () => {
+    const { getByLabelText, getByText, findByText, queryByText } = render(<LibraryScreen />);
+    expect(await findByText('Song One')).toBeTruthy();
+
+    // 1. Cancel button exits selection mode
+    fireEvent.press(getByLabelText('Select'));
+    fireEvent.press(getByLabelText('Song One by Artist One'));
+    expect(getByText('1 selected')).toBeTruthy();
+
+    fireEvent.press(getByText('Cancel'));
+    expect(queryByText('1 selected')).toBeNull();
+    expect(getByText('Library')).toBeTruthy();
+
+    // 2. Android hardware back press exits selection mode
+    fireEvent.press(getByLabelText('Select'));
+    expect(getByText('0 selected')).toBeTruthy();
+
+    // Trigger back press via mocked BackHandler
+    const subs = (BackHandler as any)._subscriptions;
+    expect(subs.length).toBeGreaterThan(0);
+    act(() => {
+      subs[subs.length - 1]();
+    });
+
+    expect(queryByText('0 selected')).toBeNull();
+    expect(getByText('Library')).toBeTruthy();
+  });
+
+  it('MOB-LIBR-026 Add to queue adds selected tracks to the player queue', async () => {
+    const { getByLabelText, findByText, queryByText } = render(<LibraryScreen />);
+    expect(await findByText('Song One')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Select'));
+    fireEvent.press(getByLabelText('Song One by Artist One'));
+    fireEvent.press(getByLabelText('Song Two by Artist Two'));
+
+    fireEvent.press(getByLabelText('Add to queue'));
+
+    const { queue } = usePlayerStore.getState();
+    expect(queue.map((t) => t.id)).toEqual([t1.id, t2.id]);
+    // Selection mode exited
+    expect(queryByText('2 selected')).toBeNull();
+  });
+
+  it('MOB-LIBR-027 Add to playlist opens the playlist picker with selected tracks', async () => {
+    useLibraryStore.setState({
+      playlists: [{ id: 'p1', name: 'My List', kind: 'synced', trackCount: 0, downloadedCount: 0, updatedAt: 1 }],
+    });
+    const addSpy = jest.spyOn(api, 'addToPlaylist').mockResolvedValue({ ok: true } as never);
+    jest.spyOn(api, 'myPlaylists').mockResolvedValue(page([]) as never);
+
+    const { getByLabelText, findByLabelText, findByText, queryByText } = render(<LibraryScreen />);
+    expect(await findByText('Song One')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Select'));
+    fireEvent.press(getByLabelText('Song One by Artist One'));
+    fireEvent.press(getByLabelText('Song Two by Artist Two'));
+
+    fireEvent.press(getByLabelText('Add to playlist'));
+
+    // Playlist picker sheet opens
+    expect(await findByLabelText('Add to My List')).toBeTruthy();
+
+    // Tap to add to playlist
+    await act(async () => {
+      fireEvent.press(getByLabelText('Add to My List'));
+    });
+
+    expect(addSpy).toHaveBeenCalledWith('p1', [t1, t2]);
+    // Closes and exits selection
+    await waitFor(() => expect(queryByText('2 selected')).toBeNull());
+  });
+
+  it('MOB-LIBR-028 Download enqueues without confirm, alerts with location, and stays on screen', async () => {
+    const enqueueSpy = jest.spyOn(useDownloadsStore.getState(), 'enqueue');
+    const { nav } = require('../test-utils');
+    const access = require('../src/lib/musicAccess');
+    const accessSpy = jest.spyOn(access, 'offerMusicAccess');
+
+    const { getByLabelText, findByText, queryByText } = render(<LibraryScreen />);
+    expect(await findByText('Song One')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Select'));
+    fireEvent.press(getByLabelText('Song One by Artist One'));
+    fireEvent.press(getByLabelText('Song Two by Artist Two'));
+
+    fireEvent.press(getByLabelText('Download'));
+
+    // Enqueued right away without confirm dialog
+    expect(enqueueSpy).toHaveBeenCalledWith([t1, t2]);
+
+    // Alert shown with destination folder label
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Added to downloads',
+      '2 songs will be saved to Music/Sonare.',
+      expect.any(Array),
+    );
+
+    // Pressing OK on the alert calls offerMusicAccess('download')
+    await pressAlertButton('OK');
+    expect(accessSpy).toHaveBeenCalledWith('download');
+
+    // Did not navigate to Downloads (stays on Library)
+    expect(nav.navigate).not.toHaveBeenCalledWith('Downloads');
+
+    // Exited selection mode
+    expect(queryByText('2 selected')).toBeNull();
+  });
+
+  it('MOB-LIBR-029 Unlike unlikes single track directly or multiple with confirmation and rollback', async () => {
+    useLibraryStore.setState({
+      favouriteIds: { [t1.id]: true, [t2.id]: true },
+    });
+    const deleteSpy = jest.spyOn(api, 'deleteTrackFavourites').mockResolvedValue({ ok: true, removed: 2 } as never);
+
+    const { getByLabelText, findByText, queryByText } = render(<LibraryScreen />);
+    expect(await findByText('Song One')).toBeTruthy();
+
+    // 1. Single unlike: directly calls API without Alert
+    fireEvent.press(getByLabelText('Select'));
+    fireEvent.press(getByLabelText('Song One by Artist One'));
+
+    await act(async () => {
+      fireEvent.press(getByLabelText('Remove from favourites'));
+    });
+
+    expect(deleteSpy).toHaveBeenCalledWith([t1.id]);
+    expect(useLibraryStore.getState().favouriteIds[t1.id]).toBeUndefined();
+    expect(queryByText('1 selected')).toBeNull();
+
+    // 2. Multiple unlike: shows confirmation Alert
+    useLibraryStore.setState({
+      favouriteIds: { [t1.id]: true, [t2.id]: true },
+    });
+    fireEvent.press(getByLabelText('Select'));
+    fireEvent.press(getByLabelText('Song One by Artist One'));
+    fireEvent.press(getByLabelText('Song Two by Artist Two'));
+
+    fireEvent.press(getByLabelText('Remove from favourites'));
+    expect(Alert.alert).toHaveBeenCalledWith(
+      'Remove 2 songs from favourites?',
+      'They will be unliked across all your devices.',
+      expect.any(Array),
+      expect.any(Object),
+    );
+
+    // Confirm removal
+    await pressAlertButton('Remove');
+    expect(deleteSpy).toHaveBeenCalledWith([t1.id, t2.id]);
+    expect(useLibraryStore.getState().favouriteIds[t1.id]).toBeUndefined();
+    expect(useLibraryStore.getState().favouriteIds[t2.id]).toBeUndefined();
+
+    // 3. Rollback on failure
+    useLibraryStore.setState({
+      favouriteIds: { [t1.id]: true, [t2.id]: true },
+    });
+    deleteSpy.mockRejectedValueOnce(new Error('Network error'));
+
+    fireEvent.press(getByLabelText('Select'));
+    fireEvent.press(getByLabelText('Song One by Artist One'));
+
+    await act(async () => {
+      fireEvent.press(getByLabelText('Remove from favourites'));
+    });
+
+    // Rolled back because API failed
+    expect(useLibraryStore.getState().favouriteIds[t1.id]).toBe(true);
   });
 });

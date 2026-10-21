@@ -6,7 +6,7 @@ import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
 import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
 import { ApiError, apiErrorFrom, createCatalogFallback, isYouTubeId, ytId } from '../../../shared/api/client';
-import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
+import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike, RemovedCount } from '../../../shared/apiTypes';
 import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type {
   Album,
@@ -265,6 +265,12 @@ export const api = {
     request<{ ok: boolean }>(`/me/favourites/tracks/${enc(trackId)}`, {
       method: favourite ? 'PUT' : 'DELETE',
       ...(favourite && track && { body: { meta: trackMeta(track) } }),
+    }),
+  /** Bulk unlike tracks: DELETE /me/favourites/tracks with body { ids: string[] }. */
+  deleteTrackFavourites: (ids: string[]) =>
+    request<RemovedCount>('/me/favourites/tracks', {
+      method: 'DELETE',
+      body: { ids },
     }),
   /** Albums the user has saved (hearted). */
   libraryAlbums: () => request<Page<Album>>('/me/library/albums'),

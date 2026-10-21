@@ -536,6 +536,14 @@ navigation mock live in `test-utils/`.
 | `MOB-LIBR-019` | focus refetch keeps old rows until the new page lands                             |
 | `MOB-LIBR-020` | loadAll after a sort change does not overwrite the list                           |
 | `MOB-LIBR-021` | when enabled turns false, items, total, and cursor are cleared                    |
+| `MOB-LIBR-022` | Select button enters selection mode with count and checkboxes                     |
+| `MOB-LIBR-023` | tapping and long-pressing rows toggles selection in selection mode                |
+| `MOB-LIBR-024` | Select all toggles selecting and deselecting all loaded rows                      |
+| `MOB-LIBR-025` | Cancel button and Android hardware back button exit selection mode                |
+| `MOB-LIBR-026` | Add to queue adds selected tracks to the player queue                             |
+| `MOB-LIBR-027` | Add to playlist opens the playlist picker with selected tracks                    |
+| `MOB-LIBR-028` | Download enqueues without confirm, alerts with location, and stays on screen      |
+| `MOB-LIBR-029` | Unlike unlikes single track directly or multiple with confirmation and rollback   |
 
 ## `__tests__/paging.test.tsx`
 

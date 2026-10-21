@@ -7,7 +7,10 @@ import {
   ScrollView,
   useWindowDimensions,
   ActivityIndicator,
+  Alert,
+  BackHandler,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -27,6 +30,8 @@ import { useAuthStore } from '../data/auth';
 import { GuestPrompt } from '../components/ui/GuestPrompt';
 import Icon, { type IconName } from '../components/ui/Icon';
 import { OptionSheet } from '../components/ui/OptionSheet';
+import { Sheet } from '../components/ui/Sheet';
+import { PlaylistPicker } from '../components/music/TrackMenuHost';
 import { songCount } from '../lib/format';
 import { cn } from '../lib/cn';
 import { SegmentedControl } from '../components/ui/Segmented';
@@ -34,6 +39,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useDownloadsStore } from '../store/downloads';
 import { usePhoneTracks } from '../store/localMusic';
 import { playShuffled } from '../lib/playShuffled';
+import { offerMusicAccess } from '../lib/musicAccess';
 import type { Track } from '../data/types';
 
 // Genres tab removed: Search keeps Browse categories and its Genres chip.
@@ -64,6 +70,15 @@ const SORTS: { value: LibrarySort; label: string; icon: IconName }[] = [
   { value: 'durationMs', label: 'Duration', icon: 'timer' },
   { value: 'playCount', label: 'Most played', icon: 'visualizer' },
 ];
+
+/** Height of the bottom TabBar (excluding safe area insets). Defined in TabNavigator.tsx. */
+const TAB_BAR_HEIGHT = 64;
+/** Height of the MiniPlayer displayed above the TabBar when a track is active. Defined in MiniPlayer.tsx. */
+const MINI_PLAYER_HEIGHT = 64;
+/** Height of the selection action bar. */
+const SELECTION_BAR_HEIGHT = 56;
+/** Base bottom padding for scroll content so the last items clear the tab bar and mini player. */
+const BASE_BOTTOM_PADDING = 140;
 
 // ---- Offline album/artist grouping ----
 
@@ -111,6 +126,7 @@ export const LibraryScreen = () => {
   // Grid cells get an exact width: flex-1 would stretch the items of a short last row.
   const cell = (columns: number, gap: number) => ({ width: (screenWidth - 24 - gap * (columns - 1)) / columns });
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const setMode = useModeStore((state) => state.setMode);
   const mode = useModeStore((state) => state.mode);
   const playTrack = usePlayerStore((state) => state.playTrack);
@@ -122,7 +138,27 @@ export const LibraryScreen = () => {
   /** Filter: only songs saved on this phone. */
   const [onPhoneOnly, setOnPhoneOnly] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Record<string, boolean>>({});
+  const [playlistPickerOpen, setPlaylistPickerOpen] = useState(false);
   const userId = useAuthStore((state) => state.user?.id);
+
+  // Reset selection mode on tab change
+  useEffect(() => {
+    setSelectionMode(false);
+    setSelectedIds({});
+  }, [activeTab]);
+
+  // Android back button exits selection mode
+  useEffect(() => {
+    if (!selectionMode) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSelectionMode(false);
+      setSelectedIds({});
+      return true;
+    });
+    return () => sub.remove();
+  }, [selectionMode]);
 
   const online = mode === 'online';
   const trackTab: TrackTab = isTrackTab(activeTab) ? activeTab : 'songs';
@@ -268,6 +304,102 @@ export const LibraryScreen = () => {
     return songCount(displayTracks.length);
   })();
 
+  // Multi-select helpers
+  const selectedList = useMemo(() => displayTracks.filter((t) => !!selectedIds[t.id]), [displayTracks, selectedIds]);
+  const selectedCount = selectedList.length;
+
+  const toggleSelectTrack = useCallback((id: string) => {
+    setSelectedIds((prev) => {
+      const next = { ...prev };
+      if (next[id]) delete next[id];
+      else next[id] = true;
+      return next;
+    });
+  }, []);
+
+  const onSelectAll = useCallback(() => {
+    const allSelected = displayTracks.length > 0 && displayTracks.every((t) => !!selectedIds[t.id]);
+    if (allSelected) {
+      setSelectedIds({});
+    } else {
+      const next: Record<string, boolean> = {};
+      for (const t of displayTracks) next[t.id] = true;
+      setSelectedIds(next);
+    }
+  }, [displayTracks, selectedIds]);
+
+  const onCancelSelection = useCallback(() => {
+    setSelectionMode(false);
+    setSelectedIds({});
+  }, []);
+
+  const onAddToQueue = () => {
+    if (selectedList.length === 0) return;
+    usePlayerStore.getState().addToQueue(selectedList);
+    onCancelSelection();
+  };
+
+  const onAddToPlaylist = () => {
+    if (selectedList.length === 0) return;
+    setPlaylistPickerOpen(true);
+  };
+
+  const onDownloadSelected = () => {
+    if (selectedList.length === 0) return;
+    const remoteTracks = selectedList.filter((t) => t.source === 'server');
+    const needed = remoteTracks.filter((t) => {
+      const d = downloads[t.id];
+      return !d || d.status !== 'done' || d.missing;
+    });
+
+    if (needed.length === 0) {
+      Alert.alert('Already downloaded', 'All selected songs are already on this phone.');
+      onCancelSelection();
+      return;
+    }
+
+    useDownloadsStore.getState().enqueue(needed);
+    const locationLabel = useDownloadsStore.getState().location.label || 'your music folder';
+    Alert.alert(
+      'Added to downloads',
+      `${needed.length} ${needed.length === 1 ? 'song' : 'songs'} will be saved to ${locationLabel}.`,
+      [{ text: 'OK', onPress: () => offerMusicAccess('download') }],
+    );
+    onCancelSelection();
+  };
+
+  const onRemoveFromLiked = () => {
+    const likedSelected = selectedList.filter((t) => !!favouriteIds[t.id]);
+    if (likedSelected.length === 0) return;
+
+    const doRemove = async () => {
+      try {
+        await useLibraryStore.getState().removeFavourites(likedSelected.map((t) => t.id));
+        onCancelSelection();
+      } catch {
+        Alert.alert("Couldn't remove favourites", 'Check your connection and try again.');
+      }
+    };
+
+    if (likedSelected.length === 1) {
+      doRemove();
+    } else {
+      Alert.alert(
+        `Remove ${likedSelected.length} songs from favourites?`,
+        'They will be unliked across all your devices.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: doRemove,
+          },
+        ],
+        { cancelable: true },
+      );
+    }
+  };
+
   // Loading / error state for the current track tab.
   const trackLoading =
     trackTab === 'mostPlayed'
@@ -283,31 +415,51 @@ export const LibraryScreen = () => {
 
   return (
     <Screen scrollable={false}>
-      {/* Header with Title and Mode segmented control */}
-      <Header
-        left={
-          <Text className="text-h1 font-semibold text-t1" numberOfLines={1}>
-            Library
-          </Text>
-        }
-        right={
-          <SegmentedControl
-            options={[
-              { value: 'online', label: 'Online' },
-              { value: 'offline', label: 'Offline' },
-            ]}
-            value={mode}
-            onChange={(value) => {
-              if (value === 'offline' && mode === 'online') {
-                navigation.navigate('ModeSwitch', { targetMode: 'offline' });
-              } else {
-                setMode(value as 'online' | 'offline');
-              }
-            }}
-            variant="cloud-device"
-          />
-        }
-      />
+      {/* Header with Title/Selection and Mode segmented control / selection actions */}
+      {selectionMode ? (
+        <Header
+          left={
+            <Text className="text-h1 font-semibold text-t1" numberOfLines={1}>
+              {`${selectedCount} selected`}
+            </Text>
+          }
+          right={
+            <View className="flex-row items-center gap-2">
+              <Button variant="ghost" size="sm" onPress={onSelectAll} accessibilityLabel="Select all">
+                Select all
+              </Button>
+              <Button variant="ghost" size="sm" onPress={onCancelSelection} accessibilityLabel="Cancel selection">
+                Cancel
+              </Button>
+            </View>
+          }
+        />
+      ) : (
+        <Header
+          left={
+            <Text className="text-h1 font-semibold text-t1" numberOfLines={1}>
+              Library
+            </Text>
+          }
+          right={
+            <SegmentedControl
+              options={[
+                { value: 'online', label: 'Online' },
+                { value: 'offline', label: 'Offline' },
+              ]}
+              value={mode}
+              onChange={(value) => {
+                if (value === 'offline' && mode === 'online') {
+                  navigation.navigate('ModeSwitch', { targetMode: 'offline' });
+                } else {
+                  setMode(value as 'online' | 'offline');
+                }
+              }}
+              variant="cloud-device"
+            />
+          }
+        />
+      )}
 
       {online && !userId ? (
         <GuestPrompt
@@ -361,6 +513,19 @@ export const LibraryScreen = () => {
                 )}
                 <View className="flex-row items-center gap-1">
                   <IconButton
+                    icon={<Icon name="check" size={16} color={selectionMode ? '#00E28A' : '#9A9AA8'} />}
+                    size={32}
+                    variant={selectionMode ? 'active' : 'default'}
+                    onPress={() => {
+                      if (selectionMode) {
+                        onCancelSelection();
+                      } else {
+                        setSelectionMode(true);
+                      }
+                    }}
+                    accessibilityLabel="Select"
+                  />
+                  <IconButton
                     icon={<Icon name="download" size={16} color="#9A9AA8" />}
                     size={32}
                     onPress={() => navigation.navigate('Downloads')}
@@ -392,8 +557,8 @@ export const LibraryScreen = () => {
                 </View>
               </View>
 
-              {/* Play all + Shuffle action bar */}
-              {displayTracks.length > 0 && (
+              {/* Play all + Shuffle action bar (hidden in selection mode) */}
+              {!selectionMode && displayTracks.length > 0 && (
                 <View className="flex-row items-center gap-2.5 px-5 pb-2.5">
                   <Button
                     variant="accent"
@@ -417,13 +582,13 @@ export const LibraryScreen = () => {
 
               {/* Track list */}
               <FlatList
-                key={`${activeTab}-${viewMode}`}
+                key={`${activeTab}-${selectionMode ? 'select' : viewMode}`}
                 data={displayTracks}
                 keyExtractor={(item) => item.id}
-                numColumns={viewMode === 'grid' ? 2 : 1}
-                columnWrapperStyle={viewMode === 'grid' ? { gap: 12 } : undefined}
+                numColumns={selectionMode ? 1 : viewMode === 'grid' ? 2 : 1}
+                columnWrapperStyle={!selectionMode && viewMode === 'grid' ? { gap: 12 } : undefined}
                 renderItem={({ item, index }) =>
-                  viewMode === 'grid' ? (
+                  !selectionMode && viewMode === 'grid' ? (
                     <Pressable
                       onPress={() => playTrack(item, displayTracks, from)}
                       className="p-1 mb-3"
@@ -452,6 +617,8 @@ export const LibraryScreen = () => {
                       isActive={currentTrack?.id === item.id}
                       index={index}
                       showArtwork
+                      selected={!!selectedIds[item.id]}
+                      onToggleSelect={selectionMode ? () => toggleSelectTrack(item.id) : undefined}
                     />
                   )
                 }
@@ -489,7 +656,7 @@ export const LibraryScreen = () => {
                 }
                 contentContainerStyle={{
                   paddingHorizontal: 12,
-                  paddingBottom: 140,
+                  paddingBottom: selectionMode ? BASE_BOTTOM_PADDING + SELECTION_BAR_HEIGHT : BASE_BOTTOM_PADDING,
                 }}
               />
             </>
@@ -651,6 +818,79 @@ export const LibraryScreen = () => {
         onSelect={setSort}
         options={SORTS}
       />
+
+      {/* Playlist picker sheet for multi-selected tracks */}
+      <Sheet visible={playlistPickerOpen} onClose={() => setPlaylistPickerOpen(false)}>
+        <View className="px-6 pb-6">
+          <PlaylistPicker
+            tracks={selectedList}
+            onClose={() => {
+              setPlaylistPickerOpen(false);
+              onCancelSelection();
+            }}
+          />
+        </View>
+      </Sheet>
+
+      {/* Selection Mode Bottom Action Bar */}
+      {selectionMode && (
+        <View
+          className="absolute inset-x-0 bg-s1 border-t border-ln flex-row items-center justify-around px-3 py-2 z-50"
+          style={{ bottom: (currentTrack ? MINI_PLAYER_HEIGHT : 0) + TAB_BAR_HEIGHT + insets.bottom }}
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={onAddToQueue}
+            disabled={selectedCount === 0}
+            icon={<Icon name="queue" size={15} color={selectedCount === 0 ? '#555560' : '#FFFFFF'} />}
+            accessibilityLabel="Add to queue"
+          >
+            Queue
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={onAddToPlaylist}
+            disabled={selectedCount === 0}
+            icon={<Icon name="playlist-add" size={15} color={selectedCount === 0 ? '#555560' : '#FFFFFF'} />}
+            accessibilityLabel="Add to playlist"
+          >
+            Playlist
+          </Button>
+
+          {online && (
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={onDownloadSelected}
+              disabled={selectedCount === 0}
+              icon={<Icon name="download" size={15} color={selectedCount === 0 ? '#555560' : '#FFFFFF'} />}
+              accessibilityLabel="Download"
+            >
+              Download
+            </Button>
+          )}
+
+          <Button
+            variant="outline"
+            size="sm"
+            onPress={onRemoveFromLiked}
+            disabled={selectedList.filter((t) => !!favouriteIds[t.id]).length === 0}
+            icon={
+              <Icon
+                name="heart"
+                size={15}
+                color={selectedList.filter((t) => !!favouriteIds[t.id]).length === 0 ? '#555560' : '#FF4D6A'}
+              />
+            }
+            accessibilityLabel="Remove from favourites"
+          >
+            Unlike
+          </Button>
+        </View>
+      )}
     </Screen>
   );
 };
