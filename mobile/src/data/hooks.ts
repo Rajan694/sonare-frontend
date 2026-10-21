@@ -51,10 +51,10 @@ export const useAsync = <T>(
   const focusedOnce = useRef(false);
   useFocusEffect(
     useCallback(() => {
-      if (!refetchOnFocus) return;
+      if (!enabled || !refetchOnFocus) return;
       if (focusedOnce.current) refetch();
       focusedOnce.current = true;
-    }, [refetchOnFocus, refetch]),
+    }, [enabled, refetchOnFocus, refetch]),
   );
 
   return { data, loading, error, refetch };

@@ -177,6 +177,8 @@ navigation mock live in `test-utils/`.
 | `MOB-HOME-004`   | trending plays within the chart; when the music service is down it says so and retries |
 | `MOB-HOME-005`   | choosing Offline asks first; the header opens search, and the profile opens settings   |
 | `MOB-HOME-006`   | offline, it lists the downloaded songs and asks the server for nothing                 |
+| `MOB-HOME-007`   | shows "Haven't played in a while" shelf and plays with the shelf queued                |
+| `MOB-HOME-008`   | "Haven't played in a while" shelf is hidden when empty, guest, offline, or on error    |
 | `MOB-SEARCH-001` | typing searches once the user pauses, and shows a top result and songs                 |
 | `MOB-SEARCH-002` | tapping a song plays it with the other results queued                                  |
 | `MOB-SEARCH-003` | album and artist results open their pages; filters change the search type              |

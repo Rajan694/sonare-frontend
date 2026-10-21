@@ -292,6 +292,7 @@ export const api = {
     }
   },
   recentlyPlayed: (limit = 20) => request<Page<Track>>('/me/recently-played', { params: { limit } }),
+  notPlayedLately: (limit = 20) => request<Page<Track>>('/me/not-played-lately', { params: { limit } }),
   mostPlayed: (limit = 20) => request<Page<Track>>('/me/most-played', { params: { limit } }),
   /** Plays the listener has actually heard; queued and sent by data/sync.ts. */
   reportPlays: (

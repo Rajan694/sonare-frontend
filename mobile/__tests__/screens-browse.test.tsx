@@ -91,13 +91,16 @@ describe('Home', () => {
   it('MOB-HOME-003 a guest is invited to sign in and no account data is requested', async () => {
     const recentSpy = stub('recentlyPlayed', async () => page([]));
     const favSpy = stub('favourites', async () => page([]));
-    const { getByText } = render(<HomeScreen />);
+    const notPlayedSpy = stub('notPlayedLately', async () => page([]));
+    const { getByText, queryByText } = render(<HomeScreen />);
     expect(getByText('Welcome to Sonare')).toBeTruthy();
     expect(getByText("You're listening as a guest")).toBeTruthy();
+    expect(queryByText("Haven't played in a while")).toBeNull();
     fireEvent.press(getByText('Sign in'));
     expect(nav.navigate).toHaveBeenCalledWith('SignIn', { mode: 'signin' });
     expect(recentSpy).not.toHaveBeenCalled();
     expect(favSpy).not.toHaveBeenCalled();
+    expect(notPlayedSpy).not.toHaveBeenCalled();
   });
 
   it('MOB-HOME-004 trending plays within the chart; when the music service is down it says so and retries', async () => {
@@ -159,6 +162,73 @@ describe('Home', () => {
     fireEvent.press(getByLabelText('Music folders'));
     expect(nav.navigate).toHaveBeenCalledWith('Folders');
     expect(trending).not.toHaveBeenCalled();
+  });
+
+  it('MOB-HOME-007 shows "Haven\'t played in a while" shelf and plays with the shelf queued', async () => {
+    signIn();
+    const older1 = makeTrack({ id: 'yt:old1', title: 'Old Song One', artist: 'Artist One', source: 'server' });
+    const older2 = makeTrack({ id: 'yt:old2', title: 'Old Song Two', artist: 'Artist Two', source: 'server' });
+    const localSong = makeTrack({ id: 'local:xyz', title: 'Local Song', source: 'local' });
+
+    stub('recentlyPlayed', async () => page([]));
+    stub('favourites', async () => page([]));
+    const notPlayedSpy = stub('notPlayedLately', async () => page([older1, localSong, older2]));
+
+    const playTrack = jest.spyOn(usePlayerStore.getState(), 'playTrack');
+    const { findByText, getByText, queryByText, getByLabelText } = render(<HomeScreen />);
+
+    expect(await findByText("Haven't played in a while")).toBeTruthy();
+    expect(notPlayedSpy).toHaveBeenCalledWith(20);
+    expect(getByText('Old Song One')).toBeTruthy();
+    expect(getByText('Old Song Two')).toBeTruthy();
+    // Non-server songs are filtered out
+    expect(queryByText('Local Song')).toBeNull();
+
+    // Tapping plays with shelf as queue
+    fireEvent.press(getByLabelText('Play Old Song One'));
+    expect(playTrack).toHaveBeenCalledWith(older1, [older1, older2], {
+      kind: 'Home',
+      name: "Haven't played in a while",
+    });
+  });
+
+  it('MOB-HOME-008 "Haven\'t played in a while" shelf is hidden when empty, guest, offline, or on error', async () => {
+    signIn();
+    const older = makeTrack({ id: 'yt:old1', title: 'Old Song One', source: 'server' });
+    stub('recentlyPlayed', async () => page([]));
+    stub('favourites', async () => page([]));
+
+    // 1. Error state -> shelf hidden
+    stub('notPlayedLately', async () => {
+      throw new Error('API failure');
+    });
+
+    const { queryByText, unmount } = render(<HomeScreen />);
+    expect(queryByText("Haven't played in a while")).toBeNull();
+    unmount();
+
+    // 2. Empty state -> shelf hidden
+    stub('notPlayedLately', async () => page([]));
+    const emptyRender = render(<HomeScreen />);
+    expect(emptyRender.queryByText("Haven't played in a while")).toBeNull();
+    emptyRender.unmount();
+
+    // 3. Offline -> shelf hidden, api not called
+    const notPlayedSpy = stub('notPlayedLately', async () => page([older]));
+    notPlayedSpy.mockClear();
+    useModeStore.setState({ mode: 'offline' });
+    const offlineRender = render(<HomeScreen />);
+    expect(offlineRender.queryByText("Haven't played in a while")).toBeNull();
+    expect(notPlayedSpy).not.toHaveBeenCalled();
+    offlineRender.unmount();
+
+    // 4. Guest -> shelf hidden, api not called
+    useModeStore.setState({ mode: 'online' });
+    guest();
+    const guestRender = render(<HomeScreen />);
+    expect(guestRender.queryByText("Haven't played in a while")).toBeNull();
+    expect(notPlayedSpy).not.toHaveBeenCalled();
+    guestRender.unmount();
   });
 });
 
