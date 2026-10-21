@@ -93,6 +93,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-037` | a guest pressing "Add to playlist" is asked to create an account first             |
 | `WEB-LAYOUT-038` | there is no output button: Sonare plays on the system output                       |
 | `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
+| `WEB-LAYOUT-040` | upcoming list keeps a minimum usable height and content scrolls                    |
 
 ## `test/components/music.test.tsx`
 
@@ -283,6 +284,24 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-ARTIST-005`  | an artist with no songs says so and disables play; an unknown artist is "not found"      |
 | `WEB-LIBRARY-011` | artists from liked and playlisted songs show their song count; followed ones say so      |
 | `WEB-LIBRARY-012` | genres show the browse categories and search for their query                             |
+| `WEB-LIBRARY-015` | first page request carries limit, sort, and filter params                                |
+| `WEB-LIBRARY-016` | Load more requests cursor and appends tracks                                             |
+| `WEB-LIBRARY-017` | device file merge: local file sorting after last server song is hidden until last page   |
+| `WEB-LIBRARY-018` | Play all loads all pages before starting playback and includes device files              |
+| `WEB-LIBRARY-019` | offline Most played shows only local and downloaded tracks                               |
+| `WEB-LIBRARY-020` | offline Favourites shows only liked device songs                                         |
+| `WEB-LIBRARY-021` | grid view renders Load more and allows loading more songs                                |
+| `WEB-LIBRARY-022` | unliking in Liked view hides row without sending refetch request                         |
+| `WEB-LIBRARY-023` | selection mode toggle (toolbar button, Esc, Cancel)                                      |
+| `WEB-LIBRARY-024` | row click and Shift-click range selection                                                |
+| `WEB-LIBRARY-025` | select-all header checkbox handles all/none/indeterminate                                |
+| `WEB-LIBRARY-026` | batch queue enqueues all selected tracks in order and clears selection                   |
+| `WEB-LIBRARY-027` | batch add-to-playlist opens picker with selected tracks and clears selection             |
+| `WEB-LIBRARY-028` | batch download enqueues only downloadable server tracks                                  |
+| `WEB-LIBRARY-029` | batch remove from liked asks confirmation when >1 liked track selected, deletes in bulk  |
+| `WEB-LIBRARY-030` | batch remove from liked removes immediately without dialog when 1 liked track selected   |
+| `WEB-LIBRARY-031` | selection resets on tab change and sort change                                           |
+| `WEB-LIBRARY-032` | floating action bar renders icon-only buttons with aria-labels and tooltips in narrow    |
 
 ## `test/screens/player-screens.test.tsx`
 
@@ -885,6 +904,17 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-RELINK-005` | downloadedEntries returns all files whose names embed a server id                                 |
 | `WEB-RELINK-006` | a file without a Sonare id in its name is not returned by downloadedEntries                       |
 | `WEB-RELINK-007` | a scan that finds a download the list forgot adds it to Downloads once, and a rescan adds nothing |
+
+## `test/unit/autoplay.test.ts`
+
+| ID             | Use case                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| `WEB-AUTO-001` | fewer than 10 songs left asks for similar songs using the last catalog song as seed      |
+| `WEB-AUTO-002` | 10 or more songs left does not ask for similar songs                                     |
+| `WEB-AUTO-003` | repeat all or repeat one does not ask for similar songs                                  |
+| `WEB-AUTO-004` | asks once per (seed, queue length) key, avoiding loops if 0 songs returned               |
+| `WEB-AUTO-005` | stale answer dropped if playing song changed during fetch                                |
+| `WEB-AUTO-006` | seed selection: finds last catalog song at or after index or falls back to current track |
 
 ## `test/unit/devicePrefs.test.ts`
 

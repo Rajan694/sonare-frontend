@@ -404,6 +404,14 @@ describe('queue panel', () => {
     expect(screen.queryByText('Before')).not.toBeInTheDocument();
   });
 
+  it('WEB-LAYOUT-040 upcoming list keeps a minimum usable height and content scrolls', () => {
+    panel();
+    const list = screen.getByText('Next One').closest('.overflow-y-auto');
+    expect(list).toHaveClass('min-h-[240px]');
+    const content = list?.parentElement;
+    expect(content).toHaveClass('overflow-y-auto');
+  });
+
   it('WEB-LAYOUT-020 clicking an upcoming song plays it; its X removes it without playing', async () => {
     const { user, p } = panel();
     await user.click(screen.getByText('Last One'));

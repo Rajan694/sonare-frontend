@@ -359,21 +359,28 @@ describe('editing the queue', () => {
 
 describe('when the queue runs out', () => {
   const [e, f] = ['e', 'f'].map((id) => makeTrack({ id: `yt:${id}`, title: id.toUpperCase(), durationMs: 200_000 }));
+  const tenTracks = (prefix: string) =>
+    Array.from({ length: 10 }, (_, i) => makeTrack({ id: `yt:${prefix}${i}`, title: `${prefix.toUpperCase()} ${i}` }));
   afterEach(() => updateDevicePrefs({ autoplaySimilar: true }));
 
   it('WEB-QUEUE-028 the last song asks once for similar songs, adds the new ones, and they play next', async () => {
-    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue([a, e, makeTrack({ id: 'local:x' }), f]);
+    const freshTen = tenTracks('top');
+    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue([a, ...freshTen]);
     run(() => store().playTrack(b, [a, b]));
-    await waitFor(() => expect(ids()).toEqual(['yt:a', 'yt:b', 'yt:e', 'yt:f']));
+    await waitFor(() => expect(ids().length).toBe(12));
     expect(related).toHaveBeenCalledTimes(1);
     expect(related).toHaveBeenCalledWith('yt:b');
+    expect(ids().slice(2)).toEqual(freshTen.map((t) => t.id));
     trackEnds();
-    expect(current()).toBe('yt:e');
-    expect(related).toHaveBeenCalledTimes(1);
+    expect(current()).toBe('yt:top0');
+    // Once playback advances, upcoming drops below 10 so it tops up using the last catalog song
+    await waitFor(() => expect(related).toHaveBeenCalledTimes(2));
+    expect(related).toHaveBeenLastCalledWith('yt:top9');
   });
 
   it('WEB-QUEUE-029 nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device', async () => {
-    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue([e]);
+    const freshTen = tenTracks('t');
+    const related = vi.spyOn(api, 'getRelatedTracks').mockResolvedValue(freshTen);
     updateDevicePrefs({ autoplaySimilar: false });
     run(() => store().playTrack(c, [c]));
     await act(async () => {});
@@ -391,6 +398,7 @@ describe('when the queue runs out', () => {
     run(() => store().cycleRepeat());
     expect(store().state.repeat).toBe('off');
     await waitFor(() => expect(related).toHaveBeenCalledWith('yt:d'));
+    await waitFor(() => expect(ids().length).toBe(11));
     related.mockClear();
 
     run(() => store().playTrack(makeTrack({ id: 'local:song' }), [makeTrack({ id: 'local:song' })]));
