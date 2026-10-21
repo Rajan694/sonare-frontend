@@ -9,6 +9,9 @@ import { Field } from '../components/ui/Field';
 import { Button } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
 import { useAuthStore } from '../data/auth';
+import { api } from '../data/api';
+import { dropPendingPlays } from '../data/sync';
+import { useAiStore } from '../store/ai';
 
 const messageOf = (e: unknown, fallback: string): string => {
   const message = e instanceof Error ? e.message : '';
@@ -223,6 +226,67 @@ const DeleteSection = () => {
   );
 };
 
+const HistorySection = () => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null);
+
+  const clear = async () => {
+    setBusy(true);
+    setError(null);
+    setDone(null);
+    try {
+      await api.clearHistory();
+      await dropPendingPlays();
+      useAiStore.getState().setYouMayLike(null);
+      setDone('Play history cleared');
+      Alert.alert('Play history cleared');
+    } catch (e) {
+      setError(messageOf(e, 'Could not clear play history'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmClear = () => {
+    setError(null);
+    setDone(null);
+    Alert.alert(
+      'Clear play history?',
+      'Recently played, Most played, play counts and suggestions start fresh on all your devices. Liked songs and playlists stay.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: () => {
+            clear();
+          },
+        },
+      ],
+    );
+  };
+
+  return (
+    <Section title="Play history">
+      <Text className="text-bs text-t3">
+        Clear recently played, most played and suggestions across all your devices. Liked songs and playlists stay.
+      </Text>
+      <Status error={error} done={done} />
+      <Pressable
+        onPress={confirmClear}
+        disabled={busy}
+        className="self-start flex-row items-center gap-2 h-9 px-3.5 rounded-md bg-s2 border border-ln"
+        accessibilityRole="button"
+        accessibilityLabel="Clear play history"
+      >
+        {busy ? <ActivityIndicator color="#FFFFFF" /> : <Icon name="trash" size={16} color="#7E7E8C" />}
+        <Text className="text-bm font-medium text-t1">Clear play history</Text>
+      </Pressable>
+    </Section>
+  );
+};
+
 /** The signed-in account: name, email, password, and deleting it. */
 export const AccountScreen = () => {
   const navigation = useNavigation<any>();
@@ -262,6 +326,7 @@ export const AccountScreen = () => {
           </Section>
           <NameSection />
           <PasswordSection />
+          <HistorySection />
           <DeleteSection />
         </ScrollView>
       )}

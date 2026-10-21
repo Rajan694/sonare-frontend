@@ -507,6 +507,9 @@ navigation mock live in `test-utils/`.
 | `MOB-ACCT-002` | changing the password keeps this phone signed in with the new session; name and delete go to /me     |
 | `MOB-ACCT-003` | the Account screen saves a new name, and changes the password after checking the fields              |
 | `MOB-ACCT-004` | deleting asks for the password and a confirmation, then leaves; a refusal is shown                   |
+| `MOB-ACCT-005` | canceling clear play history does nothing                                                            |
+| `MOB-ACCT-006` | confirming clear play history calls endpoint, drops pending plays, clears AI picks, and alerts       |
+| `MOB-ACCT-007` | clear play history failure shows error and keeps pending plays                                       |
 
 ## `__tests__/autoplay.test.ts`
 
