@@ -247,7 +247,7 @@ export const SettingsScreen = () => {
             <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
               <View className="flex-1 gap-0.5 min-w-0">
                 <Text className="text-tm font-medium text-t1">Autoplay</Text>
-                <Text className="text-bs text-t3">When the queue ends, keep playing similar songs</Text>
+                <Text className="text-bs text-t3">Keeps at least 10 songs lined up with similar ones</Text>
               </View>
               <Switch value={autoplaySimilar} onValueChange={setAutoplaySimilar} accessibilityLabel="Autoplay" />
             </View>

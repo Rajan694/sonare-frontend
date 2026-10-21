@@ -241,6 +241,7 @@ navigation mock live in `test-utils/`.
 | `MOB-Q-006`      | an empty queue says so                                                                            |
 | `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                       |
 | `MOB-Q-008`      | saving the queue names it one past the highest "Queue N" already used                             |
+| `MOB-Q-009`      | 10 or more upcoming songs all render in the queue list                                            |
 | `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                            |
 | `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                       |
 | `MOB-LYR-003`    | plain text view shows the words without timing                                                    |
@@ -513,10 +514,11 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/autoplay.test.ts`
 
-| ID             | Use case                                                                                 |
-| :------------- | :--------------------------------------------------------------------------------------- |
-| `MOB-AUTO-001` | the queue's last song asks once for similar songs and adds the new ones, which play next |
-| `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                |
+| ID             | Use case                                                                                        |
+| :------------- | :---------------------------------------------------------------------------------------------- |
+| `MOB-AUTO-001` | fewer than 10 upcoming songs asks once for similar songs and adds the new ones, which play next |
+| `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                       |
+| `MOB-AUTO-003` | 10 or more upcoming songs does not ask for similar songs until queue drops below 10             |
 
 ## `__tests__/library.test.tsx`
 
