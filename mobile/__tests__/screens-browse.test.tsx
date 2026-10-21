@@ -471,9 +471,12 @@ describe('Library', () => {
     fireEvent.press(await findByLabelText('Most played'));
     fireEvent.press(await findByLabelText('Sort: Most played'));
     expect(getByLabelText('Most played').props.accessibilityState).toEqual({ selected: true });
-    fireEvent.press(getByLabelText('A-Z'));
-    expect(await findByLabelText('Sort: A-Z')).toBeTruthy();
-    await waitFor(() => expect(lib.mock.calls.map((c) => c[0])).toEqual(['addedAt', 'playCount', 'title']));
+    fireEvent.press(getByLabelText('Title'));
+    expect(await findByLabelText('Sort: Title')).toBeTruthy();
+    // Each sort change sends the new sort value in the object param.
+    await waitFor(() =>
+      expect(lib.mock.calls.map((c) => (c[0] as any).sort)).toEqual(['addedAt', 'playCount', 'title']),
+    );
   });
 
   it('MOB-LIB-S-004 "only on this phone" keeps just the downloaded songs', async () => {

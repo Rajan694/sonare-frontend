@@ -242,9 +242,19 @@ export const api = {
   me: () => request<User>('/me'),
   settings: () => request<Record<string, unknown>>('/me/settings'),
   saveSettings: (body: Record<string, unknown>) => request<{ ok: boolean }>('/me/settings', { method: 'PUT', body }),
-  libraryTracks: (sort: 'addedAt' | 'playCount' | 'title' = 'addedAt') =>
+  libraryTracks: ({
+    filter = 'all',
+    sort = 'addedAt',
+    limit,
+    cursor,
+  }: {
+    filter?: 'all' | 'liked';
+    sort?: 'addedAt' | 'playCount' | 'title' | 'artist' | 'album' | 'durationMs';
+    limit?: number;
+    cursor?: string;
+  } = {}) =>
     request<Page<Track>>('/me/library/tracks', {
-      params: { sort, order: sort === 'title' ? 'asc' : 'desc' },
+      params: { filter, sort, limit, cursor },
     }),
   favourites: () => request<Page<Track>>('/me/favourites/tracks'),
   /** Just the ids, for the apps' heart state: no metadata lookups. */

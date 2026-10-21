@@ -159,7 +159,7 @@ export const SearchScreen = () => {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const recent = useRecentSearchesStore((state) => state.searches);
 
-  // A genre opened elsewhere (Library → Genres) arrives as `q`.
+  // The `q` param is still accepted for a search opened from another screen.
   const route = useRoute<any>();
   const linkedQuery: string | undefined = route.params?.q;
   // An own playlist's "Add songs" opens this screen "adding to" it.

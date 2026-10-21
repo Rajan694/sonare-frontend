@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
-import { View, FlatList, RefreshControl, Pressable, ScrollView, useWindowDimensions } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  View,
+  FlatList,
+  RefreshControl,
+  Pressable,
+  ScrollView,
+  useWindowDimensions,
+  ActivityIndicator,
+} from 'react-native';
 import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -14,11 +22,11 @@ import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { api } from '../data/api';
 import { useAsync } from '../data/hooks';
+import { usePagedTracks, type LibrarySort } from '../data/hooks';
 import { useAuthStore } from '../data/auth';
 import { GuestPrompt } from '../components/ui/GuestPrompt';
 import Icon, { type IconName } from '../components/ui/Icon';
 import { OptionSheet } from '../components/ui/OptionSheet';
-import { DEFAULT_GENRES, GenreCard, genreQuery } from '../components/music/GenreCard';
 import { songCount } from '../lib/format';
 import { cn } from '../lib/cn';
 import { SegmentedControl } from '../components/ui/Segmented';
@@ -26,23 +34,21 @@ import { useNavigation } from '@react-navigation/native';
 import { useDownloadsStore } from '../store/downloads';
 import { usePhoneTracks } from '../store/localMusic';
 import { playShuffled } from '../lib/playShuffled';
+import type { Track } from '../data/types';
 
-type Tab = 'songs' | 'liked' | 'mostPlayed' | 'albums' | 'artists' | 'genres';
+// Genres tab removed: Search keeps Browse categories and its Genres chip.
+type Tab = 'songs' | 'liked' | 'mostPlayed' | 'albums' | 'artists';
 type TrackTab = 'songs' | 'liked' | 'mostPlayed';
-type Sort = 'addedAt' | 'playCount' | 'title';
 
-// The desktop library's views (its sidebar has Liked Songs and Most played too). Folders are
-// in Settings → Music folders; a Library tab for them only opened that screen.
+const isTrackTab = (tab: Tab): tab is TrackTab => tab === 'songs' || tab === 'liked' || tab === 'mostPlayed';
+
 const TABS: { id: Tab; label: string }[] = [
   { id: 'songs', label: 'Songs' },
   { id: 'liked', label: 'Favourites' },
   { id: 'mostPlayed', label: 'Most played' },
   { id: 'albums', label: 'Albums' },
   { id: 'artists', label: 'Artists' },
-  { id: 'genres', label: 'Genres' },
 ];
-
-const isTrackTab = (tab: Tab): tab is TrackTab => tab === 'songs' || tab === 'liked' || tab === 'mostPlayed';
 
 const FROM: Record<TrackTab, { kind: string; name: string }> = {
   songs: { kind: 'Library', name: 'Your songs' },
@@ -50,11 +56,55 @@ const FROM: Record<TrackTab, { kind: string; name: string }> = {
   mostPlayed: { kind: 'Library', name: 'Most played' },
 };
 
-const SORTS: { value: Sort; label: string; icon: IconName }[] = [
+const SORTS: { value: LibrarySort; label: string; icon: IconName }[] = [
   { value: 'addedAt', label: 'Recently added', icon: 'clock' },
+  { value: 'title', label: 'Title', icon: 'sort' },
+  { value: 'artist', label: 'Artist', icon: 'user' },
+  { value: 'album', label: 'Album', icon: 'disc' },
+  { value: 'durationMs', label: 'Duration', icon: 'timer' },
   { value: 'playCount', label: 'Most played', icon: 'visualizer' },
-  { value: 'title', label: 'A-Z', icon: 'sort' },
 ];
+
+// ---- Offline album/artist grouping ----
+
+interface OfflineAlbum {
+  id: string;
+  title: string;
+  artist: string;
+  thumbnail?: string;
+  tracks: Track[];
+}
+
+interface OfflineArtist {
+  id: string;
+  name: string;
+  thumbnail?: string;
+  tracks: Track[];
+}
+
+const groupByAlbum = (tracks: Track[]): OfflineAlbum[] => {
+  const map = new Map<string, OfflineAlbum>();
+  for (const t of tracks) {
+    const key = t.album || 'Unknown album';
+    if (!map.has(key)) {
+      map.set(key, { id: key, title: key, artist: t.artist, thumbnail: t.thumbnail, tracks: [] });
+    }
+    map.get(key)!.tracks.push(t);
+  }
+  return [...map.values()].sort((a, b) => a.title.localeCompare(b.title));
+};
+
+const groupByArtist = (tracks: Track[]): OfflineArtist[] => {
+  const map = new Map<string, OfflineArtist>();
+  for (const t of tracks) {
+    const key = t.artist || 'Unknown artist';
+    if (!map.has(key)) {
+      map.set(key, { id: key, name: key, thumbnail: t.thumbnail, tracks: [] });
+    }
+    map.get(key)!.tracks.push(t);
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+};
 
 export const LibraryScreen = () => {
   const { width: screenWidth } = useWindowDimensions();
@@ -67,58 +117,109 @@ export const LibraryScreen = () => {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const favouriteCount = useLibraryStore((state) => Object.keys(state.favouriteIds).length);
   const [activeTab, setActiveTab] = useState<Tab>('songs');
-  const [sort, setSort] = useState<Sort>('addedAt');
+  const [sort, setSort] = useState<LibrarySort>('addedAt');
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  /** Filter (M05 funnel): only songs saved on this phone. */
+  /** Filter: only songs saved on this phone. */
   const [onPhoneOnly, setOnPhoneOnly] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const userId = useAuthStore((state) => state.user?.id);
-  const playlistCount = useLibraryStore((state) => state.playlists.length);
 
   const online = mode === 'online';
-  const library = useAsync(() => api.libraryTracks(sort), [sort, favouriteCount, userId], {
+  const trackTab: TrackTab = isTrackTab(activeTab) ? activeTab : 'songs';
+
+  // Songs tab — paged, with all six sorts.
+  const songs = usePagedTracks('all', sort, [userId], {
     enabled: online && !!userId && activeTab === 'songs',
     refetchOnFocus: true,
   });
+  // Favourites tab — same contract, filter=liked, shares the sort state.
+  const liked = usePagedTracks('liked', sort, [userId], {
+    enabled: online && !!userId && activeTab === 'liked',
+    refetchOnFocus: true,
+  });
+
   const albums = useAsync(() => api.libraryAlbums(), [userId], {
     enabled: online && !!userId && activeTab === 'albums',
     refetchOnFocus: true,
   });
   // Liked and playlisted songs bring their artists along, so refetch when those change.
+  const playlistCount = useLibraryStore((state) => state.playlists.length);
   const artists = useAsync(() => api.libraryArtists(), [userId, favouriteCount, playlistCount], {
     enabled: online && !!userId && activeTab === 'artists',
     refetchOnFocus: true,
   });
-  const genres = useAsync(() => api.genres(), [], { enabled: online && activeTab === 'genres' });
-  // Liked and Most played come from the account; offline they show the downloaded ones.
-  const liked = useAsync(() => api.favourites(), [userId, favouriteCount], {
-    enabled: online && !!userId && activeTab === 'liked',
-    refetchOnFocus: true,
-  });
+
   const mostPlayed = useAsync(() => api.mostPlayed(50), [userId], {
     enabled: online && !!userId && activeTab === 'mostPlayed',
     refetchOnFocus: true,
   });
-  const favouriteIds = useLibraryStore((state) => state.favouriteIds);
 
+  const favouriteIds = useLibraryStore((state) => state.favouriteIds);
   const downloads = useDownloadsStore((state) => state.items);
-  const trackTab: TrackTab = isTrackTab(activeTab) ? activeTab : 'songs';
-  const tracksQuery = trackTab === 'liked' ? liked : trackTab === 'mostPlayed' ? mostPlayed : library;
-  const serverTracks = (tracksQuery.data?.items ?? []).filter((t) => t.source === 'server');
-  const isDownloaded = (id: string) => downloads[id]?.status === 'done';
+  const isDownloaded = useCallback((id: string) => downloads[id]?.status === 'done', [downloads]);
+
+  // Seed favouriteIds for tracks returned by the liked query if not already present,
+  // while tracking locally unliked IDs so they stay hidden without refetching.
+  const unlikedRef = useRef<Set<string>>(new Set());
+  const prevFavRef = useRef(favouriteIds);
+  useEffect(() => {
+    const prev = prevFavRef.current;
+    for (const id of Object.keys(prev)) {
+      if (!favouriteIds[id]) unlikedRef.current.add(id);
+    }
+    for (const id of Object.keys(favouriteIds)) {
+      unlikedRef.current.delete(id);
+    }
+    prevFavRef.current = favouriteIds;
+  }, [favouriteIds]);
+
+  useEffect(() => {
+    if (liked.items.length > 0) {
+      useLibraryStore.setState((state) => {
+        let changed = false;
+        const next = { ...state.favouriteIds };
+        for (const t of liked.items) {
+          if (!next[t.id] && !unlikedRef.current.has(t.id)) {
+            next[t.id] = true;
+            changed = true;
+          }
+        }
+        return changed ? { favouriteIds: next } : state;
+      });
+    }
+  }, [liked.items]);
+
   // Offline, the library is what's on this phone: downloads and the music folders' songs.
-  const offlineTracks = usePhoneTracks();
-  const displayTracks = !online
-    ? trackTab === 'songs'
-      ? offlineTracks
-      : trackTab === 'liked'
-        ? offlineTracks.filter((t) => favouriteIds[t.id])
-        : // Nothing is fetched offline: the list from the last time online, downloaded songs only.
-          serverTracks.filter((t) => isDownloaded(t.id))
-    : onPhoneOnly
-      ? serverTracks.filter((t) => isDownloaded(t.id))
-      : serverTracks;
+  const phoneTracks = usePhoneTracks();
+
+  // Paged track state for the current track tab.
+  const pagedQuery = trackTab === 'songs' ? songs : trackTab === 'liked' ? liked : null;
+
+  // Server tracks from paged query (songs/liked) or mostPlayed.
+  const serverTracks: Track[] = useMemo(() => {
+    if (trackTab === 'mostPlayed') {
+      return (mostPlayed.data?.items ?? []).filter((t) => t.source === 'server');
+    }
+    const raw = (pagedQuery?.items ?? []).filter((t) => t.source === 'server');
+    if (trackTab === 'liked') {
+      return raw.filter((t) => !!favouriteIds[t.id]);
+    }
+    return raw;
+  }, [trackTab, pagedQuery?.items, mostPlayed.data, favouriteIds]);
+
+  // What the list actually shows, accounting for online/offline and the phone-only filter.
+  const displayTracks: Track[] = useMemo(() => {
+    if (!online) {
+      if (trackTab === 'songs') return phoneTracks;
+      if (trackTab === 'liked') return phoneTracks.filter((t) => favouriteIds[t.id]);
+      // Most played offline: last fetched downloaded songs only.
+      return serverTracks.filter((t) => isDownloaded(t.id));
+    }
+    return onPhoneOnly ? serverTracks.filter((t) => isDownloaded(t.id)) : serverTracks;
+  }, [online, trackTab, phoneTracks, favouriteIds, serverTracks, onPhoneOnly, isDownloaded]);
+
   const from = FROM[trackTab];
+
   const emptyText = !online
     ? trackTab === 'songs'
       ? 'No music on this phone yet. Songs you download show up here.'
@@ -131,15 +232,54 @@ export const LibraryScreen = () => {
         ? 'Songs you play most show up here once you have listened for a while.'
         : 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".';
 
-  const onPlayAll = () => {
-    if (displayTracks.length > 0) {
-      playTrack(displayTracks[0], displayTracks, from);
+  // Play all and Shuffle fetch the full list first, then start playback.
+  const onPlayAll = async () => {
+    let tracks = displayTracks;
+    if (online && pagedQuery?.hasMore) {
+      let all = await pagedQuery.loadAll();
+      if (trackTab === 'liked') {
+        all = all.filter((t) => !!favouriteIds[t.id]);
+      }
+      tracks = onPhoneOnly ? all.filter((t) => isDownloaded(t.id)) : all;
     }
+    if (tracks.length > 0) playTrack(tracks[0], tracks, from);
   };
 
-  const onShuffle = () => {
-    playShuffled(displayTracks, from);
+  const onShuffle = async () => {
+    let tracks = displayTracks;
+    if (online && pagedQuery?.hasMore) {
+      let all = await pagedQuery.loadAll();
+      if (trackTab === 'liked') {
+        all = all.filter((t) => !!favouriteIds[t.id]);
+      }
+      tracks = onPhoneOnly ? all.filter((t) => isDownloaded(t.id)) : all;
+    }
+    playShuffled(tracks, from);
   };
+
+  // Count: prefer meta.total when online and not filtered.
+  const countText = (() => {
+    if (online && !onPhoneOnly && (activeTab === 'songs' || activeTab === 'liked')) {
+      const paged = activeTab === 'songs' ? songs : liked;
+      if (paged.total != null && paged.items.length === displayTracks.length) {
+        return songCount(paged.total);
+      }
+    }
+    return songCount(displayTracks.length);
+  })();
+
+  // Loading / error state for the current track tab.
+  const trackLoading =
+    trackTab === 'mostPlayed'
+      ? online && mostPlayed.loading && !mostPlayed.data
+      : online && (pagedQuery?.loading ?? false) && !pagedQuery?.items.length;
+  const trackError =
+    trackTab === 'mostPlayed' ? (online ? mostPlayed.error : null) : online ? (pagedQuery?.error ?? null) : null;
+  const trackRefetch = trackTab === 'mostPlayed' ? mostPlayed.refetch : (pagedQuery?.refetch ?? (() => {}));
+
+  // Offline album/artist grouping from phone tracks.
+  const offlineAlbums = useMemo(() => groupByAlbum(phoneTracks), [phoneTracks]);
+  const offlineArtists = useMemo(() => groupByArtist(phoneTracks), [phoneTracks]);
 
   return (
     <Screen scrollable={false}>
@@ -177,7 +317,7 @@ export const LibraryScreen = () => {
         />
       ) : (
         <View className="flex-1">
-          {/* Sub-tabs row: scrolls sideways, six don't fit a phone */}
+          {/* Sub-tabs row: scrolls sideways */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -205,7 +345,7 @@ export const LibraryScreen = () => {
             <>
               {/* Sort chip and view toggle controls */}
               <View className="flex-row items-center justify-between px-5 py-3">
-                {activeTab === 'songs' ? (
+                {activeTab !== 'mostPlayed' ? (
                   <Pressable
                     onPress={() => setSortOpen(true)}
                     className="flex-row items-center gap-1.5 h-[30px] px-3 rounded-full bg-s2 border border-ln2"
@@ -217,9 +357,7 @@ export const LibraryScreen = () => {
                     <Icon name="chevron-down" size={13} color="#9A9AA8" />
                   </Pressable>
                 ) : (
-                  <Text className="text-bs text-t3">
-                    {activeTab === 'liked' ? 'Your favourites' : 'Your top tracks this year'}
-                  </Text>
+                  <Text className="text-bs text-t3">Your top tracks this year</Text>
                 )}
                 <View className="flex-row items-center gap-1">
                   <IconButton
@@ -273,15 +411,11 @@ export const LibraryScreen = () => {
                   >
                     Shuffle
                   </Button>
-                  <Text className="text-bs text-t3 flex-1 text-right font-normal">
-                    {online && !onPhoneOnly && activeTab === 'songs' && library.data?.meta?.total
-                      ? `${library.data.meta.total} songs`
-                      : `${displayTracks.length} songs`}
-                  </Text>
+                  <Text className="text-bs text-t3 flex-1 text-right font-normal">{countText}</Text>
                 </View>
               )}
 
-              {/* Track List */}
+              {/* Track list */}
               <FlatList
                 key={`${activeTab}-${viewMode}`}
                 data={displayTracks}
@@ -325,19 +459,33 @@ export const LibraryScreen = () => {
                   online ? (
                     <RefreshControl
                       refreshing={false}
-                      onRefresh={tracksQuery.refetch}
+                      onRefresh={trackRefetch}
                       tintColor="#00E28A"
                       colors={['#00E28A']}
                     />
                   ) : undefined
                 }
+                onEndReached={() => {
+                  if (online && pagedQuery?.hasMore && !pagedQuery.loadingMore) {
+                    pagedQuery.loadMore();
+                  }
+                }}
+                onEndReachedThreshold={0.3}
+                ListFooterComponent={
+                  pagedQuery?.loadingMore ? (
+                    <ActivityIndicator color="#00E28A" size="small" style={{ marginVertical: 12 }} />
+                  ) : pagedQuery?.loadMoreError ? (
+                    <Pressable
+                      onPress={pagedQuery.loadMore}
+                      accessibilityRole="button"
+                      accessibilityLabel="Load more error · Retry"
+                    >
+                      <Text className="text-bs text-t3 text-center py-3">Couldn't load more · Retry</Text>
+                    </Pressable>
+                  ) : undefined
+                }
                 ListEmptyComponent={
-                  <StateView
-                    loading={online && tracksQuery.loading && !tracksQuery.data}
-                    error={online ? tracksQuery.error : undefined}
-                    onRetry={tracksQuery.refetch}
-                    empty={emptyText}
-                  />
+                  <StateView loading={trackLoading} error={trackError} onRetry={trackRefetch} empty={emptyText} />
                 }
                 contentContainerStyle={{
                   paddingHorizontal: 12,
@@ -345,37 +493,68 @@ export const LibraryScreen = () => {
                 }}
               />
             </>
-          ) : activeTab === 'genres' ? (
-            <FlatList
-              data={genres.data ?? DEFAULT_GENRES}
-              keyExtractor={(g) => g.id}
-              numColumns={2}
-              columnWrapperStyle={{ gap: 10 }}
-              renderItem={({ item, index }) => (
-                <GenreCard
-                  genre={item}
-                  index={index}
-                  onPress={() =>
-                    navigation.navigate('Search', { screen: 'SearchRoot', params: { q: genreQuery(item) } })
-                  }
-                />
-              )}
-              ItemSeparatorComponent={() => <View className="h-2.5" />}
-              ListHeaderComponent={
-                <Text className="text-bs text-t3 mb-3">
-                  {online ? 'Browse by mood and language' : 'Go online to browse these'}
-                </Text>
-              }
-              contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 140 }}
-            />
           ) : !online ? (
-            <StateView
-              empty={
-                activeTab === 'albums'
-                  ? 'Saved albums come from your account. Go online to see them.'
-                  : 'Your artists come from your account. Go online to see them.'
-              }
-            />
+            /* Offline Albums / Artists: group this phone's songs by album or artist tag. */
+            activeTab === 'albums' ? (
+              offlineAlbums.length === 0 ? (
+                <StateView empty="No music on this phone yet. Songs you download show up here." />
+              ) : (
+                <FlatList
+                  key="offline-albums"
+                  data={offlineAlbums}
+                  keyExtractor={(a) => a.id}
+                  numColumns={2}
+                  columnWrapperStyle={{ gap: 12 }}
+                  renderItem={({ item }) => (
+                    <Pressable
+                      onPress={() => playTrack(item.tracks[0], item.tracks, { kind: 'Library', name: item.title })}
+                      className="p-1 mb-3"
+                      style={cell(2, 12)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${item.title} by ${item.artist}`}
+                    >
+                      <Artwork uri={artworkUrl(item, 300)} size={160} className="rounded-xl" />
+                      <Text className="text-tm font-medium mt-2 text-t1" numberOfLines={1}>
+                        {item.title}
+                      </Text>
+                      <Text className="text-bs text-t2" numberOfLines={1}>
+                        {songCount(item.tracks.length)}
+                      </Text>
+                    </Pressable>
+                  )}
+                  contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 14, paddingBottom: 140 }}
+                />
+              )
+            ) : /* Offline Artists */
+            offlineArtists.length === 0 ? (
+              <StateView empty="No music on this phone yet. Songs you download show up here." />
+            ) : (
+              <FlatList
+                key="offline-artists"
+                data={offlineArtists}
+                keyExtractor={(a) => a.id}
+                numColumns={3}
+                columnWrapperStyle={{ gap: 8 }}
+                renderItem={({ item }) => (
+                  <Pressable
+                    onPress={() => playTrack(item.tracks[0], item.tracks, { kind: 'Library', name: item.name })}
+                    className="items-center gap-1.5 mb-4"
+                    style={cell(3, 8)}
+                    accessibilityRole="button"
+                    accessibilityLabel={item.name}
+                  >
+                    <Artwork uri={artworkUrl(item, 140)} size={96} rings className="rounded-full" />
+                    <Text className="text-tm font-medium text-t1 text-center" numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text className="text-bs text-t3 text-center" numberOfLines={1}>
+                      {songCount(item.tracks.length)}
+                    </Text>
+                  </Pressable>
+                )}
+                contentContainerStyle={{ paddingHorizontal: 12, paddingTop: 14, paddingBottom: 140 }}
+              />
+            )
           ) : activeTab === 'albums' ? (
             <FlatList
               key="albums"

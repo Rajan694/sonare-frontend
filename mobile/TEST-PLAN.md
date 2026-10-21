@@ -364,8 +364,8 @@ navigation mock live in `test-utils/`.
 | `MOB-SETX-002`  | there is no server address setting                                                      |
 | `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                             |
 | `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts               |
-| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                |
-| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                      |
+| `MOB-LIBX-003`  | there is no Genres tab in the Library (Genres are in Search → Browse)                   |
+| `MOB-LIBX-004`  | empty online tabs say how things get there; offline Albums/Artists group phone songs    |
 | `MOB-LIBX-005`  | Favourites and Most played show those songs from the account and play them in order     |
 | `MOB-LIBX-006`  | offline, Favourites shows the liked songs downloaded to this phone, fetching nothing    |
 | `MOB-LIBX-007`  | Shuffle turns shuffle mode on and starts the whole list shuffled                        |
@@ -510,6 +510,32 @@ navigation mock live in `test-utils/`.
 | :------------- | :--------------------------------------------------------------------------------------- |
 | `MOB-AUTO-001` | the queue's last song asks once for similar songs and adds the new ones, which play next |
 | `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                |
+
+## `__tests__/library.test.tsx`
+
+| ID             | Use case                                                                          |
+| :------------- | :-------------------------------------------------------------------------------- |
+| `MOB-LIBR-001` | first page is requested with filter and sort; meta.total is exposed               |
+| `MOB-LIBR-002` | onEndReached loads the cursor page and appends it                                 |
+| `MOB-LIBR-003` | Favourites tab sends filter=liked                                                 |
+| `MOB-LIBR-004` | each sort option sends its sort key when the Songs tab is sorted                  |
+| `MOB-LIBR-005` | loadAll fetches every remaining page and returns the full list                    |
+| `MOB-LIBR-006` | Songs tab sends filter=all to libraryTracks and shows the tracks                  |
+| `MOB-LIBR-007` | Play all loads all pages before starting playback                                 |
+| `MOB-LIBR-008` | there is no Genres tab in the Library                                             |
+| `MOB-LIBR-009` | sort chip on Songs tab shows six options                                          |
+| `MOB-LIBR-010` | sort chip appears on Favourites tab too                                           |
+| `MOB-LIBR-011` | offline Albums groups phone songs by album tag, sorted by name, with song count   |
+| `MOB-LIBR-012` | offline Artists groups phone songs by artist tag, sorted by name, with song count |
+| `MOB-LIBR-013` | offline Albums empty phone shows the existing empty text                          |
+| `MOB-LIBR-014` | offline Artists empty phone shows the existing empty text                         |
+| `MOB-LIBR-015` | tapping an offline album plays its songs                                          |
+| `MOB-LIBR-016` | tapping an offline artist plays their songs                                       |
+| `MOB-LIBR-017` | liking or unliking does not refetch the paged list                                |
+| `MOB-LIBR-018` | an unliked row disappears from Favourites at once                                 |
+| `MOB-LIBR-019` | focus refetch keeps old rows until the new page lands                             |
+| `MOB-LIBR-020` | loadAll after a sort change does not overwrite the list                           |
+| `MOB-LIBR-021` | when enabled turns false, items, total, and cursor are cleared                    |
 
 ## `__tests__/paging.test.tsx`
 
