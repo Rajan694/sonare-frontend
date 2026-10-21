@@ -592,33 +592,35 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/downloads.test.ts`
 
-| ID           | Use case                                                                                     |
-| :----------- | :------------------------------------------------------------------------------------------- |
-| `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                          |
-| `WEB-DL-002` | uses the quality and format from settings                                                    |
-| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm" |
-| `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                           |
-| `WEB-DL-005` | with no size from the server, a short final range ends the download                          |
-| `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes                   |
-| `WEB-DL-007` | tells the user once the whole batch is saved                                                 |
-| `WEB-DL-008` | refuses a video-only stream with a clear reason                                              |
-| `WEB-DL-009` | fails with a permission message when the folder cannot be written                            |
-| `WEB-DL-010` | an expired stream url (403) is re-resolved and the same file continues                       |
-| `WEB-DL-011` | gives up after the server keeps refusing fresh urls                                          |
-| `WEB-DL-012` | pausing keeps the bytes so far, and resuming asks only for the rest                          |
-| `WEB-DL-013` | starts over when the server now serves a different file than the part holds                  |
-| `WEB-DL-014` | a server that ignores Range on resume does not duplicate bytes                               |
-| `WEB-DL-015` | a part that already holds the whole file (416) is finished without re-downloading            |
-| `WEB-DL-016` | a dropped connection is retried after a pause and the download completes                     |
-| `WEB-DL-017` | downloads interrupted by closing the app carry on at the next start                          |
-| `WEB-DL-018` | asking again for a failed download retries it instead of adding a duplicate                  |
-| `WEB-DL-019` | deleting a finished download removes its file and the list entry                             |
-| `WEB-DL-020` | a file that has moved is only removed from the list, with the reason                         |
-| `WEB-DL-021` | removing an unfinished download throws away its partial data                                 |
-| `WEB-DL-022` | removeMany counts files that could not be deleted                                            |
-| `WEB-DL-023` | "save again" hands the kept copy to the browser, and reports when there is none              |
-| `WEB-DL-024` | pause all and resume all act on every unfinished download                                    |
-| `WEB-DL-025` | a download becomes a playable track with its metadata                                        |
+| ID           | Use case                                                                                             |
+| :----------- | :--------------------------------------------------------------------------------------------------- |
+| `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                                  |
+| `WEB-DL-002` | uses the quality and format from settings                                                            |
+| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm"         |
+| `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                                   |
+| `WEB-DL-005` | with no size from the server, a short final range ends the download                                  |
+| `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes                           |
+| `WEB-DL-007` | tells the user once the whole batch is saved                                                         |
+| `WEB-DL-008` | refuses a video-only stream with a clear reason                                                      |
+| `WEB-DL-009` | fails with a permission message when the folder cannot be written                                    |
+| `WEB-DL-010` | an expired stream url (403) is re-resolved and the same file continues                               |
+| `WEB-DL-011` | gives up after the server keeps refusing fresh urls                                                  |
+| `WEB-DL-012` | pausing keeps the bytes so far, and resuming asks only for the rest                                  |
+| `WEB-DL-013` | starts over when the server now serves a different file than the part holds                          |
+| `WEB-DL-014` | a server that ignores Range on resume does not duplicate bytes                                       |
+| `WEB-DL-015` | a part that already holds the whole file (416) is finished without re-downloading                    |
+| `WEB-DL-016` | a dropped connection is retried after a pause and the download completes                             |
+| `WEB-DL-017` | downloads interrupted by closing the app carry on at the next start                                  |
+| `WEB-DL-018` | asking again for a failed download retries it instead of adding a duplicate                          |
+| `WEB-DL-019` | deleting a finished download removes its file and the list entry                                     |
+| `WEB-DL-020` | a file that has moved is only removed from the list, with the reason                                 |
+| `WEB-DL-021` | removing an unfinished download throws away its partial data                                         |
+| `WEB-DL-022` | removeMany counts files that could not be deleted                                                    |
+| `WEB-DL-023` | "save again" hands the kept copy to the browser, and reports when there is none                      |
+| `WEB-DL-024` | pause all and resume all act on every unfinished download                                            |
+| `WEB-DL-025` | a download becomes a playable track with its metadata                                                |
+| `WEB-DL-026` | newly queued downloads wait for short AI titles when available, using short names in items and files |
+| `WEB-DL-027` | download enqueue falls back to original titles without waiting when AI is off, offline, or failing   |
 
 ## `test/unit/dsp.test.ts`
 
@@ -1032,16 +1034,20 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/sharedCatalog/sharedAi.test.ts`
 
-| ID           | Use case                                                                                                   |
-| :----------- | :--------------------------------------------------------------------------------------------------------- |
-| `WEB-AI-001` | looksMessy flags upload-style titles and leaves Topic channels and plain titles alone                      |
-| `WEB-AI-002` | applyTitleFix returns a known fix, else the input, and notes messy songs once                              |
-| `WEB-AI-003` | takePendingTitles spaces retries and gives up after three tries                                            |
-| `WEB-AI-004` | normalizeStreamItemToTrack shows a fix in place of the raw title and artist                                |
-| `WEB-AI-005` | bestMatch needs the title, prefers the artist, and skips unrelated results                                 |
-| `WEB-AI-006` | resolvePicks keeps found picks in order, once each, skipping failures and excluded ids                     |
-| `WEB-AI-007` | startTitleSync sends noted songs in batches while enabled, applies the answer, and saves it                |
-| `WEB-AI-008` | searchPlanSongs takes the first songs of each query in order, each song once by id and by title and artist |
+| ID           | Use case                                                                                                      |
+| :----------- | :------------------------------------------------------------------------------------------------------------ |
+| `WEB-AI-001` | looksMessy flags upload-style titles and leaves Topic channels and plain titles alone                         |
+| `WEB-AI-002` | applyTitleFix returns a known fix, else the input, and notes messy songs once                                 |
+| `WEB-AI-003` | takePendingTitles spaces retries and gives up after three tries                                               |
+| `WEB-AI-004` | normalizeStreamItemToTrack shows a fix in place of the raw title and artist                                   |
+| `WEB-AI-005` | bestMatch needs the title, prefers the artist, and skips unrelated results                                    |
+| `WEB-AI-006` | resolvePicks keeps found picks in order, once each, skipping failures and excluded ids                        |
+| `WEB-AI-007` | startTitleSync sends noted songs in batches while enabled, applies the answer, and saves it                   |
+| `WEB-AI-008` | searchPlanSongs takes the first songs of each query in order, each song once by id and by title and artist    |
+| `WEB-AI-009` | shortTitlesFor selects messy titles and titles longer than 40 characters, including live and katha broadcasts |
+| `WEB-AI-010` | shortTitlesFor skips local songs, short clean titles, and songs with known fixes                              |
+| `WEB-AI-011` | shortTitlesFor sends in chunks of 50 with at most 3 in parallel, updates registry, and resolves Map           |
+| `WEB-AI-012` | shortTitlesFor resolves with completed fixes upon timeout and never rejects on chunk failure                  |
 
 ## `test/screens/ai-features.test.tsx`
 
