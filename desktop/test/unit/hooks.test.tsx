@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
+  notifyHistoryCleared,
   notifyPlaylistsChanged,
   useAsync,
   useAuth,
@@ -9,7 +10,9 @@ import {
   useLibrarySongs,
   useLibraryTracks,
   useLyrics,
+  useMostPlayed,
   useMyPlaylists,
+  useRecentlyPlayed,
   useSavedPlaylists,
   useNotPlayedLately,
   usePlaylist,
@@ -305,5 +308,30 @@ describe('account data', () => {
     expect(disabledResult.current.loading).toBe(false);
     expect(disabledRec.paths().filter((p) => p.startsWith('GET /me/not-played-lately'))).toHaveLength(0);
     disabledRec.stop();
+  });
+
+  it('WEB-HOOK-022 useRecentlyPlayed and useMostPlayed refetch when history is cleared', async () => {
+    setSession('a', 'r', testUser);
+    let recentCalls = 0;
+    let mostCalls = 0;
+    server.use(
+      http.get(`${API}/me/recently-played`, () => {
+        return HttpResponse.json(page([makeTrack({ id: `yt:rec${++recentCalls}` })]));
+      }),
+      http.get(`${API}/me/most-played`, () => {
+        return HttpResponse.json(page([makeTrack({ id: `yt:most${++mostCalls}` })]));
+      }),
+    );
+
+    const { result: recentRes } = renderHook(() => useRecentlyPlayed());
+    const { result: mostRes } = renderHook(() => useMostPlayed());
+
+    await waitFor(() => expect(recentRes.current.data?.items[0].id).toBe('yt:rec1'));
+    await waitFor(() => expect(mostRes.current.data?.items[0].id).toBe('yt:most1'));
+
+    act(() => notifyHistoryCleared());
+
+    await waitFor(() => expect(recentRes.current.data?.items[0].id).toBe('yt:rec2'));
+    await waitFor(() => expect(mostRes.current.data?.items[0].id).toBe('yt:most2'));
   });
 });

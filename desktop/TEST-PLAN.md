@@ -525,6 +525,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-API-020` | saving an album or following an artist sends what the app knows about it         |
 | `WEB-API-021` | queries not-played-lately with limit parameter                                   |
 | `WEB-API-022` | queries /me/saved-playlists to fetch saved YouTube playlists                     |
+| `WEB-API-023` | clearHistory sends DELETE to /me/history                                         |
 
 ## `test/unit/audioDemux.test.ts`
 
@@ -743,6 +744,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOOK-019` | useLibrarySongs: enabled=false prevents fetching                                     |
 | `WEB-HOOK-020` | useNotPlayedLately: fetches when signed in and enabled, skips for guests or disabled |
 | `WEB-HOOK-021` | useSavedPlaylists refetches when playlists change anywhere in the app                |
+| `WEB-HOOK-022` | useRecentlyPlayed and useMostPlayed refetch when history is cleared                  |
 
 ## `test/unit/lib.test.ts`
 
@@ -1154,8 +1156,11 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/account.test.tsx`
 
-| ID             | Use case                                                                             |
-| :------------- | :----------------------------------------------------------------------------------- |
-| `WEB-ACCT-001` | saves a new name to the account                                                      |
-| `WEB-ACCT-002` | changes the password: a wrong one is refused, then this device keeps a fresh session |
-| `WEB-ACCT-003` | deleting needs the password and a confirmation, then carries on as a guest           |
+| ID             | Use case                                                                                                                                        |
+| :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WEB-ACCT-001` | saves a new name to the account                                                                                                                 |
+| `WEB-ACCT-002` | changes the password: a wrong one is refused, then this device keeps a fresh session                                                            |
+| `WEB-ACCT-003` | deleting needs the password and a confirmation, then carries on as a guest                                                                      |
+| `WEB-ACCT-004` | cancelling clear play history does nothing                                                                                                      |
+| `WEB-ACCT-005` | confirming clear play history calls DELETE /me/history, clears local plays, drops pending plays, clears AI picks, notifies listeners and toasts |
+| `WEB-ACCT-006` | failure when clearing play history reports error and keeps local plays and pending plays                                                        |

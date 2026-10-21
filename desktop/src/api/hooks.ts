@@ -460,16 +460,37 @@ export const useFavourites = (cursor?: string) => {
   return result;
 };
 
+const HISTORY_CLEARED = 'sonare:history-cleared';
+
+/** Tell every mounted history list (Home, Library) to refetch after play history is cleared. */
+export const notifyHistoryCleared = (): void => {
+  window.dispatchEvent(new Event(HISTORY_CLEARED));
+};
+
+/** Lists built from play history reload when it is cleared. */
+const useRefetchOnHistoryCleared = (refetch: () => void) => {
+  useEffect(() => {
+    window.addEventListener(HISTORY_CLEARED, refetch);
+    return () => window.removeEventListener(HISTORY_CLEARED, refetch);
+  }, [refetch]);
+};
+
 export const useRecentlyPlayed = (limit: number = 20) => {
-  return useAuthAsync(() => api.getRecentlyPlayed(limit), [limit], { accountOnly: true });
+  const result = useAuthAsync(() => api.getRecentlyPlayed(limit), [limit], { accountOnly: true });
+  useRefetchOnHistoryCleared(result.refetch);
+  return result;
 };
 
 export const useNotPlayedLately = (limit: number = 20, enabled: boolean = true) => {
-  return useAuthAsync(() => api.getNotPlayedLately(limit), [limit], { accountOnly: true, enabled });
+  const result = useAuthAsync(() => api.getNotPlayedLately(limit), [limit], { accountOnly: true, enabled });
+  useRefetchOnHistoryCleared(result.refetch);
+  return result;
 };
 
 export const useMostPlayed = (params?: { limit?: number; window?: '30d' }) => {
-  return useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], { accountOnly: true });
+  const result = useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], { accountOnly: true });
+  useRefetchOnHistoryCleared(result.refetch);
+  return result;
 };
 
 const PLAYLISTS_CHANGED = 'sonare:playlists-changed';

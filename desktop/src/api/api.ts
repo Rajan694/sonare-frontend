@@ -468,6 +468,10 @@ export const api = {
     return request<Page<Track>>('/me/most-played', { params });
   },
 
+  clearHistory() {
+    return request<RemovedCount>('/me/history', { method: 'DELETE' });
+  },
+
   getMadeForYou() {
     return request<Page<Album | Track>>('/discover/made-for-you');
   },

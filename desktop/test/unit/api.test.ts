@@ -323,6 +323,19 @@ describe('api client: expired access tokens', () => {
     expect(res.items[0].id).toBe('yt:PL123');
     expect(res.items[0].owner).toBe('Owner');
   });
+
+  it('WEB-API-023 clearHistory sends DELETE to /me/history', async () => {
+    let method: string | undefined;
+    server.use(
+      http.delete(`${API}/me/history`, ({ request }) => {
+        method = request.method;
+        return HttpResponse.json({ ok: true, removed: 7 });
+      }),
+    );
+    const res = await api.clearHistory();
+    expect(method).toBe('DELETE');
+    expect(res.removed).toBe(7);
+  });
 });
 
 describe('loadErrorMessage', () => {
