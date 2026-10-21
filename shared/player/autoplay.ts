@@ -17,12 +17,6 @@ interface Song {
 /** Only catalog songs have similar songs; files on the device don't. */
 export const isCatalogSong = (song: Song): boolean => song.id.startsWith('yt:');
 
-/** The last song of the queue is playing and nothing repeats, so the queue is about to end. */
-export const isQueueEnding = <T extends Song>(state: QueueState<T>): boolean => {
-  const playing = state.queue[state.index];
-  return !!playing && state.repeat === 'off' && state.index === state.queue.length - 1;
-};
-
 /** Autoplay tops up when fewer than `minUpcoming` (default 10) songs are ahead of the playing track. */
 export const needsAutoplay = <T extends Song>(
   state: QueueState<T>,

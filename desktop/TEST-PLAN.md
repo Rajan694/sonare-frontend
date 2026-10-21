@@ -248,6 +248,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                                   |
 | `WEB-SEARCH-010` | a category without a query searches for its name                                             |
 | `WEB-SEARCH-011` | the All tab shows artists from their own search, with a picture and page                     |
+| `WEB-SEARCH-012` | pasting a song link fetches the song, renders the row, and plays on click                    |
+| `WEB-SEARCH-013` | pasting a playlist link renders the card and links to /playlist/:id                          |
+| `WEB-SEARCH-014` | pasting an invalid or missing link shows an error with retry                                 |
 
 ## `test/screens/home-offline.test.tsx`
 
@@ -972,6 +975,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-034` | playlist and playlistTracks return metadata and tracks                                             |
 | `WEB-CAT-035` | track resolves best audio stream codec and bitrate, and stream returns StreamInfo                  |
 | `WEB-CAT-036` | stream throws SourceError when no audio or video streams are available                             |
+| `WEB-CAT-085` | parseYouTubeLink parses YouTube URLs across all supported forms or returns null                    |
 
 ## `test/unit/sharedCatalog/youtubeiSource.test.ts`
 

@@ -4,7 +4,6 @@ import {
   createAutoplay,
   findAutoplaySeed,
   isCatalogSong,
-  isQueueEnding,
   needsAutoplay,
 } from '../../../shared/player/autoplay';
 import type { QueueState } from '../../../shared/player/queue';
@@ -148,7 +147,5 @@ describe('autoplay top-up rule', () => {
     expect(AUTOPLAY_COUNT).toBe(10);
     expect(isCatalogSong(t('yt:123'))).toBe(true);
     expect(isCatalogSong(t('local:123'))).toBe(false);
-    expect(isQueueEnding(makeQueue(['yt:a', 'yt:b'], 1))).toBe(true);
-    expect(isQueueEnding(makeQueue(['yt:a', 'yt:b'], 0))).toBe(false);
   });
 });

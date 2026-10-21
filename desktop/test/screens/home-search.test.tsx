@@ -395,4 +395,67 @@ describe('search', () => {
     // The section offers the full list.
     expect(screen.getByRole('button', { name: 'See all artists' })).toBeInTheDocument();
   });
+
+  it('WEB-SEARCH-012 pasting a song link fetches the song, renders the row, and plays on click', async () => {
+    const song = makeTrack({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley' });
+    const rec = recordRequests();
+    server.use(
+      http.get(`${API}/tracks/yt%3AdQw4w9WgXcQ`, () => HttpResponse.json(song)),
+      http.get(`${API}/tracks/yt:dQw4w9WgXcQ`, () => HttpResponse.json(song)),
+    );
+    const player = makePlayer();
+    const { user } = search('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '/search', player);
+    expect(await screen.findByText('Never Gonna Give You Up')).toBeInTheDocument();
+    expect(screen.getAllByText('Rick Astley')[0]).toBeInTheDocument();
+    // Chips bar is dropped
+    expect(screen.queryByRole('button', { name: 'Songs' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/results/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('Never Gonna Give You Up'));
+    expect(player.playTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up' }),
+      expect.any(Array),
+      expect.anything(),
+    );
+    rec.stop();
+    expect(rec.paths().some((p) => p.startsWith('GET /search'))).toBe(false);
+  });
+
+  it('WEB-SEARCH-013 pasting a playlist link renders the card and links to /playlist/:id', async () => {
+    const pl = makePlaylist({ id: 'yt:PL12345', name: 'Chill Vibes', trackCount: 42, kind: 'online' });
+    const rec = recordRequests();
+    server.use(
+      http.get(`${API}/playlists/yt%3APL12345`, () => HttpResponse.json(pl)),
+      http.get(`${API}/playlists/yt:PL12345`, () => HttpResponse.json(pl)),
+    );
+    search('https://www.youtube.com/playlist?list=PL12345');
+    const card = await screen.findByRole('link', { name: /Chill Vibes/ });
+    expect(card).toHaveAttribute('href', '/playlist/yt:PL12345');
+    expect(screen.getByText('Chill Vibes')).toBeInTheDocument();
+    expect(screen.getByText(/42 songs/)).toBeInTheDocument();
+    // Chips bar dropped
+    expect(screen.queryByRole('button', { name: 'Songs' })).not.toBeInTheDocument();
+    rec.stop();
+    expect(rec.paths().some((p) => p.startsWith('GET /search'))).toBe(false);
+  });
+
+  it('WEB-SEARCH-014 pasting an invalid or missing link shows an error with retry', async () => {
+    let fail = true;
+    const song = makeTrack({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley' });
+    server.use(
+      http.get(`${API}/tracks/yt%3AdQw4w9WgXcQ`, () =>
+        fail ? apiError(404, 'NOT_FOUND', 'Track not found') : HttpResponse.json(song),
+      ),
+      http.get(`${API}/tracks/yt:dQw4w9WgXcQ`, () =>
+        fail ? apiError(404, 'NOT_FOUND', 'Track not found') : HttpResponse.json(song),
+      ),
+    );
+    const { user } = search('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(await screen.findByText("Couldn't open this link")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+
+    fail = false;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Never Gonna Give You Up')).toBeInTheDocument();
+  });
 });
