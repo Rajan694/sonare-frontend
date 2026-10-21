@@ -1,7 +1,18 @@
 import { serverFetch } from './serverFetch';
 import { API_BASE, getAccessToken, onAuthChange, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
-import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo, RemovedCount } from '../types';
+import type {
+  Track,
+  Album,
+  Artist,
+  Playlist,
+  SavedPlaylist,
+  Page,
+  User,
+  AppRelease,
+  StreamInfo,
+  RemovedCount,
+} from '../types';
 import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
 import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type { LyricsScript } from '../storage/devicePrefs';
@@ -464,6 +475,10 @@ export const api = {
   // Playlists
   getMyPlaylists() {
     return request<Page<Playlist>>('/me/playlists');
+  },
+
+  getSavedPlaylists() {
+    return request<Page<SavedPlaylist>>('/me/saved-playlists');
   },
 
   // AI (forReference/ai-briefs/CONTRACT.md in the root repo). The AI names songs; songSearch finds them.

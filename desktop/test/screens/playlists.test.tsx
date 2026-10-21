@@ -8,7 +8,7 @@ import { bindAccountGateNavigator } from '../../src/api/accountGate';
 import { clearSession, setSession } from '../../src/api/auth';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, server, useMockServer } from '../helpers/server';
-import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { makePlaylist, makeSavedPlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 import { answerPrompt } from '../helpers/dialogs';
 
 const toast = vi.hoisted(() => vi.fn());
@@ -22,6 +22,7 @@ vi.mock('../../src/storage/downloads', () => ({
 
 useMockServer(
   http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/me/saved-playlists`, () => HttpResponse.json(page([]))),
   http.get(`${API}/me/favourites/ids`, () => HttpResponse.json({ ids: [] })),
 );
 
@@ -340,5 +341,73 @@ describe('playlist page', () => {
       }),
     );
     expect(screen.getByRole('button', { name: 'Remove from your library' })).toBeInTheDocument();
+  });
+
+  it('WEB-PLAYLIST-011 saved YouTube playlists appear in Saved from YouTube section on Playlists screen', async () => {
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/playlists`, () =>
+        HttpResponse.json(page([makePlaylist({ id: 'sonare:1', name: 'Own Playlist' })])),
+      ),
+      http.get(`${API}/me/saved-playlists`, () =>
+        HttpResponse.json(
+          page([
+            makeSavedPlaylist({
+              id: 'yt:PL999',
+              name: 'Lo-Fi Beats',
+              owner: 'Lofi Girl',
+              trackCount: 50,
+              thumbnail: 'https://example.com/thumb.jpg',
+            }),
+          ]),
+        ),
+      ),
+    );
+    renderWithProviders(<Playlists />);
+    expect(await screen.findByRole('link', { name: /Own Playlist/ })).toBeInTheDocument();
+    expect(screen.getByText('Saved from YouTube')).toBeInTheDocument();
+    const savedLink = screen.getByRole('link', { name: /Lo-Fi Beats/ });
+    expect(savedLink).toHaveAttribute('href', '/playlist/yt:PL999');
+    expect(within(savedLink).getByText('Lofi Girl · 50 songs')).toBeInTheDocument();
+    expect(within(savedLink).getByText('YOUTUBE')).toBeInTheDocument();
+    expect(screen.getByText(/3 playlists in your collection/)).toBeInTheDocument();
+  });
+
+  it('WEB-PLAYLIST-012 PlaylistDetail reads saved state from saved playlists, unsaves via DELETE, and fires playlists-changed', async () => {
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/playlists/:id`, () =>
+        HttpResponse.json(makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online', trackCount: 3 })),
+      ),
+      http.get(`${API}/playlists/:id/tracks`, () => HttpResponse.json(page(songs))),
+      http.get(`${API}/me/saved-playlists`, () =>
+        HttpResponse.json(
+          page([makeSavedPlaylist({ id: 'yt:PL1', name: 'Hits', owner: 'Test Channel', trackCount: 3 })]),
+        ),
+      ),
+    );
+    let deletedId: string | undefined;
+    server.use(
+      http.delete(`${API}/me/favourites/albums/:id`, async ({ params }) => {
+        deletedId = String(params.id);
+        return HttpResponse.json({ ok: true });
+      }),
+    );
+    const changedListener = vi.fn();
+    window.addEventListener('sonare:playlists-changed', changedListener);
+    try {
+      const { user } = openPlaylist('yt:PL1');
+      const removeBtn = await screen.findByRole('button', { name: 'Remove from your library' });
+      expect(removeBtn).toBeInTheDocument();
+      await user.click(removeBtn);
+      await waitFor(() => expect(deletedId).toBe('yt:PL1'));
+      expect(changedListener).toHaveBeenCalled();
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Removed from your library', description: 'Hits' }),
+      );
+      expect(await screen.findByRole('button', { name: 'Save to your library' })).toBeInTheDocument();
+    } finally {
+      window.removeEventListener('sonare:playlists-changed', changedListener);
+    }
   });
 });

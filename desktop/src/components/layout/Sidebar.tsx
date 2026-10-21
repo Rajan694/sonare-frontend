@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/cn';
 import { CAPS } from '../../lib/caps';
 import { useModeStore } from '../../store/modeContext';
-import { useMyPlaylists, useAuth } from '../../api/hooks';
+import { useMyPlaylists, useSavedPlaylists, useAuth } from '../../api/hooks';
 import { requireAccount } from '../../api/accountGate';
 import { createPlaylistWithPrompt } from '../../api/newPlaylist';
 import Icon from '../ui/Icon';
@@ -57,6 +57,7 @@ const Sidebar = () => {
   const navigate = useNavigate();
   const { mode } = useModeStore();
   const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists();
+  const { data: savedPlaylistsData } = useSavedPlaylists();
   const { user } = useAuth();
   const collapsed = useAppSelector((s) => s.ui.sidebarCollapsed);
   const dispatch = useAppDispatch();
@@ -70,6 +71,7 @@ const Sidebar = () => {
   const syncLabel = sync.syncing ? 'Syncing' : sync.pending ? 'Sync pending' : 'Synced';
 
   const playlists: Playlist[] = playlistsData?.items || [];
+  const savedPlaylists = savedPlaylistsData?.items || [];
 
   const isActive = (to: string) => {
     if (to === '/playlists') return location.pathname.startsWith('/playlist');
@@ -214,23 +216,54 @@ const Sidebar = () => {
                   Sign in to make playlists
                 </Link>
               )
-            ) : playlists.length === 0 ? (
+            ) : playlists.length === 0 && savedPlaylists.length === 0 ? (
               !collapsed && <span className="text-body-s text-t3 px-3 py-2">No playlists created</span>
             ) : (
-              playlists.map((pl, i) => {
-                const { icon, cls } = playlistIcon(pl.kind);
-                return (
+              <>
+                {playlists.map((pl, i) => {
+                  const { icon, cls } = playlistIcon(pl.kind);
+                  return (
+                    <Link
+                      key={pl.id}
+                      to={`/playlist/${pl.id}`}
+                      className={cn('sitem h-11', collapsed && 'justify-center px-0')}
+                      onContextMenu={(e) => openPlaylistMenu(pl, e)}
+                      {...tip(pl.name)}
+                    >
+                      <Artwork
+                        src={pl.thumbnail || `/api/v1/playlists/${pl.id}/artwork?size=64`}
+                        alt={pl.name}
+                        variant={artVariants[i % artVariants.length]}
+                        size={30}
+                        radius="xs"
+                      />
+                      {!collapsed && (
+                        <>
+                          <span className="flex flex-col grow gap-px min-w-0">
+                            <span className="text-label-l text-t1 truncate">{pl.name}</span>
+                            <span className="text-label-s text-t3 truncate capitalize">
+                              {`${pl.kind}${pl.trackCount !== null ? ` · ${pl.trackCount}` : ''}`}
+                            </span>
+                          </span>
+                          <span className={cn('flex-none', cls)}>
+                            <Icon name={icon} size={14} />
+                          </span>
+                        </>
+                      )}
+                    </Link>
+                  );
+                })}
+                {savedPlaylists.map((pl, i) => (
                   <Link
                     key={pl.id}
                     to={`/playlist/${pl.id}`}
                     className={cn('sitem h-11', collapsed && 'justify-center px-0')}
-                    onContextMenu={(e) => openPlaylistMenu(pl, e)}
                     {...tip(pl.name)}
                   >
                     <Artwork
                       src={pl.thumbnail || `/api/v1/playlists/${pl.id}/artwork?size=64`}
                       alt={pl.name}
-                      variant={artVariants[i % artVariants.length]}
+                      variant={artVariants[(playlists.length + i) % artVariants.length]}
                       size={30}
                       radius="xs"
                     />
@@ -238,18 +271,19 @@ const Sidebar = () => {
                       <>
                         <span className="flex flex-col grow gap-px min-w-0">
                           <span className="text-label-l text-t1 truncate">{pl.name}</span>
-                          <span className="text-label-s text-t3 truncate capitalize">
-                            {`${pl.kind}${pl.trackCount !== null ? ` · ${pl.trackCount}` : ''}`}
+                          <span className="text-label-s text-t3 truncate">
+                            {pl.owner || 'YouTube'}
+                            {pl.trackCount !== null ? ` · ${pl.trackCount}` : ''}
                           </span>
                         </span>
-                        <span className={cn('flex-none', cls)}>
-                          <Icon name={icon} size={14} />
+                        <span className="flex-none text-acc" title="Saved from YouTube">
+                          <Icon name="cloud" size={14} />
                         </span>
                       </>
                     )}
                   </Link>
-                );
-              })
+                ))}
+              </>
             )}
           </div>
         </div>

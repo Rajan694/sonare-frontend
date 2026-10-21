@@ -748,6 +748,8 @@ describe('shared catalog: catalog operations', () => {
     expect(pl.id).toBe('yt:PL1234567890');
     expect(pl.name).toBe('Greatest Hits Album');
     expect(pl.kind).toBe('online');
+    expect(pl.owner).toBe('Rick Astley');
+    expect(pl.thumbnail).toBe('https://piped.video/playlist_thumb.jpg');
 
     const tracks = await catalog.playlistTracks('yt:PL1234567890');
     expect(tracks.items).toHaveLength(1);

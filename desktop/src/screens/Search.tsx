@@ -342,7 +342,11 @@ const Search = () => {
                   <div className="flex gap-4 flex-wrap pt-2">
                     <Card
                       title={playlistTitle(linkItem.playlist)}
-                      subtitle={playlistSubtitle(linkItem.playlist)}
+                      subtitle={
+                        linkItem.playlist.owner
+                          ? `Playlist · ${linkItem.playlist.owner}`
+                          : playlistSubtitle(linkItem.playlist)
+                      }
                       artVariant="a1"
                       thumbnail={
                         linkItem.playlist.thumbnail || `/api/v1/albums/${linkItem.playlist.id}/artwork?size=140`

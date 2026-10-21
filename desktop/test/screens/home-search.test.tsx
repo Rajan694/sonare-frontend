@@ -458,4 +458,26 @@ describe('search', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }));
     expect(await screen.findByText('Never Gonna Give You Up')).toBeInTheDocument();
   });
+
+  it('WEB-SEARCH-015 pasting a playlist link with owner displays "Playlist · <owner>" and thumbnail', async () => {
+    const pl = makePlaylist({
+      id: 'yt:PL987',
+      name: 'Synthwave Night',
+      kind: 'online',
+      owner: 'Neon Records',
+      thumbnail: 'https://example.com/synth.jpg',
+      trackCount: 25,
+    });
+    server.use(
+      http.get(`${API}/playlists/yt%3APL987`, () => HttpResponse.json(pl)),
+      http.get(`${API}/playlists/yt:PL987`, () => HttpResponse.json(pl)),
+    );
+    search('https://www.youtube.com/playlist?list=PL987');
+    const card = await screen.findByRole('link', { name: /Synthwave Night/ });
+    expect(card).toHaveAttribute('href', '/playlist/yt:PL987');
+    expect(screen.getByText('Synthwave Night')).toBeInTheDocument();
+    expect(screen.getByText('Playlist · Neon Records')).toBeInTheDocument();
+    const img = screen.getByRole('img', { name: 'Synthwave Night' });
+    expect(img).toHaveAttribute('src', 'https://example.com/synth.jpg');
+  });
 });

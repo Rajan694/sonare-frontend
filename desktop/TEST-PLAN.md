@@ -94,6 +94,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-038` | there is no output button: Sonare plays on the system output                       |
 | `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
 | `WEB-LAYOUT-040` | upcoming list keeps a minimum usable height and content scrolls                    |
+| `WEB-LAYOUT-041` | lists saved YouTube playlists after user playlists with cloud badge and owner      |
 
 ## `test/components/music.test.tsx`
 
@@ -251,6 +252,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SEARCH-012` | pasting a song link fetches the song, renders the row, and plays on click                    |
 | `WEB-SEARCH-013` | pasting a playlist link renders the card and links to /playlist/:id                          |
 | `WEB-SEARCH-014` | pasting an invalid or missing link shows an error with retry                                 |
+| `WEB-SEARCH-015` | pasting a playlist link with owner displays "Playlist · <owner>" and thumbnail               |
 
 ## `test/screens/home-offline.test.tsx`
 
@@ -353,22 +355,24 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/playlists.test.tsx`
 
-| ID                  | Use case                                                                                 |
-| :------------------ | :--------------------------------------------------------------------------------------- |
-| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one           |
-| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                 |
-| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                      |
-| `WEB-PLAYLISTS-004` | in Offline Mode the stored own playlists are shown with device counts; no server call    |
-| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link           |
-| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                       |
-| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                       |
-| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position                   |
-| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                          |
-| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order           |
-| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu           |
-| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest                   |
-| `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so |
-| `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in    |
+| ID                  | Use case                                                                                               |
+| :------------------ | :----------------------------------------------------------------------------------------------------- |
+| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one                         |
+| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                               |
+| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                                    |
+| `WEB-PLAYLISTS-004` | in Offline Mode the stored own playlists are shown with device counts; no server call                  |
+| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link                         |
+| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                                     |
+| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                                     |
+| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position                                 |
+| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                                        |
+| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order                         |
+| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu                         |
+| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest                                 |
+| `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so               |
+| `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in                  |
+| `WEB-PLAYLIST-011`  | saved YouTube playlists appear in Saved from YouTube section on Playlists screen                       |
+| `WEB-PLAYLIST-012`  | PlaylistDetail reads saved state from saved playlists, unsaves via DELETE, and fires playlists-changed |
 
 ## `test/screens/offline-playlists.test.tsx`
 
@@ -520,6 +524,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-API-019` | explains upstream outages, unreachable servers and other failures in plain words |
 | `WEB-API-020` | saving an album or following an artist sends what the app knows about it         |
 | `WEB-API-021` | queries not-played-lately with limit parameter                                   |
+| `WEB-API-022` | queries /me/saved-playlists to fetch saved YouTube playlists                     |
 
 ## `test/unit/audioDemux.test.ts`
 
@@ -737,6 +742,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOOK-018` | useLibrarySongs paging and loadAll                                                   |
 | `WEB-HOOK-019` | useLibrarySongs: enabled=false prevents fetching                                     |
 | `WEB-HOOK-020` | useNotPlayedLately: fetches when signed in and enabled, skips for guests or disabled |
+| `WEB-HOOK-021` | useSavedPlaylists refetches when playlists change anywhere in the app                |
 
 ## `test/unit/lib.test.ts`
 

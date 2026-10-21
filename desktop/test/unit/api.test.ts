@@ -307,6 +307,22 @@ describe('api client: expired access tokens', () => {
     await expect(api.getSettings()).rejects.toMatchObject({ status: 401 });
     expect(refreshes).toBe(0);
   });
+
+  it('WEB-API-022 queries /me/saved-playlists to fetch saved YouTube playlists', async () => {
+    let requested = false;
+    server.use(
+      http.get(`${API}/me/saved-playlists`, () => {
+        requested = true;
+        return HttpResponse.json(
+          page([{ id: 'yt:PL123', name: 'Saved', owner: 'Owner', trackCount: 5, addedAt: 12345 }]),
+        );
+      }),
+    );
+    const res = await api.getSavedPlaylists();
+    expect(requested).toBe(true);
+    expect(res.items[0].id).toBe('yt:PL123');
+    expect(res.items[0].owner).toBe('Owner');
+  });
 });
 
 describe('loadErrorMessage', () => {

@@ -10,6 +10,7 @@ import {
   useLibraryTracks,
   useLyrics,
   useMyPlaylists,
+  useSavedPlaylists,
   useNotPlayedLately,
   usePlaylist,
   useSearch,
@@ -17,7 +18,7 @@ import {
 import { setFavourite } from '../../src/api/favourites';
 import { clearSession, setSession } from '../../src/api/auth';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
-import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { makePlaylist, makeSavedPlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 
 useMockServer();
 
@@ -175,6 +176,20 @@ describe('account data', () => {
     await waitFor(() => expect(result.current.data?.items[0].name).toBe('v1'));
     act(() => notifyPlaylistsChanged());
     await waitFor(() => expect(result.current.data?.items[0].name).toBe('v2'));
+  });
+
+  it('WEB-HOOK-021 useSavedPlaylists refetches when playlists change anywhere in the app', async () => {
+    setSession('a', 'r', testUser);
+    let calls = 0;
+    server.use(
+      http.get(`${API}/me/saved-playlists`, () =>
+        HttpResponse.json(page([makeSavedPlaylist({ name: `saved-v${++calls}` })])),
+      ),
+    );
+    const { result } = renderHook(() => useSavedPlaylists());
+    await waitFor(() => expect(result.current.data?.items[0].name).toBe('saved-v1'));
+    act(() => notifyPlaylistsChanged());
+    await waitFor(() => expect(result.current.data?.items[0].name).toBe('saved-v2'));
   });
 
   it('WEB-HOOK-015 the favourites list refetches after a heart is saved elsewhere', async () => {

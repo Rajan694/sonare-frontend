@@ -493,6 +493,16 @@ export const useMyPlaylists = (enabled: boolean = true) => {
   return result;
 };
 
+export const useSavedPlaylists = (enabled: boolean = true) => {
+  const result = useAuthAsync(() => api.getSavedPlaylists(), [], { accountOnly: true, enabled });
+  const { refetch } = result;
+  useEffect(() => {
+    window.addEventListener(PLAYLISTS_CHANGED, refetch);
+    return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch);
+  }, [refetch]);
+  return result;
+};
+
 export const useLyrics = (
   track: Pick<Track, 'id' | 'title' | 'artist' | 'durationMs'> | null | undefined,
   prefer: 'synced' | 'plain' = 'synced',
