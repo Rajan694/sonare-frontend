@@ -332,7 +332,11 @@ export const api = {
   aiPlaylistDraft: (body: { prompt: string; count: number }) =>
     request<AiPlaylistDraft>('/me/ai/playlist', { method: 'POST', body }),
   /** Signed in or not; the token goes along when there is one. */
-  aiTitles: (items: PendingTitle[]) => request<AiTitleFixes>('/ai/titles', { method: 'POST', body: { items } }),
+  aiTitles: (items: PendingTitle[], options: { wait?: boolean } = {}) =>
+    request<AiTitleFixes>('/ai/titles', {
+      method: 'POST',
+      body: { items, ...(options.wait ? { wait: true } : {}) },
+    }),
   /** The songs on the first page of a song search (in-app YouTube first, like any search). */
   songSearch: async (q: string): Promise<Track[]> => {
     const page = await api.search(q, 'songs');

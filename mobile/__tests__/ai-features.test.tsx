@@ -14,6 +14,8 @@ import { useAiStore } from '../src/store/ai';
 import { setAppConfig } from '../src/youtube/appConfig';
 import * as NetInfo from '@react-native-community/netinfo';
 import type { AiPick } from '../../shared/apiTypes';
+import { downloadName, useDownloadsStore } from '../src/store/downloads';
+import { SonareDownloads } from '../src/native/SonareDownloads';
 import { alice, makePlaylist, makeTrack, nav, page, route } from '../test-utils';
 
 jest.mock('@react-navigation/native', () => require('../test-utils').navigationMock());
@@ -274,5 +276,239 @@ describe('Create with AI', () => {
     });
     expect(api.search).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
+  });
+
+  describe('Short AI titles for downloads (M7)', () => {
+    const messyTrack = makeTrack({
+      id: 'yt:dQw4w9WgXcQ',
+      title: 'Rick Astley - Never Gonna Give You Up (Official Music Video) [Remastered 4K]',
+      artist: 'RickAstleyVEVO',
+      source: 'server',
+    });
+
+    beforeEach(async () => {
+      for (const id of Object.keys(useDownloadsStore.getState().items)) {
+        await useDownloadsStore.getState().remove(id);
+      }
+      useDownloadsStore.setState({
+        ready: true,
+        items: {},
+        location: { label: 'Music/Sonare' },
+      });
+      jest.spyOn(SonareDownloads, 'start').mockResolvedValue(undefined);
+      jest.spyOn(api, 'stream').mockResolvedValue({
+        url: 'https://cdn.sonare.test/audio.m4a',
+        mimeType: 'audio/mp4',
+        contentLength: 4000000,
+      } as any);
+    });
+
+    it('MOB-AI-010 enqueue adds items immediately with original titles and holds start until AI titles resolve, then downloadName uses short title', async () => {
+      useAiStore.setState({ available: true });
+      useModeStore.setState({ mode: 'online' });
+
+      let resolveTitles!: (val: any) => void;
+      const titlesPromise = new Promise((resolve) => {
+        resolveTitles = resolve;
+      });
+      const aiTitlesSpy = jest.spyOn(api, 'aiTitles').mockImplementation((() => titlesPromise) as any);
+
+      // 1. Enqueue returns immediately (alert does not wait)
+      const count = useDownloadsStore.getState().enqueue([messyTrack]);
+      expect(count).toBe(1);
+
+      // 2. Items appear immediately in the downloads list with original title and queued status
+      const initialItem = useDownloadsStore.getState().items[messyTrack.id];
+      expect(initialItem).toBeDefined();
+      expect(initialItem.title).toBe(messyTrack.title);
+      expect(initialItem.artist).toBe(messyTrack.artist);
+      expect(initialItem.status).toBe('queued');
+
+      // 3. Download has NOT started because it is held for AI titles
+      expect(SonareDownloads.start).not.toHaveBeenCalled();
+      expect(aiTitlesSpy).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ id: 'dQw4w9WgXcQ' })]),
+        { wait: true },
+      );
+
+      // 4. Resolve AI title response
+      await act(async () => {
+        resolveTitles({
+          fixes: {
+            dQw4w9WgXcQ: {
+              title: 'Never Gonna Give You Up',
+              artist: 'Rick Astley',
+            },
+          },
+        });
+        await new Promise((r) => setTimeout(r, 20));
+      });
+
+      // 5. Title/artist are patched in the store
+      const updatedItem = useDownloadsStore.getState().items[messyTrack.id];
+      expect(updatedItem.title).toBe('Never Gonna Give You Up');
+      expect(updatedItem.artist).toBe('Rick Astley');
+
+      // 6. Download started with downloadName using the short title
+      await waitFor(() =>
+        expect(SonareDownloads.start).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: messyTrack.id,
+            title: 'Never Gonna Give You Up',
+            artist: 'Rick Astley',
+            baseName: downloadName(updatedItem),
+          }),
+        ),
+      );
+      expect(downloadName(updatedItem)).toBe('Rick Astley - Never Gonna Give You Up [dQw4w9WgXcQ]');
+
+      await useDownloadsStore.getState().remove(messyTrack.id);
+    });
+
+    it('MOB-AI-011 with AI off or offline, enqueue does not hold download start and uses original title in downloadName', async () => {
+      const aiTitlesSpy = jest.spyOn(api, 'aiTitles');
+
+      // A) AI is off
+      const trackOff = makeTrack({
+        id: 'yt:track_off_123',
+        title: 'Rick Astley - Never Gonna Give You Up (Official Music Video) [Remastered 4K]',
+        artist: 'RickAstleyVEVO',
+        source: 'server',
+      });
+      useAiStore.setState({ available: false });
+      useModeStore.setState({ mode: 'online' });
+
+      useDownloadsStore.getState().enqueue([trackOff]);
+      expect(aiTitlesSpy).not.toHaveBeenCalled();
+
+      // Download starts right away (no hold) with original title
+      await waitFor(() =>
+        expect(SonareDownloads.start).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: trackOff.id,
+            title: trackOff.title,
+            artist: trackOff.artist,
+            baseName: downloadName(trackOff),
+          }),
+        ),
+      );
+
+      await useDownloadsStore.getState().remove(trackOff.id);
+      jest.clearAllMocks();
+
+      // B) Offline mode
+      const trackOffline = makeTrack({
+        id: 'yt:track_offline_456',
+        title: 'Arijit Singh - Kesariya (Official Audio) [Full HD]',
+        artist: 'Sony Music India',
+        source: 'server',
+      });
+      useAiStore.setState({ available: true });
+      useModeStore.setState({ mode: 'offline' });
+
+      useDownloadsStore.getState().enqueue([trackOffline]);
+      expect(aiTitlesSpy).not.toHaveBeenCalled();
+
+      // Download starts without waiting for AI
+      await waitFor(() =>
+        expect(SonareDownloads.start).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: trackOffline.id,
+            title: trackOffline.title,
+            baseName: downloadName(trackOffline),
+          }),
+        ),
+      );
+
+      await useDownloadsStore.getState().remove(trackOffline.id);
+    });
+
+    it('MOB-AI-012 download start proceeds with original title if AI titles fail or time out, and running downloads are untouched', async () => {
+      useAiStore.setState({ available: true });
+      useModeStore.setState({ mode: 'online' });
+
+      // A) Failure: api.aiTitles rejects
+      const trackFail = makeTrack({
+        id: 'yt:track_fail_789',
+        title: 'Katha Live Broadcast Stream [Official HD]',
+        artist: 'Channel',
+        source: 'server',
+      });
+      jest.spyOn(api, 'aiTitles').mockRejectedValue(new Error('AI unavailable'));
+
+      useDownloadsStore.getState().enqueue([trackFail]);
+
+      // Holds released and starts with original title
+      await waitFor(() =>
+        expect(SonareDownloads.start).toHaveBeenCalledWith(
+          expect.objectContaining({
+            id: trackFail.id,
+            title: trackFail.title,
+            baseName: downloadName(trackFail),
+          }),
+        ),
+      );
+
+      await useDownloadsStore.getState().remove(trackFail.id);
+      jest.clearAllMocks();
+
+      // B) Running downloads are never touched by title resolution
+      const runningTrack = makeTrack({
+        id: 'yt:running123',
+        title: 'Original Long Running Broadcast Title Live Stream [4K]',
+        artist: 'Broadcaster',
+        source: 'server',
+      });
+
+      let resolveTitles!: (val: any) => void;
+      jest.spyOn(api, 'aiTitles').mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveTitles = resolve;
+          }) as any,
+      );
+
+      // Put item in store already downloading
+      useDownloadsStore.setState({
+        items: {
+          [runningTrack.id]: {
+            id: runningTrack.id,
+            title: runningTrack.title,
+            artist: runningTrack.artist,
+            artistId: runningTrack.artistId,
+            album: null,
+            albumId: null,
+            durationMs: runningTrack.durationMs,
+            status: 'downloading',
+            quality: 'high',
+            format: 'opus',
+            totalBytes: 5000,
+            receivedBytes: 2500,
+            addedAt: Date.now(),
+          },
+        },
+      });
+
+      // Calling enqueue with the same track shouldn't queue or touch it
+      const added = useDownloadsStore.getState().enqueue([runningTrack]);
+      expect(added).toBe(0);
+
+      // Even if fixes arrive, downloading item is not touched
+      if (resolveTitles) {
+        await act(async () => {
+          resolveTitles({
+            fixes: {
+              running123: { title: 'Clean Short Title', artist: 'Clean Artist' },
+            },
+          });
+          await new Promise((r) => setTimeout(r, 20));
+        });
+      }
+
+      expect(useDownloadsStore.getState().items[runningTrack.id].title).toBe(runningTrack.title);
+      expect(useDownloadsStore.getState().items[runningTrack.id].artist).toBe(runningTrack.artist);
+
+      await useDownloadsStore.getState().remove(runningTrack.id);
+    });
   });
 });

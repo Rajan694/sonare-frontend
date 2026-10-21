@@ -1,10 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 import { create } from 'zustand';
+import { shortTitlesFor } from '../../../shared/ai/downloadTitles';
 import { api } from '../data/api';
 import { absoluteUrl } from '../data/config';
 import { API_QUALITY, useSettingsStore, type AudioQuality, type DownloadFormat } from '../data/settings';
 import type { StreamInfo, Track } from '../data/types';
 import { SonareDownloads } from '../native/SonareDownloads';
+import { useAiStore } from './ai';
+import { useModeStore } from './mode';
 import { refreshInAppSession } from '../youtube/inApp';
 import { downloadName, idInFileName } from '../../../shared/downloads/fileNames';
 
@@ -114,10 +118,19 @@ const MAX_URL_REFRESHES = 3;
 
 /** Ids the native side is working on. */
 const running = new Set<string>();
+/** Newly enqueued ids waiting for their title step before starting download. */
+const held = new Set<string>();
 const refreshes: Record<string, number> = {};
 let persistTimer: ReturnType<typeof setTimeout> | undefined;
 let hydrated: Promise<void> | null = null;
 let listening = false;
+
+let networkUp = true;
+NetInfo.addEventListener((state) => {
+  networkUp = !!state.isConnected && state.isInternetReachable !== false;
+});
+
+const isOnline = () => useModeStore.getState().mode === 'online' && networkUp;
 
 const extensionFor = (mimeType: string) => (/mp4|m4a|aac/i.test(mimeType) ? 'm4a' : 'webm');
 /** "audio/webm; codecs=opus" -> "audio/webm", which is what MediaStore and SAF want. */
@@ -150,7 +163,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
 
   const pump = () => {
     const queued = Object.values(get().items)
-      .filter((i) => i.status === 'queued' && !running.has(i.id))
+      .filter((i) => i.status === 'queued' && !running.has(i.id) && !held.has(i.id))
       .sort((a, b) => a.addedAt - b.addedAt);
     for (const item of queued) {
       if (running.size >= MAX_PARALLEL) break;
@@ -313,6 +326,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       const next = { ...items };
       let added = 0;
       const now = Date.now();
+      const newlyAdded: Track[] = [];
       for (const t of tracks) {
         if (t.source !== 'server') continue;
         const existing = next[t.id];
@@ -321,6 +335,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
             next[t.id] = { ...existing, status: 'queued', error: undefined };
           continue;
         }
+        newlyAdded.push(t);
         next[t.id] = {
           id: t.id,
           title: t.title,
@@ -341,6 +356,36 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       }
       set({ items: next });
       persist(true);
+
+      if (newlyAdded.length > 0 && useAiStore.getState().available && isOnline()) {
+        for (const t of newlyAdded) held.add(t.id);
+        shortTitlesFor(newlyAdded, (batch) => api.aiTitles(batch, { wait: true }))
+          .then((fixes) => {
+            let changed = false;
+            const currentItems = { ...get().items };
+            for (const t of newlyAdded) {
+              const fix = fixes.get(t.id) || fixes.get(t.id.replace(/^yt:/, ''));
+              const it = currentItems[t.id];
+              // Items already downloading/done are never touched
+              if (fix && it && (it.status === 'queued' || it.status === 'paused' || it.status === 'failed')) {
+                if (it.title !== fix.title || it.artist !== fix.artist) {
+                  currentItems[t.id] = { ...it, title: fix.title, artist: fix.artist };
+                  changed = true;
+                }
+              }
+            }
+            if (changed) {
+              set({ items: currentItems });
+              persist(true);
+            }
+          })
+          .catch(() => {})
+          .finally(() => {
+            for (const t of newlyAdded) held.delete(t.id);
+            pump();
+          });
+      }
+
       pump();
       return added;
     },
@@ -378,6 +423,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
       let item = get().items[id];
       if (!item) return { fileDeleted: false };
       if (item.status !== 'done') {
+        held.delete(id);
         // Stops it too, if it's running.
         await SonareDownloads.discard(id).catch(() => {});
         running.delete(id);

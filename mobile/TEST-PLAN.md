@@ -599,17 +599,20 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/ai-features.test.tsx`
 
-| ID           | Use case                                                                                         |
-| :----------- | :----------------------------------------------------------------------------------------------- |
-| `MOB-AI-001` | with AI off, signed out, or offline there is no AI on Home or Playlists, and nothing asks the AI |
-| `MOB-AI-002` | the store follows app-config, and an AI_UNAVAILABLE answer turns AI off                          |
-| `MOB-AI-003` | shows the songs found for the picks, with their reasons, once per session                        |
-| `MOB-AI-004` | shows nothing for no picks, an error, or fewer than 3 songs found                                |
-| `MOB-AI-005` | asks only when tapped, runs the plan’s searches and lists their songs once each                  |
-| `MOB-AI-006` | a failed AI search says so in one line                                                           |
-| `MOB-AI-007` | makes the playlist from the songs found and opens it                                             |
-| `MOB-AI-008` | too few songs found: says so and makes nothing                                                   |
-| `MOB-AI-009` | Cancel while the AI is thinking makes nothing                                                    |
+| ID           | Use case                                                                                                                        |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `MOB-AI-001` | with AI off, signed out, or offline there is no AI on Home or Playlists, and nothing asks the AI                                |
+| `MOB-AI-002` | the store follows app-config, and an AI_UNAVAILABLE answer turns AI off                                                         |
+| `MOB-AI-003` | shows the songs found for the picks, with their reasons, once per session                                                       |
+| `MOB-AI-004` | shows nothing for no picks, an error, or fewer than 3 songs found                                                               |
+| `MOB-AI-005` | asks only when tapped, runs the plan’s searches and lists their songs once each                                                 |
+| `MOB-AI-006` | a failed AI search says so in one line                                                                                          |
+| `MOB-AI-007` | makes the playlist from the songs found and opens it                                                                            |
+| `MOB-AI-008` | too few songs found: says so and makes nothing                                                                                  |
+| `MOB-AI-009` | Cancel while the AI is thinking makes nothing                                                                                   |
+| `MOB-AI-010` | enqueue adds items immediately with original titles and holds start until AI titles resolve, then downloadName uses short title |
+| `MOB-AI-011` | with AI off or offline, enqueue does not hold download start and uses original title in downloadName                            |
+| `MOB-AI-012` | download start proceeds with original title if AI titles fail or time out, and running downloads are untouched                  |
 
 ## `__tests__/spatial.test.tsx`
 
