@@ -373,9 +373,10 @@ export const api = {
   },
 
   getLibraryTracks(params?: {
-    sort?: 'addedAt' | 'playCount' | 'title';
+    filter?: 'all' | 'liked';
+    sort?: 'addedAt' | 'title' | 'artist' | 'album' | 'durationMs' | 'playCount';
     order?: 'asc' | 'desc';
-    source?: 'all' | 'server';
+    limit?: number;
     cursor?: string;
   }) {
     return request<Page<Track>>('/me/library/tracks', { params });

@@ -25,6 +25,7 @@ export interface PagedList<T> {
   moreError: string | null;
   loadMore: () => void;
   refetch: () => void;
+  nextCursor?: string | null;
 }
 
 /**
@@ -114,6 +115,7 @@ export const usePagedList = <T extends { id: string }>(
     moreError,
     loadMore,
     refetch,
+    nextCursor,
   };
 };
 
@@ -326,16 +328,120 @@ export const usePlaylistTracks = (id: string | undefined, cursor?: string, enabl
 
 // User /me hooks (wait for auth settlement and react to login)
 export const useLibraryTracks = (params?: {
-  sort?: 'addedAt' | 'playCount' | 'title';
+  filter?: 'all' | 'liked';
+  sort?: 'addedAt' | 'title' | 'artist' | 'album' | 'durationMs' | 'playCount';
   order?: 'asc' | 'desc';
-  source?: 'all' | 'server';
+  limit?: number;
   cursor?: string;
 }) => {
   return useAuthAsync(
     () => api.getLibraryTracks(params),
-    [params?.sort, params?.order, params?.source, params?.cursor],
+    [params?.filter, params?.sort, params?.order, params?.limit, params?.cursor],
     { accountOnly: true },
   );
+};
+
+export interface LibrarySongs {
+  items: Track[];
+  loading: boolean;
+  error: Error | null;
+  hasMore: boolean;
+  loadingMore: boolean;
+  moreError: string | null;
+  loadMore: () => void;
+  refetch: () => void;
+  nextCursor?: string | null;
+  /** meta.total from the first page, or null until it arrives. */
+  total: number | null;
+  /** Fetch every remaining page and return the full list (for Play all / Shuffle / filters). */
+  loadAll: () => Promise<Track[]>;
+}
+
+type SortKey = 'addedAt' | 'title' | 'artist' | 'album' | 'durationMs' | 'playCount';
+
+/**
+ * Paged library songs from the server. Enabled only when signed in and online.
+ */
+export const useLibrarySongs = ({
+  filter,
+  sort,
+  enabled: enabledProp = true,
+}: {
+  filter: 'all' | 'liked';
+  sort: { key: SortKey; desc: boolean } | null;
+  enabled?: boolean;
+}): LibrarySongs => {
+  const { user, ready } = useAuth();
+  const [total, setTotal] = useState<number | null>(null);
+  const [loadedAll, setLoadedAll] = useState<Track[] | null>(null);
+  const generation = useRef(0);
+
+  // Include user id, readiness, and online state in enabled.
+  const enabled = enabledProp && ready && !!user;
+
+  const sortKey = sort?.key ?? 'addedAt';
+  // Only send order when it differs from the natural default for the field.
+  const naturalDesc = sortKey === 'addedAt' || sortKey === 'playCount';
+  const isReversed = sort ? sort.desc !== naturalDesc : false;
+  const effectiveOrder: 'asc' | 'desc' | undefined = isReversed ? (naturalDesc ? 'asc' : 'desc') : undefined;
+
+  // Reset loadedAll and total, and bump generation when query params, auth, or enabled changes
+  useEffect(() => {
+    generation.current += 1;
+    setLoadedAll(null);
+    setTotal(null);
+  }, [filter, sortKey, effectiveOrder, user?.id, ready, enabled]);
+
+  const fetchPage = useCallback(
+    (cursor?: string) =>
+      api.getLibraryTracks({ filter, sort: sortKey, order: effectiveOrder, limit: 100, cursor }).then((page) => {
+        if (!cursor && page.meta?.total !== undefined) setTotal(page.meta.total);
+        return page;
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [filter, sortKey, effectiveOrder, user?.id, ready],
+  );
+
+  const list = usePagedList(fetchPage, [filter, sortKey, effectiveOrder, user?.id, ready], { enabled });
+
+  const loadAll = useCallback(async (): Promise<Track[]> => {
+    if (loadedAll) return loadedAll;
+    if (!list.loading && !list.hasMore) {
+      setLoadedAll(list.items);
+      return list.items;
+    }
+    const gen = generation.current;
+    let all: Track[] = [...list.items];
+    let cursor = list.nextCursor;
+
+    if (all.length === 0 && !cursor) {
+      const first = await api.getLibraryTracks({ filter, sort: sortKey, order: effectiveOrder, limit: 100 });
+      if (gen !== generation.current) return [];
+      all = first.items;
+      cursor = first.meta?.nextCursor;
+    }
+
+    while (cursor) {
+      const page = await api.getLibraryTracks({ filter, sort: sortKey, order: effectiveOrder, limit: 100, cursor });
+      if (gen !== generation.current) return [];
+      all = [...all, ...page.items];
+      cursor = page.meta?.nextCursor;
+    }
+
+    if (gen === generation.current) {
+      setLoadedAll(all);
+    }
+    return all;
+  }, [loadedAll, list.loading, list.hasMore, list.items, list.nextCursor, filter, sortKey, effectiveOrder]);
+
+  return {
+    ...list,
+    items: loadedAll ?? list.items,
+    hasMore: loadedAll ? false : list.hasMore,
+    nextCursor: loadedAll ? null : list.nextCursor,
+    total,
+    loadAll,
+  };
 };
 
 export const useLibraryAlbums = (cursor?: string) => {

@@ -23,11 +23,15 @@ describe('library (desktop window)', () => {
     expect(screen.getByRole('link', { name: 'Folders' })).toHaveAttribute('href', '/folders');
     expect(screen.queryByRole('button', { name: 'Albums' })).not.toBeInTheDocument();
     songs.unmount();
-    for (const view of ['albums', 'artists', 'genres']) {
+    for (const view of ['albums', 'artists', 'favourites', 'most-played']) {
       const other = renderWithProviders(<Library />, { route: `/library?view=${view}`, mode: 'offline' });
       expect(screen.queryByRole('link', { name: 'Folders' })).not.toBeInTheDocument();
       other.unmount();
     }
+    // ?view=genres falls back to Songs, so Folders is shown
+    const genres = renderWithProviders(<Library />, { route: '/library?view=genres', mode: 'offline' });
+    expect(screen.getByRole('link', { name: 'Folders' })).toBeInTheDocument();
+    genres.unmount();
   });
 
   it('DSK-052 an old ?view=folders link opens the Songs tab', () => {

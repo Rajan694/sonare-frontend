@@ -6,6 +6,7 @@ import {
   useAuth,
   useDebounce,
   useFavourites,
+  useLibrarySongs,
   useLibraryTracks,
   useLyrics,
   useMyPlaylists,
@@ -214,5 +215,50 @@ describe('account data', () => {
     await waitFor(() => expect(result.current.error?.message).toBe('No lyrics for this song'));
     // The backend may never have seen a song found in-app: it looks the lyrics up by these.
     expect(Object.fromEntries(asked!)).toMatchObject({ title: 'Song A', artist: 'Band B', durationMs: '201000' });
+  });
+
+  it('WEB-HOOK-018 useLibrarySongs: loadAll continues from loaded cursor without refetching first page', async () => {
+    setSession('a', 'r', testUser);
+    const track1 = makeTrack({ id: 'yt:t1', title: 'Song 1' });
+    const track2 = makeTrack({ id: 'yt:t2', title: 'Song 2' });
+    server.use(
+      http.get(`${API}/me/library/tracks`, ({ request }) => {
+        const url = new URL(request.url);
+        const cursor = url.searchParams.get('cursor');
+        if (cursor === 'c1') {
+          return HttpResponse.json(page([track2]));
+        }
+        return HttpResponse.json(page([track1], 'c1'));
+      }),
+    );
+    const { result } = renderHook(() => useLibrarySongs({ filter: 'all', sort: null }));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.hasMore).toBe(true);
+    expect(result.current.nextCursor).toBe('c1');
+
+    const rec = recordRequests();
+    let all: any[] = [];
+    await act(async () => {
+      all = await result.current.loadAll();
+    });
+
+    expect(all).toEqual([track1, track2]);
+    // Verifying it did NOT make a request for the first page again (no cursor)
+    const paths = rec.paths();
+    expect(paths).toContain('GET /me/library/tracks?filter=all&sort=addedAt&limit=100&cursor=c1');
+    const firstPageFetches = paths.filter((p) => p.startsWith('GET /me/library/tracks') && !p.includes('cursor='));
+    expect(firstPageFetches).toHaveLength(0);
+    rec.stop();
+  });
+
+  it('WEB-HOOK-019 useLibrarySongs: enabled=false prevents fetching', async () => {
+    setSession('a', 'r', testUser);
+    const rec = recordRequests();
+    const { result } = renderHook(() => useLibrarySongs({ filter: 'all', sort: null, enabled: false }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.items).toHaveLength(0);
+    expect(rec.paths().filter((p) => p.startsWith('GET /me/library/tracks'))).toHaveLength(0);
+    rec.stop();
   });
 });

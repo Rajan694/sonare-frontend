@@ -26,7 +26,6 @@ const LIBRARY_ITEMS = [
   { to: '/library', icon: 'music' as const, label: 'Songs' },
   { to: '/library?view=albums', icon: 'disc' as const, label: 'Albums' },
   { to: '/library?view=artists', icon: 'mic' as const, label: 'Artists' },
-  { to: '/library?view=genres', icon: 'grid' as const, label: 'Genres' },
   { to: '/folders', icon: 'folder' as const, label: 'Folders' },
   { to: '/downloads', icon: 'download' as const, label: 'Downloads' },
 ] as const;
