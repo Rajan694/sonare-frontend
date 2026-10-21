@@ -6,6 +6,7 @@ import {
   isFavourite,
   onFavouritesSaved,
   setFavourite,
+  unlikeMany,
   useFavourite,
   useFavouriteLookup,
 } from '../../src/api/favourites';
@@ -78,6 +79,27 @@ describe('favourite state', () => {
   it('WEB-FAV-005 without a local change, the server value is used as is', () => {
     expect(isFavourite('yt:never-touched', true)).toBe(true);
     expect(isFavourite('yt:never-touched', false)).toBe(false);
+  });
+
+  it('unlikeMany unlikes in bulk via DELETE /me/favourites/tracks', async () => {
+    const rec = recordRequests();
+    server.use(http.delete(`${API}/me/favourites/tracks`, () => HttpResponse.json({ ok: true, removed: 2 })));
+    await unlikeMany(['yt:bulk1', 'yt:bulk2']);
+    expect(rec.paths()).toEqual(['DELETE /me/favourites/tracks']);
+    expect(await rec.seen[0].json()).toEqual({ ids: ['yt:bulk1', 'yt:bulk2'] });
+    expect(isFavourite('yt:bulk1', true)).toBe(false);
+    expect(isFavourite('yt:bulk2', true)).toBe(false);
+    rec.stop();
+  });
+
+  it('unlikeMany rolls back when bulk unlike fails', async () => {
+    server.use(http.put(`${API}/me/favourites/tracks/:id`, () => HttpResponse.json({ ok: true })));
+    await setFavourite('yt:bulk-fail', true);
+    expect(isFavourite('yt:bulk-fail', false)).toBe(true);
+
+    server.use(http.delete(`${API}/me/favourites/tracks`, () => apiError(500, 'FAILED')));
+    await expect(unlikeMany(['yt:bulk-fail'])).rejects.toBeTruthy();
+    expect(isFavourite('yt:bulk-fail', false)).toBe(true);
   });
 });
 

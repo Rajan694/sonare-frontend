@@ -1,7 +1,7 @@
 import { serverFetch } from './serverFetch';
 import { API_BASE, getAccessToken, onAuthChange, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
-import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo } from '../types';
+import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo, RemovedCount } from '../types';
 import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
 import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type { LyricsScript } from '../storage/devicePrefs';
@@ -411,6 +411,14 @@ export const api = {
     return request<{ ok: boolean }>(`/me/favourites/tracks/${encodeURIComponent(id)}`, {
       method: favourite ? 'PUT' : 'DELETE',
       ...(favourite && track && { body: JSON.stringify({ meta: trackMeta(track) }) }),
+    });
+  },
+
+  /** Bulk unlike tracks: DELETE /me/favourites/tracks with body { ids: string[] }. */
+  deleteTrackFavourites(ids: string[]) {
+    return request<RemovedCount>('/me/favourites/tracks', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
     });
   },
 

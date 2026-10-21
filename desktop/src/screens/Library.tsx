@@ -6,7 +6,7 @@ import { useLocalLibrary, resolveLocalRefs } from '../storage/local';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
 import { useLibrarySongs, useMostPlayed, useLibraryAlbums, useLibraryArtists, useAuth } from '../api/hooks';
-import { useFavouriteLookup } from '../api/favourites';
+import { useFavouriteLookup, unlikeMany } from '../api/favourites';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import { Card } from '../components/ui/Card';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
@@ -15,7 +15,10 @@ import { EmptyState } from '../components/ui/EmptyState';
 import Icon from '../components/ui/Icon';
 import { Select } from '../components/ui/Select';
 import LoadMore from '../components/ui/LoadMore';
-import { staggerContainer } from '../lib/motion';
+import { addToPlaylistDialog, confirmDialog } from '../store/dialogs';
+import { showToast } from '../store/toasts';
+import { downloads as downloadsStorage } from '../storage/downloads';
+import { staggerContainer, transition } from '../lib/motion';
 import { cn } from '../lib/cn';
 import { useVirtualRows } from '../lib/useVirtualRows';
 import { useLayout } from '../lib/layout';
@@ -122,7 +125,7 @@ export const mergeSongs = (
 
 const Library = () => {
   const { mode } = useModeStore();
-  const { currentTrack, playTrack, playShuffled } = usePlayerStore();
+  const { currentTrack, playTrack, playShuffled, enqueue } = usePlayerStore();
   const [params, setParams] = useSearchParams();
   const slug = (t: Tab) => t.toLowerCase().replace(' ', '-');
   const viewParam = params.get('view');
@@ -314,6 +317,125 @@ const Library = () => {
     }
   };
 
+  // Multi-select state
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastToggledIndex, setLastToggledIndex] = useState<number | null>(null);
+
+  const exitSelection = useCallback(() => {
+    setIsSelecting(false);
+    setSelectedIds(new Set());
+    setLastToggledIndex(null);
+  }, []);
+
+  // Leave selection mode when tab or sort changes
+  useEffect(() => {
+    exitSelection();
+  }, [activeTab, sort, exitSelection]);
+
+  // Esc leaves selection mode
+  useEffect(() => {
+    if (!isSelecting) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        exitSelection();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isSelecting, exitSelection]);
+
+  const selectedTracks = useMemo(() => tracks.filter((t) => selectedIds.has(t.id)), [tracks, selectedIds]);
+  const likedSelected = useMemo(
+    () => selectedTracks.filter((t) => isTrackLiked(t, isLikedView)),
+    [selectedTracks, isTrackLiked, isLikedView],
+  );
+  const downloadable = useMemo(
+    () => selectedTracks.filter((t) => t.source !== 'local' && !local.downloads.has(t.id)),
+    [selectedTracks, local.downloads],
+  );
+
+  const handleToggleSelect = useCallback(
+    (id: string, index: number, e: React.MouseEvent) => {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        if (e.shiftKey && lastToggledIndex !== null) {
+          const start = Math.min(lastToggledIndex, index);
+          const end = Math.max(lastToggledIndex, index);
+          for (let i = start; i <= end; i++) {
+            if (tracks[i]) next.add(tracks[i].id);
+          }
+        } else {
+          if (next.has(id)) {
+            next.delete(id);
+          } else {
+            next.add(id);
+          }
+        }
+        return next;
+      });
+      setLastToggledIndex(index);
+    },
+    [lastToggledIndex, tracks],
+  );
+
+  const allLoadedSelected = tracks.length > 0 && tracks.every((t) => selectedIds.has(t.id));
+  const someLoadedSelected = tracks.some((t) => selectedIds.has(t.id));
+
+  const handleToggleSelectAll = useCallback(() => {
+    if (allLoadedSelected) {
+      setSelectedIds(new Set());
+      setLastToggledIndex(null);
+    } else {
+      setSelectedIds(new Set(tracks.map((t) => t.id)));
+    }
+  }, [allLoadedSelected, tracks]);
+
+  const handleEnqueue = useCallback(() => {
+    enqueue(selectedTracks);
+    exitSelection();
+  }, [enqueue, selectedTracks, exitSelection]);
+
+  const handleAddToPlaylist = useCallback(() => {
+    void addToPlaylistDialog(selectedTracks);
+    exitSelection();
+  }, [selectedTracks, exitSelection]);
+
+  const handleDownload = useCallback(async () => {
+    if (downloadable.length > 0) {
+      await downloadsStorage.enqueue(downloadable);
+      showToast({
+        title: 'Added to downloads',
+        description:
+          downloadable.length === 1
+            ? downloadable[0].title
+            : `${downloadable.length} ${downloadable.length === 1 ? 'song' : 'songs'}`,
+        icon: 'download',
+        variant: 'gold',
+      });
+    }
+    exitSelection();
+  }, [downloadable, exitSelection]);
+
+  const handleRemoveLiked = useCallback(async () => {
+    if (likedSelected.length === 0) return;
+    if (likedSelected.length > 1) {
+      const ok = await confirmDialog({
+        title: 'Remove from Liked?',
+        description: `Remove ${likedSelected.length} songs from your Liked Songs?`,
+        confirmLabel: 'Remove',
+        danger: true,
+      });
+      if (!ok) return;
+    }
+    try {
+      await unlikeMany(likedSelected.map((t) => t.id));
+      exitSelection();
+    } catch {
+      // unlikeMany rolls back
+    }
+  }, [likedSelected, exitSelection]);
+
   // Subtitle: prefer meta.total from the server, fall back to counted tracks
   const localOnlyCount = local.tracks.filter((t) => !librarySongs.items.some((s) => s.id === t.id)).length;
   const songsTotal = librarySongs.total !== null ? librarySongs.total + localOnlyCount : tracks.length;
@@ -331,7 +453,7 @@ const Library = () => {
   const heading = isLikedView ? 'Liked Songs' : (activeTab as string);
 
   return (
-    <div className="@container flex flex-col gap-6 overflow-hidden h-full">
+    <div className="@container relative flex flex-col gap-6 overflow-hidden h-full">
       {/* Header section */}
       <div className="flex flex-col gap-4 px-4 @[480px]:px-8 pt-5 @[480px]:pt-7 flex-none">
         {/* Title row */}
@@ -350,6 +472,19 @@ const Library = () => {
             )}
             {isTrackTab && (
               <>
+                <Button
+                  variant={isSelecting ? 'acc' : 'out'}
+                  onClick={() => {
+                    if (isSelecting) {
+                      exitSelection();
+                    } else {
+                      setIsSelecting(true);
+                      setView('list');
+                    }
+                  }}
+                >
+                  {isSelecting ? 'Cancel' : 'Select'}
+                </Button>
                 <Button variant="out" icon="shuffle" onClick={handleShuffle} disabled={tracks.length === 0}>
                   Shuffle
                 </Button>
@@ -453,7 +588,22 @@ const Library = () => {
         {/* Table header */}
         {isTrackTab && view === 'list' && (
           <SongTableHeader showPlays>
-            <span className="text-right">#</span>
+            {isSelecting ? (
+              <span className="flex items-center justify-end">
+                <input
+                  type="checkbox"
+                  checked={allLoadedSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = someLoadedSelected && !allLoadedSelected;
+                  }}
+                  onChange={handleToggleSelectAll}
+                  aria-label="Select all"
+                  className="w-4 h-4 rounded border-ln cursor-pointer accent-acc"
+                />
+              </span>
+            ) : (
+              <span className="text-right">#</span>
+            )}
             <span />
             {headerCell('title', 'TITLE')}
             <span className="hidden @[720px]:inline">{headerCell('album', 'ALBUM')}</span>
@@ -472,7 +622,7 @@ const Library = () => {
         <motion.div
           key={activeTab + mode + view + sourceFilter + downloadedOnly}
           ref={listRef}
-          className="flex flex-col gap-0.5 px-4 @[480px]:px-8 pb-8 overflow-auto"
+          className="flex flex-col gap-0.5 px-4 @[480px]:px-8 pb-[80px] overflow-auto"
           variants={staggerContainer}
           initial="hidden"
           animate="visible"
@@ -617,16 +767,21 @@ const Library = () => {
                 </div>
               ) : (
                 <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
-                  {tracks.slice(virtual.start, virtual.end).map((track, i) => (
-                    <SongRow
-                      key={track.id}
-                      track={track}
-                      index={virtual.start + i + 1}
-                      isActive={currentTrack?.id === track.id}
-                      onClick={() => playTrack(track, tracks, from)}
-                      showPlays
-                    />
-                  ))}
+                  {tracks.slice(virtual.start, virtual.end).map((track, i) => {
+                    const absoluteIndex = virtual.start + i;
+                    return (
+                      <SongRow
+                        key={track.id}
+                        track={track}
+                        index={absoluteIndex + 1}
+                        isActive={currentTrack?.id === track.id}
+                        onClick={() => playTrack(track, tracks, from)}
+                        showPlays
+                        selected={isSelecting ? selectedIds.has(track.id) : undefined}
+                        onToggleSelect={isSelecting ? (e) => handleToggleSelect(track.id, absoluteIndex, e) : undefined}
+                      />
+                    );
+                  })}
                 </div>
               )}
               {/* Load more: only for server-paged views when not filtered to device-only */}
@@ -644,6 +799,85 @@ const Library = () => {
             </>
           )}
         </motion.div>
+      </AnimatePresence>
+
+      {/* Floating selection action bar */}
+      <AnimatePresence>
+        {isSelecting && selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={transition.fast}
+            className="absolute bottom-[16px] left-1/2 -translate-x-1/2 z-40 bg-s1/95 backdrop-blur-md border border-ln rounded-full shadow-2xl px-[16px] py-[8px] flex items-center gap-[8px] max-w-[calc(100%-32px)] overflow-x-auto"
+            role="toolbar"
+            aria-label="Selection actions"
+          >
+            <span className="text-body-s font-semibold text-t1 whitespace-nowrap pl-[8px] pr-[4px] flex-none">
+              {selectedIds.size} selected
+            </span>
+            <div className="h-[16px] w-[1px] bg-ln flex-none" />
+            <Button
+              variant="out"
+              size="sm"
+              icon="list"
+              onClick={handleEnqueue}
+              aria-label="Add to queue"
+              data-tip="Add to queue"
+              className="flex-none whitespace-nowrap px-[8px] @[720px]:px-[14px]"
+            >
+              <span className="hidden @[720px]:inline">Add to queue</span>
+            </Button>
+            <Button
+              variant="out"
+              size="sm"
+              icon="plus"
+              onClick={handleAddToPlaylist}
+              aria-label="Add to playlist…"
+              data-tip="Add to playlist…"
+              className="flex-none whitespace-nowrap px-[8px] @[720px]:px-[14px]"
+            >
+              <span className="hidden @[720px]:inline">Add to playlist…</span>
+            </Button>
+            {CAPS.downloads && !isOffline && (
+              <Button
+                variant="out"
+                size="sm"
+                icon="download"
+                onClick={handleDownload}
+                disabled={downloadable.length === 0}
+                aria-label="Download"
+                data-tip="Download"
+                className="flex-none whitespace-nowrap px-[8px] @[720px]:px-[14px]"
+              >
+                <span className="hidden @[720px]:inline">Download</span>
+              </Button>
+            )}
+            <Button
+              variant="out"
+              size="sm"
+              icon="heart"
+              onClick={handleRemoveLiked}
+              disabled={likedSelected.length === 0}
+              aria-label="Remove from Liked"
+              data-tip="Remove from Liked"
+              className="flex-none whitespace-nowrap px-[8px] @[720px]:px-[14px]"
+            >
+              <span className="hidden @[720px]:inline">Remove from Liked</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              icon="close"
+              onClick={exitSelection}
+              aria-label="Cancel"
+              data-tip="Cancel"
+              className="flex-none whitespace-nowrap px-[8px] @[720px]:px-[14px]"
+            >
+              <span className="hidden @[720px]:inline">Cancel</span>
+            </Button>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );

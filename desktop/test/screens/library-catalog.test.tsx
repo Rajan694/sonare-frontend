@@ -10,10 +10,22 @@ import { clearSession, setSession } from '../../src/api/auth';
 import { makePlayer, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
 import { makeAlbum, makeArtist, makeTrack, page, testUser } from '../helpers/fixtures';
-import { chooseOption } from '../helpers/dialogs';
+import { answerConfirm, chooseOption } from '../helpers/dialogs';
 import { setFavourite } from '../../src/api/favourites';
+import { downloads } from '../../src/storage/downloads';
+import { showToast } from '../../src/store/toasts';
 
 vi.mock('../../src/store/toasts', () => ({ showToast: vi.fn(), dismissToast: () => {}, useToasts: () => [] }));
+vi.mock('../../src/lib/caps', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('../../src/lib/caps')>();
+  return {
+    ...mod,
+    CAPS: {
+      ...mod.CAPS,
+      offlineDownloads: true,
+    },
+  };
+});
 vi.mock('../../src/storage/downloads', () => ({
   downloads: { enqueue: vi.fn() },
   useDownloads: () => ({ ready: true, items: [], byId: new Map(), activeCount: 0 }),
@@ -442,6 +454,283 @@ describe('library', () => {
     const afterFetchCount = rec.paths().filter((p) => p.startsWith('GET /me/library/tracks')).length;
     expect(afterFetchCount).toBe(initialFetchCount);
     rec.stop();
+  });
+
+  it('WEB-LIBRARY-023 selection mode toggle (toolbar button, Esc, Cancel)', async () => {
+    setSession('a', 'r', testUser);
+    const { user } = renderWithProviders(<Library />);
+    await screen.findByText('Bravo');
+
+    const selectBtn = screen.getByRole('button', { name: 'Select' });
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+
+    // Enter selection mode
+    await user.click(selectBtn);
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+
+    // Cancel leaves selection mode
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+
+    // Re-enter and Esc leaves selection mode
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0);
+    await user.keyboard('{Escape}');
+    expect(screen.getByRole('button', { name: 'Select' })).toBeInTheDocument();
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('WEB-LIBRARY-024 row click and Shift-click range selection', async () => {
+    setSession('a', 'r', testUser);
+    const { user } = renderWithProviders(<Library />);
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+
+    // Click row 1 ('Bravo')
+    const row1 = screen.getByText('Bravo').closest('[role="row"]')!;
+    await user.click(row1);
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+    expect(within(row1).getByRole('checkbox', { name: 'Select Bravo' })).toBeChecked();
+
+    // Shift-click row 3 ('Charlie')
+    const row3 = screen.getByText('Charlie').closest('[role="row"]')!;
+    await user.keyboard('{Shift>}');
+    await user.click(row3);
+    await user.keyboard('{/Shift}');
+
+    expect(screen.getByText('3 selected')).toBeInTheDocument();
+    const row2 = screen.getByText('alpha').closest('[role="row"]')!;
+    expect(within(row1).getByRole('checkbox', { name: 'Select Bravo' })).toBeChecked();
+    expect(within(row2).getByRole('checkbox', { name: 'Select alpha' })).toBeChecked();
+    expect(within(row3).getByRole('checkbox', { name: 'Select Charlie' })).toBeChecked();
+  });
+
+  it('WEB-LIBRARY-025 select-all header checkbox handles all/none/indeterminate', async () => {
+    setSession('a', 'r', testUser);
+    const { user } = renderWithProviders(<Library />);
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    const headerCheckbox = screen.getByRole('checkbox', { name: 'Select all' }) as HTMLInputElement;
+    expect(headerCheckbox).not.toBeChecked();
+    expect(headerCheckbox.indeterminate).toBe(false);
+
+    // Select row 1 -> partial selection (indeterminate)
+    const row1 = screen.getByText('Bravo').closest('[role="row"]')!;
+    await user.click(row1);
+    expect(headerCheckbox.indeterminate).toBe(true);
+    expect(headerCheckbox).not.toBeChecked();
+
+    // Click header checkbox -> selects all loaded rows
+    await user.click(headerCheckbox);
+    expect(headerCheckbox).toBeChecked();
+    expect(headerCheckbox.indeterminate).toBe(false);
+    expect(screen.getByText('3 selected')).toBeInTheDocument();
+
+    // Click header checkbox again -> deselects all
+    await user.click(headerCheckbox);
+    expect(headerCheckbox).not.toBeChecked();
+    expect(headerCheckbox.indeterminate).toBe(false);
+    await waitFor(() => {
+      expect(screen.queryByText(/selected/)).not.toBeInTheDocument();
+    });
+  });
+
+  it('WEB-LIBRARY-026 batch queue enqueues all selected tracks in order and clears selection', async () => {
+    setSession('a', 'r', testUser);
+    const player = makePlayer();
+    const { user } = renderWithProviders(<Library />, { player });
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+    await user.click(screen.getByText('Charlie').closest('[role="row"]')!);
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Add to queue' }));
+    expect(player.enqueue).toHaveBeenCalledWith([mine[0], mine[2]]);
+    // Exited selection mode
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  });
+
+  it('WEB-LIBRARY-027 batch add-to-playlist opens picker with selected tracks and clears selection', async () => {
+    setSession('a', 'r', testUser);
+    server.use(http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))));
+    const { user } = renderWithProviders(<Library />);
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+    await user.click(screen.getByText('alpha').closest('[role="row"]')!);
+
+    await user.click(screen.getByRole('button', { name: 'Add to playlist…' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Add to playlist' });
+    expect(dialog).toHaveTextContent('2 songs');
+    // Exited selection mode
+    await waitFor(() => {
+      expect(screen.queryByText('2 selected')).not.toBeInTheDocument();
+    });
+  });
+
+  it('WEB-LIBRARY-028 batch download enqueues only downloadable server tracks', async () => {
+    setSession('a', 'r', testUser);
+    // Mark mine[0] ('yt:m1') as already downloaded
+    mockDownloads = new Map([['yt:m1', 'local:m1']]);
+    const { user } = renderWithProviders(<Library />);
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+    await user.click(screen.getByText('alpha').closest('[role="row"]')!);
+
+    const downloadBtn = screen.getByRole('button', { name: 'Download' });
+    await user.click(downloadBtn);
+
+    expect(downloads.enqueue).toHaveBeenCalledWith([mine[1]]);
+    expect(showToast).toHaveBeenCalledWith({
+      title: 'Added to downloads',
+      description: 'alpha',
+      icon: 'download',
+      variant: 'gold',
+    });
+    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    mockDownloads = new Map();
+  });
+
+  it('WEB-LIBRARY-029 batch remove from liked asks confirmation when >1 liked track selected, deletes in bulk, rolls back on error', async () => {
+    setSession('a', 'r', testUser);
+    server.use(http.delete(`${API}/me/favourites/tracks`, () => HttpResponse.json({ ok: true, removed: 2 })));
+    const rec = recordRequests();
+    const { user } = renderWithProviders(<Library />, { route: '/library?view=favourites' });
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+    await user.click(screen.getByText('Charlie').closest('[role="row"]')!);
+
+    const removeBtn = screen.getByRole('button', { name: 'Remove from Liked' });
+    await user.click(removeBtn);
+
+    // Confirmation dialog appears
+    expect(await screen.findByRole('alertdialog')).toBeInTheDocument();
+    expect(screen.getByText('Remove from Liked?')).toBeInTheDocument();
+    expect(screen.getByText(/Remove 2 songs/)).toBeInTheDocument();
+
+    // Cancel cancels without deleting
+    await answerConfirm(user, false);
+    expect(rec.paths().filter((p) => p.includes('DELETE'))).toHaveLength(0);
+    expect(screen.getByText('2 selected')).toBeInTheDocument();
+
+    // Click again and confirm
+    await user.click(removeBtn);
+    await answerConfirm(user, true);
+
+    await waitFor(() => {
+      expect(rec.paths()).toContain('DELETE /me/favourites/tracks');
+    });
+    const deleteReq = rec.seen.find((r) => r.method === 'DELETE' && r.url.includes('/me/favourites/tracks'));
+    expect(await deleteReq?.clone().json()).toEqual({ ids: ['yt:m1', 'yt:m3'] });
+
+    rec.stop();
+  });
+
+  it('WEB-LIBRARY-030 batch remove from liked removes immediately without dialog when 1 liked track selected', async () => {
+    setSession('a', 'r', testUser);
+    server.use(http.delete(`${API}/me/favourites/tracks`, () => HttpResponse.json({ ok: true, removed: 1 })));
+    const rec = recordRequests();
+    const { user } = renderWithProviders(<Library />, { route: '/library?view=favourites' });
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+
+    await user.click(screen.getByRole('button', { name: 'Remove from Liked' }));
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(rec.paths()).toContain('DELETE /me/favourites/tracks');
+    });
+    rec.stop();
+  });
+
+  it('WEB-LIBRARY-031 selection resets on tab change and sort change', async () => {
+    setSession('a', 'r', testUser);
+    const { user } = renderWithProviders(<Library />);
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+    // Change sort order
+    await user.click(screen.getByRole('button', { name: 'Sort by Title' }));
+    await waitFor(() => {
+      expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    // Re-enter selection mode and switch tab
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+    expect(screen.getByText('1 selected')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Favourites' }));
+    await waitFor(() => {
+      expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+  });
+
+  it('WEB-LIBRARY-032 floating action bar renders icon-only buttons with aria-labels and tooltips in narrow container', async () => {
+    setSession('a', 'r', testUser);
+    const { user } = renderWithProviders(<Library />);
+    await screen.findByText('Bravo');
+
+    await user.click(screen.getByRole('button', { name: 'Select' }));
+    await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
+
+    const toolbar = screen.getByRole('toolbar', { name: 'Selection actions' });
+    expect(toolbar).toBeInTheDocument();
+    expect(toolbar.className).toContain('absolute');
+    expect(toolbar.className).toContain('bottom-[16px]');
+
+    // Verify all buttons have aria-label, data-tip (tooltips), whitespace-nowrap, flex-none, and hidden @[720px]:inline label wrapper
+    const queueBtn = within(toolbar).getByRole('button', { name: 'Add to queue' });
+    expect(queueBtn).toHaveAttribute('aria-label', 'Add to queue');
+    expect(queueBtn).toHaveAttribute('data-tip', 'Add to queue');
+    expect(queueBtn.className).toContain('whitespace-nowrap');
+    expect(queueBtn.className).toContain('flex-none');
+    expect(queueBtn.querySelector('span')?.className).toContain('hidden @[720px]:inline');
+
+    const playlistBtn = within(toolbar).getByRole('button', { name: 'Add to playlist…' });
+    expect(playlistBtn).toHaveAttribute('aria-label', 'Add to playlist…');
+    expect(playlistBtn).toHaveAttribute('data-tip', 'Add to playlist…');
+    expect(playlistBtn.className).toContain('whitespace-nowrap');
+    expect(playlistBtn.className).toContain('flex-none');
+    expect(playlistBtn.querySelector('span')?.className).toContain('hidden @[720px]:inline');
+
+    const downloadBtn = within(toolbar).getByRole('button', { name: 'Download' });
+    expect(downloadBtn).toHaveAttribute('aria-label', 'Download');
+    expect(downloadBtn).toHaveAttribute('data-tip', 'Download');
+    expect(downloadBtn.className).toContain('whitespace-nowrap');
+    expect(downloadBtn.className).toContain('flex-none');
+    expect(downloadBtn.querySelector('span')?.className).toContain('hidden @[720px]:inline');
+
+    const likedBtn = within(toolbar).getByRole('button', { name: 'Remove from Liked' });
+    expect(likedBtn).toHaveAttribute('aria-label', 'Remove from Liked');
+    expect(likedBtn).toHaveAttribute('data-tip', 'Remove from Liked');
+    expect(likedBtn.className).toContain('whitespace-nowrap');
+    expect(likedBtn.className).toContain('flex-none');
+    expect(likedBtn.querySelector('span')?.className).toContain('hidden @[720px]:inline');
+
+    const cancelBtn = within(toolbar).getByRole('button', { name: 'Cancel' });
+    expect(cancelBtn).toHaveAttribute('aria-label', 'Cancel');
+    expect(cancelBtn).toHaveAttribute('data-tip', 'Cancel');
+    expect(cancelBtn.className).toContain('whitespace-nowrap');
+    expect(cancelBtn.className).toContain('flex-none');
+    expect(cancelBtn.querySelector('span')?.className).toContain('hidden @[720px]:inline');
   });
 });
 
