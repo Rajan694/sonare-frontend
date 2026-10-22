@@ -112,6 +112,7 @@ export interface Overview {
     users: number;
     newUsers: number;
     activeUsers: number;
+    activeGuests: number;
     requests: number;
     plays: number;
     listeningHours: number;
@@ -119,8 +120,23 @@ export interface Overview {
     favouriteTracks: number;
     errorGroups: number;
   };
-  daily: { day: string; requests: number; serverErrors: number; activeUsers: number; signups: number; plays: number }[];
-  clients: { client: string; requests: number; users: number }[];
+  active: {
+    dau: { users: number; guests: number };
+    wau: { users: number; guests: number };
+    mau: { users: number; guests: number };
+  };
+  daily: {
+    day: string;
+    users?: number;
+    activeUsers: number;
+    guests: number;
+    signups: number;
+    plays: number;
+    requests: number;
+    serverErrors: number;
+  }[];
+  clients: { client: string; users: number; guests: number }[];
+  signupsByClient: { client: 'web' | 'linux' | 'windows' | 'mobile' | 'unknown'; count: number }[];
   health: Health;
 }
 
@@ -130,6 +146,7 @@ export interface RouteStats {
   count: number;
   serverErrors: number;
   clientErrors: number;
+  avg: number;
   p50: number;
   p95: number;
   max: number;
@@ -141,10 +158,10 @@ export interface RequestMetrics {
   summary: { total: number; serverErrors: number; clientErrors: number; p50: number; p95: number };
   series: { at: string; requests: number; serverErrors: number; p95: number }[];
   routes: RouteStats[];
-  statuses: { status: number; count: number }[];
+  statusClasses: { class: '2xx' | '3xx' | '4xx' | '5xx' | string; count: number }[];
 }
 
-export type ErrorSource = 'backend' | 'web' | 'linux' | 'mobile';
+export type ErrorSource = 'backend' | 'web' | 'linux' | 'windows' | 'mobile';
 
 export interface ErrorLog {
   id: number;

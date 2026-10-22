@@ -1102,6 +1102,17 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-AIADM-004` | check now, disable, move and delete call the backend             |
 | `WEB-AIADM-005` | shows calls, tokens in and out, by provider and by feature       |
 
+## `test/screens/admin-analytics.test.tsx`
+
+| ID            | Use case                                                                              |
+| :------------ | :------------------------------------------------------------------------------------ |
+| `WEB-ANL-001` | Overview renders DAU/WAU/MAU tiles with users and guests, and active in window        |
+| `WEB-ANL-002` | Overview renders dual-series active users chart with users and guests                 |
+| `WEB-ANL-003` | Overview renders active users by app and new users by app tables                      |
+| `WEB-ANL-004` | ApiMetrics renders top 15 most used APIs table with method, route, calls, avg ms, p95 |
+| `WEB-ANL-005` | ApiMetrics renders requests, errors, latency charts and status classes table          |
+| `WEB-ANL-006` | Overview and ApiMetrics display empty state messages when data is empty               |
+
 ## `test/desktop/appUpdate.test.ts`
 
 | ID        | Use case                                                                                            |
