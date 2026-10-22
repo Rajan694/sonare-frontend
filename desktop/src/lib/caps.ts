@@ -24,4 +24,4 @@ export const CAPS = {
 } as const;
 
 /** Which app this is, sent as X-Sonare-Client for the admin analytics. */
-export const CLIENT: 'web' | 'linux' = native ? 'linux' : 'web';
+export const CLIENT: 'web' | 'linux' | 'windows' = !native ? 'web' : window.NL_OS === 'Windows' ? 'windows' : 'linux';

@@ -1,6 +1,7 @@
 import { serverFetch } from './serverFetch';
 import { API_BASE, getAccessToken, onAuthChange, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
+import { getInstallId } from '../lib/installId';
 import type {
   Track,
   Album,
@@ -96,6 +97,7 @@ const request = async <T>(path: string, options: RequestOptions = {}): Promise<T
 
   const headers = new Headers(init.headers);
   headers.set('X-Sonare-Client', CLIENT);
+  headers.set('X-Sonare-Install', getInstallId());
   if (!headers.has('Content-Type') && init.body && typeof init.body === 'string') {
     headers.set('Content-Type', 'application/json');
   }

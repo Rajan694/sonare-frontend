@@ -170,6 +170,10 @@ const Privacy = () => {
             Sonare doesn&apos;t use cookies. The apps and the website keep your sign-in, settings, queue and downloads
             in local storage on your device. Signing out removes the sign-in.
           </p>
+          <p>
+            The app also stores a random install id (not linked to you, no personal data) so Sonare can count how many
+            devices use it. It is never shared with third parties.
+          </p>
         </Section>
 
         <Section title="Your choices">

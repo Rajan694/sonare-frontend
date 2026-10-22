@@ -189,6 +189,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-023` | downloads go to ~/Music/Sonare until the user picks another folder, which is remembered      |
 | `DSK-024` | cancelling the folder picker keeps the current folder                                        |
 | `DSK-025` | a download is written to a hidden part file, then moved to a free name                       |
+| `DSK-091` | the Windows desktop window reports windows as its client                                     |
 
 ## `test/desktop/offline.test.tsx`
 
@@ -766,6 +767,18 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LIB-014` | catches uncaught errors and unhandled rejections, but not failed image loads                                       |
 | `WEB-LIB-015` | picks web, tablet or phone by width and follows resizes                                                            |
 | `WEB-LIB-016` | turns GitHub's generated notes into headings and items without links or authors                                    |
+
+## `test/unit/installId.test.ts`
+
+| ID             | Use case                                                                         |
+| :------------- | :------------------------------------------------------------------------------- |
+| `WEB-INST-001` | creates a v4 UUID on first call and returns the same id on every subsequent call |
+| `WEB-INST-002` | reuses the stored id across module reloads (persists in localStorage)            |
+| `WEB-INST-003` | a storage error still gives a valid id for the session                           |
+| `WEB-INST-004` | api.ts sends X-Sonare-Install next to X-Sonare-Client on every request           |
+| `WEB-INST-005` | auth.ts sends X-Sonare-Install on login and register requests                    |
+| `WEB-INST-006` | errorReporting.ts sends X-Sonare-Install on client-error reports                 |
+| `WEB-INST-007` | caches the id in memory and avoids reading localStorage on repeated calls        |
 
 ## `test/unit/player.test.ts`
 
