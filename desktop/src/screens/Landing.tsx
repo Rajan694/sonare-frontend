@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'motion/react';
 import {
   ArrowRight,
   Download,
@@ -18,6 +16,7 @@ import { PhoneFrame, WindowFrame } from '../components/landing/Frames';
 import { Showcase } from '../components/landing/Showcase';
 import { DownloadSection } from '../components/landing/DownloadSection';
 import { SiteFooter } from '../components/landing/SiteFooter';
+import { useReveal, isReducedMotion } from '../components/landing/useReveal';
 import { DOWNLOADS, detectOs, featuredDownload, latestDownloadUrl, releaseLabel } from '../lib/downloads';
 
 /**
@@ -76,7 +75,7 @@ const primaryBtn =
 const outlineBtn =
   'focus-visible:focusring inline-flex items-center justify-center gap-2 rounded-full border border-ln3 bg-bg/40 px-6 py-3.5 text-title-m font-semibold text-t1 backdrop-blur transition-colors hover:border-t3 hover:bg-s3';
 
-/** Fades and lifts its children in the first time they scroll into view. */
+/** Fades and lifts its children in the first time they scroll into view (CSS). */
 const Reveal = ({
   children,
   delay = 0,
@@ -86,17 +85,15 @@ const Reveal = ({
   delay?: number;
   className?: string;
 }) => {
-  const reduce = useReducedMotion();
+  const { ref, isVisible } = useReveal<HTMLDivElement>();
   return (
-    <motion.div
-      className={className}
-      initial={reduce ? { opacity: 0 } : { opacity: 0, y: 28 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-80px' }}
-      transition={{ duration: 0.6, delay, ease: [0, 0, 0.2, 1] }}
+    <div
+      ref={ref}
+      style={delay ? { transitionDelay: `${delay}s` } : undefined}
+      className={`landing-reveal ${isVisible ? 'visible' : ''} ${className}`}
     >
       {children}
-    </motion.div>
+    </div>
   );
 };
 
@@ -128,7 +125,6 @@ const LevelBars = () => {
 };
 
 const Landing = () => {
-  const reduce = useReducedMotion();
   const heroRef = useRef<HTMLElement>(null);
   const [heroVisible, setHeroVisible] = useState(true);
   const [releases, setReleases] = useState<AppRelease[] | null>(null);
@@ -170,14 +166,14 @@ const Landing = () => {
   // The header and hero links jump to #features / #screenshots / #download: glide there instead.
   // Scoped to this page so the app's own scroll restoration stays instant.
   useEffect(() => {
-    if (reduce) return;
+    if (isReducedMotion()) return;
     const root = document.documentElement;
     const previous = root.style.scrollBehavior;
     root.style.scrollBehavior = 'smooth';
     return () => {
       root.style.scrollBehavior = previous;
     };
-  }, [reduce]);
+  }, []);
 
   // Version and size labels only: the buttons work without them.
   useEffect(() => {
@@ -202,14 +198,10 @@ const Landing = () => {
       {/* Header */}
       <header className="sticky top-0 z-30 border-b border-ln/60 bg-bg/70 backdrop-blur-xl">
         <nav aria-label="Main" className="mx-auto flex h-16 max-w-[1180px] items-center gap-6 px-4 sm:px-6">
-          <Link
-            to="/"
-            className="focus-visible:focusring flex items-center gap-2.5 rounded-sm"
-            aria-label="Sonare home"
-          >
+          <a href="/" className="focus-visible:focusring flex items-center gap-2.5 rounded-sm" aria-label="Sonare home">
             <BrandMark size={30} />
             <span className="text-[19px] font-bold tracking-[-0.01em]">Sonare</span>
-          </Link>
+          </a>
           <div className="ml-auto hidden items-center gap-7 text-label-l text-t2 md:flex">
             <a className="focus-visible:focusring rounded-xs transition-colors hover:text-t1" href="#features">
               Features

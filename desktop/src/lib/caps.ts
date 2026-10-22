@@ -1,9 +1,13 @@
-import { isNeutralino } from '../neutralino';
+/**
+ * True when the page is running inside Neutralino (its server injects the NL_* globals).
+ * Plain `npm run dev` in a normal browser has none of them, and the app still renders.
+ */
+export const isNeutralino = (): boolean => typeof window !== 'undefined' && typeof window.NL_PORT !== 'undefined';
 
 // Native features need the Neutralino *window*. `./runFE.sh web` also runs Neutralino
 // (`neu run -- --mode=browser`), which injects NL_* globals but blocks filesystem.* —
 // that is the web build, so it gets the web capability set.
-const native = isNeutralino() && window.NL_MODE === 'window';
+const native = isNeutralino() && typeof window !== 'undefined' && window.NL_MODE === 'window';
 
 export const CAPS = {
   localLibrary: native,
@@ -24,4 +28,8 @@ export const CAPS = {
 } as const;
 
 /** Which app this is, sent as X-Sonare-Client for the admin analytics. */
-export const CLIENT: 'web' | 'linux' | 'windows' = !native ? 'web' : window.NL_OS === 'Windows' ? 'windows' : 'linux';
+export const CLIENT: 'web' | 'linux' | 'windows' = !native
+  ? 'web'
+  : typeof window !== 'undefined' && window.NL_OS === 'Windows'
+    ? 'windows'
+    : 'linux';

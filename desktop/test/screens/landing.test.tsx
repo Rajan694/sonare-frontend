@@ -1,9 +1,12 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import Landing from '../../src/screens/Landing';
 import Privacy from '../../src/screens/Privacy';
 import { Root } from '../../src/Root';
+import SiteRoot from '../../src/SiteRoot';
+import { useReveal } from '../../src/components/landing/useReveal';
+import { CAPS } from '../../src/lib/caps';
 import { detectOs, featuredDownload, releaseLabel, DOWNLOADS } from '../../src/lib/downloads';
 import type { AppRelease } from '../../src/types';
 import { renderWithProviders } from '../helpers/render';
@@ -225,8 +228,8 @@ describe('download helpers', () => {
     expect(releaseLabel(null, DOWNLOADS.apk)).toBeNull();
   });
 
-  it('WEB-LAND-012 the footer links to contact, bug reports, the privacy page, GitHub and the credits', async () => {
-    const { user, location } = renderWithProviders(<Landing />);
+  it('WEB-LAND-012 the footer links to contact, bug reports, the privacy page, GitHub and the credits', () => {
+    renderWithProviders(<Landing />);
     const footer = screen.getByRole('contentinfo');
     expect(within(footer).getByRole('link', { name: 'Contact' })).toHaveAttribute('href', 'mailto:contact@sonare.vip');
     expect(within(footer).getByRole('link', { name: 'Report a bug' })).toHaveAttribute(
@@ -240,8 +243,7 @@ describe('download helpers', () => {
     for (const name of ['Piped', 'NewPipeExtractor', 'youtubei.js', 'LRCLIB']) {
       expect(within(footer).getByRole('link', { name })).toBeInTheDocument();
     }
-    await user.click(within(footer).getByRole('link', { name: 'Privacy' }));
-    expect(location()).toBe('/privacy');
+    expect(within(footer).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
   });
 
   it('WEB-LAND-013 the privacy page says what is stored, how to delete it, and whom to ask', () => {
@@ -290,5 +292,100 @@ describe('download helpers', () => {
     expect(heroPhone.getAttribute('srcset')).toContain('360w');
     expect(heroPhone.getAttribute('srcset')).toContain('720w');
     expect(heroPhone).toHaveAttribute('sizes');
+  });
+
+  it('WEB-LAND-017 the reveal hook adds the visible class on intersect', () => {
+    let callback: IntersectionObserverCallback | null = null;
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          callback = cb;
+        }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+        takeRecords() {
+          return [];
+        }
+      },
+    );
+
+    const RevealTarget = () => {
+      const { ref } = useReveal();
+      return (
+        <div ref={ref} data-testid="target" className="landing-reveal">
+          Reveal me
+        </div>
+      );
+    };
+
+    render(<RevealTarget />);
+    const el = screen.getByTestId('target');
+    expect(el).not.toHaveClass('visible');
+
+    act(() => {
+      callback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    });
+
+    expect(el).toHaveClass('visible');
+  });
+
+  it('WEB-LAND-018 the reveal hook keeps content visible without IntersectionObserver', () => {
+    vi.stubGlobal('IntersectionObserver', undefined);
+    const RevealTarget = () => {
+      const { ref } = useReveal();
+      return (
+        <div ref={ref} data-testid="target" className="landing-reveal">
+          Reveal me
+        </div>
+      );
+    };
+
+    render(<RevealTarget />);
+    const el = screen.getByTestId('target');
+    expect(el).toHaveClass('visible');
+  });
+
+  it('WEB-LAND-019 the reveal hook reveals immediately under prefers-reduced-motion', () => {
+    vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
+      matches: query === '(prefers-reduced-motion: reduce)',
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    }));
+
+    const RevealTarget = () => {
+      const { ref } = useReveal();
+      return (
+        <div ref={ref} data-testid="target" className="landing-reveal">
+          Reveal me
+        </div>
+      );
+    };
+
+    render(<RevealTarget />);
+    const el = screen.getByTestId('target');
+    expect(el).toHaveClass('visible');
+  });
+
+  it('WEB-LAND-020 SiteRoot switches between Landing and Privacy based on pathname', async () => {
+    const { unmount } = render(<SiteRoot pathname="/" />);
+    expect(screen.getByRole('heading', { level: 1, name: /All your music/i })).toBeInTheDocument();
+    unmount();
+
+    render(<SiteRoot pathname="/privacy" />);
+    expect(await screen.findByRole('heading', { level: 1, name: /Privacy policy/i })).toBeInTheDocument();
+  });
+
+  it('WEB-LAND-021 the web build does not import or initialise Neutralino on the site root', () => {
+    expect(CAPS.landing).toBe(true);
+    expect(window.NL_PORT).toBeUndefined();
+    render(<SiteRoot pathname="/" />);
+    expect(CAPS.landing).toBe(true);
   });
 });

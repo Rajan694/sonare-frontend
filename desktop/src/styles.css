@@ -612,9 +612,29 @@ body {
   animation-play-state: paused !important;
 }
 
+.landing-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 0.6s cubic-bezier(0, 0, 0.2, 1),
+    transform 0.6s cubic-bezier(0, 0, 0.2, 1);
+  will-change: opacity, transform;
+}
+
+.landing-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-float-device,
   .landing-bar {
     animation: none !important;
+  }
+
+  .landing-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
   }
 }

@@ -1,13 +1,8 @@
 import { app, events, init, os } from '@neutralinojs/lib';
 import type { TrayOptions } from '@neutralinojs/lib';
+import { isNeutralino } from './lib/caps';
 
-/**
- * True when the page is running inside Neutralino (its server injects the NL_* globals).
- * Plain `npm run dev` in a normal browser has none of them, and the app still renders.
- */
-export const isNeutralino = (): boolean => {
-  return typeof window.NL_PORT !== 'undefined';
-};
+export { isNeutralino };
 
 /** What the tray menu's player items do; App binds them to the player once it mounts. */
 export interface TrayActions {

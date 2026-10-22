@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Monitor, Smartphone } from 'lucide-react';
 import { PhoneFrame, WindowFrame } from './Frames';
 
@@ -39,7 +38,6 @@ const DESKTOP_SHOTS = [
 /** The screenshots, Android or Linux, behind a segmented switch. */
 export const Showcase = () => {
   const [device, setDevice] = useState<Device>('android');
-  const reduce = useReducedMotion();
   const tabs: { id: Device; label: string; icon: typeof Smartphone }[] = [
     { id: 'android', label: 'Android', icon: Smartphone },
     { id: 'linux', label: 'Linux', icon: Monitor },
@@ -75,35 +73,27 @@ export const Showcase = () => {
       </div>
 
       <div id="shots-panel" role="tabpanel" aria-labelledby={`shots-tab-${device}`} className="mt-10">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={device}
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, y: -12 }}
-            transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-          >
-            {device === 'android' ? (
-              <div className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 no-scrollbar sm:mx-0 sm:justify-center sm:overflow-visible sm:px-0">
-                {PHONE_SHOTS.map((shot) => (
-                  <figure key={shot.src} className="w-[min(72vw,260px)] shrink-0 snap-center">
-                    <PhoneFrame src={shot.src} alt={shot.alt} />
-                    <figcaption className="mt-3 text-center text-label-l text-t2">{shot.caption}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            ) : (
-              <div className="grid gap-6 lg:grid-cols-2">
-                {DESKTOP_SHOTS.map((shot) => (
-                  <figure key={shot.src}>
-                    <WindowFrame src={shot.src} alt={shot.alt} title={`Sonare — ${shot.caption}`} />
-                    <figcaption className="mt-3 text-center text-label-l text-t2">{shot.caption}</figcaption>
-                  </figure>
-                ))}
-              </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+        <div key={device}>
+          {device === 'android' ? (
+            <div className="-mx-4 flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-2 no-scrollbar sm:mx-0 sm:justify-center sm:overflow-visible sm:px-0">
+              {PHONE_SHOTS.map((shot) => (
+                <figure key={shot.src} className="w-[min(72vw,260px)] shrink-0 snap-center">
+                  <PhoneFrame src={shot.src} alt={shot.alt} />
+                  <figcaption className="mt-3 text-center text-label-l text-t2">{shot.caption}</figcaption>
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {DESKTOP_SHOTS.map((shot) => (
+                <figure key={shot.src}>
+                  <WindowFrame src={shot.src} alt={shot.alt} title={`Sonare — ${shot.caption}`} />
+                  <figcaption className="mt-3 text-center text-label-l text-t2">{shot.caption}</figcaption>
+                </figure>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

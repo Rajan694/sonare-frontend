@@ -490,6 +490,11 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAND-014` | renders the landing without importing the app root                                 |
 | `WEB-LAND-015` | the hero has no opacity-0 initial style                                            |
 | `WEB-LAND-016` | screenshot frames carry srcSet and sizes with high fetchPriority on the hero       |
+| `WEB-LAND-017` | the reveal hook adds the visible class on intersect                                |
+| `WEB-LAND-018` | the reveal hook keeps content visible without IntersectionObserver                 |
+| `WEB-LAND-019` | the reveal hook reveals immediately under prefers-reduced-motion                   |
+| `WEB-LAND-020` | SiteRoot switches between Landing and Privacy based on pathname                    |
+| `WEB-LAND-021` | the web build does not import or initialise Neutralino on the site root            |
 
 ## `test/screens/email-links.test.tsx`
 

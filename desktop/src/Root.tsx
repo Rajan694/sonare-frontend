@@ -41,7 +41,7 @@ export const Root = ({
   }
 
   if (isSite) {
-    return <SiteRoot />;
+    return <SiteRoot pathname={pathname} />;
   }
 
   return (
