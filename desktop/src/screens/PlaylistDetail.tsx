@@ -8,7 +8,7 @@ import {
   usePlaylist,
   usePlaylistTracks,
   useAuth,
-  useLibraryAlbums,
+  useSavedPlaylists,
   usePagedList,
   notifyPlaylistsChanged,
 } from '../api/hooks';
@@ -78,15 +78,16 @@ const PlaylistDetail = () => {
   const isOwn = info?.kind === 'local' || (!!user && info?.kind === 'synced');
   // No editing offline: reorder, remove and Add songs all need the server.
   const canEdit = isOwn && !offlineOwn;
-  const { data: savedAlbums } = useLibraryAlbums();
+  const { data: savedPlaylists } = useSavedPlaylists();
   const [savedOverride, setSavedOverride] = useState<boolean | null>(null);
-  const saved = savedOverride ?? !!savedAlbums?.items.some((a) => a.id === id);
+  const saved = savedOverride ?? !!savedPlaylists?.items.some((p) => p.id === id);
   const toggleSaved = () =>
     requireAccount('Create a free account to save playlists you love.', async () => {
       const next = !saved;
       setSavedOverride(next);
       try {
         await api.setPlaylistFavourite(id, next, info ?? undefined);
+        notifyPlaylistsChanged();
         showToast({
           title: next ? 'Saved to your library' : 'Removed from your library',
           description: info?.name,

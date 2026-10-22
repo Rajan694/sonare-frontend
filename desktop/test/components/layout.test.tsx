@@ -19,7 +19,7 @@ import { requestSync } from '../../src/api/sync';
 import * as player from '../../src/audio/player';
 import { makePlayer, makeStore, renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, server, useMockServer } from '../helpers/server';
-import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { makePlaylist, makeSavedPlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 import { answerPrompt } from '../helpers/dialogs';
 
 const dl = vi.hoisted(() => ({ active: 0 }));
@@ -41,6 +41,7 @@ vi.mock('../../src/audio/player', () => ({
 useMockServer(
   http.get(`${API}/tracks/:id/peaks`, () => HttpResponse.json({ peaks: [0.5, 1] })),
   http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/me/saved-playlists`, () => HttpResponse.json(page([]))),
   http.get(`${API}/search/suggestions`, () => HttpResponse.json([])),
 );
 
@@ -352,6 +353,33 @@ describe('sidebar', () => {
     expect(posts).toBe(1);
   });
 
+  it('WEB-LAYOUT-041 lists saved YouTube playlists after user playlists with cloud badge and owner', async () => {
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/playlists`, () =>
+        HttpResponse.json(page([makePlaylist({ id: 'sonare:1', name: 'Own Gym', kind: 'synced', trackCount: 5 })])),
+      ),
+      http.get(`${API}/me/saved-playlists`, () =>
+        HttpResponse.json(
+          page([
+            makeSavedPlaylist({
+              id: 'yt:PLabc',
+              name: 'Saved Lofi',
+              owner: 'ChilledCow',
+              trackCount: 40,
+            }),
+          ]),
+        ),
+      ),
+    );
+    renderWithProviders(<Sidebar />);
+    expect(await screen.findByRole('link', { name: /Own Gym/ })).toHaveAttribute('href', '/playlist/sonare:1');
+    const savedLink = await screen.findByRole('link', { name: /Saved Lofi/ });
+    expect(savedLink).toHaveAttribute('href', '/playlist/yt:PLabc');
+    expect(within(savedLink).getByText('ChilledCow · 40')).toBeInTheDocument();
+    expect(within(savedLink).getByTitle('Saved from YouTube')).toBeInTheDocument();
+  });
+
   it('WEB-LAYOUT-017 collapses to an icon rail with tooltips, and counts running downloads', async () => {
     dl.active = 2;
     const store = makeStore();
@@ -402,6 +430,14 @@ describe('queue panel', () => {
     expect(screen.getByText('Next One')).toBeInTheDocument();
     expect(screen.getByText('Last One')).toBeInTheDocument();
     expect(screen.queryByText('Before')).not.toBeInTheDocument();
+  });
+
+  it('WEB-LAYOUT-040 upcoming list keeps a minimum usable height and content scrolls', () => {
+    panel();
+    const list = screen.getByText('Next One').closest('.overflow-y-auto');
+    expect(list).toHaveClass('min-h-[240px]');
+    const content = list?.parentElement;
+    expect(content).toHaveClass('overflow-y-auto');
   });
 
   it('WEB-LAYOUT-020 clicking an upcoming song plays it; its X removes it without playing', async () => {

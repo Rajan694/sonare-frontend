@@ -117,6 +117,17 @@ const sync = createPlaySync<PendingPlay>({
 /** Upload whatever is waiting, if we can. Safe to call often: runs are serialised. */
 export const requestSync = (): void => sync.requestSync();
 
+/** Drop plays waiting to sync for the signed-in user (e.g. after clearing history). */
+export const dropPendingPlays = async (userId?: string): Promise<void> => {
+  await load();
+  const targetId = userId ?? useAuthStore.getState().user?.id;
+  if (!targetId) return;
+  queue = queue.filter((p) => p.userId && p.userId !== targetId);
+  save();
+  publish();
+  await saving;
+};
+
 /** Queue a play the listener has actually heard; it uploads in the background. */
 export const queuePlay = (track: Track, at: number, ms: number): void => {
   queue.push({

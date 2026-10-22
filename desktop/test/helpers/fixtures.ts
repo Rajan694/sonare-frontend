@@ -1,4 +1,4 @@
-import type { Album, Artist, Page, Playlist, Track, User } from '../../src/types';
+import type { Album, Artist, Page, Playlist, SavedPlaylist, Track, User } from '../../src/types';
 
 let seq = 0;
 const next = () => ++seq;
@@ -58,6 +58,18 @@ export const makePlaylist = (over: Partial<Playlist> = {}): Playlist => {
     trackCount: 0,
     downloadedCount: 0,
     updatedAt: 1_700_000_000_000,
+    ...over,
+  };
+};
+
+export const makeSavedPlaylist = (over: Partial<SavedPlaylist> = {}): SavedPlaylist => {
+  const n = next();
+  return {
+    id: `yt:PL${n}`,
+    name: `Saved Playlist ${n}`,
+    owner: `Channel ${n}`,
+    trackCount: 10,
+    addedAt: 1_700_000_000_000,
     ...over,
   };
 };

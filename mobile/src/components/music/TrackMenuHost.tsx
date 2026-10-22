@@ -48,16 +48,27 @@ const goTo = (screen: 'Album' | 'Artist', id: string) => {
   openInCurrentTab(screen, { id });
 };
 
-const PlaylistPicker = ({ track }: { track: Track }) => {
-  const close = useTrackMenuStore((s) => s.close);
+export interface PlaylistPickerProps {
+  track?: Track;
+  tracks?: Track[];
+  onClose?: () => void;
+}
+
+export const PlaylistPicker = ({ track, tracks, onClose }: PlaylistPickerProps) => {
+  const storeClose = useTrackMenuStore((s) => s.close);
+  const handleClose = onClose ?? storeClose;
   const playlists = useLibraryStore((s) => s.playlists);
   const [newName, setNewName] = React.useState('');
   const [note, setNote] = React.useState<string | null>(null);
 
   const addTo = async (playlistId: string) => {
     try {
-      await useLibraryStore.getState().addToPlaylist(playlistId, track);
-      close();
+      if (tracks) {
+        await useLibraryStore.getState().addToPlaylist(playlistId, tracks);
+      } else if (track) {
+        await useLibraryStore.getState().addToPlaylist(playlistId, track);
+      }
+      handleClose();
     } catch (e: any) {
       setNote(e?.message || 'Could not add to playlist');
     }

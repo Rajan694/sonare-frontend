@@ -123,6 +123,7 @@ export const QueueScreen = () => {
       />
 
       <FlatList
+        className="flex-1"
         data={upcomingQueue}
         keyExtractor={(item, i) => `${item.id}-${currentIndex + 1 + i}`}
         // Rows are a fixed height, so the list can size and scroll without measuring them.

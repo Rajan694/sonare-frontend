@@ -123,6 +123,8 @@ const mockEasing = {
   inOut: (fn) => fn || mockEasingFn,
 };
 
+const backPressSubscriptions = [];
+
 jest.mock('react-native', () => {
   return {
     Platform: {
@@ -187,6 +189,25 @@ jest.mock('react-native', () => {
     },
     Alert: {
       alert: jest.fn(),
+    },
+    BackHandler: {
+      _subscriptions: backPressSubscriptions,
+      addEventListener: jest.fn((event, handler) => {
+        if (event === 'hardwareBackPress') {
+          backPressSubscriptions.push(handler);
+        }
+        return {
+          remove: () => {
+            const idx = backPressSubscriptions.indexOf(handler);
+            if (idx >= 0) backPressSubscriptions.splice(idx, 1);
+          },
+        };
+      }),
+      removeEventListener: jest.fn((event, handler) => {
+        const idx = backPressSubscriptions.indexOf(handler);
+        if (idx >= 0) backPressSubscriptions.splice(idx, 1);
+      }),
+      exitApp: jest.fn(),
     },
     AppState: {
       currentState: 'active',
@@ -479,6 +500,7 @@ jest.mock('youtubei.js/react-native', () => ({
   Log: { setLevel: jest.fn(), Level: { ERROR: 1 } },
 }));
 beforeEach(() => {
+  backPressSubscriptions.length = 0;
   require('./src/youtube/appConfig').resetAppConfigForTesting({ inAppYoutube: false });
 });
 

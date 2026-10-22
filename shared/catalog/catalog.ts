@@ -10,6 +10,7 @@ import { decodeCursor, encodeCursor } from './cursor.js';
 import {
   normalizeChannelTabAlbum,
   normalizeChannelToArtist,
+  normalizePlaylist,
   normalizePlaylistToAlbum,
   normalizeStreamItemToAlbum,
   normalizeStreamItemToArtist,
@@ -384,13 +385,7 @@ export const createCatalog = (source: YouTubeSource) => {
     async playlist(id: string): Promise<Playlist> {
       const rawId = idHelpers.extractYtId(id);
       const pl = await source.playlist(rawId);
-      return {
-        id: idHelpers.prefixYt(rawId),
-        name: pl.name,
-        kind: 'online',
-        trackCount: pl.videos >= 0 ? pl.videos : null,
-        downloadedCount: 0,
-      };
+      return normalizePlaylist(pl, rawId);
     },
 
     /**

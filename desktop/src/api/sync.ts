@@ -89,6 +89,10 @@ export const startBackgroundSync = (): void => {
   requestSync();
 };
 
+export const updateSyncStatus = (): void => {
+  setStatus({});
+};
+
 export const useSyncStatus = (): SyncStatus => {
   return useSyncExternalStore(
     (fn) => {

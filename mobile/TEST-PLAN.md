@@ -177,6 +177,8 @@ navigation mock live in `test-utils/`.
 | `MOB-HOME-004`   | trending plays within the chart; when the music service is down it says so and retries |
 | `MOB-HOME-005`   | choosing Offline asks first; the header opens search, and the profile opens settings   |
 | `MOB-HOME-006`   | offline, it lists the downloaded songs and asks the server for nothing                 |
+| `MOB-HOME-007`   | shows "Haven't played in a while" shelf and plays with the shelf queued                |
+| `MOB-HOME-008`   | "Haven't played in a while" shelf is hidden when empty, guest, offline, or on error    |
 | `MOB-SEARCH-001` | typing searches once the user pauses, and shows a top result and songs                 |
 | `MOB-SEARCH-002` | tapping a song plays it with the other results queued                                  |
 | `MOB-SEARCH-003` | album and artist results open their pages; filters change the search type              |
@@ -190,6 +192,9 @@ navigation mock live in `test-utils/`.
 | `MOB-SEARCH-011` | offline, the Albums and Artists chips group the matches                                |
 | `MOB-SEARCH-012` | online with no network, the phone is searched and the server is not                    |
 | `MOB-SEARCH-013` | recent searches fill and search, × removes one, Clear empties the list                 |
+| `MOB-SEARCH-014` | pasting a YouTube song link shows one song row, plays on tap, and skips normal search  |
+| `MOB-SEARCH-015` | pasting a YouTube playlist link shows owner and song count and navigates to Playlist   |
+| `MOB-SEARCH-016` | pasting an invalid YouTube link shows error; plain text still searches                 |
 | `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                    |
 | `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                             |
 | `MOB-LIB-S-003`  | the sort chip opens a sheet of orders; picking one refetches                           |
@@ -200,13 +205,15 @@ navigation mock live in `test-utils/`.
 | `MOB-PLS-003`    | creating a playlist names it and opens it                                              |
 | `MOB-PLS-004`    | deleting from a playlist's options asks first                                          |
 | `MOB-PLS-005`    | offline, a playlist this phone never saved is not listed                               |
+| `MOB-PLS-006`    | renders "Saved from YouTube" section and navigates to playlist on press                |
 | `MOB-PL-001`     | the user's own playlist shows its length and plays from the start                      |
 | `MOB-PL-002`     | a public playlist has no owner options                                                 |
 | `MOB-PL-003`     | deleting the playlist from its options leaves the page once it is gone                 |
-| `MOB-PL-004`     | the favourite button on a playlist saves it                                            |
+| `MOB-PL-004`     | the favourite button on a playlist saves it using saved-playlists state                |
 | `MOB-PL-005`     | your own playlist has no favourite button                                              |
 | `MOB-PL-006`     | renaming your own playlist saves it, refreshes the screen and the library              |
 | `MOB-PL-007`     | a refused rename shows the error and leaves the sheet open                             |
+| `MOB-PL-008`     | Unsave on a saved playlist uses savedPlaylists and removes it                          |
 | `MOB-ALB-001`    | an album shows its artist link and year, and shuffle plays it all                      |
 | `MOB-ALB-002`    | "Add to queue" appends the whole album                                                 |
 | `MOB-ALB-003`    | the favourite button on an album saves it                                              |
@@ -237,6 +244,7 @@ navigation mock live in `test-utils/`.
 | `MOB-Q-006`      | an empty queue says so                                                                            |
 | `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                       |
 | `MOB-Q-008`      | saving the queue names it one past the highest "Queue N" already used                             |
+| `MOB-Q-009`      | 10 or more upcoming songs all render in the queue list                                            |
 | `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                            |
 | `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                       |
 | `MOB-LYR-003`    | plain text view shows the words without timing                                                    |
@@ -364,8 +372,8 @@ navigation mock live in `test-utils/`.
 | `MOB-SETX-002`  | there is no server address setting                                                      |
 | `MOB-LIBX-001`  | Albums shows the saved albums and opens one                                             |
 | `MOB-LIBX-002`  | Artists shows followed artists and the artists of your songs, with counts               |
-| `MOB-LIBX-003`  | Genres opens a search for the category in the Search tab                                |
-| `MOB-LIBX-004`  | empty tabs say how things get there; offline they say to go online                      |
+| `MOB-LIBX-003`  | there is no Genres tab in the Library (Genres are in Search → Browse)                   |
+| `MOB-LIBX-004`  | empty online tabs say how things get there; offline Albums/Artists group phone songs    |
 | `MOB-LIBX-005`  | Favourites and Most played show those songs from the account and play them in order     |
 | `MOB-LIBX-006`  | offline, Favourites shows the liked songs downloaded to this phone, fetching nothing    |
 | `MOB-LIBX-007`  | Shuffle turns shuffle mode on and starts the whole list shuffled                        |
@@ -503,13 +511,51 @@ navigation mock live in `test-utils/`.
 | `MOB-ACCT-002` | changing the password keeps this phone signed in with the new session; name and delete go to /me     |
 | `MOB-ACCT-003` | the Account screen saves a new name, and changes the password after checking the fields              |
 | `MOB-ACCT-004` | deleting asks for the password and a confirmation, then leaves; a refusal is shown                   |
+| `MOB-ACCT-005` | canceling clear play history does nothing                                                            |
+| `MOB-ACCT-006` | confirming clear play history calls endpoint, drops pending plays, clears AI picks, and alerts       |
+| `MOB-ACCT-007` | clear play history failure shows error and keeps pending plays                                       |
 
 ## `__tests__/autoplay.test.ts`
 
-| ID             | Use case                                                                                 |
-| :------------- | :--------------------------------------------------------------------------------------- |
-| `MOB-AUTO-001` | the queue's last song asks once for similar songs and adds the new ones, which play next |
-| `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                |
+| ID             | Use case                                                                                        |
+| :------------- | :---------------------------------------------------------------------------------------------- |
+| `MOB-AUTO-001` | fewer than 10 upcoming songs asks once for similar songs and adds the new ones, which play next |
+| `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                       |
+| `MOB-AUTO-003` | 10 or more upcoming songs does not ask for similar songs until queue drops below 10             |
+
+## `__tests__/library.test.tsx`
+
+| ID             | Use case                                                                          |
+| :------------- | :-------------------------------------------------------------------------------- |
+| `MOB-LIBR-001` | first page is requested with filter and sort; meta.total is exposed               |
+| `MOB-LIBR-002` | onEndReached loads the cursor page and appends it                                 |
+| `MOB-LIBR-003` | Favourites tab sends filter=liked                                                 |
+| `MOB-LIBR-004` | each sort option sends its sort key when the Songs tab is sorted                  |
+| `MOB-LIBR-005` | loadAll fetches every remaining page and returns the full list                    |
+| `MOB-LIBR-006` | Songs tab sends filter=all to libraryTracks and shows the tracks                  |
+| `MOB-LIBR-007` | Play all loads all pages before starting playback                                 |
+| `MOB-LIBR-008` | there is no Genres tab in the Library                                             |
+| `MOB-LIBR-009` | sort chip on Songs tab shows six options                                          |
+| `MOB-LIBR-010` | sort chip appears on Favourites tab too                                           |
+| `MOB-LIBR-011` | offline Albums groups phone songs by album tag, sorted by name, with song count   |
+| `MOB-LIBR-012` | offline Artists groups phone songs by artist tag, sorted by name, with song count |
+| `MOB-LIBR-013` | offline Albums empty phone shows the existing empty text                          |
+| `MOB-LIBR-014` | offline Artists empty phone shows the existing empty text                         |
+| `MOB-LIBR-015` | tapping an offline album plays its songs                                          |
+| `MOB-LIBR-016` | tapping an offline artist plays their songs                                       |
+| `MOB-LIBR-017` | liking or unliking does not refetch the paged list                                |
+| `MOB-LIBR-018` | an unliked row disappears from Favourites at once                                 |
+| `MOB-LIBR-019` | focus refetch keeps old rows until the new page lands                             |
+| `MOB-LIBR-020` | loadAll after a sort change does not overwrite the list                           |
+| `MOB-LIBR-021` | when enabled turns false, items, total, and cursor are cleared                    |
+| `MOB-LIBR-022` | Select button enters selection mode with count and checkboxes                     |
+| `MOB-LIBR-023` | tapping and long-pressing rows toggles selection in selection mode                |
+| `MOB-LIBR-024` | Select all toggles selecting and deselecting all loaded rows                      |
+| `MOB-LIBR-025` | Cancel button and Android hardware back button exit selection mode                |
+| `MOB-LIBR-026` | Add to queue adds selected tracks to the player queue                             |
+| `MOB-LIBR-027` | Add to playlist opens the playlist picker with selected tracks                    |
+| `MOB-LIBR-028` | Download enqueues without confirm, alerts with location, and stays on screen      |
+| `MOB-LIBR-029` | Unlike unlikes single track directly or multiple with confirmation and rollback   |
 
 ## `__tests__/paging.test.tsx`
 
@@ -553,17 +599,20 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/ai-features.test.tsx`
 
-| ID           | Use case                                                                                         |
-| :----------- | :----------------------------------------------------------------------------------------------- |
-| `MOB-AI-001` | with AI off, signed out, or offline there is no AI on Home or Playlists, and nothing asks the AI |
-| `MOB-AI-002` | the store follows app-config, and an AI_UNAVAILABLE answer turns AI off                          |
-| `MOB-AI-003` | shows the songs found for the picks, with their reasons, once per session                        |
-| `MOB-AI-004` | shows nothing for no picks, an error, or fewer than 3 songs found                                |
-| `MOB-AI-005` | asks only when tapped, runs the plan’s searches and lists their songs once each                  |
-| `MOB-AI-006` | a failed AI search says so in one line                                                           |
-| `MOB-AI-007` | makes the playlist from the songs found and opens it                                             |
-| `MOB-AI-008` | too few songs found: says so and makes nothing                                                   |
-| `MOB-AI-009` | Cancel while the AI is thinking makes nothing                                                    |
+| ID           | Use case                                                                                                                        |
+| :----------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| `MOB-AI-001` | with AI off, signed out, or offline there is no AI on Home or Playlists, and nothing asks the AI                                |
+| `MOB-AI-002` | the store follows app-config, and an AI_UNAVAILABLE answer turns AI off                                                         |
+| `MOB-AI-003` | shows the songs found for the picks, with their reasons, once per session                                                       |
+| `MOB-AI-004` | shows nothing for no picks, an error, or fewer than 3 songs found                                                               |
+| `MOB-AI-005` | asks only when tapped, runs the plan’s searches and lists their songs once each                                                 |
+| `MOB-AI-006` | a failed AI search says so in one line                                                                                          |
+| `MOB-AI-007` | makes the playlist from the songs found and opens it                                                                            |
+| `MOB-AI-008` | too few songs found: says so and makes nothing                                                                                  |
+| `MOB-AI-009` | Cancel while the AI is thinking makes nothing                                                                                   |
+| `MOB-AI-010` | enqueue adds items immediately with original titles and holds start until AI titles resolve, then downloadName uses short title |
+| `MOB-AI-011` | with AI off or offline, enqueue does not hold download start and uses original title in downloadName                            |
+| `MOB-AI-012` | download start proceeds with original title if AI titles fail or time out, and running downloads are untouched                  |
 
 ## `__tests__/spatial.test.tsx`
 

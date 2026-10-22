@@ -30,6 +30,7 @@ useMockServer(
       { id: 'g2', name: 'Qawwali' },
     ]),
   ),
+  http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([]))),
 );
 
 afterEach(() => {
@@ -141,6 +142,82 @@ describe('home', () => {
     await user.click(screen.getByRole('button', { name: /See all/ }));
     await waitFor(() => expect(screen.getAllByRole('button', { name: /^Play Hit/ })).toHaveLength(12));
     expect(screen.getByRole('button', { name: /Show less/ })).toBeInTheDocument();
+  });
+
+  it("WEB-HOME-009 shows 'Haven't played in a while' shelf and plays with the shelf as queue", async () => {
+    setSession('a', 'r', testUser);
+    const unplayed = [
+      makeTrack({ id: 'yt:un1', title: 'Old Gold', artist: 'Classic' }),
+      makeTrack({ id: 'yt:un2', title: 'Vintage Vibe', artist: 'Retro' }),
+    ];
+    server.use(
+      http.get(`${API}/me/not-played-lately`, ({ request }) => {
+        const url = new URL(request.url);
+        expect(url.searchParams.get('limit')).toBe('20');
+        return HttpResponse.json(page(unplayed));
+      }),
+    );
+    const player = makePlayer();
+    const { user } = renderWithProviders(<Home />, { player });
+    expect(await screen.findByText("Haven't played in a while")).toBeInTheDocument();
+    expect(screen.getByText('Old Gold')).toBeInTheDocument();
+    expect(screen.getByText('Vintage Vibe')).toBeInTheDocument();
+
+    const playBtn = screen.getByRole('button', { name: 'Play Old Gold' });
+    await user.click(playBtn);
+    expect(player.playTrack).toHaveBeenCalledWith(unplayed[0], unplayed);
+  });
+
+  it("WEB-HOME-010 'Haven't played in a while' shelf is hidden when empty, on error, for guests, or offline", async () => {
+    // 1. As guest
+    const { unmount } = renderWithProviders(<Home />);
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+    unmount();
+
+    // 2. Signed in, but empty list
+    setSession('a', 'r', testUser);
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([]))));
+    const { unmount: unmount2 } = renderWithProviders(<Home />);
+    await waitFor(() => expect(screen.getByText('Welcome back, Test Listener')).toBeInTheDocument());
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+    unmount2();
+
+    // 3. Signed in, but server error
+    server.use(http.get(`${API}/me/not-played-lately`, () => apiError(500, 'SERVER_ERROR')));
+    const { unmount: unmount3 } = renderWithProviders(<Home />);
+    await waitFor(() => expect(screen.getByText('Welcome back, Test Listener')).toBeInTheDocument());
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+    unmount3();
+
+    // 4. Signed in with data, but offline mode
+    server.use(
+      http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([makeTrack({ title: 'Old Song' })]))),
+    );
+    renderWithProviders(<Home />, { mode: 'offline' });
+    expect(screen.queryByText("Haven't played in a while")).not.toBeInTheDocument();
+  });
+
+  it("WEB-HOME-011 phone layout renders 'Haven't played in a while' shelf and plays with the shelf as queue", async () => {
+    setSession('a', 'r', testUser);
+    const unplayed = [makeTrack({ id: 'yt:un1', title: 'Phone Old Gold', artist: 'Classic' })];
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page(unplayed))));
+    const oldWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { value: 400, configurable: true });
+    window.dispatchEvent(new Event('resize'));
+
+    try {
+      const player = makePlayer();
+      const { user } = renderWithProviders(<Home />, { player });
+      expect(await screen.findByText("Haven't played in a while")).toBeInTheDocument();
+      expect(screen.getByText('Phone Old Gold')).toBeInTheDocument();
+
+      const playBtn = screen.getByRole('button', { name: 'Play Phone Old Gold' });
+      await user.click(playBtn);
+      expect(player.playTrack).toHaveBeenCalledWith(unplayed[0], unplayed);
+    } finally {
+      Object.defineProperty(window, 'innerWidth', { value: oldWidth, configurable: true });
+      window.dispatchEvent(new Event('resize'));
+    }
   });
 });
 
@@ -317,5 +394,90 @@ describe('search', () => {
     expect(await screen.findByRole('link', { name: /Diljit Dosanjh/ })).toHaveAttribute('href', '/artist/yt:UCdiljit');
     // The section offers the full list.
     expect(screen.getByRole('button', { name: 'See all artists' })).toBeInTheDocument();
+  });
+
+  it('WEB-SEARCH-012 pasting a song link fetches the song, renders the row, and plays on click', async () => {
+    const song = makeTrack({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley' });
+    const rec = recordRequests();
+    server.use(
+      http.get(`${API}/tracks/yt%3AdQw4w9WgXcQ`, () => HttpResponse.json(song)),
+      http.get(`${API}/tracks/yt:dQw4w9WgXcQ`, () => HttpResponse.json(song)),
+    );
+    const player = makePlayer();
+    const { user } = search('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '/search', player);
+    expect(await screen.findByText('Never Gonna Give You Up')).toBeInTheDocument();
+    expect(screen.getAllByText('Rick Astley')[0]).toBeInTheDocument();
+    // Chips bar is dropped
+    expect(screen.queryByRole('button', { name: 'Songs' })).not.toBeInTheDocument();
+    expect(screen.queryByText(/results/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByText('Never Gonna Give You Up'));
+    expect(player.playTrack).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up' }),
+      expect.any(Array),
+      expect.anything(),
+    );
+    rec.stop();
+    expect(rec.paths().some((p) => p.startsWith('GET /search'))).toBe(false);
+  });
+
+  it('WEB-SEARCH-013 pasting a playlist link renders the card and links to /playlist/:id', async () => {
+    const pl = makePlaylist({ id: 'yt:PL12345', name: 'Chill Vibes', trackCount: 42, kind: 'online' });
+    const rec = recordRequests();
+    server.use(
+      http.get(`${API}/playlists/yt%3APL12345`, () => HttpResponse.json(pl)),
+      http.get(`${API}/playlists/yt:PL12345`, () => HttpResponse.json(pl)),
+    );
+    search('https://www.youtube.com/playlist?list=PL12345');
+    const card = await screen.findByRole('link', { name: /Chill Vibes/ });
+    expect(card).toHaveAttribute('href', '/playlist/yt:PL12345');
+    expect(screen.getByText('Chill Vibes')).toBeInTheDocument();
+    expect(screen.getByText(/42 songs/)).toBeInTheDocument();
+    // Chips bar dropped
+    expect(screen.queryByRole('button', { name: 'Songs' })).not.toBeInTheDocument();
+    rec.stop();
+    expect(rec.paths().some((p) => p.startsWith('GET /search'))).toBe(false);
+  });
+
+  it('WEB-SEARCH-014 pasting an invalid or missing link shows an error with retry', async () => {
+    let fail = true;
+    const song = makeTrack({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley' });
+    server.use(
+      http.get(`${API}/tracks/yt%3AdQw4w9WgXcQ`, () =>
+        fail ? apiError(404, 'NOT_FOUND', 'Track not found') : HttpResponse.json(song),
+      ),
+      http.get(`${API}/tracks/yt:dQw4w9WgXcQ`, () =>
+        fail ? apiError(404, 'NOT_FOUND', 'Track not found') : HttpResponse.json(song),
+      ),
+    );
+    const { user } = search('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(await screen.findByText("Couldn't open this link")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+
+    fail = false;
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText('Never Gonna Give You Up')).toBeInTheDocument();
+  });
+
+  it('WEB-SEARCH-015 pasting a playlist link with owner displays "Playlist · <owner>" and thumbnail', async () => {
+    const pl = makePlaylist({
+      id: 'yt:PL987',
+      name: 'Synthwave Night',
+      kind: 'online',
+      owner: 'Neon Records',
+      thumbnail: 'https://example.com/synth.jpg',
+      trackCount: 25,
+    });
+    server.use(
+      http.get(`${API}/playlists/yt%3APL987`, () => HttpResponse.json(pl)),
+      http.get(`${API}/playlists/yt:PL987`, () => HttpResponse.json(pl)),
+    );
+    search('https://www.youtube.com/playlist?list=PL987');
+    const card = await screen.findByRole('link', { name: /Synthwave Night/ });
+    expect(card).toHaveAttribute('href', '/playlist/yt:PL987');
+    expect(screen.getByText('Synthwave Night')).toBeInTheDocument();
+    expect(screen.getByText('Playlist · Neon Records')).toBeInTheDocument();
+    const img = screen.getByRole('img', { name: 'Synthwave Night' });
+    expect(img).toHaveAttribute('src', 'https://example.com/synth.jpg');
   });
 });

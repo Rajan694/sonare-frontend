@@ -179,17 +179,13 @@ describe('Library tabs', () => {
     expect(nav.navigate).toHaveBeenCalledWith('Artist', { id: 'yt:dil' });
   });
 
-  it('MOB-LIBX-003 Genres opens a search for the category in the Search tab', async () => {
-    jest.spyOn(api, 'genres').mockResolvedValue([{ id: 'sufi', name: 'Sufi', query: 'sufi songs' }]);
-    const { getByText, findByLabelText, getByLabelText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Genres'));
-    // The built-in categories show until the server's list arrives.
-    expect(getByLabelText('Browse Devotional')).toBeTruthy();
-    fireEvent.press(await findByLabelText('Browse Sufi'));
-    expect(nav.navigate).toHaveBeenCalledWith('Search', { screen: 'SearchRoot', params: { q: 'sufi songs' } });
+  it('MOB-LIBX-003 there is no Genres tab in the Library (Genres are in Search → Browse)', () => {
+    // Genres tab was removed from Library; Search keeps Browse categories and its Genres chip.
+    const { queryByText } = render(<LibraryScreen />);
+    expect(queryByText('Genres')).toBeNull();
   });
 
-  it('MOB-LIBX-004 empty tabs say how things get there; offline they say to go online', async () => {
+  it('MOB-LIBX-004 empty online tabs say how things get there; offline Albums/Artists group phone songs', async () => {
     jest.spyOn(api, 'libraryAlbums').mockResolvedValue(page([]) as never);
     jest.spyOn(api, 'libraryArtists').mockResolvedValue(page([]) as never);
     const { getByText, findByText } = render(<LibraryScreen />);
@@ -199,14 +195,19 @@ describe('Library tabs', () => {
     expect(
       await findByText('Follow artists, like songs or add them to a playlist, and their artists show up here.'),
     ).toBeTruthy();
+    // Offline with no phone songs → empty message (no phone songs grouped).
     act(() => useModeStore.setState({ mode: 'offline' }));
-    await waitFor(() => expect(getByText('Your artists come from your account. Go online to see them.')).toBeTruthy());
+    await waitFor(() => expect(getByText('No music on this phone yet. Songs you download show up here.')).toBeTruthy());
   });
 
   it('MOB-LIBX-005 Favourites and Most played show those songs from the account and play them in order', async () => {
-    const liked = [makeTrack({ title: 'Loved one' }), makeTrack({ title: 'Loved two' })];
+    const likedSongs = [makeTrack({ title: 'Loved one' }), makeTrack({ title: 'Loved two' })];
     const top = [makeTrack({ title: 'On repeat' })];
-    jest.spyOn(api, 'favourites').mockResolvedValue(page(liked) as never);
+    // Favourites tab now uses libraryTracks with filter=liked.
+    jest.spyOn(api, 'libraryTracks').mockImplementation(async (opts: any) => {
+      if (opts?.filter === 'liked') return page(likedSongs) as never;
+      return page([]) as never;
+    });
     const mostPlayed = jest.spyOn(api, 'mostPlayed').mockResolvedValue(page(top) as never);
     const { getByText, findByText } = render(<LibraryScreen />);
     fireEvent.press(getByText('Favourites'));
@@ -223,18 +224,23 @@ describe('Library tabs', () => {
     const other = makeTrack({ title: 'Saved only' });
     useLibraryStore.setState({ favouriteIds: { [saved.id]: true } });
     useDownloadsStore.setState({ items: { [saved.id]: makeDownload(saved), [other.id]: makeDownload(other) } });
-    const favourites = jest.spyOn(api, 'favourites');
+    const libraryTracks = jest.spyOn(api, 'libraryTracks');
     act(() => useModeStore.setState({ mode: 'offline' }));
     const { getByText, findByText, queryByText } = render(<LibraryScreen />);
     fireEvent.press(getByText('Favourites'));
     expect(await findByText('Saved and liked')).toBeTruthy();
     expect(queryByText('Saved only')).toBeNull();
-    expect(favourites).not.toHaveBeenCalled();
+    // Offline: no API call for liked songs.
+    expect(libraryTracks).not.toHaveBeenCalled();
   });
 
   it('MOB-LIBX-007 Shuffle turns shuffle mode on and starts the whole list shuffled', async () => {
-    const liked = [makeTrack({ title: 'One' }), makeTrack({ title: 'Two' }), makeTrack({ title: 'Three' })];
-    jest.spyOn(api, 'favourites').mockResolvedValue(page(liked) as never);
+    const likedSongs = [makeTrack({ title: 'One' }), makeTrack({ title: 'Two' }), makeTrack({ title: 'Three' })];
+    // Favourites tab uses libraryTracks with filter=liked.
+    jest.spyOn(api, 'libraryTracks').mockImplementation(async (opts: any) => {
+      if (opts?.filter === 'liked') return page(likedSongs) as never;
+      return page([]) as never;
+    });
     usePlayerStore.setState({ shuffle: false });
     const { getByText, findByText } = render(<LibraryScreen />);
     fireEvent.press(getByText('Favourites'));

@@ -12,6 +12,7 @@ import {
 import { normalizeStreamItemToTrack } from '../../../../shared/catalog/normalize';
 import { bestMatch, resolvePicks, searchPlanSongs } from '../../../../shared/ai/resolvePicks';
 import { startTitleSync } from '../../../../shared/ai/titleSync';
+import { shortTitlesFor, shouldFixTitle, isServerSong } from '../../../../shared/ai/downloadTitles';
 
 const track = (id: string, title: string, artist: string): Track => ({
   id: `yt:${id}`,
@@ -174,5 +175,153 @@ describe('searchPlanSongs', () => {
       return results[q];
     });
     expect(songs.map((t) => t.id)).toEqual(['yt:a', 'yt:b', 'yt:c', 'yt:f']);
+  });
+});
+
+describe('shortTitlesFor', () => {
+  beforeEach(() => resetTitleFixes());
+
+  it('WEB-AI-009 shortTitlesFor selects messy titles and titles longer than 40 characters, including live and katha broadcasts', async () => {
+    const kathaTrack = track(
+      'katha1',
+      'LIVE - SRI RAMKATHA | PUJYA RAJAN JEE | KEWAT PREM | SIWAN BIHAR | DAY 07',
+      'Pujya Rajan Jee',
+    );
+    const messyTrack = track('messy1', 'Tum Hi Ho | Aashiqui 2', 'T-Series');
+    const longCleanTrack = track(
+      'long1',
+      'A Very Long Symphonic Movement Number Nine In D Minor Op 125',
+      'Philharmonic Orchestra',
+    );
+
+    expect(shouldFixTitle(kathaTrack)).toBe(true);
+    expect(shouldFixTitle(messyTrack)).toBe(true);
+    expect(shouldFixTitle(longCleanTrack)).toBe(true);
+
+    const post = vi.fn(async (items: { id: string }[]) => {
+      const fixes: Record<string, { title: string; artist: string }> = {};
+      for (const item of items) {
+        if (item.id === 'katha1') fixes[item.id] = { title: 'Shri Ram Katha · Day 7', artist: 'Pujya Rajan Jee' };
+        if (item.id === 'messy1') fixes[item.id] = { title: 'Tum Hi Ho', artist: 'Arijit Singh' };
+        if (item.id === 'long1') fixes[item.id] = { title: 'Symphony No. 9', artist: 'Beethoven' };
+      }
+      return { fixes };
+    });
+
+    const res = await shortTitlesFor([kathaTrack, messyTrack, longCleanTrack], post);
+    expect(post).toHaveBeenCalledTimes(1);
+    expect(post).toHaveBeenCalledWith([
+      { id: 'katha1', title: kathaTrack.title, artist: kathaTrack.artist },
+      { id: 'messy1', title: messyTrack.title, artist: messyTrack.artist },
+      { id: 'long1', title: longCleanTrack.title, artist: longCleanTrack.artist },
+    ]);
+
+    expect(res.get('yt:katha1')).toEqual({ title: 'Shri Ram Katha · Day 7', artist: 'Pujya Rajan Jee' });
+    expect(res.get('katha1')).toEqual({ title: 'Shri Ram Katha · Day 7', artist: 'Pujya Rajan Jee' });
+    expect(res.get('yt:messy1')?.title).toBe('Tum Hi Ho');
+    expect(res.get('yt:long1')?.title).toBe('Symphony No. 9');
+  });
+
+  it('WEB-AI-010 shortTitlesFor skips local songs, short clean titles, and songs with known fixes', async () => {
+    addTitleFixes({ known1: { title: 'Pre-existing Title', artist: 'Known Artist' } });
+
+    const localTrack: Track = {
+      ...track('loc1', 'Messy Song Title | Official Audio', 'Local Artist'),
+      id: 'local:loc1',
+      source: 'local',
+    };
+    const cleanTrack = track('clean1', 'Shape of You', 'Ed Sheeran');
+    const knownTrack = track('known1', 'Pre-existing Song Title | With Clutter', 'Upload Channel');
+
+    expect(isServerSong(localTrack)).toBe(false);
+    expect(shouldFixTitle(localTrack)).toBe(false);
+    expect(shouldFixTitle(cleanTrack)).toBe(false);
+    expect(shouldFixTitle(knownTrack)).toBe(false);
+
+    const post = vi.fn(async () => ({ fixes: {} }));
+    const res = await shortTitlesFor([localTrack, cleanTrack, knownTrack], post);
+
+    expect(post).not.toHaveBeenCalled();
+    // Known fix is present in the returned Map
+    expect(res.get('yt:known1')).toEqual({ title: 'Pre-existing Title', artist: 'Known Artist' });
+    expect(res.get('known1')).toEqual({ title: 'Pre-existing Title', artist: 'Known Artist' });
+    // Local and clean tracks are not in the Map
+    expect(res.has('local:loc1')).toBe(false);
+    expect(res.has('yt:clean1')).toBe(false);
+  });
+
+  it('WEB-AI-011 shortTitlesFor sends in chunks of 50 with at most 3 in parallel, updates registry, and resolves Map', async () => {
+    const tracks: Track[] = Array.from({ length: 120 }, (_, i) =>
+      track(`song${i}`, `Messy Title Number ${i} | Official Music Video HD`, `Artist ${i}`),
+    );
+
+    let activeRequests = 0;
+    let maxConcurrent = 0;
+
+    const post = vi.fn(async (items: { id: string; title: string; artist: string }[]) => {
+      activeRequests++;
+      maxConcurrent = Math.max(maxConcurrent, activeRequests);
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      activeRequests--;
+
+      const fixes: Record<string, { title: string; artist: string }> = {};
+      for (const item of items) {
+        fixes[item.id] = { title: `Short ${item.id}`, artist: item.artist };
+      }
+      return { fixes };
+    });
+
+    const res = await shortTitlesFor(tracks, post);
+    expect(post).toHaveBeenCalledTimes(3);
+    expect(post.mock.calls[0][0]).toHaveLength(50);
+    expect(post.mock.calls[1][0]).toHaveLength(50);
+    expect(post.mock.calls[2][0]).toHaveLength(20);
+    expect(maxConcurrent).toBeLessThanOrEqual(3);
+
+    expect(res.size).toBe(240); // 120 bare IDs + 120 yt: IDs
+    expect(res.get('yt:song0')).toEqual({ title: 'Short song0', artist: 'Artist 0' });
+    expect(res.get('song119')).toEqual({ title: 'Short song119', artist: 'Artist 119' });
+    expect(titleFixesSnapshot()['song0']).toEqual({ title: 'Short song0', artist: 'Artist 0' });
+  });
+
+  it('WEB-AI-012 shortTitlesFor resolves with completed fixes upon timeout and never rejects on chunk failure', async () => {
+    // Test 1: Chunk failure does not reject
+    const t1 = track('f1', 'Messy Song 1 | Official Audio 2026', 'Artist 1');
+    const t2 = track('f2', 'Messy Song 2 | Official Audio 2026', 'Artist 2');
+
+    const failingPost = vi.fn(async (items: { id: string }[]) => {
+      if (items.some((i) => i.id === 'f1')) {
+        throw new Error('500 Internal Server Error');
+      }
+      return { fixes: { f2: { title: 'Clean Song 2', artist: 'Artist 2' } } };
+    });
+
+    const res1 = await shortTitlesFor([t1, t2], failingPost);
+    expect(res1.has('yt:f1')).toBe(false);
+
+    // Test 2: Timeout resolves with whatever completed in time
+    const t3 = track('slow1', 'Messy Song 3 | Official Audio 2026', 'Artist 3');
+    const slowPost = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      return { fixes: { slow1: { title: 'Slow Fixed', artist: 'Artist 3' } } };
+    });
+
+    const res2 = await shortTitlesFor([t3], slowPost, { timeoutMs: 30 });
+    expect(res2.has('yt:slow1')).toBe(false);
+
+    // Test 3: Fix with empty artist keeps the song's original artist
+    const tEmptyArtist = track('emptyArt1', 'Messy Title | Official Audio 2026', 'Original Artist');
+    const emptyArtistPost = vi.fn(async () => ({
+      fixes: { emptyArt1: { title: 'Clean Title Only', artist: '' } },
+    }));
+    const res3 = await shortTitlesFor([tEmptyArtist], emptyArtistPost);
+    expect(res3.get('yt:emptyArt1')).toEqual({ title: 'Clean Title Only', artist: 'Original Artist' });
+    expect(res3.get('emptyArt1')).toEqual({ title: 'Clean Title Only', artist: 'Original Artist' });
+
+    // Test 4: Known fix with empty artist keeps original artist
+    addTitleFixes({ emptyKnown: { title: 'Known Clean Title', artist: '' } });
+    const tEmptyKnown = track('emptyKnown', 'Another Messy Title | Official Audio', 'Fallback Artist');
+    const res4 = await shortTitlesFor([tEmptyKnown], vi.fn());
+    expect(res4.get('emptyKnown')).toEqual({ title: 'Known Clean Title', artist: 'Fallback Artist' });
   });
 });

@@ -124,7 +124,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
       </div>
 
       {/* Content */}
-      <div className="flex flex-col grow min-h-0 p-4 gap-3.5 overflow-hidden">
+      <div className="flex flex-col grow min-h-0 p-4 gap-3.5 overflow-y-auto">
         {/* Badge & count summary */}
         <div className="flex items-center gap-2 flex-none">
           <span
@@ -205,7 +205,7 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
             No upcoming songs in queue
           </div>
         ) : (
-          <div ref={listRef} className="flex flex-col gap-0.5 overflow-y-auto grow min-h-0">
+          <div ref={listRef} className="flex flex-col gap-0.5 overflow-y-auto grow min-h-[240px]">
             <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
               {upcoming.slice(virtual.start, virtual.end).map(({ track, index }) => (
                 <div

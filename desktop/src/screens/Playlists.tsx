@@ -2,7 +2,7 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
-import { useMyPlaylists, useAuth } from '../api/hooks';
+import { useMyPlaylists, useSavedPlaylists, useAuth } from '../api/hooks';
 import { useOfflinePlaylists } from '../storage/offlinePlaylists';
 import { localLibrary } from '../storage/local';
 import { requireAccount } from '../api/accountGate';
@@ -22,6 +22,7 @@ const Playlists = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { data: playlistsData, loading: playlistsLoading } = useMyPlaylists(!isOffline);
+  const { data: savedData, loading: savedLoading } = useSavedPlaylists(!isOffline);
   const offline = useOfflinePlaylists();
 
   // Offline: the playlists saved on this device, without asking the server. Online: the
@@ -29,6 +30,7 @@ const Playlists = () => {
   const rawPlaylists: Playlist[] = isOffline
     ? offline.playlists.filter((p) => p.id.startsWith('sonare:'))
     : playlistsData?.items || [];
+  const savedPlaylists = isOffline ? [] : savedData?.items || [];
 
   /** What of a playlist can play here: songs whose file is on this device or downloaded. */
   const onDevice = (id: string): { have: number; total: number } => {
@@ -39,7 +41,7 @@ const Playlists = () => {
 
   const playlists = rawPlaylists;
 
-  const totalCount = playlists.length + 1;
+  const totalCount = playlists.length + 1 + savedPlaylists.length;
   const countLabel = `${totalCount.toLocaleString()} ${totalCount === 1 ? 'playlist' : 'playlists'}`;
 
   const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist);
@@ -201,6 +203,69 @@ const Playlists = () => {
               );
             })}
       </motion.div>
+
+      {/* Saved from YouTube Section */}
+      {!isOffline && (savedLoading || savedPlaylists.length > 0) && (
+        <motion.div className="flex flex-col gap-3 pt-4" variants={staggerItem} transition={transition.normal}>
+          <div className="flex items-center gap-2">
+            <span className="text-h2 font-semibold text-t1">Saved from YouTube</span>
+            {savedPlaylists.length > 0 && <span className="text-body-s text-t3">({savedPlaylists.length})</span>}
+          </div>
+          <div className="grid grid-cols-2 @[640px]:grid-cols-3 @[960px]:grid-cols-4 @[1200px]:grid-cols-5 gap-4">
+            {savedLoading
+              ? Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="surf2 p-3.5 rounded-xl flex flex-col gap-3 animate-pulse w-full">
+                    <div className="aspect-square w-full bg-s2/40 rounded-lg" />
+                    <div className="h-4 bg-s2/40 rounded w-3/4" />
+                    <div className="h-3 bg-s2/40 rounded w-1/2" />
+                  </div>
+                ))
+              : savedPlaylists.map((pl, i) => {
+                  const artVariant = artVariants[(playlists.length + i) % artVariants.length];
+                  return (
+                    <Link
+                      key={pl.id}
+                      to={`/playlist/${pl.id}`}
+                      className="surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors w-full"
+                    >
+                      <div className="aspect-square w-full rounded-lg relative overflow-hidden shadow-lg">
+                        <Artwork
+                          src={pl.thumbnail}
+                          variant={artVariant}
+                          size={240}
+                          radius="sm"
+                          rings
+                          alt={pl.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1 min-w-0">
+                        <span className="text-title-m font-semibold text-t1 truncate group-hover:text-acc transition-colors">
+                          {pl.name}
+                        </span>
+                        <span className="text-body-s text-t2 truncate">
+                          {pl.owner
+                            ? pl.trackCount != null
+                              ? `${pl.owner} · ${pl.trackCount} ${pl.trackCount === 1 ? 'song' : 'songs'}`
+                              : pl.owner
+                            : pl.trackCount != null
+                              ? `${pl.trackCount} ${pl.trackCount === 1 ? 'song' : 'songs'}`
+                              : 'YouTube playlist'}
+                        </span>
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="badge bg-cloud text-[10px] inline-flex items-center gap-1">
+                            <Icon name="cloud" size={8} />
+                            <span>YOUTUBE</span>
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+                  );
+                })}
+          </div>
+        </motion.div>
+      )}
+
       <AiPlaylistDialog open={aiOpen} onClose={() => setAiOpen(false)} />
     </motion.div>
   );

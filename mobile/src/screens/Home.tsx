@@ -61,7 +61,11 @@ export const HomeScreen = () => {
   });
   // Re-read favourites when a heart is toggled anywhere (including a like made while signing in).
   const favouriteCount = useLibraryStore((s) => Object.keys(s.favouriteIds).length);
-  const favourites = useAsync(() => api.favourites(), [user?.id, favouriteCount], {
+  const favourites = useAsync(() => api.favourites(), [user?.id, favouriteCount, online], {
+    enabled: online && signedIn,
+    refetchOnFocus: true,
+  });
+  const notPlayed = useAsync(() => api.notPlayedLately(20), [user?.id, online], {
     enabled: online && signedIn,
     refetchOnFocus: true,
   });
@@ -69,6 +73,7 @@ export const HomeScreen = () => {
 
   const recentTracks = signedIn ? playable(recent.data?.items) : [];
   const favouriteTracks = signedIn ? playable(favourites.data?.items) : [];
+  const notPlayedTracks = signedIn && online && !notPlayed.error ? playable(notPlayed.data?.items) : [];
   const trendingTracks = trending.data?.items ?? [];
   const resume = currentTrack ?? (online ? recentTracks[0] : null);
   const progress = currentTrack && durationMs ? Math.min(1, positionMs / durationMs) : 0;
@@ -77,6 +82,7 @@ export const HomeScreen = () => {
     if (online) {
       recent.refetch();
       favourites.refetch();
+      notPlayed.refetch();
       trending.refetch();
     }
   };
@@ -256,6 +262,42 @@ export const HomeScreen = () => {
 
               {/* AI picks from the listening history; renders nothing until there are some */}
               <YouMayLike exclude={[...recentTracks, ...favouriteTracks]} />
+
+              {/* Haven't played in a while shelf */}
+              {notPlayedTracks.length > 0 && (
+                <View className="gap-3">
+                  <Text className="text-h2 font-semibold text-t1">Haven't played in a while</Text>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    className="-mx-5"
+                    contentContainerStyle={{ gap: 12, paddingHorizontal: 20 }}
+                  >
+                    {notPlayedTracks.map((item, idx) => (
+                      <Animated.View key={item.id} entering={FadeIn.delay(idx * 40)} className="w-[132px]">
+                        <Pressable
+                          onPress={() =>
+                            playTrack(item, notPlayedTracks, {
+                              kind: 'Home',
+                              name: "Haven't played in a while",
+                            })
+                          }
+                          accessibilityRole="button"
+                          accessibilityLabel={`Play ${item.title}`}
+                        >
+                          <Artwork uri={artworkUrl(item, 300)} size={132} rings className="rounded-md mb-2.5" />
+                          <Text className="text-t1 text-tm font-medium truncate" numberOfLines={1}>
+                            {item.title}
+                          </Text>
+                          <Text className="text-t2 text-bs truncate" numberOfLines={1}>
+                            {item.artist}
+                          </Text>
+                        </Pressable>
+                      </Animated.View>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
 
               {/* Favourites shelf */}
               {favouriteTracks.length > 0 && (

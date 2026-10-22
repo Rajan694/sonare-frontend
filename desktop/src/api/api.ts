@@ -1,7 +1,18 @@
 import { serverFetch } from './serverFetch';
 import { API_BASE, getAccessToken, onAuthChange, refreshAccessToken } from './auth';
 import { CLIENT } from '../lib/caps';
-import type { Track, Album, Artist, Playlist, Page, User, AppRelease, StreamInfo } from '../types';
+import type {
+  Track,
+  Album,
+  Artist,
+  Playlist,
+  SavedPlaylist,
+  Page,
+  User,
+  AppRelease,
+  StreamInfo,
+  RemovedCount,
+} from '../types';
 import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
 import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type { LyricsScript } from '../storage/devicePrefs';
@@ -373,9 +384,10 @@ export const api = {
   },
 
   getLibraryTracks(params?: {
-    sort?: 'addedAt' | 'playCount' | 'title';
+    filter?: 'all' | 'liked';
+    sort?: 'addedAt' | 'title' | 'artist' | 'album' | 'durationMs' | 'playCount';
     order?: 'asc' | 'desc';
-    source?: 'all' | 'server';
+    limit?: number;
     cursor?: string;
   }) {
     return request<Page<Track>>('/me/library/tracks', { params });
@@ -413,6 +425,14 @@ export const api = {
     });
   },
 
+  /** Bulk unlike tracks: DELETE /me/favourites/tracks with body { ids: string[] }. */
+  deleteTrackFavourites(ids: string[]) {
+    return request<RemovedCount>('/me/favourites/tracks', {
+      method: 'DELETE',
+      body: JSON.stringify({ ids }),
+    });
+  },
+
   setAlbumFavourite(id: string, favourite: boolean, album?: Album) {
     return request<{ ok: boolean }>(`/me/favourites/albums/${encodeURIComponent(id)}`, {
       method: favourite ? 'PUT' : 'DELETE',
@@ -440,8 +460,16 @@ export const api = {
     return request<Page<Track>>('/me/recently-played', { params: { limit } });
   },
 
+  getNotPlayedLately(limit: number = 20) {
+    return request<Page<Track>>('/me/not-played-lately', { params: { limit } });
+  },
+
   getMostPlayed(params?: { limit?: number; window?: '30d' }) {
     return request<Page<Track>>('/me/most-played', { params });
+  },
+
+  clearHistory() {
+    return request<RemovedCount>('/me/history', { method: 'DELETE' });
   },
 
   getMadeForYou() {
@@ -451,6 +479,10 @@ export const api = {
   // Playlists
   getMyPlaylists() {
     return request<Page<Playlist>>('/me/playlists');
+  },
+
+  getSavedPlaylists() {
+    return request<Page<SavedPlaylist>>('/me/saved-playlists');
   },
 
   // AI (forReference/ai-briefs/CONTRACT.md in the root repo). The AI names songs; songSearch finds them.
@@ -467,8 +499,11 @@ export const api = {
   },
 
   /** Signed in or not; the token goes along when there is one. */
-  aiTitles(items: PendingTitle[]) {
-    return request<AiTitleFixes>('/ai/titles', { method: 'POST', body: JSON.stringify({ items }) });
+  aiTitles(items: PendingTitle[], options: { wait?: boolean } = {}) {
+    return request<AiTitleFixes>('/ai/titles', {
+      method: 'POST',
+      body: JSON.stringify({ items, ...(options.wait ? { wait: true } : {}) }),
+    });
   },
 
   /** The songs on the first page of a song search (in-app YouTube first, like any search). */

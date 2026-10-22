@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Channel, Playlist, StreamItem, Streams } from '../../../../shared/catalog/pipedTypes';
 import type { YouTubeSource } from '../../../../shared/catalog/source';
 import { SourceError } from '../../../../shared/catalog/source';
-import { CatalogInputError, idHelpers } from '../../../../shared/catalog/ids';
+import { CatalogInputError, idHelpers, parseYouTubeLink } from '../../../../shared/catalog/ids';
 import { decodeCursor, encodeCursor } from '../../../../shared/catalog/cursor';
 import { directImageUrl, sizedImageUrl, trackThumbUrl } from '../../../../shared/catalog/images';
 import {
@@ -195,6 +195,64 @@ describe('shared catalog: ID helpers', () => {
     expect(idHelpers.artistIdFromUrl(undefined)).toBe('');
     expect(idHelpers.extractListIdFromUrl('/playlist?list=PL1234567890')).toBe('PL1234567890');
     expect(idHelpers.extractListIdFromUrl('/watch?v=123&list=PL98765')).toBe('PL98765');
+  });
+
+  it('WEB-CAT-085 parseYouTubeLink parses YouTube URLs across all supported forms or returns null', () => {
+    // Songs
+    expect(parseYouTubeLink('https://www.youtube.com/watch?v=dQw4w9WgXcQ')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+    expect(parseYouTubeLink('youtube.com/watch?v=dQw4w9WgXcQ')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+    expect(parseYouTubeLink('https://m.youtube.com/watch?v=dQw4w9WgXcQ')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+    expect(parseYouTubeLink('https://music.youtube.com/watch?v=dQw4w9WgXcQ')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+    expect(parseYouTubeLink('https://www.youtube.com/shorts/dQw4w9WgXcQ')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+    expect(parseYouTubeLink('https://youtu.be/dQw4w9WgXcQ')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+    // Video with list attached -> song
+    expect(parseYouTubeLink('https://www.youtube.com/watch?v=dQw4w9WgXcQ&list=PL12345')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+    expect(parseYouTubeLink('https://youtu.be/dQw4w9WgXcQ?list=PL12345')).toEqual({
+      kind: 'song',
+      id: 'yt:dQw4w9WgXcQ',
+    });
+
+    // Playlists
+    expect(parseYouTubeLink('https://www.youtube.com/playlist?list=PL12345')).toEqual({
+      kind: 'playlist',
+      id: 'yt:PL12345',
+    });
+    expect(parseYouTubeLink('https://music.youtube.com/playlist?list=PL12345')).toEqual({
+      kind: 'playlist',
+      id: 'yt:PL12345',
+    });
+    expect(parseYouTubeLink('https://youtu.be/?list=PL12345')).toEqual({
+      kind: 'playlist',
+      id: 'yt:PL12345',
+    });
+
+    // Non-matching / plain text / invalid
+    expect(parseYouTubeLink('rick astley')).toBeNull();
+    expect(parseYouTubeLink('https://spotify.com/track/123')).toBeNull();
+    expect(parseYouTubeLink('')).toBeNull();
+    expect(parseYouTubeLink('   ')).toBeNull();
+    expect(parseYouTubeLink('https://www.youtube.com/watch?v=short')).toBeNull();
   });
 });
 
@@ -690,6 +748,8 @@ describe('shared catalog: catalog operations', () => {
     expect(pl.id).toBe('yt:PL1234567890');
     expect(pl.name).toBe('Greatest Hits Album');
     expect(pl.kind).toBe('online');
+    expect(pl.owner).toBe('Rick Astley');
+    expect(pl.thumbnail).toBe('https://piped.video/playlist_thumb.jpg');
 
     const tracks = await catalog.playlistTracks('yt:PL1234567890');
     expect(tracks.items).toHaveLength(1);

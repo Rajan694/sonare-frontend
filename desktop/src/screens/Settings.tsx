@@ -313,7 +313,7 @@ const Settings = () => {
         </Row>
       </label>
       <label className="cursor-pointer">
-        <Row icon="radio" label="Autoplay" desc="When the queue ends, keep playing similar songs">
+        <Row icon="radio" label="Autoplay" desc="Keeps at least 10 songs lined up with similar ones">
           <Switch
             checked={devicePrefs.autoplaySimilar}
             onCheckedChange={(autoplaySimilar) => updateDevicePrefs({ autoplaySimilar })}

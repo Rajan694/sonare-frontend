@@ -93,6 +93,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-037` | a guest pressing "Add to playlist" is asked to create an account first             |
 | `WEB-LAYOUT-038` | there is no output button: Sonare plays on the system output                       |
 | `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
+| `WEB-LAYOUT-040` | upcoming list keeps a minimum usable height and content scrolls                    |
+| `WEB-LAYOUT-041` | lists saved YouTube playlists after user playlists with cloud badge and owner      |
 
 ## `test/components/music.test.tsx`
 
@@ -233,6 +235,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-HOME-005`   | a trending shelf card plays within the trending list                                         |
 | `WEB-HOME-006`   | "See all" shows the full trending shelf                                                      |
 | `WEB-HOME-007`   | a signed-in user whose recently played fails to load is told so and can retry                |
+| `WEB-HOME-009`   | shows "Haven't played in a while" shelf and plays with the shelf as queue                    |
+| `WEB-HOME-010`   | "Haven't played in a while" shelf is hidden when empty, on error, for guests, or offline     |
+| `WEB-HOME-011`   | phone layout renders "Haven't played in a while" shelf and plays with the shelf as queue     |
 | `WEB-SEARCH-001` | without a query it offers genres from the server, and a genre searches for its query         |
 | `WEB-SEARCH-002` | shows a top result and songs, with a result count                                            |
 | `WEB-SEARCH-003` | the top result plays within the results                                                      |
@@ -244,6 +249,10 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SEARCH-009` | a song that could not be added is un-ticked with a message                                   |
 | `WEB-SEARCH-010` | a category without a query searches for its name                                             |
 | `WEB-SEARCH-011` | the All tab shows artists from their own search, with a picture and page                     |
+| `WEB-SEARCH-012` | pasting a song link fetches the song, renders the row, and plays on click                    |
+| `WEB-SEARCH-013` | pasting a playlist link renders the card and links to /playlist/:id                          |
+| `WEB-SEARCH-014` | pasting an invalid or missing link shows an error with retry                                 |
+| `WEB-SEARCH-015` | pasting a playlist link with owner displays "Playlist · <owner>" and thumbnail               |
 
 ## `test/screens/home-offline.test.tsx`
 
@@ -280,6 +289,24 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-ARTIST-005`  | an artist with no songs says so and disables play; an unknown artist is "not found"      |
 | `WEB-LIBRARY-011` | artists from liked and playlisted songs show their song count; followed ones say so      |
 | `WEB-LIBRARY-012` | genres show the browse categories and search for their query                             |
+| `WEB-LIBRARY-015` | first page request carries limit, sort, and filter params                                |
+| `WEB-LIBRARY-016` | Load more requests cursor and appends tracks                                             |
+| `WEB-LIBRARY-017` | device file merge: local file sorting after last server song is hidden until last page   |
+| `WEB-LIBRARY-018` | Play all loads all pages before starting playback and includes device files              |
+| `WEB-LIBRARY-019` | offline Most played shows only local and downloaded tracks                               |
+| `WEB-LIBRARY-020` | offline Favourites shows only liked device songs                                         |
+| `WEB-LIBRARY-021` | grid view renders Load more and allows loading more songs                                |
+| `WEB-LIBRARY-022` | unliking in Liked view hides row without sending refetch request                         |
+| `WEB-LIBRARY-023` | selection mode toggle (toolbar button, Esc, Cancel)                                      |
+| `WEB-LIBRARY-024` | row click and Shift-click range selection                                                |
+| `WEB-LIBRARY-025` | select-all header checkbox handles all/none/indeterminate                                |
+| `WEB-LIBRARY-026` | batch queue enqueues all selected tracks in order and clears selection                   |
+| `WEB-LIBRARY-027` | batch add-to-playlist opens picker with selected tracks and clears selection             |
+| `WEB-LIBRARY-028` | batch download enqueues only downloadable server tracks                                  |
+| `WEB-LIBRARY-029` | batch remove from liked asks confirmation when >1 liked track selected, deletes in bulk  |
+| `WEB-LIBRARY-030` | batch remove from liked removes immediately without dialog when 1 liked track selected   |
+| `WEB-LIBRARY-031` | selection resets on tab change and sort change                                           |
+| `WEB-LIBRARY-032` | floating action bar renders icon-only buttons with aria-labels and tooltips in narrow    |
 
 ## `test/screens/player-screens.test.tsx`
 
@@ -328,22 +355,24 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/playlists.test.tsx`
 
-| ID                  | Use case                                                                                 |
-| :------------------ | :--------------------------------------------------------------------------------------- |
-| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one           |
-| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                 |
-| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                      |
-| `WEB-PLAYLISTS-004` | in Offline Mode the stored own playlists are shown with device counts; no server call    |
-| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link           |
-| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                       |
-| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                       |
-| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position                   |
-| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                          |
-| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order           |
-| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu           |
-| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest                   |
-| `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so |
-| `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in    |
+| ID                  | Use case                                                                                               |
+| :------------------ | :----------------------------------------------------------------------------------------------------- |
+| `WEB-PLAYLISTS-001` | a guest sees Liked Songs, an invitation, and is asked to sign up to create one                         |
+| `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                               |
+| `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                                    |
+| `WEB-PLAYLISTS-004` | in Offline Mode the stored own playlists are shown with device counts; no server call                  |
+| `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link                         |
+| `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                                     |
+| `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                                     |
+| `WEB-PLAYLIST-004`  | removing a song takes it out at once and tells the server its position                                 |
+| `WEB-PLAYLIST-005`  | a failed removal puts the song back and says so                                                        |
+| `WEB-PLAYLIST-006`  | dragging reorders at once and saves the move; a failed save restores the order                         |
+| `WEB-PLAYLIST-007`  | an empty playlist says so, cannot play, but can still be deleted from its menu                         |
+| `WEB-PLAYLIST-008`  | someone else's own-playlist link shows "Playlist not found" to a guest                                 |
+| `WEB-PLAYLIST-009`  | an own playlist is renamed from its menu; the page shows the new name, a failure says so               |
+| `WEB-PLAYLIST-010`  | a YouTube playlist is saved to the library like an album; a guest is asked to sign in                  |
+| `WEB-PLAYLIST-011`  | saved YouTube playlists appear in Saved from YouTube section on Playlists screen                       |
+| `WEB-PLAYLIST-012`  | PlaylistDetail reads saved state from saved playlists, unsaves via DELETE, and fires playlists-changed |
 
 ## `test/screens/offline-playlists.test.tsx`
 
@@ -494,6 +523,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-API-018` | does not try to refresh a guest request that gets 401                            |
 | `WEB-API-019` | explains upstream outages, unreachable servers and other failures in plain words |
 | `WEB-API-020` | saving an album or following an artist sends what the app knows about it         |
+| `WEB-API-021` | queries not-played-lately with limit parameter                                   |
+| `WEB-API-022` | queries /me/saved-playlists to fetch saved YouTube playlists                     |
+| `WEB-API-023` | clearHistory sends DELETE to /me/history                                         |
 
 ## `test/unit/audioDemux.test.ts`
 
@@ -566,33 +598,35 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/downloads.test.ts`
 
-| ID           | Use case                                                                                     |
-| :----------- | :------------------------------------------------------------------------------------------- |
-| `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                          |
-| `WEB-DL-002` | uses the quality and format from settings                                                    |
-| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm" |
-| `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                           |
-| `WEB-DL-005` | with no size from the server, a short final range ends the download                          |
-| `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes                   |
-| `WEB-DL-007` | tells the user once the whole batch is saved                                                 |
-| `WEB-DL-008` | refuses a video-only stream with a clear reason                                              |
-| `WEB-DL-009` | fails with a permission message when the folder cannot be written                            |
-| `WEB-DL-010` | an expired stream url (403) is re-resolved and the same file continues                       |
-| `WEB-DL-011` | gives up after the server keeps refusing fresh urls                                          |
-| `WEB-DL-012` | pausing keeps the bytes so far, and resuming asks only for the rest                          |
-| `WEB-DL-013` | starts over when the server now serves a different file than the part holds                  |
-| `WEB-DL-014` | a server that ignores Range on resume does not duplicate bytes                               |
-| `WEB-DL-015` | a part that already holds the whole file (416) is finished without re-downloading            |
-| `WEB-DL-016` | a dropped connection is retried after a pause and the download completes                     |
-| `WEB-DL-017` | downloads interrupted by closing the app carry on at the next start                          |
-| `WEB-DL-018` | asking again for a failed download retries it instead of adding a duplicate                  |
-| `WEB-DL-019` | deleting a finished download removes its file and the list entry                             |
-| `WEB-DL-020` | a file that has moved is only removed from the list, with the reason                         |
-| `WEB-DL-021` | removing an unfinished download throws away its partial data                                 |
-| `WEB-DL-022` | removeMany counts files that could not be deleted                                            |
-| `WEB-DL-023` | "save again" hands the kept copy to the browser, and reports when there is none              |
-| `WEB-DL-024` | pause all and resume all act on every unfinished download                                    |
-| `WEB-DL-025` | a download becomes a playable track with its metadata                                        |
+| ID           | Use case                                                                                             |
+| :----------- | :--------------------------------------------------------------------------------------------------- |
+| `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                                  |
+| `WEB-DL-002` | uses the quality and format from settings                                                            |
+| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm"         |
+| `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                                   |
+| `WEB-DL-005` | with no size from the server, a short final range ends the download                                  |
+| `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes                           |
+| `WEB-DL-007` | tells the user once the whole batch is saved                                                         |
+| `WEB-DL-008` | refuses a video-only stream with a clear reason                                                      |
+| `WEB-DL-009` | fails with a permission message when the folder cannot be written                                    |
+| `WEB-DL-010` | an expired stream url (403) is re-resolved and the same file continues                               |
+| `WEB-DL-011` | gives up after the server keeps refusing fresh urls                                                  |
+| `WEB-DL-012` | pausing keeps the bytes so far, and resuming asks only for the rest                                  |
+| `WEB-DL-013` | starts over when the server now serves a different file than the part holds                          |
+| `WEB-DL-014` | a server that ignores Range on resume does not duplicate bytes                                       |
+| `WEB-DL-015` | a part that already holds the whole file (416) is finished without re-downloading                    |
+| `WEB-DL-016` | a dropped connection is retried after a pause and the download completes                             |
+| `WEB-DL-017` | downloads interrupted by closing the app carry on at the next start                                  |
+| `WEB-DL-018` | asking again for a failed download retries it instead of adding a duplicate                          |
+| `WEB-DL-019` | deleting a finished download removes its file and the list entry                                     |
+| `WEB-DL-020` | a file that has moved is only removed from the list, with the reason                                 |
+| `WEB-DL-021` | removing an unfinished download throws away its partial data                                         |
+| `WEB-DL-022` | removeMany counts files that could not be deleted                                                    |
+| `WEB-DL-023` | "save again" hands the kept copy to the browser, and reports when there is none                      |
+| `WEB-DL-024` | pause all and resume all act on every unfinished download                                            |
+| `WEB-DL-025` | a download becomes a playable track with its metadata                                                |
+| `WEB-DL-026` | newly queued downloads wait for short AI titles when available, using short names in items and files |
+| `WEB-DL-027` | download enqueue falls back to original titles without waiting when AI is off, offline, or failing   |
 
 ## `test/unit/dsp.test.ts`
 
@@ -687,25 +721,30 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/hooks.test.tsx`
 
-| ID             | Use case                                                            |
-| :------------- | :------------------------------------------------------------------ |
-| `WEB-HOOK-001` | starts loading, then exposes the data                               |
-| `WEB-HOOK-002` | exposes a failure as error and stops loading                        |
-| `WEB-HOOK-003` | refetch runs the request again and clears the previous error        |
-| `WEB-HOOK-004` | when disabled it does not call and shows the initial data           |
-| `WEB-HOOK-005` | drops a slow response that arrives after the inputs changed         |
-| `WEB-HOOK-006` | useDebounce only passes on the last value after the delay           |
-| `WEB-HOOK-007` | useSearch sends one trimmed request for the settled query           |
-| `WEB-HOOK-008` | useSearch sends nothing for a blank query                           |
-| `WEB-HOOK-009` | useAuth follows sign-in and sign-out                                |
-| `WEB-HOOK-010` | account-only lists are not requested for a guest                    |
-| `WEB-HOOK-011` | account data loads after sign-in and is cleared on sign-out         |
-| `WEB-HOOK-012` | a user's own playlist comes from /me, a public one from the catalog |
-| `WEB-HOOK-013` | a guest opening someone's own-playlist link makes no /me request    |
-| `WEB-HOOK-014` | useMyPlaylists refetches when playlists change anywhere in the app  |
-| `WEB-HOOK-015` | the favourites list refetches after a heart is saved elsewhere      |
-| `WEB-HOOK-016` | lyrics for a local file are never requested from the server         |
-| `WEB-HOOK-017` | lyrics requests name the song; errors surface as the hook error     |
+| ID             | Use case                                                                             |
+| :------------- | :----------------------------------------------------------------------------------- |
+| `WEB-HOOK-001` | starts loading, then exposes the data                                                |
+| `WEB-HOOK-002` | exposes a failure as error and stops loading                                         |
+| `WEB-HOOK-003` | refetch runs the request again and clears the previous error                         |
+| `WEB-HOOK-004` | when disabled it does not call and shows the initial data                            |
+| `WEB-HOOK-005` | drops a slow response that arrives after the inputs changed                          |
+| `WEB-HOOK-006` | useDebounce only passes on the last value after the delay                            |
+| `WEB-HOOK-007` | useSearch sends one trimmed request for the settled query                            |
+| `WEB-HOOK-008` | useSearch sends nothing for a blank query                                            |
+| `WEB-HOOK-009` | useAuth follows sign-in and sign-out                                                 |
+| `WEB-HOOK-010` | account-only lists are not requested for a guest                                     |
+| `WEB-HOOK-011` | account data loads after sign-in and is cleared on sign-out                          |
+| `WEB-HOOK-012` | a user's own playlist comes from /me, a public one from the catalog                  |
+| `WEB-HOOK-013` | a guest opening someone's own-playlist link makes no /me request                     |
+| `WEB-HOOK-014` | useMyPlaylists refetches when playlists change anywhere in the app                   |
+| `WEB-HOOK-015` | the favourites list refetches after a heart is saved elsewhere                       |
+| `WEB-HOOK-016` | lyrics for a local file are never requested from the server                          |
+| `WEB-HOOK-017` | lyrics requests name the song; errors surface as the hook error                      |
+| `WEB-HOOK-018` | useLibrarySongs paging and loadAll                                                   |
+| `WEB-HOOK-019` | useLibrarySongs: enabled=false prevents fetching                                     |
+| `WEB-HOOK-020` | useNotPlayedLately: fetches when signed in and enabled, skips for guests or disabled |
+| `WEB-HOOK-021` | useSavedPlaylists refetches when playlists change anywhere in the app                |
+| `WEB-HOOK-022` | useRecentlyPlayed and useMostPlayed refetch when history is cleared                  |
 
 ## `test/unit/lib.test.ts`
 
@@ -879,6 +918,17 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-RELINK-006` | a file without a Sonare id in its name is not returned by downloadedEntries                       |
 | `WEB-RELINK-007` | a scan that finds a download the list forgot adds it to Downloads once, and a rescan adds nothing |
 
+## `test/unit/autoplay.test.ts`
+
+| ID             | Use case                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------- |
+| `WEB-AUTO-001` | fewer than 10 songs left asks for similar songs using the last catalog song as seed      |
+| `WEB-AUTO-002` | 10 or more songs left does not ask for similar songs                                     |
+| `WEB-AUTO-003` | repeat all or repeat one does not ask for similar songs                                  |
+| `WEB-AUTO-004` | asks once per (seed, queue length) key, avoiding loops if 0 songs returned               |
+| `WEB-AUTO-005` | stale answer dropped if playing song changed during fetch                                |
+| `WEB-AUTO-006` | seed selection: finds last catalog song at or after index or falls back to current track |
+
 ## `test/unit/devicePrefs.test.ts`
 
 | ID              | Use case                                                                  |
@@ -935,6 +985,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-034` | playlist and playlistTracks return metadata and tracks                                             |
 | `WEB-CAT-035` | track resolves best audio stream codec and bitrate, and stream returns StreamInfo                  |
 | `WEB-CAT-036` | stream throws SourceError when no audio or video streams are available                             |
+| `WEB-CAT-085` | parseYouTubeLink parses YouTube URLs across all supported forms or returns null                    |
 
 ## `test/unit/sharedCatalog/youtubeiSource.test.ts`
 
@@ -991,16 +1042,20 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/sharedCatalog/sharedAi.test.ts`
 
-| ID           | Use case                                                                                                   |
-| :----------- | :--------------------------------------------------------------------------------------------------------- |
-| `WEB-AI-001` | looksMessy flags upload-style titles and leaves Topic channels and plain titles alone                      |
-| `WEB-AI-002` | applyTitleFix returns a known fix, else the input, and notes messy songs once                              |
-| `WEB-AI-003` | takePendingTitles spaces retries and gives up after three tries                                            |
-| `WEB-AI-004` | normalizeStreamItemToTrack shows a fix in place of the raw title and artist                                |
-| `WEB-AI-005` | bestMatch needs the title, prefers the artist, and skips unrelated results                                 |
-| `WEB-AI-006` | resolvePicks keeps found picks in order, once each, skipping failures and excluded ids                     |
-| `WEB-AI-007` | startTitleSync sends noted songs in batches while enabled, applies the answer, and saves it                |
-| `WEB-AI-008` | searchPlanSongs takes the first songs of each query in order, each song once by id and by title and artist |
+| ID           | Use case                                                                                                      |
+| :----------- | :------------------------------------------------------------------------------------------------------------ |
+| `WEB-AI-001` | looksMessy flags upload-style titles and leaves Topic channels and plain titles alone                         |
+| `WEB-AI-002` | applyTitleFix returns a known fix, else the input, and notes messy songs once                                 |
+| `WEB-AI-003` | takePendingTitles spaces retries and gives up after three tries                                               |
+| `WEB-AI-004` | normalizeStreamItemToTrack shows a fix in place of the raw title and artist                                   |
+| `WEB-AI-005` | bestMatch needs the title, prefers the artist, and skips unrelated results                                    |
+| `WEB-AI-006` | resolvePicks keeps found picks in order, once each, skipping failures and excluded ids                        |
+| `WEB-AI-007` | startTitleSync sends noted songs in batches while enabled, applies the answer, and saves it                   |
+| `WEB-AI-008` | searchPlanSongs takes the first songs of each query in order, each song once by id and by title and artist    |
+| `WEB-AI-009` | shortTitlesFor selects messy titles and titles longer than 40 characters, including live and katha broadcasts |
+| `WEB-AI-010` | shortTitlesFor skips local songs, short clean titles, and songs with known fixes                              |
+| `WEB-AI-011` | shortTitlesFor sends in chunks of 50 with at most 3 in parallel, updates registry, and resolves Map           |
+| `WEB-AI-012` | shortTitlesFor resolves with completed fixes upon timeout and never rejects on chunk failure                  |
 
 ## `test/screens/ai-features.test.tsx`
 
@@ -1101,8 +1156,11 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/account.test.tsx`
 
-| ID             | Use case                                                                             |
-| :------------- | :----------------------------------------------------------------------------------- |
-| `WEB-ACCT-001` | saves a new name to the account                                                      |
-| `WEB-ACCT-002` | changes the password: a wrong one is refused, then this device keeps a fresh session |
-| `WEB-ACCT-003` | deleting needs the password and a confirmation, then carries on as a guest           |
+| ID             | Use case                                                                                                                                        |
+| :------------- | :---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WEB-ACCT-001` | saves a new name to the account                                                                                                                 |
+| `WEB-ACCT-002` | changes the password: a wrong one is refused, then this device keeps a fresh session                                                            |
+| `WEB-ACCT-003` | deleting needs the password and a confirmation, then carries on as a guest                                                                      |
+| `WEB-ACCT-004` | cancelling clear play history does nothing                                                                                                      |
+| `WEB-ACCT-005` | confirming clear play history calls DELETE /me/history, clears local plays, drops pending plays, clears AI picks, notifies listeners and toasts |
+| `WEB-ACCT-006` | failure when clearing play history reports error and keeps local plays and pending plays                                                        |

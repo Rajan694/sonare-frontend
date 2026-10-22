@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { usePlayerStore } from '../store/playerContext';
-import { useDebounce, useGenres, usePlaylist, useSearch, notifyPlaylistsChanged } from '../api/hooks';
+import { useAsync, useDebounce, useGenres, usePlaylist, useSearch, notifyPlaylistsChanged } from '../api/hooks';
 import { api } from '../api/api';
 import { showToast } from '../store/toasts';
 import { useLocalLibrary } from '../storage/local';
@@ -33,6 +33,7 @@ import {
 import LoadMore from '../components/ui/LoadMore';
 import type { Track, Album, Artist, Playlist } from '../types';
 import { AiSearchPicks } from '../components/ai/AiSearchPicks';
+import { parseYouTubeLink } from '../../../shared/catalog/ids';
 
 type ChipFilter = 'all' | SearchType;
 
@@ -59,8 +60,18 @@ const SeeAll = ({ label, onClick }: { label: string; onClick: () => void }) => (
 // channel); a plain playlist fixture carries a `name`. Read whichever is there.
 const playlistTitle = (pl: Playlist | Album): string =>
   'name' in pl && pl.name ? pl.name : 'title' in pl ? pl.title : 'Playlist';
-const playlistSubtitle = (pl: Playlist | Album): string =>
-  'artist' in pl && pl.artist ? `Playlist · ${pl.artist}` : 'Playlist';
+const playlistSubtitle = (pl: Playlist | Album): string => {
+  const owner =
+    ('owner' in pl && typeof pl.owner === 'string' && pl.owner) ||
+    ('artist' in pl && typeof pl.artist === 'string' && pl.artist) ||
+    null;
+  const count =
+    'trackCount' in pl && pl.trackCount != null ? `${pl.trackCount} ${pl.trackCount === 1 ? 'song' : 'songs'}` : null;
+  if (owner && count) return `${owner} · ${count}`;
+  if (count) return count;
+  if (owner) return `Playlist · ${owner}`;
+  return 'Playlist';
+};
 
 const Search = () => {
   const { mode, setMode } = useModeStore();
@@ -104,6 +115,8 @@ const Search = () => {
   const hasQuery = query.trim().length > 0;
   const allActive = activeChip === 'all';
 
+  const parsedLink = useMemo(() => parseYouTubeLink(query), [query]);
+
   // Map activeChip to searchSlice SearchType (when All, fetch songs as primary)
   const querySearchType: SearchType = activeChip === 'all' ? 'songs' : activeChip;
 
@@ -114,11 +127,26 @@ const Search = () => {
   const typed = query.trim();
   const debouncedQuery = useDebounce(typed, 500, resultsFor === searchKey(typed, querySearchType) ? typed : '');
 
+  const linkResult = useAsync(
+    async () => {
+      if (!parsedLink) return null;
+      if (parsedLink.kind === 'song') {
+        const track = await api.getTrack(parsedLink.id);
+        return { kind: 'song' as const, track };
+      } else {
+        const playlist = await api.getPlaylist(parsedLink.id);
+        return { kind: 'playlist' as const, playlist };
+      }
+    },
+    [parsedLink?.kind, parsedLink?.id],
+    { enabled: !!parsedLink },
+  );
+
   useEffect(() => {
-    if (isOnline && debouncedQuery) {
+    if (isOnline && debouncedQuery && !parsedLink) {
       dispatch(runSearch({ query: debouncedQuery, type: querySearchType }));
     }
-  }, [isOnline, debouncedQuery, querySearchType]);
+  }, [isOnline, debouncedQuery, querySearchType, parsedLink]);
 
   const local = useLocalLibrary();
   const key = searchKey(debouncedQuery, querySearchType);
@@ -136,7 +164,8 @@ const Search = () => {
 
   // All shows each kind from its own search, like the Android app. The extra searches only
   // run while All is the active chip.
-  const extrasOn = isOnline && allActive && hasQuery;
+  const extrasOn = isOnline && allActive && hasQuery && !parsedLink;
+  const linkItem = linkResult.data;
   const artistsSearch = useSearch(debouncedQuery, 'artists', undefined, extrasOn);
   const albumsSearch = useSearch(debouncedQuery, 'albums', undefined, extrasOn);
   const playlistsSearch = useSearch(debouncedQuery, 'playlists', undefined, extrasOn);
@@ -214,7 +243,7 @@ const Search = () => {
       )}
 
       {/* Chips bar & Count indicator */}
-      {hasQuery && (
+      {hasQuery && !parsedLink && (
         <div className="flex items-center justify-between px-8 pt-6 pb-2 flex-none flex-wrap gap-3">
           <div className="flex items-center gap-2">
             {CHIPS.map((chip) => (
@@ -250,7 +279,7 @@ const Search = () => {
       )}
 
       {/* Offline banner if offline */}
-      {!isOnline && hasQuery && CAPS.offlineMode && (
+      {!isOnline && hasQuery && !parsedLink && CAPS.offlineMode && (
         <div className="mx-8 mt-4 offstrip flex-none">
           <Icon name="wifi-off" size={16} />
           <span className="text-body-m text-gold grow">Online search is unavailable in Offline Mode.</span>
@@ -262,11 +291,11 @@ const Search = () => {
       )}
 
       {/* Main content body */}
-      <div className={cn('flex flex-col grow overflow-auto px-8 pb-8', !hasQuery && 'pt-6')}>
+      <div className={cn('flex flex-col grow overflow-auto px-8 pb-8', (!hasQuery || parsedLink) && 'pt-6')}>
         <AnimatePresence mode="wait">
           {hasQuery ? (
             <motion.div
-              key={debouncedQuery + activeChip + mode}
+              key={parsedLink ? parsedLink.id : debouncedQuery + activeChip + mode}
               variants={fadeRise}
               initial="hidden"
               animate="visible"
@@ -276,283 +305,336 @@ const Search = () => {
               // Searches run as you type, so a query is remembered once one of its results is
               // used (played, opened, added), not on every pause in typing.
               onClickCapture={(e) => {
-                if ((e.target as HTMLElement).closest('a, button')) dispatch(addRecent(debouncedQuery));
+                if ((e.target as HTMLElement).closest('a, button') && !parsedLink) dispatch(addRecent(debouncedQuery));
               }}
             >
-              {/* On demand: the AI turns the query into a few searches (components/ai) */}
-              {isOnline && (allActive || activeChip === 'songs') && (
-                <AiSearchPicks
-                  query={debouncedQuery}
-                  currentTrackId={currentTrack?.id}
-                  onPlay={(track, queue) => playTrack(track, queue, { kind: 'Search', name: 'AI picks' })}
-                />
-              )}
-              {searchLoading || extrasLoading ? (
-                <div className="flex flex-col gap-2 animate-pulse pt-2">
-                  {Array.from({ length: 6 }).map((_, i) => (
-                    <div key={i} className="srow h-14 bg-s2/30 rounded" />
-                  ))}
-                </div>
-              ) : searchError ? (
-                <div className="flex flex-col items-center gap-3 p-4 text-center">
-                  <span className="text-red">Search error: {searchError}</span>
-                  <Button
-                    variant="out"
-                    size="sm"
-                    icon="sync"
-                    onClick={() => dispatch(runSearch({ query: debouncedQuery, type: querySearchType }))}
-                  >
-                    Try again
-                  </Button>
-                </div>
-              ) : nothingFound ? (
-                <EmptyState
-                  icon="search"
-                  title="No results found"
-                  description={
-                    isOnline ? `No results found matching "${query}"` : `Nothing on this device matches "${query}"`
-                  }
-                />
-              ) : activeChip === 'all' ? (
-                <div className="flex flex-col gap-8">
-                  {/* Top result and Songs, both from the songs search */}
-                  {(topSong || combinedTracks.length > 0) && (
-                    <div className="grid grid-cols-1 @4xl:grid-cols-[360px_minmax(0,1fr)] gap-7 items-start">
-                      {topSong && (
-                        <div className="flex flex-col gap-3">
-                          <span className="text-overline text-t3 uppercase font-semibold">Top result</span>
-                          <div className="surf flex flex-col gap-4 p-5 rounded-xl">
-                            <Artwork
-                              src={topSong.thumbnail || `/api/v1/albums/${topSong.albumId}/artwork?size=240`}
-                              alt={topSong.title}
-                              variant="a2"
-                              size={168}
-                              radius="md"
-                              className="shadow-xl"
-                            />
-                            <div className="flex flex-col gap-1.5">
-                              <span className="text-heading-m text-t1 font-semibold">{topSong.title}</span>
-                              <span className="text-body-m text-t2">
-                                Song · {topSong.artist} {topSong.album ? `· ${topSong.album}` : ''}
-                              </span>
-                              <div className="flex items-center gap-2 mt-1">
-                                {topSong.source === 'local' || local.downloads.has(topSong.id) ? (
-                                  <span className="badge bg-local inline-flex items-center gap-1">
-                                    <Icon name="smartphone" size={9} />
-                                    <span>On device</span>
+              {parsedLink ? (
+                linkResult.loading ? (
+                  <div className="flex flex-col gap-2 animate-pulse pt-2">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="srow h-14 bg-s2/30 rounded" />
+                    ))}
+                  </div>
+                ) : linkResult.error || !linkItem ? (
+                  <EmptyState
+                    icon="info"
+                    title="Couldn't open this link"
+                    description="This song or playlist might be private, deleted, or unavailable."
+                    action={
+                      <Button variant="out" size="sm" icon="sync" onClick={linkResult.refetch}>
+                        Try again
+                      </Button>
+                    }
+                  />
+                ) : linkItem.kind === 'song' ? (
+                  <div className="flex flex-col gap-2 pt-2">
+                    <SongTableHeader />
+                    <SongRow
+                      track={linkItem.track}
+                      index={1}
+                      isActive={currentTrack?.id === linkItem.track.id}
+                      onClick={() => handlePlay(linkItem.track)}
+                      onAdd={addTo ? () => void addTrack(linkItem.track) : undefined}
+                      added={added.has(linkItem.track.id)}
+                    />
+                  </div>
+                ) : (
+                  <div className="flex gap-4 flex-wrap pt-2">
+                    <Card
+                      title={playlistTitle(linkItem.playlist)}
+                      subtitle={
+                        linkItem.playlist.owner
+                          ? `Playlist · ${linkItem.playlist.owner}`
+                          : playlistSubtitle(linkItem.playlist)
+                      }
+                      artVariant="a1"
+                      thumbnail={
+                        linkItem.playlist.thumbnail || `/api/v1/albums/${linkItem.playlist.id}/artwork?size=140`
+                      }
+                      to={`/playlist/${linkItem.playlist.id}`}
+                    />
+                  </div>
+                )
+              ) : (
+                <>
+                  {/* On demand: the AI turns the query into a few searches (components/ai) */}
+                  {isOnline && (allActive || activeChip === 'songs') && (
+                    <AiSearchPicks
+                      query={debouncedQuery}
+                      currentTrackId={currentTrack?.id}
+                      onPlay={(track, queue) => playTrack(track, queue, { kind: 'Search', name: 'AI picks' })}
+                    />
+                  )}
+                  {searchLoading || extrasLoading ? (
+                    <div className="flex flex-col gap-2 animate-pulse pt-2">
+                      {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={i} className="srow h-14 bg-s2/30 rounded" />
+                      ))}
+                    </div>
+                  ) : searchError ? (
+                    <div className="flex flex-col items-center gap-3 p-4 text-center">
+                      <span className="text-red">Search error: {searchError}</span>
+                      <Button
+                        variant="out"
+                        size="sm"
+                        icon="sync"
+                        onClick={() => dispatch(runSearch({ query: debouncedQuery, type: querySearchType }))}
+                      >
+                        Try again
+                      </Button>
+                    </div>
+                  ) : nothingFound ? (
+                    <EmptyState
+                      icon="search"
+                      title="No results found"
+                      description={
+                        isOnline ? `No results found matching "${query}"` : `Nothing on this device matches "${query}"`
+                      }
+                    />
+                  ) : activeChip === 'all' ? (
+                    <div className="flex flex-col gap-8">
+                      {/* Top result and Songs, both from the songs search */}
+                      {(topSong || combinedTracks.length > 0) && (
+                        <div className="grid grid-cols-1 @4xl:grid-cols-[360px_minmax(0,1fr)] gap-7 items-start">
+                          {topSong && (
+                            <div className="flex flex-col gap-3">
+                              <span className="text-overline text-t3 uppercase font-semibold">Top result</span>
+                              <div className="surf flex flex-col gap-4 p-5 rounded-xl">
+                                <Artwork
+                                  src={topSong.thumbnail || `/api/v1/albums/${topSong.albumId}/artwork?size=240`}
+                                  alt={topSong.title}
+                                  variant="a2"
+                                  size={168}
+                                  radius="md"
+                                  className="shadow-xl"
+                                />
+                                <div className="flex flex-col gap-1.5">
+                                  <span className="text-heading-m text-t1 font-semibold">{topSong.title}</span>
+                                  <span className="text-body-m text-t2">
+                                    Song · {topSong.artist} {topSong.album ? `· ${topSong.album}` : ''}
                                   </span>
-                                ) : (
-                                  <span className="badge bg-cloud inline-flex items-center gap-1">
-                                    <Icon name="cloud" size={9} />
-                                    <span>Server</span>
-                                  </span>
-                                )}
+                                  <div className="flex items-center gap-2 mt-1">
+                                    {topSong.source === 'local' || local.downloads.has(topSong.id) ? (
+                                      <span className="badge bg-local inline-flex items-center gap-1">
+                                        <Icon name="smartphone" size={9} />
+                                        <span>On device</span>
+                                      </span>
+                                    ) : (
+                                      <span className="badge bg-cloud inline-flex items-center gap-1">
+                                        <Icon name="cloud" size={9} />
+                                        <span>Server</span>
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-2.5 mt-2">
+                                  <button
+                                    className="playbtn playbtn-48"
+                                    aria-label={`Play ${topSong.title}`}
+                                    onClick={() => handlePlay(topSong)}
+                                  >
+                                    <Icon name="play" size={21} />
+                                  </button>
+                                  <DownloadButton tracks={[topSong]} offline={!isOnline} />
+                                </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2.5 mt-2">
-                              <button
-                                className="playbtn playbtn-48"
-                                aria-label={`Play ${topSong.title}`}
-                                onClick={() => handlePlay(topSong)}
-                              >
-                                <Icon name="play" size={21} />
-                              </button>
-                              <DownloadButton tracks={[topSong]} offline={!isOnline} />
+                          )}
+
+                          {combinedTracks.length > 0 && (
+                            <div className="@container flex flex-col gap-3 min-w-0">
+                              <div className="flex items-baseline justify-between">
+                                <span className="text-overline text-t3 uppercase font-semibold">Songs</span>
+                                <SeeAll label="songs" onClick={() => seeAll('songs')} />
+                              </div>
+                              <div className="flex flex-col gap-0.5">
+                                {combinedTracks.slice(0, 4).map((track, i) => (
+                                  <SongRow
+                                    key={track.id}
+                                    track={track}
+                                    index={i + 1}
+                                    isActive={currentTrack?.id === track.id}
+                                    onClick={() => handlePlay(track)}
+                                    onAdd={addTo ? () => void addTrack(track) : undefined}
+                                    added={added.has(track.id)}
+                                  />
+                                ))}
+                              </div>
                             </div>
+                          )}
+                        </div>
+                      )}
+
+                      {artistHits.length > 0 && (
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-overline text-t3 uppercase font-semibold">Artists</span>
+                            <SeeAll label="artists" onClick={() => seeAll('artists')} />
+                          </div>
+                          <div className="flex items-center gap-6 overflow-x-auto pb-2">
+                            {artistHits.map((artist, i) => (
+                              <Link
+                                key={artist.id}
+                                to={`/artist/${artist.id}`}
+                                className="flex flex-col items-center gap-2 w-[92px] flex-none text-center no-underline text-inherit"
+                              >
+                                <Artwork
+                                  src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
+                                  alt={artist.name}
+                                  variant={`a${((i % 12) + 1) as 1}`}
+                                  size={92}
+                                  radius="circ"
+                                />
+                                <span className="text-label-m text-t1 truncate w-full">{artist.name}</span>
+                                <span className="text-label-s text-t3">Artist</span>
+                              </Link>
+                            ))}
                           </div>
                         </div>
                       )}
 
-                      {combinedTracks.length > 0 && (
-                        <div className="@container flex flex-col gap-3 min-w-0">
+                      {albumHits.length > 0 && (
+                        <div className="flex flex-col gap-3">
                           <div className="flex items-baseline justify-between">
-                            <span className="text-overline text-t3 uppercase font-semibold">Songs</span>
-                            <SeeAll label="songs" onClick={() => seeAll('songs')} />
+                            <span className="text-overline text-t3 uppercase font-semibold">Albums</span>
+                            <SeeAll label="albums" onClick={() => seeAll('albums')} />
                           </div>
-                          <div className="flex flex-col gap-0.5">
-                            {combinedTracks.slice(0, 4).map((track, i) => (
-                              <SongRow
-                                key={track.id}
-                                track={track}
-                                index={i + 1}
-                                isActive={currentTrack?.id === track.id}
-                                onClick={() => handlePlay(track)}
-                                onAdd={addTo ? () => void addTrack(track) : undefined}
-                                added={added.has(track.id)}
+                          <div className="flex gap-4 flex-wrap">
+                            {albumHits.map((album, i) => (
+                              <Card
+                                key={album.id}
+                                title={album.title}
+                                subtitle={`Album · ${album.artist}`}
+                                artVariant={`a${(i % 12) + 1}` as any}
+                                thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
+                                to={`/album/${album.id}`}
                               />
                             ))}
                           </div>
                         </div>
                       )}
-                    </div>
-                  )}
 
-                  {artistHits.length > 0 && (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-overline text-t3 uppercase font-semibold">Artists</span>
-                        <SeeAll label="artists" onClick={() => seeAll('artists')} />
-                      </div>
-                      <div className="flex items-center gap-6 overflow-x-auto pb-2">
-                        {artistHits.map((artist, i) => (
-                          <Link
-                            key={artist.id}
-                            to={`/artist/${artist.id}`}
-                            className="flex flex-col items-center gap-2 w-[92px] flex-none text-center no-underline text-inherit"
-                          >
-                            <Artwork
-                              src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
-                              alt={artist.name}
-                              variant={`a${((i % 12) + 1) as 1}`}
-                              size={92}
-                              radius="circ"
-                            />
-                            <span className="text-label-m text-t1 truncate w-full">{artist.name}</span>
-                            <span className="text-label-s text-t3">Artist</span>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {albumHits.length > 0 && (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-overline text-t3 uppercase font-semibold">Albums</span>
-                        <SeeAll label="albums" onClick={() => seeAll('albums')} />
-                      </div>
-                      <div className="flex gap-4 flex-wrap">
-                        {albumHits.map((album, i) => (
-                          <Card
-                            key={album.id}
-                            title={album.title}
-                            subtitle={`Album · ${album.artist}`}
-                            artVariant={`a${(i % 12) + 1}` as any}
-                            thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
-                            to={`/album/${album.id}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {playlistHits.length > 0 && (
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-overline text-t3 uppercase font-semibold">Playlists</span>
-                        <SeeAll label="playlists" onClick={() => seeAll('playlists')} />
-                      </div>
-                      <div className="flex gap-4 flex-wrap">
-                        {playlistHits.map((pl, i) => (
-                          <Card
-                            key={pl.id}
-                            title={playlistTitle(pl)}
-                            subtitle={playlistSubtitle(pl)}
-                            artVariant={`a${(i % 12) + 1}` as any}
-                            thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
-                            to={`/playlist/${pl.id}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Offline Notice at the bottom (matching D04 Not on this device) */}
-                  {!isOnline && (
-                    <div className="surf flex flex-col @[600px]:flex-row @[600px]:items-center justify-between gap-4 p-5 rounded-xl border border-ln">
-                      <div className="flex items-center gap-3.5">
-                        <span className="icobox flex-none">
-                          <Icon name="cloud" size={18} />
-                        </span>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-body-l text-t1 font-medium">Not on this device</span>
-                          <span className="text-body-s text-t3">Go online to search and stream the full catalog.</span>
+                      {playlistHits.length > 0 && (
+                        <div className="flex flex-col gap-3">
+                          <div className="flex items-baseline justify-between">
+                            <span className="text-overline text-t3 uppercase font-semibold">Playlists</span>
+                            <SeeAll label="playlists" onClick={() => seeAll('playlists')} />
+                          </div>
+                          <div className="flex gap-4 flex-wrap">
+                            {playlistHits.map((pl, i) => (
+                              <Card
+                                key={pl.id}
+                                title={playlistTitle(pl)}
+                                subtitle={playlistSubtitle(pl)}
+                                artVariant={`a${(i % 12) + 1}` as any}
+                                thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
+                                to={`/playlist/${pl.id}`}
+                              />
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <Button variant="acc" size="sm" icon="cloud" onClick={() => setMode('online')}>
-                        Go online
-                      </Button>
+                      )}
+
+                      {/* Offline Notice at the bottom (matching D04 Not on this device) */}
+                      {!isOnline && (
+                        <div className="surf flex flex-col @[600px]:flex-row @[600px]:items-center justify-between gap-4 p-5 rounded-xl border border-ln">
+                          <div className="flex items-center gap-3.5">
+                            <span className="icobox flex-none">
+                              <Icon name="cloud" size={18} />
+                            </span>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-body-l text-t1 font-medium">Not on this device</span>
+                              <span className="text-body-s text-t3">
+                                Go online to search and stream the full catalog.
+                              </span>
+                            </div>
+                          </div>
+                          <Button variant="acc" size="sm" icon="cloud" onClick={() => setMode('online')}>
+                            Go online
+                          </Button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              ) : activeChip === 'songs' ? (
-                <>
-                  <div className="flex flex-col gap-2">
-                    <SongTableHeader />
-                    {combinedTracks.map((track, i) => (
-                      <SongRow
-                        key={track.id}
-                        track={track}
-                        index={i + 1}
-                        isActive={currentTrack?.id === track.id}
-                        onClick={() => handlePlay(track)}
-                        onAdd={addTo ? () => void addTrack(track) : undefined}
-                        added={added.has(track.id)}
-                      />
-                    ))}
-                  </div>
-                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
-                </>
-              ) : activeChip === 'albums' ? (
-                <>
-                  <div className="flex gap-4 flex-wrap pt-2">
-                    {serverItems
-                      .filter((item): item is Album => 'trackCount' in item)
-                      .map((album, i) => (
-                        <Card
-                          key={album.id}
-                          title={album.title}
-                          subtitle={`Album · ${album.artist}`}
-                          artVariant={`a${(i % 12) + 1}` as any}
-                          thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
-                          to={`/album/${album.id}`}
-                        />
-                      ))}
-                  </div>
-                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
-                </>
-              ) : activeChip === 'artists' ? (
-                <>
-                  <div className="flex gap-4 flex-wrap pt-2">
-                    {serverItems
-                      .filter((item): item is Artist => 'albumCount' in item || 'following' in item)
-                      .map((artist, i) => (
-                        <Link
-                          key={artist.id}
-                          to={`/artist/${artist.id}`}
-                          className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
-                        >
-                          <Artwork
-                            src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
-                            alt={artist.name}
-                            variant={`a${(i % 12) + 1}` as any}
-                            size={110}
-                            radius="circ"
+                  ) : activeChip === 'songs' ? (
+                    <>
+                      <div className="flex flex-col gap-2">
+                        <SongTableHeader />
+                        {combinedTracks.map((track, i) => (
+                          <SongRow
+                            key={track.id}
+                            track={track}
+                            index={i + 1}
+                            isActive={currentTrack?.id === track.id}
+                            onClick={() => handlePlay(track)}
+                            onAdd={addTo ? () => void addTrack(track) : undefined}
+                            added={added.has(track.id)}
                           />
-                          <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
-                          <span className="text-label-s text-t3 truncate">Artist</span>
-                        </Link>
-                      ))}
-                  </div>
-                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
-                </>
-              ) : (
-                <>
-                  <div className="flex gap-4 flex-wrap pt-2">
-                    {serverItems
-                      .filter((item): item is Playlist => !('durationMs' in item) && !('albumCount' in item))
-                      .map((pl, i) => (
-                        <Card
-                          key={pl.id}
-                          title={playlistTitle(pl)}
-                          subtitle={playlistSubtitle(pl)}
-                          artVariant={`a${(i % 12) + 1}` as any}
-                          thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
-                          to={`/playlist/${pl.id}`}
-                        />
-                      ))}
-                  </div>
-                  {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                        ))}
+                      </div>
+                      {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                    </>
+                  ) : activeChip === 'albums' ? (
+                    <>
+                      <div className="flex gap-4 flex-wrap pt-2">
+                        {serverItems
+                          .filter((item): item is Album => 'trackCount' in item)
+                          .map((album, i) => (
+                            <Card
+                              key={album.id}
+                              title={album.title}
+                              subtitle={`Album · ${album.artist}`}
+                              artVariant={`a${(i % 12) + 1}` as any}
+                              thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
+                              to={`/album/${album.id}`}
+                            />
+                          ))}
+                      </div>
+                      {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                    </>
+                  ) : activeChip === 'artists' ? (
+                    <>
+                      <div className="flex gap-4 flex-wrap pt-2">
+                        {serverItems
+                          .filter((item): item is Artist => 'albumCount' in item || 'following' in item)
+                          .map((artist, i) => (
+                            <Link
+                              key={artist.id}
+                              to={`/artist/${artist.id}`}
+                              className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
+                            >
+                              <Artwork
+                                src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
+                                alt={artist.name}
+                                variant={`a${(i % 12) + 1}` as any}
+                                size={110}
+                                radius="circ"
+                              />
+                              <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
+                              <span className="text-label-s text-t3 truncate">Artist</span>
+                            </Link>
+                          ))}
+                      </div>
+                      {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex gap-4 flex-wrap pt-2">
+                        {serverItems
+                          .filter((item): item is Playlist => !('durationMs' in item) && !('albumCount' in item))
+                          .map((pl, i) => (
+                            <Card
+                              key={pl.id}
+                              title={playlistTitle(pl)}
+                              subtitle={playlistSubtitle(pl)}
+                              artVariant={`a${(i % 12) + 1}` as any}
+                              thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
+                              to={`/playlist/${pl.id}`}
+                            />
+                          ))}
+                      </div>
+                      {canLoadMore && <LoadMore loading={loadingMore} error={loadMoreError} onClick={loadMore} />}
+                    </>
+                  )}
                 </>
               )}
             </motion.div>

@@ -782,7 +782,7 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-025 libraryTracks, favourites, setFavourite, setFollowing manage library entities', async () => {
       mockApiResponse(200, { items: [], ok: true });
-      const lib = await api.libraryTracks('title');
+      const lib = await api.libraryTracks({ sort: 'title' });
       expect(lib.items).toEqual([]);
       const favs = await api.favourites();
       expect(favs.items).toEqual([]);

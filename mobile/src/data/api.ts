@@ -6,7 +6,7 @@ import { getInAppCatalog, type InAppCatalog } from '../youtube/inApp';
 import { useLibraryStore } from '../store/library';
 import { artistMeta, trackMeta, trackMetas } from '../../../shared/catalog/meta';
 import { ApiError, apiErrorFrom, createCatalogFallback, isYouTubeId, ytId } from '../../../shared/api/client';
-import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike } from '../../../shared/apiTypes';
+import type { AiPlaylistDraft, AiSearchPlan, AiTitleFixes, AiYouMayLike, RemovedCount } from '../../../shared/apiTypes';
 import type { PendingTitle } from '../../../shared/catalog/titleFixes';
 import type {
   Album,
@@ -16,6 +16,7 @@ import type {
   Lyrics,
   Page,
   Playlist,
+  SavedPlaylist,
   SearchItem,
   StreamInfo,
   Track,
@@ -119,6 +120,13 @@ export const api = {
       'trending',
       (c) => c.trending('IN', limit),
       () => request('/trending', { params: { region: 'IN', limit } }),
+    ),
+  track: (id: string) =>
+    localFirst<Track>(
+      'track',
+      (c) => c.track(ytId(id)),
+      () => request(`/tracks/${enc(id)}`),
+      id,
     ),
   album: (id: string) =>
     localFirst<Album>(
@@ -242,9 +250,19 @@ export const api = {
   me: () => request<User>('/me'),
   settings: () => request<Record<string, unknown>>('/me/settings'),
   saveSettings: (body: Record<string, unknown>) => request<{ ok: boolean }>('/me/settings', { method: 'PUT', body }),
-  libraryTracks: (sort: 'addedAt' | 'playCount' | 'title' = 'addedAt') =>
+  libraryTracks: ({
+    filter = 'all',
+    sort = 'addedAt',
+    limit,
+    cursor,
+  }: {
+    filter?: 'all' | 'liked';
+    sort?: 'addedAt' | 'playCount' | 'title' | 'artist' | 'album' | 'durationMs';
+    limit?: number;
+    cursor?: string;
+  } = {}) =>
     request<Page<Track>>('/me/library/tracks', {
-      params: { sort, order: sort === 'title' ? 'asc' : 'desc' },
+      params: { filter, sort, limit, cursor },
     }),
   favourites: () => request<Page<Track>>('/me/favourites/tracks'),
   /** Just the ids, for the apps' heart state: no metadata lookups. */
@@ -256,6 +274,13 @@ export const api = {
       method: favourite ? 'PUT' : 'DELETE',
       ...(favourite && track && { body: { meta: trackMeta(track) } }),
     }),
+  /** Bulk unlike tracks: DELETE /me/favourites/tracks with body { ids: string[] }. */
+  deleteTrackFavourites: (ids: string[]) =>
+    request<RemovedCount>('/me/favourites/tracks', {
+      method: 'DELETE',
+      body: { ids },
+    }),
+  savedPlaylists: () => request<Page<SavedPlaylist>>('/me/saved-playlists'),
   /** Albums the user has saved (hearted). */
   libraryAlbums: () => request<Page<Album>>('/me/library/albums'),
   setAlbumFavourite: (albumId: string, favourite: boolean, meta?: AlbumMeta) =>
@@ -276,7 +301,12 @@ export const api = {
     }
   },
   recentlyPlayed: (limit = 20) => request<Page<Track>>('/me/recently-played', { params: { limit } }),
+  notPlayedLately: (limit = 20) => request<Page<Track>>('/me/not-played-lately', { params: { limit } }),
   mostPlayed: (limit = 20) => request<Page<Track>>('/me/most-played', { params: { limit } }),
+  clearHistory: () =>
+    request<RemovedCount>('/me/history', {
+      method: 'DELETE',
+    }),
   /** Plays the listener has actually heard; queued and sent by data/sync.ts. */
   reportPlays: (
     plays: {
@@ -302,7 +332,11 @@ export const api = {
   aiPlaylistDraft: (body: { prompt: string; count: number }) =>
     request<AiPlaylistDraft>('/me/ai/playlist', { method: 'POST', body }),
   /** Signed in or not; the token goes along when there is one. */
-  aiTitles: (items: PendingTitle[]) => request<AiTitleFixes>('/ai/titles', { method: 'POST', body: { items } }),
+  aiTitles: (items: PendingTitle[], options: { wait?: boolean } = {}) =>
+    request<AiTitleFixes>('/ai/titles', {
+      method: 'POST',
+      body: { items, ...(options.wait ? { wait: true } : {}) },
+    }),
   /** The songs on the first page of a song search (in-app YouTube first, like any search). */
   songSearch: async (q: string): Promise<Track[]> => {
     const page = await api.search(q, 'songs');

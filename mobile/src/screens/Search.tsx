@@ -23,11 +23,12 @@ import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
 import { usePagedList } from '../hooks/usePagedList';
-import type { SearchItem, Track } from '../data/types';
+import type { Album, Playlist, SearchItem, Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 import { DEFAULT_GENRES, GenreCard, genreQuery, type Genre } from '../components/music/GenreCard';
 import { groupLocalByAlbum, groupLocalByArtist, searchLocalTracks } from '../lib/localSearch';
 import { AiSearchPicks } from '../components/ai/AiSearchPicks';
+import { parseYouTubeLink } from '../../../shared/catalog/ids';
 
 const ONLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'genres'] as const;
 const OFFLINE_FILTERS = ['all', 'songs', 'albums', 'artists', 'playlists', 'folders'] as const;
@@ -50,9 +51,22 @@ type ArtistHit = Extract<SearchItem, { kind: 'artist' }>;
  * A playlist hit can arrive album-shaped (a title with the artist as the owner or channel) or as
  * a plain playlist carrying a name; read whichever is there.
  */
-const playlistTitle = (item: SearchItem): string => ('title' in item ? item.title : item.name);
+const playlistTitle = (item: { title?: string; name?: string }): string =>
+  'name' in item && item.name ? item.name : 'title' in item && item.title ? item.title : 'Playlist';
 const playlistOwner = (item: SearchItem): string =>
   'artist' in item && typeof item.artist === 'string' ? item.artist : '';
+const playlistSubtitle = (pl: Playlist | Album | SearchItem): string => {
+  const owner =
+    ('owner' in pl && typeof pl.owner === 'string' && pl.owner) ||
+    ('artist' in pl && typeof pl.artist === 'string' && pl.artist) ||
+    null;
+  const count =
+    'trackCount' in pl && pl.trackCount != null ? `${pl.trackCount} ${pl.trackCount === 1 ? 'song' : 'songs'}` : null;
+  if (owner && count) return `${owner} · ${count}`;
+  if (count) return count;
+  if (owner) return `Playlist · ${owner}`;
+  return 'Playlist';
+};
 
 /** The first of the candidates that is there; the album list wins over a raw first result. */
 const pickTopResult = (...candidates: (SearchItem | undefined)[]): SearchItem | null =>
@@ -159,7 +173,7 @@ export const SearchScreen = () => {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const recent = useRecentSearchesStore((state) => state.searches);
 
-  // A genre opened elsewhere (Library → Genres) arrives as `q`.
+  // The `q` param is still accepted for a search opened from another screen.
   const route = useRoute<any>();
   const linkedQuery: string | undefined = route.params?.q;
   // An own playlist's "Add songs" opens this screen "adding to" it.
@@ -174,6 +188,7 @@ export const SearchScreen = () => {
 
   const q = useDebounced(query.trim(), 350);
   const typed = query.trim();
+  const parsedLink = useMemo(() => parseYouTubeLink(query), [query]);
   // Online means Online Mode *and* a network: either one being down searches the phone instead.
   const net = useNetInfo();
   const connected = !!net.isConnected && net.isInternetReachable !== false;
@@ -226,7 +241,7 @@ export const SearchScreen = () => {
     );
   };
 
-  const showGenres = online && (!q || filter === 'genres');
+  const showGenres = online && (!q || filter === 'genres') && !parsedLink;
   const genres = useAsync(() => api.genres(), [], { enabled: showGenres });
   const openGenre = (g: Genre) => {
     setQuery(genreQuery(g));
@@ -234,14 +249,30 @@ export const SearchScreen = () => {
   };
   const results = usePagedList<SearchItem>((cursor) => api.search(q, toSearchType(filter), cursor), [q, filter], {
     // Waits for the debounce to catch up, so switching chips mid-typing doesn't search a stale query.
-    enabled: online && q.length > 0 && q === typed && filter !== 'genres',
+    // YouTube links load directly without normal search.
+    enabled: online && q.length > 0 && q === typed && filter !== 'genres' && !parsedLink,
   });
+
+  const linkResult = useAsync(
+    async () => {
+      if (!parsedLink) return null;
+      if (parsedLink.kind === 'song') {
+        const track = await api.track(parsedLink.id);
+        return { kind: 'song' as const, track };
+      } else {
+        const playlist = await api.playlist(parsedLink.id);
+        return { kind: 'playlist' as const, playlist };
+      }
+    },
+    [parsedLink?.kind, parsedLink?.id],
+    { enabled: online && !!parsedLink },
+  );
 
   // Autocomplete while typing, asked for once typing pauses; closed by picking one, submitting
   // or leaving the field. The previous list stays up while the next one loads.
   const [suggesting, setSuggesting] = useState(false);
   const sq = useDebounced(typed, 250);
-  const suggestionsOn = online && suggesting && sq.length > 0 && sq.length <= 200;
+  const suggestionsOn = online && suggesting && sq.length > 0 && sq.length <= 200 && !parsedLink;
   const suggested = useAsync(() => api.suggestions(sq), [sq], { enabled: suggestionsOn });
   const suggestions = suggestionsOn && typed ? (suggested.data ?? []).slice(0, 8) : [];
 
@@ -334,24 +365,26 @@ export const SearchScreen = () => {
           />
         </View>
 
-        {/* Scope Chips */}
-        <View className="my-3">
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
-          >
-            {(online ? ONLINE_FILTERS : OFFLINE_FILTERS).map((f) => (
-              <Chip
-                key={f}
-                label={f.charAt(0).toUpperCase() + f.slice(1)}
-                onPress={() => setFilter(f)}
-                active={filter === f}
-                variant={online ? 'default' : 'gold'}
-              />
-            ))}
-          </ScrollView>
-        </View>
+        {/* Scope Chips - hidden for pasted YouTube links */}
+        {!parsedLink && (
+          <View className="my-3">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8, paddingHorizontal: 20 }}
+            >
+              {(online ? ONLINE_FILTERS : OFFLINE_FILTERS).map((f) => (
+                <Chip
+                  key={f}
+                  label={f.charAt(0).toUpperCase() + f.slice(1)}
+                  onPress={() => setFilter(f)}
+                  active={filter === f}
+                  variant={online ? 'default' : 'gold'}
+                />
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         {suggestions.length > 0 ? (
           <ScrollView
@@ -415,7 +448,7 @@ export const SearchScreen = () => {
               <RecentSearches searches={recent} onPick={runSearch} onRemove={removeRecent} onClear={clearRecent} />
             )}
 
-            {q.length > 0 && !showGenres && (
+            {q.length > 0 && !showGenres && !parsedLink && (
               <View className="flex-row items-center gap-2">
                 <Icon name="cloud" size={14} color="#7E7E8C" />
                 <Text className="text-t3 text-bs">
@@ -425,11 +458,57 @@ export const SearchScreen = () => {
             )}
 
             {/* On demand: the AI turns the query into a few searches (components/ai) */}
-            {online && q.length > 0 && !showGenres && (filter === 'all' || filter === 'songs') && (
+            {online && q.length > 0 && !showGenres && !parsedLink && (filter === 'all' || filter === 'songs') && (
               <AiSearchPicks key={q} query={q} />
             )}
 
-            {showGenres ? (
+            {parsedLink ? (
+              linkResult.loading ? (
+                <StateView loading empty="Opening link..." />
+              ) : linkResult.error || !linkResult.data ? (
+                <StateView error={new Error("Couldn't open this link")} onRetry={linkResult.refetch} />
+              ) : linkResult.data.kind === 'song' ? (
+                (() => {
+                  const track = linkResult.data.track;
+                  return (
+                    <View className="-mx-2.5 gap-0.5">
+                      <SongRow
+                        track={track}
+                        isActive={currentTrack?.id === track.id}
+                        onPress={() => {
+                          // Links aren't kept as recent searches (desktop does the same).
+                          playTrack(track, [track], {
+                            kind: 'Search',
+                            name: track.title,
+                          });
+                        }}
+                        trailing={addMode ? addButton(track) : undefined}
+                      />
+                    </View>
+                  );
+                })()
+              ) : (
+                (() => {
+                  const pl = linkResult.data.playlist;
+                  const title = playlistTitle(pl);
+                  const subtitle = playlistSubtitle(pl);
+
+                  return (
+                    <View className="-mx-2.5 gap-0.5">
+                      <ResultRow
+                        uri={pl.thumbnail || artworkUrl(pl, 64)}
+                        title={title}
+                        subtitle={subtitle}
+                        accessibilityLabel={`Playlist ${title}`}
+                        onPress={() => {
+                          navigation.navigate('Playlist', { id: parsedLink.id });
+                        }}
+                      />
+                    </View>
+                  );
+                })()
+              )
+            ) : showGenres ? (
               <View className="gap-3">
                 <Text className="text-h2 font-semibold text-t1">Browse categories</Text>
                 {chunk(genres.data ?? DEFAULT_GENRES, 2).map((row, r) => (
@@ -624,6 +703,19 @@ export const SearchScreen = () => {
                 )}
               </>
             )}
+          </ScrollView>
+        ) : !online && parsedLink ? (
+          /* Pasted link while offline */
+          <ScrollView
+            className="flex-1"
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingBottom: 140,
+              gap: 16,
+            }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <StateView error={new Error("Couldn't open this link")} />
           </ScrollView>
         ) : (
           /* OFFLINE SEARCH RESULTS (M04) */

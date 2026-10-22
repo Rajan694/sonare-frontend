@@ -17,13 +17,14 @@ import { useLibraryStore } from '../store/library';
 import { usePhoneTracks } from '../store/localMusic';
 import { playablePlaylistTracks, useOfflinePlaylistsStore } from '../store/offlinePlaylists';
 import { artworkUrl } from '../data/config';
+import { api } from '../data/api';
 import { useAuthStore } from '../data/auth';
 import { requireAccount } from '../data/accountGate';
 import { GuestPrompt } from '../components/ui/GuestPrompt';
 import { songCount } from '../lib/format';
 import { cn } from '../lib/cn';
 import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
-import type { Playlist } from '../data/types';
+import type { Playlist, SavedPlaylist } from '../data/types';
 import Icon from '../components/ui/Icon';
 import { AiPlaylistSheet } from '../components/ai/AiPlaylistSheet';
 import { useAiEnabled } from '../store/ai';
@@ -51,13 +52,26 @@ export const PlaylistsScreen = () => {
   };
 
   const signedIn = useAuthStore((state) => state.status === 'signedIn');
+  const [savedYtPlaylists, setSavedYtPlaylists] = useState<SavedPlaylist[]>([]);
+  const reloadSavedPlaylists = useCallback(() => {
+    if (useAuthStore.getState().status !== 'signedIn') {
+      setSavedYtPlaylists([]);
+      return;
+    }
+    api
+      .savedPlaylists()
+      .then((res) => setSavedYtPlaylists(res.items))
+      .catch(() => {});
+  }, []);
+
   const reload = useCallback(() => {
     if (useAuthStore.getState().status !== 'signedIn') return;
     useLibraryStore
       .getState()
       .reloadPlaylists()
       .then(() => setError(null), setError);
-  }, []);
+    reloadSavedPlaylists();
+  }, [reloadSavedPlaylists]);
   const startCreating = () => requireAccount('Create a free account to make playlists.', () => setCreating(true));
   useFocusEffect(reload);
 
@@ -196,6 +210,43 @@ export const PlaylistsScreen = () => {
           ) : (
             <StateView empty="No playlists on this phone. Go online to load your playlists." />
           )
+        }
+        ListFooterComponent={
+          online && signedIn && savedYtPlaylists.length > 0 ? (
+            <View className="mt-6 gap-2">
+              <Text className="text-h2 font-semibold text-t1 px-2.5">Saved from YouTube</Text>
+              {savedYtPlaylists.map((item) => (
+                <Pressable
+                  key={item.id}
+                  onPress={() => navigation.navigate('Playlist', { id: item.id })}
+                  className="flex-row items-center px-2.5 py-2.5 rounded-md gap-3"
+                  accessibilityRole="button"
+                  accessibilityLabel={item.name}
+                >
+                  <Artwork
+                    uri={item.thumbnail ? artworkUrl(item, 140) : undefined}
+                    size={56}
+                    rings
+                    className="rounded-md"
+                  />
+                  <View className="flex-1 gap-1 min-w-0">
+                    <Text className="text-tm font-medium text-t1 truncate" numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View className="flex-row items-center gap-2">
+                      <Text className="text-bs text-t2" numberOfLines={1}>
+                        {/* An unknown count says nothing rather than "0 songs". */}
+                        {[item.owner, item.trackCount != null ? songCount(item.trackCount) : '']
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Text>
+                      <Badge label="Online" variant="cloud" icon={<Icon name="cloud" size={10} color="#00E28A" />} />
+                    </View>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : undefined
         }
         contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 140 }}
       />

@@ -97,6 +97,42 @@ export const setFavourite = async (trackId: string, next: boolean, track?: Track
   }
 };
 
+/** Bulk un-heart tracks (FLOWS M06/D02) with optimistic update and rollback on failure. */
+export const unlikeMany = async (trackIds: string[]): Promise<void> => {
+  if (trackIds.length === 0) return;
+  const previousOverrides = new Map<string, boolean | undefined>();
+  const previousLiked = new Set<string>();
+
+  for (const id of trackIds) {
+    previousOverrides.set(id, overrides.get(id));
+    if (likedIds?.has(id)) previousLiked.add(id);
+
+    overrides.set(id, false);
+    if (likedIds) {
+      likedIds.delete(id);
+    }
+  }
+  emit();
+
+  try {
+    await api.deleteTrackFavourites(trackIds);
+    for (const l of savedListeners) l();
+  } catch (e) {
+    // Roll back
+    for (const [id, prev] of previousOverrides) {
+      if (prev === undefined) overrides.delete(id);
+      else overrides.set(id, prev);
+
+      if (likedIds) {
+        if (previousLiked.has(id)) likedIds.add(id);
+        else likedIds.delete(id);
+      }
+    }
+    emit();
+    throw e;
+  }
+};
+
 /** Tells saved-listeners only after the server accepted the change. */
 export const onFavouritesSaved = (fn: () => void): (() => void) => {
   savedListeners.add(fn);

@@ -24,7 +24,7 @@ export const LYRICS_SCRIPTS: { value: LyricsScript; label: string }[] = [
 
 export interface DevicePrefs {
   lyricsScript: LyricsScript;
-  /** When the queue runs out, similar songs keep playing (shared/player/autoplay.ts). */
+  /** Keeps at least 10 songs lined up with similar ones (shared/player/autoplay.ts). */
   autoplaySimilar: boolean;
 }
 

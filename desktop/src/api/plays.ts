@@ -85,6 +85,16 @@ export const removePendingPlays = (done: PendingPlay[]): void => {
   writePending(readPending().filter((p) => !gone.has(playKey(p))));
 };
 
+/** Drop pending plays waiting to sync for this user (e.g. after clearing history). */
+export const dropPendingPlays = (userId?: string): void => {
+  const current = readPending();
+  if (!userId) {
+    writePending([]);
+  } else {
+    writePending(current.filter((p) => p.userId && p.userId !== userId));
+  }
+};
+
 /**
  * Call on each position update. Records the play the first time the threshold is met
  * for this listen; repeated calls afterwards are no-ops.

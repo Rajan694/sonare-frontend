@@ -44,11 +44,13 @@ export const albumMeta = (
 };
 
 /** A YouTube playlist saved to the library is stored like an album. */
-export const playlistMeta = (p: Pick<Playlist, 'id' | 'name' | 'trackCount' | 'thumbnail'>): AlbumMeta | undefined =>
+export const playlistMeta = (
+  p: Pick<Playlist, 'id' | 'name' | 'trackCount' | 'thumbnail'> & { owner?: string },
+): AlbumMeta | undefined =>
   albumMeta({
     id: p.id,
     title: p.name,
-    artist: '',
+    artist: p.owner ?? '',
     artistId: '',
     year: null,
     trackCount: p.trackCount,

@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { API, http, HttpResponse, server, useMockServer } from '../helpers/server';
 import { makeTrack } from '../helpers/fixtures';
 import type { Track } from '../../src/types';
+import { store } from '../../src/store';
+import { setAiAvailable } from '../../src/store/aiSlice';
+import { resetTitleFixes } from '../../../shared/catalog/titleFixes';
 
 /**
  * The download manager runs against an in-memory storage target (what downloadTargets.ts
@@ -167,6 +170,8 @@ beforeEach(() => {
   h.state.removed = [];
   h.state.savedAgain = [];
   h.toast.mockClear();
+  store.dispatch(setAiAvailable(false));
+  resetTitleFixes();
 });
 
 afterEach(() => vi.useRealTimers());
@@ -599,5 +604,114 @@ describe('managing finished downloads', () => {
       favourite: false,
     });
     expect(dl.downloadProgress({ ...item(dl, 'yt:track')!, totalBytes: 0 })).toBeNull();
+  });
+
+  it('WEB-DL-026 newly queued downloads wait for short AI titles when available, using short names in items and files', async () => {
+    const streamCalls = streamInfo();
+    relay(audioBytes(50));
+
+    let resolveAi!: () => void;
+    const aiGate = new Promise<void>((r) => {
+      resolveAi = r;
+    });
+
+    server.use(
+      http.post(`${API}/ai/titles`, async ({ request }) => {
+        const body = (await request.json()) as { items: { id: string }[]; wait?: boolean };
+        expect(body.wait).toBe(true);
+        await aiGate;
+        const fixes: Record<string, { title: string; artist: string }> = {};
+        for (const it of body.items) {
+          if (it.id === 'katha1') {
+            fixes[it.id] = { title: 'Shri Ram Katha · Day 7', artist: 'Pujya Rajan Jee' };
+          }
+          if (it.id === 'emptyArt') {
+            fixes[it.id] = { title: 'Clean Song Title', artist: '' };
+          }
+        }
+        return HttpResponse.json({ fixes });
+      }),
+    );
+
+    const dl = await fresh();
+    const { store: freshStore } = await import('../../src/store');
+    freshStore.dispatch(setAiAvailable(true));
+
+    const messySong = song({
+      id: 'yt:katha1',
+      title: 'LIVE - SRI RAMKATHA | PUJYA RAJAN JEE | KEWAT PREM | SIWAN BIHAR | DAY 07',
+      artist: 'Upload Channel',
+    });
+    const emptyArtSong = song({
+      id: 'yt:emptyArt',
+      title: 'Messy Song Without Artist Change | Official HD',
+      artist: 'Original Artist',
+    });
+
+    const added = await dl.downloads.enqueue([messySong, emptyArtSong]);
+    expect(added).toBe(2);
+
+    // Items appear immediately with original names and status 'queued'
+    expect(item(dl, 'yt:katha1')?.title).toBe(messySong.title);
+    expect(item(dl, 'yt:katha1')?.artist).toBe('Upload Channel');
+    expect(item(dl, 'yt:katha1')?.status).toBe('queued');
+
+    expect(item(dl, 'yt:emptyArt')?.title).toBe(messySong.title === emptyArtSong.title ? '' : emptyArtSong.title);
+    expect(item(dl, 'yt:emptyArt')?.artist).toBe('Original Artist');
+    expect(item(dl, 'yt:emptyArt')?.status).toBe('queued');
+
+    // The pump has NOT started them while titles are pending
+    expect(streamCalls).toHaveLength(0);
+
+    // Now resolve AI titles
+    resolveAi();
+
+    // Pump starts them and finishes with patched titles (and preserved original artist for emptyArt)
+    await waitForStatus(dl, 'yt:katha1', 'done');
+    await waitForStatus(dl, 'yt:emptyArt', 'done');
+
+    expect(item(dl, 'yt:katha1')?.title).toBe('Shri Ram Katha · Day 7');
+    expect(item(dl, 'yt:katha1')?.artist).toBe('Pujya Rajan Jee');
+    expect(h.files.get('yt:katha1')?.name).toBe('Pujya Rajan Jee - Shri Ram Katha · Day 7 [katha1].webm');
+
+    expect(item(dl, 'yt:emptyArt')?.title).toBe('Clean Song Title');
+    expect(item(dl, 'yt:emptyArt')?.artist).toBe('Original Artist');
+    expect(h.files.get('yt:emptyArt')?.name).toBe('Original Artist - Clean Song Title [emptyArt].webm');
+  });
+
+  it('WEB-DL-027 download enqueue falls back to original titles without waiting when AI is off, offline, or failing', async () => {
+    streamInfo();
+    relay(audioBytes(50));
+
+    // Case 1: AI unavailable
+    const dl1 = await fresh();
+    const { store: store1 } = await import('../../src/store');
+    store1.dispatch(setAiAvailable(false));
+
+    const messy1 = song({
+      id: 'yt:off1',
+      title: 'LIVE - SRI RAMKATHA | PUJYA RAJAN JEE | KEWAT PREM | SIWAN BIHAR | DAY 07',
+      artist: 'Upload Channel',
+    });
+    await dl1.downloads.enqueue([messy1]);
+    expect(item(dl1, 'yt:off1')?.title).toBe(messy1.title);
+
+    // Case 2: AI call fails (e.g. 500)
+    server.use(
+      http.post(`${API}/ai/titles`, () => {
+        return new HttpResponse(null, { status: 500 });
+      }),
+    );
+    const dl2 = await fresh();
+    const { store: store2 } = await import('../../src/store');
+    store2.dispatch(setAiAvailable(true));
+
+    const messy2 = song({
+      id: 'yt:fail1',
+      title: 'Another Very Long Messy Video Title | Official Full Video Song HD',
+      artist: 'Another Channel',
+    });
+    await dl2.downloads.enqueue([messy2]);
+    expect(item(dl2, 'yt:fail1')?.title).toBe(messy2.title);
   });
 });
