@@ -14,6 +14,7 @@ export interface HttpResponse {
 }
 
 import { apiOrigin } from './config';
+import { getInstallId } from './installId';
 import { REQUEST_TIMEOUT_MS, trackServerRequest } from '../../../shared/net/serverWake';
 
 export class NetworkError extends Error {
@@ -48,6 +49,8 @@ export const httpRequest = (
       xhr.timeout = timeoutMs ?? (toBackend ? REQUEST_TIMEOUT_MS : 0);
       // Tells the backend's admin analytics which app the request came from.
       if (toBackend) xhr.setRequestHeader('X-Sonare-Client', 'mobile');
+      // Anonymous install id (random, not linked to the user) so the backend can count distinct installs.
+      if (toBackend) xhr.setRequestHeader('X-Sonare-Install', getInstallId());
       for (const [name, value] of Object.entries(headers)) xhr.setRequestHeader(name, value);
       xhr.onload = () => {
         let json: any = null;

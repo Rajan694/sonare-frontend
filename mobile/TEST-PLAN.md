@@ -117,6 +117,15 @@ navigation mock live in `test-utils/`.
 | `MOB-DATA-060` | reorderPlaylist PATCHes a row to its new position                                                       |
 | `MOB-DATA-061` | an expired access token is refreshed before the call, and a 401 after another refresh reuses that token |
 
+## `__tests__/installId.test — see data.test.tsx`
+
+| ID             | Use case                                                                                |
+| :------------- | :-------------------------------------------------------------------------------------- |
+| `MOB-DATA-062` | with nothing stored, temporary id from early request is saved once read resolves        |
+| `MOB-DATA-063` | stored id is kept across simulated restart even if request happens before read resolves |
+| `MOB-DATA-064` | X-Sonare-Install is sent on backend requests and absent on external ones                |
+| `MOB-DATA-065` | nothing is written to storage before the read finishes                                  |
+
 ## `__tests__/lib.test.tsx`
 
 | ID            | Use case                                                                                         |
