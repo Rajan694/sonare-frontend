@@ -487,6 +487,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAND-011` | releaseLabel matches platform and format, and skips missing builds                 |
 | `WEB-LAND-012` | the footer links to contact, bug reports, the privacy page, GitHub and the credits |
 | `WEB-LAND-013` | the privacy page says what is stored, how to delete it, and whom to ask            |
+| `WEB-LAND-014` | renders the landing without importing the app root                                 |
+| `WEB-LAND-015` | the hero has no opacity-0 initial style                                            |
+| `WEB-LAND-016` | screenshot frames carry srcSet and sizes with high fetchPriority on the hero       |
 
 ## `test/screens/email-links.test.tsx`
 

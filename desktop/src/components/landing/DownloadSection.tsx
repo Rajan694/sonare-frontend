@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowRight, Download, Globe, Monitor, Smartphone, Terminal } from 'lucide-react';
 import type { AppRelease } from '../../types';
 import {
@@ -129,10 +128,10 @@ export const DownloadSection = ({ releases, os }: { releases: AppRelease[] | nul
           subtitle="Nothing to install. Runs in Chrome, Firefox, Edge and Safari."
           featured={os === 'other'}
         >
-          <Link className={os === 'other' ? primaryBtn : outlineBtn} to="/home">
+          <a className={os === 'other' ? primaryBtn : outlineBtn} href="/home">
             Open in your browser
             <ArrowRight size={18} aria-hidden="true" />
-          </Link>
+          </a>
         </Card>
       ),
     },

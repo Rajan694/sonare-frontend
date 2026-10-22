@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'motion/react';
 import {
@@ -11,7 +11,7 @@ import {
   RefreshCw,
   SlidersHorizontal,
 } from 'lucide-react';
-import { api } from '../api/api';
+import { API_BASE } from '../api/server';
 import type { AppRelease } from '../types';
 import { BrandMark } from '../components/ui/BrandMark';
 import { PhoneFrame, WindowFrame } from '../components/landing/Frames';
@@ -112,25 +112,15 @@ const SectionHeading = ({ eyebrow, title, body }: { eyebrow: string; title: stri
   );
 };
 
-/** The logo's bars, bouncing like a level meter. */
+/** The logo's bars, bouncing like a level meter (CSS keyframes). */
 const LevelBars = () => {
-  const reduce = useReducedMotion();
-  const bars = [
-    [0.35, 0.8, 0.5],
-    [0.7, 0.3, 0.9],
-    [1, 0.55, 0.75],
-    [0.6, 0.95, 0.4],
-    [0.4, 0.65, 0.3],
-  ];
   return (
     <span className="flex h-[14px] items-end gap-[2px]" aria-hidden="true">
-      {bars.map((h, i) => (
-        <motion.span
+      {[0, 1, 2, 3, 4].map((i) => (
+        <span
           key={i}
-          className="w-[3px] origin-bottom rounded-full bg-acc"
-          style={{ height: '100%', scaleY: h[0] }}
-          animate={reduce ? undefined : { scaleY: h }}
-          transition={{ duration: 0.9, repeat: Infinity, repeatType: 'mirror', delay: i * 0.12, ease: 'easeInOut' }}
+          className={`landing-bar landing-bar-${i} w-[3px] origin-bottom rounded-full bg-acc`}
+          style={{ height: '100%' }}
         />
       ))}
     </span>
@@ -139,9 +129,24 @@ const LevelBars = () => {
 
 const Landing = () => {
   const reduce = useReducedMotion();
+  const heroRef = useRef<HTMLElement>(null);
+  const [heroVisible, setHeroVisible] = useState(true);
   const [releases, setReleases] = useState<AppRelease[] | null>(null);
   const os = useMemo(() => detectOs(navigator as Navigator & { userAgentData?: { platform?: string } }), []);
   const featured = featuredDownload(os);
+
+  useEffect(() => {
+    const el = heroRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setHeroVisible(entry.isIntersecting);
+      },
+      { threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   useEffect(() => {
     const previousTitle = document.title;
@@ -177,9 +182,13 @@ const Landing = () => {
   // Version and size labels only: the buttons work without them.
   useEffect(() => {
     let live = true;
-    api
-      .getReleases()
-      .then(({ items }) => live && setReleases(items))
+    fetch(`${API_BASE}/releases`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
+      .then((data: { items?: AppRelease[] }) => {
+        if (live && Array.isArray(data.items)) {
+          setReleases(data.items);
+        }
+      })
       .catch(() => {});
     return () => {
       live = false;
@@ -212,19 +221,19 @@ const Landing = () => {
               Download
             </a>
           </div>
-          <Link
-            to="/home"
+          <a
+            href="/home"
             className="focus-visible:focusring ml-auto inline-flex items-center gap-1.5 rounded-full bg-s3 px-4 py-2 text-label-l font-semibold text-t1 transition-colors hover:bg-s4 md:ml-0"
           >
             Open web app
             <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+          </a>
         </nav>
       </header>
 
       <main>
         {/* Hero */}
-        <section className="relative isolate">
+        <section ref={heroRef} className={`relative isolate ${heroVisible ? '' : 'landing-anim-paused'}`}>
           <div
             className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_55%_at_50%_0%,rgba(0,226,138,0.20),rgba(0,226,138,0)_70%)]"
             aria-hidden="true"
@@ -235,66 +244,46 @@ const Landing = () => {
           />
 
           <div className="mx-auto max-w-[1180px] px-4 pb-10 pt-16 text-center sm:px-6 sm:pt-24">
-            <motion.div
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mx-auto inline-flex items-center gap-2.5 rounded-full border border-ln2 bg-s1/80 px-4 py-1.5 text-label-m text-t2"
-            >
+            <div className="mx-auto inline-flex items-center gap-2.5 rounded-full border border-ln2 bg-s1/80 px-4 py-1.5 text-label-m text-t2">
               <LevelBars />
               Free on Android, Linux, Windows and the web
-            </motion.div>
+            </div>
 
-            <motion.h1
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.08 }}
-              className="mx-auto mt-6 max-w-[860px] text-[42px] font-bold leading-[1.04] tracking-[-0.035em] sm:text-[64px] lg:text-[76px]"
-            >
+            <h1 className="mx-auto mt-6 max-w-[860px] text-[42px] font-bold leading-[1.04] tracking-[-0.035em] sm:text-[64px] lg:text-[76px]">
               All your music.
               <span className="block bg-[linear-gradient(100deg,#00e28a_10%,#7dffc8_55%,#00c074_90%)] bg-clip-text pb-[0.08em] text-transparent">
                 Every screen.
               </span>
-            </motion.h1>
+            </h1>
 
-            <motion.p
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.16 }}
-              className="mx-auto mt-6 max-w-[620px] text-[17px] leading-[27px] text-t2 sm:text-[19px] sm:leading-[30px]"
-            >
+            <p className="mx-auto mt-6 max-w-[620px] text-[17px] leading-[27px] text-t2 sm:text-[19px] sm:leading-[30px]">
               Sonare plays the YouTube Music catalogue with synced lyrics, offline downloads and an equalizer, and keeps
               your favourites and playlists with you on your phone, your computer and in the browser.
-            </motion.p>
+            </p>
 
-            <motion.div
-              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, delay: 0.24 }}
-              className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row"
-            >
+            <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               {featured ? (
                 <>
                   <a className={primaryBtn} href={latestDownloadUrl(DOWNLOADS[featured].file)} download>
                     <Download size={19} aria-hidden="true" />
                     Download for {OS_NAMES[os as keyof typeof OS_NAMES]}
                   </a>
-                  <Link className={outlineBtn} to="/home">
+                  <a className={outlineBtn} href="/home">
                     Open in your browser
-                  </Link>
+                  </a>
                 </>
               ) : (
                 <>
-                  <Link className={primaryBtn} to="/home">
+                  <a className={primaryBtn} href="/home">
                     Start listening
                     <ArrowRight size={19} aria-hidden="true" />
-                  </Link>
+                  </a>
                   <a className={outlineBtn} href="#download">
                     Get the apps
                   </a>
                 </>
               )}
-            </motion.div>
+            </div>
             <p className="mt-4 h-4 font-mono text-mono-s text-t3">
               {featured && featuredLabel
                 ? `${DOWNLOADS[featured].file.replace(/^sonare-/, '')} · ${featuredLabel}`
@@ -303,12 +292,7 @@ const Landing = () => {
           </div>
 
           {/* The desktop window with the phone in front of it */}
-          <motion.div
-            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 48 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.9, delay: 0.3, ease: [0, 0, 0.2, 1] }}
-            className="relative mx-auto max-w-[1080px] px-4 pb-24 sm:px-10"
-          >
+          <div className="relative mx-auto max-w-[1080px] px-4 pb-24 sm:px-10">
             <div
               className="pointer-events-none absolute inset-x-[10%] top-[18%] -z-10 h-[60%] rounded-full bg-acc/20 blur-[90px]"
               aria-hidden="true"
@@ -317,20 +301,17 @@ const Landing = () => {
               src="/landing/linux-home.webp"
               alt="Sonare on Linux: Home with the sidebar, search and trending songs"
               eager
+              priority
               className="mr-[14%] sm:mr-[18%]"
             />
-            <motion.div
-              className="absolute bottom-10 right-4 w-[30%] max-w-[250px] sm:right-10"
-              animate={reduce ? undefined : { y: [0, -12, 0] }}
-              transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-            >
+            <div className="landing-float-device absolute bottom-10 right-4 w-[30%] max-w-[250px] sm:right-10">
               <PhoneFrame
                 src="/landing/android-nowplaying.webp"
                 alt="Sonare on Android: Now Playing with the waveform and controls"
                 eager
               />
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </section>
 
         {/* Features */}
