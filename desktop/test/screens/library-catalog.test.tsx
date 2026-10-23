@@ -167,9 +167,11 @@ describe('library', () => {
     setSession('a', 'r', testUser);
     const { user, location } = renderWithProviders(<Library />, { route: '/library?view=albums' });
     expect(await screen.findByRole('link', { name: /OK Computer/ })).toHaveAttribute('href', '/album/yt:okc');
-    await user.click(screen.getByRole('button', { name: 'Most played' }));
-    expect(location()).toBe('/library?view=most-played');
-    await waitFor(() => expect(titles()).toEqual(['Charlie']));
+    await user.click(screen.getByRole('button', { name: 'Artists' }));
+    expect(location()).toBe('/library?view=artists');
+    await waitFor(() =>
+      expect(screen.getByRole('link', { name: /Radiohead/ })).toHaveAttribute('href', '/artist/yt:rh'),
+    );
     await user.click(screen.getByRole('button', { name: 'Songs' }));
     expect(location()).toBe('/library');
     // The web build has no local folders.
@@ -204,10 +206,10 @@ describe('library', () => {
     const { user } = renderWithProviders(<Library />, { route: '/library' });
     // Songs is the guest's own list.
     expect(await screen.findByText('Songs you like or add to a playlist show up here.')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Favourites' }));
+    await user.click(screen.getByRole('button', { name: 'Albums' }));
     expect(screen.getByText('This lives in your account')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Create account' })).toHaveAttribute('href', '/signin');
-    await user.click(screen.getByRole('button', { name: 'Albums' }));
+    await user.click(screen.getByRole('button', { name: 'Artists' }));
     expect(screen.getByText('This lives in your account')).toBeInTheDocument();
   });
 
@@ -676,7 +678,7 @@ describe('library', () => {
     await user.click(screen.getByText('Bravo').closest('[role="row"]')!);
     expect(screen.getByText('1 selected')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Favourites' }));
+    await user.click(screen.getByRole('button', { name: 'Albums' }));
     await waitFor(() => {
       expect(screen.queryByText('1 selected')).not.toBeInTheDocument();
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
@@ -731,6 +733,77 @@ describe('library', () => {
     expect(cancelBtn.className).toContain('whitespace-nowrap');
     expect(cancelBtn.className).toContain('flex-none');
     expect(cancelBtn.querySelector('span')?.className).toContain('hidden @[720px]:inline');
+  });
+
+  it('WEB-LIBRARY-033 phone and tablet show Songs, Albums, Artists, Downloads tabs; Downloads renders downloads', async () => {
+    setSession('a', 'r', testUser);
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 400 });
+    window.dispatchEvent(new Event('resize'));
+
+    const { user, location } = renderWithProviders(<Library />, { route: '/library' });
+    await screen.findByText('3 songs in your library');
+
+    // Verify tabs are Songs, Albums, Artists, Downloads (no Favourites, no Most played)
+    const tabs = screen.getAllByRole('button', { name: /^(Songs|Albums|Artists|Downloads)$/ });
+    expect(tabs.map((t) => t.textContent)).toEqual(['Songs', 'Albums', 'Artists', 'Downloads']);
+    expect(screen.queryByRole('button', { name: 'Favourites' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Most played' })).not.toBeInTheDocument();
+
+    // Click Downloads tab: changes location to ?view=downloads and shows downloads view
+    await user.click(screen.getByRole('button', { name: 'Downloads' }));
+    expect(location()).toBe('/library?view=downloads');
+    expect(await screen.findByText('No downloads yet')).toBeInTheDocument();
+  });
+
+  it('WEB-LIBRARY-034 pinned views render without tabs and with phone back button navigating back or playlists', async () => {
+    setSession('a', 'r', testUser);
+    Object.defineProperty(window, 'innerWidth', { writable: true, configurable: true, value: 400 });
+    window.dispatchEvent(new Event('resize'));
+
+    // 1. ?view=favourites
+    const fav = renderWithProviders(<Library />, { route: '/library?view=favourites' });
+    expect(await screen.findByText('Liked Songs')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Songs' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Downloads' })).not.toBeInTheDocument();
+    const favBack = screen.getByRole('button', { name: 'Back' });
+    expect(favBack).toBeInTheDocument();
+    await fav.user.click(favBack);
+    expect(fav.location()).toBe('/playlists');
+    fav.unmount();
+
+    // 2. ?view=most-played
+    const mp = renderWithProviders(<Library />, { route: '/library?view=most-played' });
+    expect(await screen.findByText('Most played')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Songs' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Downloads' })).not.toBeInTheDocument();
+    const mpBack = screen.getByRole('button', { name: 'Back' });
+    expect(mpBack).toBeInTheDocument();
+    await mp.user.click(mpBack);
+    expect(mp.location()).toBe('/playlists');
+    mp.unmount();
+  });
+
+  it('WEB-LIBRARY-035 Most played view displays plays count in track subtitle below 720px', async () => {
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/most-played`, () =>
+        HttpResponse.json(page([makeTrack({ id: 'yt:c1', title: 'Top Tune', artist: 'Pop Star', playCount: 42 })])),
+      ),
+    );
+
+    // Most played view
+    const mp = renderWithProviders(<Library />, { route: '/library?view=most-played' });
+    expect(await screen.findByText('Top Tune')).toBeInTheDocument();
+    const playsSpan = screen.getByText('42 plays');
+    expect(playsSpan).toBeInTheDocument();
+    expect(playsSpan.parentElement?.className).toContain('@[720px]:hidden');
+    mp.unmount();
+
+    // Regular songs view should not render plays count in subtitle
+    const songs = renderWithProviders(<Library />, { route: '/library' });
+    expect(await screen.findByText('Bravo')).toBeInTheDocument();
+    expect(screen.queryByText(/\d+ plays/)).not.toBeInTheDocument();
+    songs.unmount();
   });
 });
 

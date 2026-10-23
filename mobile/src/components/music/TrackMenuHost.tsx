@@ -16,9 +16,9 @@ import { useLibraryStore } from '../../store/library';
 import { useTrackMenuStore } from '../../store/trackMenu';
 import { useDownloadsStore } from '../../store/downloads';
 import { useModeStore } from '../../store/mode';
+import { showSnackbar, songsSubtitle } from '../../store/snackbar';
 import { confirmRemoveDownloads } from '../../lib/confirmRemoveDownloads';
 import type { Track } from '../../data/types';
-import { offerMusicAccess } from '../../lib/musicAccess';
 
 const MenuItem = ({
   icon,
@@ -61,13 +61,11 @@ export const PlaylistPicker = ({ track, tracks, onClose }: PlaylistPickerProps) 
   const [newName, setNewName] = React.useState('');
   const [note, setNote] = React.useState<string | null>(null);
 
-  const addTo = async (playlistId: string) => {
+  const addTo = async (playlistId: string, playlistName: string) => {
+    const adding = tracks ?? (track ? [track] : []);
     try {
-      if (tracks) {
-        await useLibraryStore.getState().addToPlaylist(playlistId, tracks);
-      } else if (track) {
-        await useLibraryStore.getState().addToPlaylist(playlistId, track);
-      }
+      await useLibraryStore.getState().addToPlaylist(playlistId, adding);
+      showSnackbar({ title: `Added to ${playlistName}`, subtitle: songsSubtitle(adding), icon: 'playlist' });
       handleClose();
     } catch (e: any) {
       setNote(e?.message || 'Could not add to playlist');
@@ -79,7 +77,7 @@ export const PlaylistPicker = ({ track, tracks, onClose }: PlaylistPickerProps) 
     if (!text.trim()) return;
     try {
       const playlist = await useLibraryStore.getState().createPlaylist(text.trim());
-      await addTo(playlist.id);
+      await addTo(playlist.id, playlist.name);
     } catch (e: any) {
       setNote(e?.message || 'Could not create playlist');
     }
@@ -111,7 +109,7 @@ export const PlaylistPicker = ({ track, tracks, onClose }: PlaylistPickerProps) 
         {playlists.map((p) => (
           <Pressable
             key={p.id}
-            onPress={() => addTo(p.id)}
+            onPress={() => addTo(p.id, p.name)}
             className="flex-row items-center gap-3 py-2.5"
             accessibilityRole="button"
             accessibilityLabel={`Add to ${p.name}`}
@@ -151,8 +149,22 @@ const Menu = ({ track }: { track: Track }) => {
 
   return (
     <View className="gap-2">
-      <MenuItem icon="play" label="Play next" onPress={run(() => usePlayerStore.getState().playNextInQueue(track))} />
-      <MenuItem icon="playlist" label="Add to queue" onPress={run(() => usePlayerStore.getState().addToQueue(track))} />
+      <MenuItem
+        icon="play"
+        label="Play next"
+        onPress={run(() => {
+          usePlayerStore.getState().playNextInQueue(track);
+          showSnackbar({ title: 'Playing next', subtitle: track.title, icon: 'list' });
+        })}
+      />
+      <MenuItem
+        icon="playlist"
+        label="Add to queue"
+        onPress={run(() => {
+          usePlayerStore.getState().addToQueue(track);
+          showSnackbar({ title: 'Added to queue', subtitle: track.title, icon: 'list' });
+        })}
+      />
       <MenuItem
         icon="heart"
         label={favourite ? 'Remove from favourites' : 'Add to favourites'}
@@ -195,7 +207,6 @@ const Menu = ({ track }: { track: Track }) => {
             label="Download"
             onPress={run(() => {
               useDownloadsStore.getState().enqueue([track]);
-              offerMusicAccess('download');
             })}
           />
         ) : null)}

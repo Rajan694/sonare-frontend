@@ -10,6 +10,7 @@ import { showToast } from '../store/toasts';
 import { useLocalLibrary } from '../storage/local';
 import SongRow, { SongTableHeader } from '../components/music/SongRow';
 import Artwork from '../components/music/Artwork';
+import { openCollectionMenu, openTrackMenu } from '../components/music/TrackMenu';
 import Icon from '../components/ui/Icon';
 import Button from '../components/ui/Button';
 import DownloadButton from '../components/music/DownloadButton';
@@ -72,6 +73,12 @@ const playlistSubtitle = (pl: Playlist | Album): string => {
   if (owner) return `Playlist · ${owner}`;
   return 'Playlist';
 };
+
+/** The "more" menu of an album or playlist result: its songs are fetched when an action needs them. */
+const albumMenu = (album: Album) => (e: React.MouseEvent) =>
+  openCollectionMenu({ kind: 'album', id: album.id, title: album.title, raw: album }, e);
+const playlistMenu = (pl: Playlist) => (e: React.MouseEvent) =>
+  openCollectionMenu({ kind: 'playlist', id: pl.id, title: playlistTitle(pl), raw: pl }, e);
 
 const Search = () => {
   const { mode, setMode } = useModeStore();
@@ -216,6 +223,13 @@ const Search = () => {
 
   // Find top result (prefer first match: album, song, or artist)
   const topSong = combinedTracks[0];
+  const topCollection = !topSong
+    ? albumHits.length > 0
+      ? { kind: 'album' as const, item: albumHits[0] }
+      : playlistHits.length > 0
+        ? { kind: 'playlist' as const, item: playlistHits[0] }
+        : null
+    : null;
 
   // Nothing matched: no songs and, on All, none of the three extra searches either.
   const nothingFound =
@@ -352,6 +366,7 @@ const Search = () => {
                         linkItem.playlist.thumbnail || `/api/v1/albums/${linkItem.playlist.id}/artwork?size=140`
                       }
                       to={`/playlist/${linkItem.playlist.id}`}
+                      onMore={(e) => playlistMenu(linkItem.playlist)(e)}
                     />
                   </div>
                 )
@@ -394,12 +409,15 @@ const Search = () => {
                   ) : activeChip === 'all' ? (
                     <div className="flex flex-col gap-8">
                       {/* Top result and Songs, both from the songs search */}
-                      {(topSong || combinedTracks.length > 0) && (
+                      {(topSong || topCollection || combinedTracks.length > 0) && (
                         <div className="grid grid-cols-1 @4xl:grid-cols-[360px_minmax(0,1fr)] gap-7 items-start">
-                          {topSong && (
+                          {topSong ? (
                             <div className="flex flex-col gap-3">
                               <span className="text-overline text-t3 uppercase font-semibold">Top result</span>
-                              <div className="surf flex flex-col gap-4 p-5 rounded-xl">
+                              <div
+                                className="surf flex flex-col gap-4 p-5 rounded-xl"
+                                onContextMenu={(e) => openTrackMenu(topSong, e)}
+                              >
                                 <Artwork
                                   src={topSong.thumbnail || `/api/v1/albums/${topSong.albumId}/artwork?size=240`}
                                   alt={topSong.title}
@@ -436,10 +454,96 @@ const Search = () => {
                                     <Icon name="play" size={21} />
                                   </button>
                                   <DownloadButton tracks={[topSong]} offline={!isOnline} />
+                                  <button
+                                    className="ib ib-32 text-t2 hover:text-t1"
+                                    aria-label={`More options for ${topSong.title}`}
+                                    onClick={(e) => openTrackMenu(topSong, e)}
+                                  >
+                                    <Icon name="more" size={16} />
+                                  </button>
                                 </div>
                               </div>
                             </div>
-                          )}
+                          ) : topCollection ? (
+                            <div className="flex flex-col gap-3">
+                              <span className="text-overline text-t3 uppercase font-semibold">Top result</span>
+                              <div
+                                className="surf flex flex-col gap-4 p-5 rounded-xl cursor-pointer"
+                                onContextMenu={(e) =>
+                                  (topCollection.kind === 'album'
+                                    ? albumMenu(topCollection.item as Album)
+                                    : playlistMenu(topCollection.item as Playlist))(e)
+                                }
+                              >
+                                <Artwork
+                                  src={
+                                    topCollection.item.thumbnail ||
+                                    `/api/v1/albums/${topCollection.item.id}/artwork?size=240`
+                                  }
+                                  alt={
+                                    topCollection.kind === 'album'
+                                      ? (topCollection.item as Album).title
+                                      : playlistTitle(topCollection.item as Playlist)
+                                  }
+                                  variant="a2"
+                                  size={168}
+                                  radius="md"
+                                  className="shadow-xl"
+                                />
+                                <div className="flex flex-col gap-1.5">
+                                  <Link
+                                    to={
+                                      topCollection.kind === 'album'
+                                        ? `/album/${topCollection.item.id}`
+                                        : `/playlist/${topCollection.item.id}`
+                                    }
+                                    className="text-heading-m text-t1 font-semibold no-underline hover:underline"
+                                  >
+                                    {topCollection.kind === 'album'
+                                      ? (topCollection.item as Album).title
+                                      : playlistTitle(topCollection.item as Playlist)}
+                                  </Link>
+                                  <span className="text-body-m text-t2">
+                                    {topCollection.kind === 'album'
+                                      ? `Album · ${(topCollection.item as Album).artist}`
+                                      : playlistSubtitle(topCollection.item as Playlist)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2.5 mt-2">
+                                  <Link
+                                    to={
+                                      topCollection.kind === 'album'
+                                        ? `/album/${topCollection.item.id}`
+                                        : `/playlist/${topCollection.item.id}`
+                                    }
+                                    className="playbtn playbtn-48 no-underline"
+                                    aria-label={`Open ${
+                                      topCollection.kind === 'album'
+                                        ? (topCollection.item as Album).title
+                                        : playlistTitle(topCollection.item as Playlist)
+                                    }`}
+                                  >
+                                    <Icon name="play" size={21} />
+                                  </Link>
+                                  <button
+                                    className="ib ib-32 text-t2 hover:text-t1"
+                                    aria-label={`More options for ${
+                                      topCollection.kind === 'album'
+                                        ? (topCollection.item as Album).title
+                                        : playlistTitle(topCollection.item as Playlist)
+                                    }`}
+                                    onClick={(e) =>
+                                      (topCollection.kind === 'album'
+                                        ? albumMenu(topCollection.item as Album)
+                                        : playlistMenu(topCollection.item as Playlist))(e)
+                                    }
+                                  >
+                                    <Icon name="more" size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
 
                           {combinedTracks.length > 0 && (
                             <div className="@container flex flex-col gap-3 min-w-0">
@@ -508,6 +612,7 @@ const Search = () => {
                                 artVariant={`a${(i % 12) + 1}` as any}
                                 thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
                                 to={`/album/${album.id}`}
+                                onMore={(e) => albumMenu(album)(e)}
                               />
                             ))}
                           </div>
@@ -529,6 +634,7 @@ const Search = () => {
                                 artVariant={`a${(i % 12) + 1}` as any}
                                 thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
                                 to={`/playlist/${pl.id}`}
+                                onMore={(e) => playlistMenu(pl)(e)}
                               />
                             ))}
                           </div>
@@ -586,6 +692,7 @@ const Search = () => {
                               artVariant={`a${(i % 12) + 1}` as any}
                               thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
                               to={`/album/${album.id}`}
+                              onMore={(e) => albumMenu(album)(e)}
                             />
                           ))}
                       </div>
@@ -629,6 +736,7 @@ const Search = () => {
                               artVariant={`a${(i % 12) + 1}` as any}
                               thumbnail={pl.thumbnail || `/api/v1/albums/${pl.id}/artwork?size=140`}
                               to={`/playlist/${pl.id}`}
+                              onMore={(e) => playlistMenu(pl)(e)}
                             />
                           ))}
                       </div>

@@ -30,6 +30,8 @@ interface SongRowProps {
   hideAlbum?: boolean;
   /** The PLAYS column, for lists of the user's own songs (Library, Most played); catalog songs have no count. */
   showPlays?: boolean;
+  /** Below 720px, shows "N plays" in the subtitle (Most played view). */
+  showPlaysSubtitle?: boolean;
   /** Selection mode: whether this row is selected. */
   selected?: boolean;
   /** Selection mode: called when row selection is toggled (supports shift-click range). */
@@ -89,6 +91,7 @@ const SongRow = ({
   added,
   hideAlbum,
   showPlays,
+  showPlaysSubtitle,
   selected,
   onToggleSelect,
 }: SongRowProps) => {
@@ -182,6 +185,14 @@ const SongRow = ({
         <span className="text-body-s text-t2 truncate">
           {track.artist}
           {track.album ? <span className="inline @[480px]:hidden text-t3"> · {track.album}</span> : null}
+          {showPlaysSubtitle && (
+            <span className="inline @[720px]:hidden text-t3">
+              {' · '}
+              <span>
+                {(track.playCount ?? 0).toLocaleString()} {(track.playCount ?? 0) === 1 ? 'play' : 'plays'}
+              </span>
+            </span>
+          )}
         </span>
       </div>
 

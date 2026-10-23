@@ -39,7 +39,6 @@ import Queue from './screens/Queue';
 import Equalizer from './screens/Equalizer';
 import ModeSwitch from './screens/ModeSwitch';
 import Settings from './screens/Settings';
-import Folders from './screens/Folders';
 import Downloads from './screens/Downloads';
 import SignIn from './screens/SignIn';
 import ResetPassword from './screens/ResetPassword';
@@ -592,7 +591,7 @@ const App = () => {
               <Route path="/signin" element={<SignIn />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/verify-email" element={<VerifyEmail />} />
-              {CAPS.localLibrary && <Route path="/folders" element={<Folders />} />}
+              <Route path="/folders" element={<Navigate to="/settings?section=connection" replace />} />
               {CAPS.downloads && <Route path="/downloads" element={<Downloads />} />}
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Route>

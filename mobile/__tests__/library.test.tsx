@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alert, BackHandler } from 'react-native';
 import { act, fireEvent, render, renderHook, waitFor } from '@testing-library/react-native';
+import { TrackListScreen } from '../src/screens/TrackList';
 import { LibraryScreen } from '../src/screens/Library';
 import { usePagedTracks } from '../src/data/hooks';
 import { api } from '../src/data/api';
@@ -222,7 +223,7 @@ describe('Library screen — Songs tab', () => {
   });
 });
 
-describe('Library screen — sort chip on Songs and Favourites', () => {
+describe('Library screen — sort chip on Songs and Liked Songs screen', () => {
   it('MOB-LIBR-009 sort chip on Songs tab shows six options', async () => {
     const { findByLabelText, getByLabelText } = render(<LibraryScreen />);
     fireEvent.press(await findByLabelText('Sort: Recently added'));
@@ -231,24 +232,23 @@ describe('Library screen — sort chip on Songs and Favourites', () => {
     }
   });
 
-  it('MOB-LIBR-010 sort chip appears on Favourites tab too', async () => {
+  it('MOB-LIBR-010 sort chip appears on Liked Songs screen too', async () => {
     jest.spyOn(api, 'libraryTracks').mockResolvedValue(page([]) as never);
-    const { getByText, findByLabelText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Favourites'));
+    route.params = { kind: 'liked' };
+    const { findByLabelText } = render(<TrackListScreen />);
     expect(await findByLabelText('Sort: Recently added')).toBeTruthy();
   });
 });
 
-describe('Library screen — Favourites and focus refreshing', () => {
+describe('Liked Songs screen — focus and unliking behavior', () => {
   it('MOB-LIBR-017 liking or unliking does not refetch the paged list', async () => {
     const t1 = makeTrack({ title: 'Liked 1' });
     useLibraryStore.setState({ favouriteIds: { [t1.id]: true } });
     const spy = jest.spyOn(api, 'libraryTracks').mockResolvedValue(page([t1], 1) as never);
-    const { getByText, findByText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Favourites'));
+    route.params = { kind: 'liked' };
+    const { findByText } = render(<TrackListScreen />);
     expect(await findByText('Liked 1')).toBeTruthy();
-    // Call 1 for initial Songs tab, Call 2 for Favourites tab.
-    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenCalledTimes(1);
 
     // Like another track
     act(() => {
@@ -256,21 +256,21 @@ describe('Library screen — Favourites and focus refreshing', () => {
       useLibraryStore.getState().toggleFavourite(t2);
     });
 
-    // Paged list was NOT refetched — still 2 calls.
-    expect(spy).toHaveBeenCalledTimes(2);
+    // Paged list was NOT refetched — still 1 call.
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
-  it('MOB-LIBR-018 an unliked row disappears from Favourites at once', async () => {
+  it('MOB-LIBR-018 an unliked row disappears from Liked Songs at once', async () => {
     const t1 = makeTrack({ title: 'Keep Me' });
     const t2 = makeTrack({ title: 'Unlike Me' });
     useLibraryStore.setState({ favouriteIds: { [t1.id]: true, [t2.id]: true } });
     const spy = jest.spyOn(api, 'libraryTracks').mockResolvedValue(page([t1, t2], 2) as never);
 
-    const { getByText, findByText, queryByText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Favourites'));
+    route.params = { kind: 'liked' };
+    const { findByText, queryByText } = render(<TrackListScreen />);
     expect(await findByText('Keep Me')).toBeTruthy();
     expect(await findByText('Unlike Me')).toBeTruthy();
-    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenCalledTimes(1);
 
     // Unlike t2 straight away
     act(() => {
@@ -280,7 +280,7 @@ describe('Library screen — Favourites and focus refreshing', () => {
     // t2 is hidden immediately without any server request
     expect(queryByText('Unlike Me')).toBeNull();
     expect(queryByText('Keep Me')).toBeTruthy();
-    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenCalledTimes(1);
   });
 
   it('MOB-LIBR-019 focus refetch keeps old rows until the new page lands', async () => {
@@ -571,8 +571,6 @@ describe('Library screen — multi-select (M2)', () => {
   it('MOB-LIBR-028 Download enqueues without confirm, alerts with location, and stays on screen', async () => {
     const enqueueSpy = jest.spyOn(useDownloadsStore.getState(), 'enqueue');
     const { nav } = require('../test-utils');
-    const access = require('../src/lib/musicAccess');
-    const accessSpy = jest.spyOn(access, 'offerMusicAccess');
 
     const { getByLabelText, findByText, queryByText } = render(<LibraryScreen />);
     expect(await findByText('Song One')).toBeTruthy();
@@ -592,10 +590,6 @@ describe('Library screen — multi-select (M2)', () => {
       '2 songs will be saved to Music/Sonare.',
       expect.any(Array),
     );
-
-    // Pressing OK on the alert calls offerMusicAccess('download')
-    await pressAlertButton('OK');
-    expect(accessSpy).toHaveBeenCalledWith('download');
 
     // Did not navigate to Downloads (stays on Library)
     expect(nav.navigate).not.toHaveBeenCalledWith('Downloads');

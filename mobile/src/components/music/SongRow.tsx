@@ -33,6 +33,8 @@ interface SongRowProps {
   selected?: boolean;
   /** Multi-select mode toggle handler. When present, tap and long press toggle selection. */
   onToggleSelect?: () => void;
+  /** When true, display play count ("N plays") in subtitle (for Most played). */
+  showPlayCount?: boolean;
 }
 
 export const SongRow = ({
@@ -47,6 +49,7 @@ export const SongRow = ({
   trailing,
   selected = false,
   onToggleSelect,
+  showPlayCount = false,
 }: SongRowProps) => {
   const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
   // Only the active row cares, so the others never re-render on play/pause.
@@ -57,7 +60,10 @@ export const SongRow = ({
   const accent = local ? '#FFC24D' : '#00E28A';
 
   const inSelectionMode = onToggleSelect !== undefined;
-  const subtitle = track.album ? `${track.artist} · ${track.album}` : track.artist;
+  const baseSubtitle = track.album ? `${track.artist} · ${track.album}` : track.artist;
+  const playsText =
+    track.playCount !== undefined ? `${track.playCount} ${track.playCount === 1 ? 'play' : 'plays'}` : null;
+  const subtitle = showPlayCount && playsText ? `${baseSubtitle} · ${playsText}` : baseSubtitle;
 
   return (
     <Animated.View

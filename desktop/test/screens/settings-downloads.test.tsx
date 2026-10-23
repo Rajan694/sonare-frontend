@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import Settings from '../../src/screens/Settings';
 import Downloads from '../../src/screens/Downloads';
 import { clearSession, setSession } from '../../src/api/auth';
@@ -112,7 +112,9 @@ const openSettings = (route = '/settings') => {
   const utils = renderWithProviders(<Settings />, { route });
   const root = utils.container.firstElementChild!;
   const [phone, wide] = [root.children[0] as HTMLElement, root.children[1] as HTMLElement];
-  return { ...utils, w: within(wide), phone: within(phone) };
+  // The phone layout scrolls the list of sections, under the chip row.
+  const phoneList = phone.querySelector('[data-section]')!.parentElement as HTMLElement;
+  return { ...utils, w: within(wide), phone: within(phone), phoneEl: phone, phoneList };
 };
 
 describe('settings', () => {
@@ -148,6 +150,10 @@ describe('settings', () => {
       expect(phone.getByText(title, { selector: '.text-overline' })).toBeInTheDocument();
     }
     expect(phone.queryByText('Connection mode')).not.toBeInTheDocument();
+    expect(w.queryByText('Music folders')).not.toBeInTheDocument();
+    expect(phone.queryByText('Music folders')).not.toBeInTheDocument();
+    expect(w.queryByRole('button', { name: 'Add folder' })).not.toBeInTheDocument();
+    expect(phone.queryByRole('button', { name: 'Add folder' })).not.toBeInTheDocument();
     // Sonare is dark only: there is nothing to choose.
     expect(phone.queryByText('Appearance')).not.toBeInTheDocument();
     expect(nav).not.toContain('Appearance');
@@ -237,6 +243,197 @@ describe('settings', () => {
     expect(getSettings()).not.toHaveProperty('lyricsScript');
     expect(w.queryByText('Audio output')).not.toBeInTheDocument();
     updateDevicePrefs({ lyricsScript: 'original' });
+  });
+
+  it('WEB-SETTINGS-013 phone layout renders quick-jump chips matching the active sections', () => {
+    const { phone } = openSettings();
+    const tabs = phone.getAllByRole('tab').map((t) => t.textContent);
+    expect(tabs).toEqual(['Account', 'Playback', 'Downloads', 'Audio & effects', 'About']);
+    expect(phone.getByRole('tab', { name: 'Account' })).toHaveAttribute('aria-selected', 'true');
+    expect(phone.getByRole('tab', { name: 'Account' })).toHaveClass('chip-on');
+  });
+
+  it('WEB-SETTINGS-014 tapping a phone quick-jump chip calls scroll on that section', async () => {
+    const { user, phone, phoneEl } = openSettings();
+    const playbackSec = phoneEl.querySelector('[data-section="playback"]') as HTMLElement;
+    expect(playbackSec).not.toBeNull();
+    const scrollSpy = vi.fn();
+    playbackSec.scrollIntoView = scrollSpy;
+
+    await user.click(phone.getByRole('tab', { name: 'Playback' }));
+    expect(scrollSpy).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    expect(phone.getByRole('tab', { name: 'Playback' })).toHaveAttribute('aria-selected', 'true');
+    expect(phone.getByRole('tab', { name: 'Playback' })).toHaveClass('chip-on');
+  });
+
+  it('WEB-SETTINGS-015 ?section=playback starts with that chip highlighted and scrolls on open', () => {
+    const original = Element.prototype.scrollIntoView;
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy;
+    try {
+      const { phone } = openSettings('/settings?section=playback');
+      expect(phone.getByRole('tab', { name: 'Playback' })).toHaveAttribute('aria-selected', 'true');
+      expect(phone.getByRole('tab', { name: 'Playback' })).toHaveClass('chip-on');
+      expect(scrollSpy).toHaveBeenCalledWith({ block: 'start' });
+    } finally {
+      Element.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('WEB-SETTINGS-016 scrolling updates highlighted chip based on geometry and scrolls chip into view', () => {
+    const { phone, phoneEl, phoneList } = openSettings();
+    const chipRow = phoneEl.querySelector('[role="tablist"]') as HTMLElement;
+    const accountSec = phoneEl.querySelector('[data-section="account"]') as HTMLElement;
+    const playbackSec = phoneEl.querySelector('[data-section="playback"]') as HTMLElement;
+    const downloadsSec = phoneEl.querySelector('[data-section="downloads"]') as HTMLElement;
+    const audioSec = phoneEl.querySelector('[data-section="audio"]') as HTMLElement;
+    const aboutSec = phoneEl.querySelector('[data-section="about"]') as HTMLElement;
+
+    chipRow.getBoundingClientRect = () =>
+      ({ bottom: 100, top: 50, left: 0, right: 300, width: 300, height: 50, x: 0, y: 50, toJSON: () => {} }) as DOMRect;
+    accountSec.getBoundingClientRect = () =>
+      ({
+        top: -200,
+        bottom: -50,
+        left: 0,
+        right: 300,
+        width: 300,
+        height: 150,
+        x: 0,
+        y: -200,
+        toJSON: () => {},
+      }) as DOMRect;
+    playbackSec.getBoundingClientRect = () =>
+      ({
+        top: -40,
+        bottom: 80,
+        left: 0,
+        right: 300,
+        width: 300,
+        height: 120,
+        x: 0,
+        y: -40,
+        toJSON: () => {},
+      }) as DOMRect;
+    downloadsSec.getBoundingClientRect = () =>
+      ({
+        top: 90,
+        bottom: 250,
+        left: 0,
+        right: 300,
+        width: 300,
+        height: 160,
+        x: 0,
+        y: 90,
+        toJSON: () => {},
+      }) as DOMRect;
+    audioSec.getBoundingClientRect = () =>
+      ({
+        top: 300,
+        bottom: 450,
+        left: 0,
+        right: 300,
+        width: 300,
+        height: 150,
+        x: 0,
+        y: 300,
+        toJSON: () => {},
+      }) as DOMRect;
+    aboutSec.getBoundingClientRect = () =>
+      ({
+        top: 500,
+        bottom: 650,
+        left: 0,
+        right: 300,
+        width: 300,
+        height: 150,
+        x: 0,
+        y: 500,
+        toJSON: () => {},
+      }) as DOMRect;
+
+    const downloadsChip = phone.getByRole('tab', { name: 'Downloads' });
+    const chipScrollSpy = vi.fn();
+    downloadsChip.scrollIntoView = chipScrollSpy;
+
+    act(() => {
+      fireEvent.scroll(phoneList);
+    });
+
+    expect(downloadsChip).toHaveAttribute('aria-selected', 'true');
+    expect(downloadsChip).toHaveClass('chip-on');
+    expect(chipScrollSpy).toHaveBeenCalledWith({ block: 'nearest', inline: 'nearest' });
+  });
+
+  it('WEB-SETTINGS-017 opened with ?section=, scrolling past it moves the highlight and never pulls the page back', () => {
+    const { phone, phoneEl, phoneList } = openSettings('/settings?section=playback');
+    const playbackSec = phoneEl.querySelector('[data-section="playback"]') as HTMLElement;
+    const sectionScroll = vi.fn();
+    playbackSec.scrollIntoView = sectionScroll;
+    const rect = (top: number) => ({ top, bottom: top + 100 }) as DOMRect;
+    (phoneEl.querySelector('[role="tablist"]') as HTMLElement).getBoundingClientRect = () => rect(0);
+    for (const [id, top] of [
+      ['account', -400],
+      ['playback', -250],
+      ['downloads', -100],
+      ['audio', 300],
+      ['about', 600],
+    ] as const) {
+      (phoneEl.querySelector(`[data-section="${id}"]`) as HTMLElement).getBoundingClientRect = () => rect(top);
+    }
+
+    // The user scrolls the list themselves.
+    act(() => {
+      fireEvent.wheel(phoneList);
+      fireEvent.scroll(phoneList);
+    });
+    act(() => {
+      fireEvent.scroll(phoneList);
+    });
+
+    expect(phone.getByRole('tab', { name: 'Downloads' })).toHaveAttribute('aria-selected', 'true');
+    expect(sectionScroll).not.toHaveBeenCalled();
+  });
+
+  it('WEB-SETTINGS-018 scrolled to the very bottom, the last section is highlighted even if its header never reached the top', () => {
+    const { phone, phoneList } = openSettings();
+    // About's header is still far down the screen, but the list can't scroll any further.
+    (phoneList.querySelector('[data-section="about"]') as HTMLElement).getBoundingClientRect = () =>
+      ({ top: 500, bottom: 600 }) as DOMRect;
+    Object.defineProperties(phoneList, {
+      scrollTop: { value: 900, configurable: true },
+      clientHeight: { value: 700, configurable: true },
+      scrollHeight: { value: 1600, configurable: true },
+    });
+
+    act(() => {
+      fireEvent.scroll(phoneList);
+    });
+
+    expect(phone.getByRole('tab', { name: 'About' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('WEB-SETTINGS-019 a tapped chip stays highlighted while the jump scrolls, until the user scrolls', async () => {
+    const { user, phone, phoneList } = openSettings();
+    (phoneList.querySelector('[data-section="audio"]') as HTMLElement).scrollIntoView = vi.fn();
+    // Audio is near the end: the jump hits the bottom of the list, which alone would mean About.
+    Object.defineProperties(phoneList, {
+      scrollTop: { value: 900, configurable: true },
+      clientHeight: { value: 700, configurable: true },
+      scrollHeight: { value: 1600, configurable: true },
+    });
+
+    await user.click(phone.getByRole('tab', { name: 'Audio & effects' }));
+    act(() => {
+      fireEvent.scroll(phoneList);
+    });
+    expect(phone.getByRole('tab', { name: 'Audio & effects' })).toHaveAttribute('aria-selected', 'true');
+
+    act(() => {
+      fireEvent.wheel(phoneList);
+      fireEvent.scroll(phoneList);
+    });
+    expect(phone.getByRole('tab', { name: 'About' })).toHaveAttribute('aria-selected', 'true');
   });
 });
 

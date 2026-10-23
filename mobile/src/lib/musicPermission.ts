@@ -2,8 +2,8 @@ import { Linking, PermissionsAndroid, Platform } from 'react-native';
 
 /**
  * Reading songs on the phone: Android 13+ asks for music and audio, older versions for
- * storage. Music folders, the offline player and downloads need it (downloads kept from an
- * earlier install belong to that install until Sonare may read them).
+ * storage. Music folders and the offline player need it to play phone songs. Downloads do
+ * not need this permission.
  */
 
 export type MusicPermission = 'granted' | 'denied' | 'blocked';

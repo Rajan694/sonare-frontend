@@ -18,7 +18,6 @@ import type { Mode } from '../../types';
 /** "← Title" screens (M13, M15, M16); their own big title is hidden on phones. */
 const TITLED: Record<string, string> = {
   '/settings': 'Settings',
-  '/folders': 'Music folders',
   '/downloads': 'Downloads',
   '/equalizer': 'Audio',
 };
@@ -85,7 +84,12 @@ const HomeHeader = () => {
           onClick={() => navigate('/search')}
         />
         {offline && CAPS.localLibrary && (
-          <IconButton icon="folder" label="Music folders" size={40} onClick={() => navigate('/folders')} />
+          <IconButton
+            icon="folder"
+            label="Music folders"
+            size={40}
+            onClick={() => navigate('/settings?section=connection')}
+          />
         )}
         {user ? (
           <button

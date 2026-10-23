@@ -26,7 +26,6 @@ const LIBRARY_ITEMS = [
   { to: '/library', icon: 'music' as const, label: 'Songs' },
   { to: '/library?view=albums', icon: 'disc' as const, label: 'Albums' },
   { to: '/library?view=artists', icon: 'mic' as const, label: 'Artists' },
-  { to: '/folders', icon: 'folder' as const, label: 'Folders' },
   { to: '/downloads', icon: 'download' as const, label: 'Downloads' },
 ] as const;
 
@@ -135,7 +134,6 @@ const Sidebar = () => {
         <div className="flex flex-col flex-none pt-3 px-2.5 pb-1.5 gap-0.5">
           {!collapsed && <span className="text-overline text-t3 px-3 pb-2">Library</span>}
           {LIBRARY_ITEMS.filter((item) => {
-            if (item.to === '/folders' && !CAPS.localLibrary) return false;
             if (item.to === '/downloads' && !CAPS.downloads) return false;
             return true;
           }).map((item) => (

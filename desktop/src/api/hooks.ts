@@ -445,7 +445,13 @@ export const useLibrarySongs = ({
 };
 
 export const useLibraryAlbums = (cursor?: string) => {
-  return useAuthAsync(() => api.getLibraryAlbums(cursor), [cursor], { accountOnly: true });
+  const result = useAuthAsync(() => api.getLibraryAlbums(cursor), [cursor], { accountOnly: true });
+  const { refetch } = result;
+  useEffect(() => {
+    window.addEventListener(PLAYLISTS_CHANGED, refetch);
+    return () => window.removeEventListener(PLAYLISTS_CHANGED, refetch);
+  }, [refetch]);
+  return result;
 };
 
 export const useLibraryArtists = (cursor?: string) => {

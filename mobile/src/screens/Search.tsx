@@ -19,6 +19,7 @@ import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
 import { usePhoneTracks } from '../store/localMusic';
 import { useRecentSearchesStore } from '../store/recentSearches';
+import { useCollectionMenuStore } from '../store/collectionMenu';
 import { api } from '../data/api';
 import { artworkUrl } from '../data/config';
 import { useAsync } from '../data/hooks';
@@ -95,6 +96,7 @@ const ResultRow = ({
   accessibilityLabel,
   round,
   onPress,
+  trailing,
 }: {
   uri?: string;
   title: string;
@@ -102,6 +104,7 @@ const ResultRow = ({
   accessibilityLabel: string;
   round?: boolean;
   onPress: () => void;
+  trailing?: React.ReactNode;
 }) => (
   <Pressable
     onPress={onPress}
@@ -118,6 +121,7 @@ const ResultRow = ({
         {subtitle}
       </Text>
     </View>
+    {trailing}
   </Pressable>
 );
 
@@ -297,7 +301,13 @@ export const SearchScreen = () => {
   // The Albums and Playlists chips ask the server for that type, so a playlist hit that comes back
   // album-shaped still lands in the playlists list; on the All tab each kind goes to its section.
   const albumItems: AlbumHit[] = filter === 'playlists' ? [] : items.filter((i): i is AlbumHit => i.kind === 'album');
-  const playlistItems: SearchItem[] = filter === 'playlists' ? items : items.filter((i) => i.kind === 'playlist');
+  const playlistItems =
+    filter === 'playlists'
+      ? items.filter(
+          (i): i is Extract<SearchItem, { kind: 'playlist' }> | Extract<SearchItem, { kind: 'album' }> =>
+            i.kind === 'playlist' || i.kind === 'album',
+        )
+      : items.filter((i): i is Extract<SearchItem, { kind: 'playlist' }> => i.kind === 'playlist');
 
   const firstAlbum: SearchItem | undefined = albumItems[0];
   const firstItem: SearchItem | undefined = items[0];
@@ -503,6 +513,14 @@ export const SearchScreen = () => {
                         onPress={() => {
                           navigation.navigate('Playlist', { id: parsedLink.id });
                         }}
+                        trailing={
+                          <IconButton
+                            icon={<Icon name="more" size={16} color="#7E7E8C" />}
+                            size={32}
+                            onPress={() => useCollectionMenuStore.getState().open({ kind: 'playlist', item: pl })}
+                            accessibilityLabel={`More options for ${title}`}
+                          />
+                        }
                       />
                     </View>
                   );
@@ -584,6 +602,22 @@ export const SearchScreen = () => {
                         <Icon name="play" size={22} color="#000000" />
                       </View>
                       {addMode && topResult.kind === 'track' && addButton(topResult)}
+                      {(topResult.kind === 'album' || topResult.kind === 'playlist') && (
+                        <IconButton
+                          icon={<Icon name="more" size={16} color="#7E7E8C" />}
+                          size={32}
+                          onPress={() =>
+                            useCollectionMenuStore
+                              .getState()
+                              .open(
+                                topResult.kind === 'album'
+                                  ? { kind: 'album', item: topResult }
+                                  : { kind: 'playlist', item: topResult },
+                              )
+                          }
+                          accessibilityLabel={`More options for ${playlistTitle(topResult)}`}
+                        />
+                      )}
                     </Pressable>
                   </View>
                 )}
@@ -666,6 +700,14 @@ export const SearchScreen = () => {
                             remember();
                             navigation.navigate('Album', { id: item.id });
                           }}
+                          trailing={
+                            <IconButton
+                              icon={<Icon name="more" size={16} color="#7E7E8C" />}
+                              size={32}
+                              onPress={() => useCollectionMenuStore.getState().open({ kind: 'album', item })}
+                              accessibilityLabel={`More options for ${item.title}`}
+                            />
+                          }
                         />
                       ))}
                     </View>
@@ -679,17 +721,30 @@ export const SearchScreen = () => {
                     <View className="-mx-2.5 gap-0.5">
                       {playlistItems.map((item) => {
                         const owner = playlistOwner(item);
+                        const title = playlistTitle(item);
                         return (
                           <ResultRow
                             key={item.id}
                             uri={artworkUrl(item, 64)}
-                            title={playlistTitle(item)}
+                            title={title}
                             subtitle={owner ? `Playlist · ${owner}` : 'Playlist'}
-                            accessibilityLabel={`Playlist ${playlistTitle(item)}`}
+                            accessibilityLabel={`Playlist ${title}`}
                             onPress={() => {
                               remember();
                               navigation.navigate('Playlist', { id: item.id });
                             }}
+                            trailing={
+                              <IconButton
+                                icon={<Icon name="more" size={16} color="#7E7E8C" />}
+                                size={32}
+                                onPress={() =>
+                                  item.kind === 'album'
+                                    ? useCollectionMenuStore.getState().open({ kind: 'album', item })
+                                    : useCollectionMenuStore.getState().open({ kind: 'playlist', item })
+                                }
+                                accessibilityLabel={`More options for ${title}`}
+                              />
+                            }
                           />
                         );
                       })}

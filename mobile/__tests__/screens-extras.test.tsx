@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native';
+import { TrackListScreen } from '../src/screens/TrackList';
 import { NowPlayingScreen } from '../src/screens/NowPlaying';
 import { SettingsScreen } from '../src/screens/Settings';
 import { LibraryScreen } from '../src/screens/Library';
@@ -200,34 +201,38 @@ describe('Library tabs', () => {
     await waitFor(() => expect(getByText('No music on this phone yet. Songs you download show up here.')).toBeTruthy());
   });
 
-  it('MOB-LIBX-005 Favourites and Most played show those songs from the account and play them in order', async () => {
+  it('MOB-LIBX-005 Liked and Most played TrackList screens show those songs and play them in order', async () => {
     const likedSongs = [makeTrack({ title: 'Loved one' }), makeTrack({ title: 'Loved two' })];
     const top = [makeTrack({ title: 'On repeat' })];
-    // Favourites tab now uses libraryTracks with filter=liked.
     jest.spyOn(api, 'libraryTracks').mockImplementation(async (opts: any) => {
       if (opts?.filter === 'liked') return page(likedSongs) as never;
       return page([]) as never;
     });
     const mostPlayed = jest.spyOn(api, 'mostPlayed').mockResolvedValue(page(top) as never);
-    const { getByText, findByText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Favourites'));
-    expect(await findByText('Loved two')).toBeTruthy();
-    fireEvent.press(getByText('Play all'));
+
+    // Liked TrackList
+    route.params = { kind: 'liked' };
+    const likedView = render(<TrackListScreen />);
+    expect(await likedView.findByText('Loved two')).toBeTruthy();
+    fireEvent.press(likedView.getByText('Play all'));
     expect(usePlayerStore.getState().queue.map((t) => t.title)).toEqual(['Loved one', 'Loved two']);
-    fireEvent.press(getByText('Most played'));
-    expect(await findByText('On repeat')).toBeTruthy();
+
+    // Most played TrackList
+    route.params = { kind: 'mostPlayed' };
+    const mostPlayedView = render(<TrackListScreen />);
+    expect(await mostPlayedView.findByText('On repeat')).toBeTruthy();
     expect(mostPlayed).toHaveBeenCalledWith(50);
   });
 
-  it('MOB-LIBX-006 offline, Favourites shows the liked songs downloaded to this phone, fetching nothing', async () => {
+  it('MOB-LIBX-006 offline, Liked TrackList shows the liked songs downloaded to this phone, fetching nothing', async () => {
     const saved = makeTrack({ title: 'Saved and liked' });
     const other = makeTrack({ title: 'Saved only' });
     useLibraryStore.setState({ favouriteIds: { [saved.id]: true } });
     useDownloadsStore.setState({ items: { [saved.id]: makeDownload(saved), [other.id]: makeDownload(other) } });
     const libraryTracks = jest.spyOn(api, 'libraryTracks');
     act(() => useModeStore.setState({ mode: 'offline' }));
-    const { getByText, findByText, queryByText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Favourites'));
+    route.params = { kind: 'liked' };
+    const { findByText, queryByText } = render(<TrackListScreen />);
     expect(await findByText('Saved and liked')).toBeTruthy();
     expect(queryByText('Saved only')).toBeNull();
     // Offline: no API call for liked songs.
@@ -236,14 +241,13 @@ describe('Library tabs', () => {
 
   it('MOB-LIBX-007 Shuffle turns shuffle mode on and starts the whole list shuffled', async () => {
     const likedSongs = [makeTrack({ title: 'One' }), makeTrack({ title: 'Two' }), makeTrack({ title: 'Three' })];
-    // Favourites tab uses libraryTracks with filter=liked.
     jest.spyOn(api, 'libraryTracks').mockImplementation(async (opts: any) => {
       if (opts?.filter === 'liked') return page(likedSongs) as never;
       return page([]) as never;
     });
     usePlayerStore.setState({ shuffle: false });
-    const { getByText, findByText } = render(<LibraryScreen />);
-    fireEvent.press(getByText('Favourites'));
+    route.params = { kind: 'liked' };
+    const { findByText, getByText } = render(<TrackListScreen />);
     await findByText('One');
     fireEvent.press(getByText('Shuffle'));
     const state = usePlayerStore.getState();

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { CAPS } from '../lib/caps';
 import { useLocalLibrary, resolveLocalRefs } from '../storage/local';
@@ -18,17 +18,20 @@ import LoadMore from '../components/ui/LoadMore';
 import { addToPlaylistDialog, confirmDialog } from '../store/dialogs';
 import { showToast } from '../store/toasts';
 import { downloads as downloadsStorage } from '../storage/downloads';
+import { DownloadsView } from '../components/downloads/DownloadsView';
 import { staggerContainer, transition } from '../lib/motion';
 import { cn } from '../lib/cn';
 import { useVirtualRows } from '../lib/useVirtualRows';
 import { useLayout } from '../lib/layout';
 import type { Track } from '../types';
 
-// Folders are a screen of their own (/folders), opened from the Songs tab's Folders button.
+// Folders live in Settings > Connection mode (/settings?section=connection), opened from the Songs tab's Folders button.
 // Genres live in Search ("Browse categories"); the Library no longer has a Genres tab.
-// The song views first: on a phone only the first few tabs fit without scrolling.
-const TABS = ['Songs', 'Favourites', 'Most played', 'Albums', 'Artists'] as const;
-type Tab = (typeof TABS)[number];
+// Phone and tablet tabs: Songs, Albums, Artists, Downloads (when CAPS.downloads is enabled).
+const TABS_WITH_DOWNLOADS = ['Songs', 'Albums', 'Artists', 'Downloads'] as const;
+const TABS_WITHOUT_DOWNLOADS = ['Songs', 'Albums', 'Artists'] as const;
+export const TABS = CAPS.downloads ? TABS_WITH_DOWNLOADS : TABS_WITHOUT_DOWNLOADS;
+export type Tab = (typeof TABS)[number];
 
 const SOURCE_FILTERS: { value: 'all' | 'local' | 'server'; label: string }[] = [
   { value: 'all', label: 'All sources' },
@@ -126,15 +129,33 @@ export const mergeSongs = (
 const Library = () => {
   const { mode } = useModeStore();
   const { currentTrack, playTrack, playShuffled, enqueue } = usePlayerStore();
+  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
-  const slug = (t: Tab) => t.toLowerCase().replace(' ', '-');
+  const slug = (t: string) => t.toLowerCase().replace(' ', '-');
   const viewParam = params.get('view');
-  // ?view=genres or ?view=folders falls back to Songs; ?view=favourites → Favourites tab.
-  const activeTab: Tab = TABS.find((t) => slug(t) === viewParam) ?? 'Songs';
+
+  const isFavouritesView = viewParam === 'favourites';
+  const isMostPlayedView = viewParam === 'most-played';
+  const isPinnedPage = isFavouritesView || isMostPlayedView;
+
+  // ?view=genres or ?view=folders falls back to Songs; ?view=albums/artists/downloads activates matching tab.
+  const matchedTab = viewParam ? TABS.find((t) => slug(t) === viewParam) : undefined;
+  const activeTab: Tab = matchedTab ?? 'Songs';
   const setActiveTab = (t: Tab) => setParams(t === 'Songs' ? {} : { view: slug(t) }, { replace: true });
   // The full sidebar links every view (?view=); phones and tablets have no sidebar, so they get tabs.
+  // Pinned views (Favourites, Most played) render without the tab row.
   const layout = useLayout();
-  const showTabs = layout === 'phone' || layout === 'tablet';
+  const showTabs = (layout === 'phone' || layout === 'tablet') && !isPinnedPage;
+  const showBack = (layout === 'phone' || layout === 'tablet') && isPinnedPage;
+
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && (window.history.state?.idx ?? 0) > 0) {
+      navigate(-1);
+    } else {
+      navigate('/playlists');
+    }
+  };
+
   // A view opened by link may be off to the side of the tabs row: bring its tab into sight.
   const activeTabRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -151,11 +172,12 @@ const Library = () => {
   const { user } = useAuth();
   const isFav = useFavouriteLookup();
 
-  // Whether the current tab is account-only and the user is a guest
-  const guestTab = !isOffline && !user && activeTab !== 'Songs';
+  // Whether the current view is account-only and the user is a guest
+  const isAccountOnly = isFavouritesView || isMostPlayedView || activeTab === 'Albums' || activeTab === 'Artists';
+  const guestTab = !isOffline && !user && isAccountOnly;
 
-  // Liked chip: Favourites tab or ?view=favourites toggles filter=liked
-  const isLikedView = activeTab === 'Favourites';
+  // Liked chip / view toggles filter=liked
+  const isLikedView = isFavouritesView;
   const serverFilter: 'all' | 'liked' = isLikedView ? 'liked' : 'all';
 
   const librarySongs = useLibrarySongs({ filter: serverFilter, sort, enabled: !isOffline });
@@ -199,7 +221,12 @@ const Library = () => {
   let tracks: Track[] = [];
   let loading = false;
 
-  if (activeTab === 'Songs' || activeTab === 'Favourites') {
+  const isSongsTab = !isPinnedPage && activeTab === 'Songs';
+
+  if (isMostPlayedView) {
+    tracks = resolveLocalRefs(mostPlayedData?.items || [], local);
+    loading = mostLoading;
+  } else if (isFavouritesView || isSongsTab) {
     if (isOffline) {
       // Offline: show only device files (no server)
       tracks = isLikedView ? local.tracks.filter((t) => isTrackLiked(t, false)) : local.tracks;
@@ -219,12 +246,9 @@ const Library = () => {
 
       loading = librarySongs.loading && librarySongs.items.length === 0 && local.tracks.length === 0;
     }
-  } else if (activeTab === 'Most played') {
-    tracks = resolveLocalRefs(mostPlayedData?.items || [], local);
-    loading = mostLoading;
   }
 
-  if (isOffline && activeTab !== 'Songs') {
+  if (isOffline && !isSongsTab && activeTab !== 'Downloads') {
     tracks = tracks.filter((t) => t.source === 'local' || local.downloads.has(t.id));
     loading = false;
   }
@@ -239,15 +263,15 @@ const Library = () => {
     tracks = tracks.filter((t) => t.source === 'local' || local.downloads.has(t.id));
   }
 
-  const isTrackTab = activeTab === 'Songs' || activeTab === 'Favourites' || activeTab === 'Most played';
-  const from = { kind: 'Library', name: activeTab };
+  const isTrackTab = activeTab === 'Songs' || isFavouritesView || isMostPlayedView;
+  const from = { kind: 'Library', name: isLikedView ? 'Liked Songs' : isMostPlayedView ? 'Most played' : activeTab };
   // Songs rows are ~58px (measured once drawn); the container is remounted (and its scroll reset) by the key below.
   const virtual = useVirtualRows({
     count: tracks.length,
     rowHeight: 58,
     gap: 2,
     scrollRef: listRef,
-    deps: [activeTab, mode, view, sourceFilter, downloadedOnly],
+    deps: [activeTab, viewParam, mode, view, sourceFilter, downloadedOnly],
   });
 
   const sortBy = (key: SortKey) => {
@@ -286,12 +310,12 @@ const Library = () => {
     if (sourceFilter === 'local' || downloadedOnly) {
       // Filtered to device only: use already-filtered tracks (already complete)
       if (tracks.length > 0) playTrack(tracks[0], tracks, from);
-    } else if (activeTab === 'Songs' && librarySongs.hasMore) {
+    } else if (activeTab === 'Songs' && !isPinnedPage && librarySongs.hasMore) {
       const all = await librarySongs.loadAll();
       const resolved = resolveLocalRefs(all, local);
       const full = mergeSongs(resolved, local.tracks, effectiveSortKey, effectiveDesc, false);
       if (full.length > 0) playTrack(full[0], full, from);
-    } else if (activeTab === 'Favourites' && librarySongs.hasMore) {
+    } else if (isFavouritesView && librarySongs.hasMore) {
       const all = await librarySongs.loadAll();
       const resolved = resolveLocalRefs(all, local).filter((t) => isTrackLiked(t, true));
       if (resolved.length > 0) playTrack(resolved[0], resolved, from);
@@ -303,12 +327,12 @@ const Library = () => {
   const handleShuffle = async () => {
     if (sourceFilter === 'local' || downloadedOnly) {
       if (tracks.length > 0) playShuffled(tracks, from);
-    } else if (activeTab === 'Songs' && librarySongs.hasMore) {
+    } else if (activeTab === 'Songs' && !isPinnedPage && librarySongs.hasMore) {
       const all = await librarySongs.loadAll();
       const resolved = resolveLocalRefs(all, local);
       const full = mergeSongs(resolved, local.tracks, effectiveSortKey, effectiveDesc, false);
       if (full.length > 0) playShuffled(full, from);
-    } else if (activeTab === 'Favourites' && librarySongs.hasMore) {
+    } else if (isFavouritesView && librarySongs.hasMore) {
       const all = await librarySongs.loadAll();
       const resolved = resolveLocalRefs(all, local).filter((t) => isTrackLiked(t, true));
       if (resolved.length > 0) playShuffled(resolved, from);
@@ -443,14 +467,17 @@ const Library = () => {
     ? `${tracks.length.toLocaleString()} songs on this device`
     : isLikedView
       ? `${(librarySongs.total ?? tracks.length).toLocaleString()} liked ${(librarySongs.total ?? tracks.length) === 1 ? 'song' : 'songs'}`
-      : `${songsTotal.toLocaleString()} ${songsTotal === 1 ? 'song' : 'songs'} in your library`;
+      : isMostPlayedView
+        ? `${tracks.length.toLocaleString()} ${tracks.length === 1 ? 'song' : 'songs'}`
+        : `${songsTotal.toLocaleString()} ${songsTotal === 1 ? 'song' : 'songs'} in your library`;
 
   const TAB_SUBTITLES: Partial<Record<Tab, string>> = {
     Albums: 'Albums in your library',
     Artists: 'Artists in your library',
+    Downloads: 'Songs downloaded on this device',
   };
 
-  const heading = isLikedView ? 'Liked Songs' : (activeTab as string);
+  const heading = isLikedView ? 'Liked Songs' : isMostPlayedView ? 'Most played' : (activeTab as string);
 
   return (
     <div className="@container relative flex flex-col gap-6 overflow-hidden h-full">
@@ -458,14 +485,27 @@ const Library = () => {
       <div className="flex flex-col gap-4 px-4 @[480px]:px-8 pt-5 @[480px]:pt-7 flex-none">
         {/* Title row */}
         <div className="flex flex-col @[480px]:flex-row @[480px]:items-center @[480px]:justify-between gap-4">
-          <div className="flex flex-col gap-1">
-            <span className="text-display-m text-t1 font-semibold">{heading}</span>
-            <span className="text-body-m text-t2">{isTrackTab ? countSubtitle : TAB_SUBTITLES[activeTab]}</span>
+          <div className="flex items-center gap-2">
+            {showBack && (
+              <IconButton
+                icon="arrow-left"
+                label="Back"
+                size={40}
+                onClick={handleBack}
+                className="-ml-2 text-t1 flex-none"
+              />
+            )}
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-display-m text-t1 font-semibold truncate">{heading}</span>
+              <span className="text-body-m text-t2 truncate">
+                {isTrackTab ? countSubtitle : TAB_SUBTITLES[activeTab]}
+              </span>
+            </div>
           </div>
           {/* Action buttons (Shuffle / Play all) */}
           <div className="flex items-center gap-2.5">
-            {CAPS.localLibrary && activeTab === 'Songs' && (
-              <Link to="/folders" className="btn btn-out">
+            {CAPS.localLibrary && activeTab === 'Songs' && !isPinnedPage && (
+              <Link to="/settings?section=connection" className="btn btn-out">
                 <Icon name="folder" size={15} />
                 <span>Folders</span>
               </Link>
@@ -532,11 +572,13 @@ const Library = () => {
                 }}
               />
 
-              {/* Liked chip: on Songs and Favourites tab */}
-              {(activeTab === 'Songs' || activeTab === 'Favourites') && !isOffline && (
+              {/* Liked chip: on Songs and Liked Songs view */}
+              {(activeTab === 'Songs' || isLikedView) && !isOffline && (
                 <button
                   className={cn('chip chip-sm inline-flex items-center gap-1.5 flex-none', isLikedView && 'chip-on')}
-                  onClick={() => setActiveTab(isLikedView ? 'Songs' : 'Favourites')}
+                  // Liked Songs is a page of its own (no tabs, a Back button), so going there is a
+                  // step back can undo; leaving it from its own chip goes back to Songs.
+                  onClick={() => (isLikedView ? setParams({}, { replace: true }) : setParams({ view: 'favourites' }))}
                   aria-pressed={isLikedView}
                 >
                   <Icon name="heart" size={13} />
@@ -545,7 +587,7 @@ const Library = () => {
               )}
 
               {/* On Songs + Favourites show source filter; Most played is server-only */}
-              {(activeTab === 'Songs' || activeTab === 'Favourites') && (
+              {(activeTab === 'Songs' || isLikedView) && (
                 <Select
                   size="sm"
                   ariaLabel="Filter source"
@@ -617,189 +659,196 @@ const Library = () => {
         )}
       </div>
 
-      {/* Main content list/grid */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeTab + mode + view + sourceFilter + downloadedOnly}
-          ref={listRef}
-          className="flex flex-col gap-0.5 px-4 @[480px]:px-8 pb-[80px] overflow-auto"
-          variants={staggerContainer}
-          initial="hidden"
-          animate="visible"
-        >
-          {loading ? (
-            <div className="flex flex-col gap-2 animate-pulse">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="srow h-14 bg-s2/30 rounded" />
-              ))}
-            </div>
-          ) : guestTab ? (
-            <EmptyState
-              icon="heart"
-              title="This lives in your account"
-              description="Create a free account to keep favourites, play history, albums and artists — on every device."
-              action={
-                <span className="flex gap-2">
-                  <Link to="/signin" state={{ mode: 'signup' }} className="no-underline">
-                    <Button variant="acc">Create account</Button>
-                  </Link>
-                  <Link to="/signin" state={{ mode: 'signin' }} className="no-underline">
-                    <Button variant="out">Sign in</Button>
-                  </Link>
-                </span>
-              }
-            />
-          ) : isOffline && (activeTab === 'Albums' || activeTab === 'Artists') ? (
-            local.tracks.length === 0 ? (
-              <EmptyState
-                icon="folder"
-                title="Nothing on this device"
-                description="Add a music folder or download songs while online"
-              />
-            ) : (
-              <div className="flex gap-4 flex-wrap">
-                {groupLocal(activeTab === 'Albums' ? 'album' : 'artist').map(([name, group], i) => (
-                  <Card
-                    key={name}
-                    title={name}
-                    subtitle={`${group.length} ${group.length === 1 ? 'song' : 'songs'}`}
-                    artVariant={`a${(i % 12) + 1}` as any}
-                    thumbnail={group.find((t) => t.thumbnail)?.thumbnail}
-                    onPlay={() => playTrack(group[0], group, from)}
-                  />
+      {/* Main content list/grid / downloads view */}
+      {activeTab === 'Downloads' ? (
+        <DownloadsView embedded />
+      ) : (
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab + viewParam + mode + view + sourceFilter + downloadedOnly}
+            ref={listRef}
+            className="flex flex-col gap-0.5 px-4 @[480px]:px-8 pb-[80px] overflow-auto"
+            variants={staggerContainer}
+            initial="hidden"
+            animate="visible"
+          >
+            {loading ? (
+              <div className="flex flex-col gap-2 animate-pulse">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="srow h-14 bg-s2/30 rounded" />
                 ))}
               </div>
-            )
-          ) : activeTab === 'Albums' ? (
-            <div className="flex gap-4 flex-wrap">
-              {albumsLoading ? (
-                <div className="flex gap-4 animate-pulse">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="acard w-[160px] h-[210px] bg-s2/40 rounded-md" />
-                  ))}
-                </div>
-              ) : (albumsData?.items || []).length === 0 ? (
+            ) : guestTab ? (
+              <EmptyState
+                icon="heart"
+                title="This lives in your account"
+                description="Create a free account to keep favourites, play history, albums and artists — on every device."
+                action={
+                  <span className="flex gap-2">
+                    <Link to="/signin" state={{ mode: 'signup' }} className="no-underline">
+                      <Button variant="acc">Create account</Button>
+                    </Link>
+                    <Link to="/signin" state={{ mode: 'signin' }} className="no-underline">
+                      <Button variant="out">Sign in</Button>
+                    </Link>
+                  </span>
+                }
+              />
+            ) : isOffline && (activeTab === 'Albums' || activeTab === 'Artists') ? (
+              local.tracks.length === 0 ? (
                 <EmptyState
-                  icon="disc"
-                  title="No saved albums"
-                  description="Favourite an album to see it in your library"
+                  icon="folder"
+                  title="Nothing on this device"
+                  description="Add a music folder or download songs while online"
                 />
               ) : (
-                albumsData?.items.map((album, i) => (
-                  <Card
-                    key={album.id}
-                    title={album.title}
-                    subtitle={album.artist}
-                    artVariant={`a${(i % 12) + 1}` as any}
-                    thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
-                    to={`/album/${album.id}`}
-                  />
-                ))
-              )}
-            </div>
-          ) : activeTab === 'Artists' ? (
-            <div className="flex gap-4 flex-wrap">
-              {artistsLoading ? (
-                <div className="flex gap-4 animate-pulse">
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <div key={i} className="w-[160px] h-[160px] bg-s2/40 rounded-full" />
-                  ))}
-                </div>
-              ) : (artistsData?.items || []).length === 0 ? (
-                <EmptyState
-                  icon="mic"
-                  title="No artists yet"
-                  description="Follow artists, like songs or add them to a playlist to see their artists here"
-                />
-              ) : (
-                artistsData?.items.map((artist, i) => (
-                  <Link
-                    key={artist.id}
-                    to={`/artist/${artist.id}`}
-                    className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
-                  >
-                    <Artwork
-                      src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
-                      alt={artist.name}
-                      variant={`a${(i % 12) + 1}` as any}
-                      size={110}
-                      radius="circ"
-                    />
-                    <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
-                    <span className="text-label-s text-t3 truncate">
-                      {artist.following
-                        ? 'Following'
-                        : artist.songCount
-                          ? `${artist.songCount} ${artist.songCount === 1 ? 'song' : 'songs'} in your library`
-                          : 'Artist'}
-                    </span>
-                  </Link>
-                ))
-              )}
-            </div>
-          ) : tracks.length === 0 && !librarySongs.loading ? (
-            <EmptyState
-              icon="music"
-              title="No songs found"
-              description={
-                activeTab === 'Songs'
-                  ? 'Songs you like or add to a playlist show up here.'
-                  : activeTab === 'Favourites'
-                    ? 'Heart a song to add it to your Liked Songs.'
-                    : 'Add songs or go online to browse catalog'
-              }
-            />
-          ) : (
-            <>
-              {view === 'grid' ? (
                 <div className="flex gap-4 flex-wrap">
-                  {tracks.map((track, i) => (
+                  {groupLocal(activeTab === 'Albums' ? 'album' : 'artist').map(([name, group], i) => (
                     <Card
-                      key={track.id}
-                      title={track.title}
-                      subtitle={track.artist}
+                      key={name}
+                      title={name}
+                      subtitle={`${group.length} ${group.length === 1 ? 'song' : 'songs'}`}
                       artVariant={`a${(i % 12) + 1}` as any}
-                      thumbnail={trackArtwork(track, 140)}
-                      to={track.albumId ? `/album/${track.albumId}` : undefined}
-                      onPlay={() => playTrack(track, tracks, from)}
+                      thumbnail={group.find((t) => t.thumbnail)?.thumbnail}
+                      onPlay={() => playTrack(group[0], group, from)}
                     />
                   ))}
                 </div>
-              ) : (
-                <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
-                  {tracks.slice(virtual.start, virtual.end).map((track, i) => {
-                    const absoluteIndex = virtual.start + i;
-                    return (
-                      <SongRow
-                        key={track.id}
-                        track={track}
-                        index={absoluteIndex + 1}
-                        isActive={currentTrack?.id === track.id}
-                        onClick={() => playTrack(track, tracks, from)}
-                        showPlays
-                        selected={isSelecting ? selectedIds.has(track.id) : undefined}
-                        onToggleSelect={isSelecting ? (e) => handleToggleSelect(track.id, absoluteIndex, e) : undefined}
-                      />
-                    );
-                  })}
-                </div>
-              )}
-              {/* Load more: only for server-paged views when not filtered to device-only */}
-              {(activeTab === 'Songs' || activeTab === 'Favourites') &&
-                !isOffline &&
-                sourceFilter !== 'local' &&
-                !downloadedOnly &&
-                librarySongs.hasMore && (
-                  <LoadMore
-                    loading={librarySongs.loadingMore}
-                    error={librarySongs.moreError}
-                    onClick={librarySongs.loadMore}
+              )
+            ) : activeTab === 'Albums' ? (
+              <div className="flex gap-4 flex-wrap">
+                {albumsLoading ? (
+                  <div className="flex gap-4 animate-pulse">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="acard w-[160px] h-[210px] bg-s2/40 rounded-md" />
+                    ))}
+                  </div>
+                ) : (albumsData?.items || []).length === 0 ? (
+                  <EmptyState
+                    icon="disc"
+                    title="No saved albums"
+                    description="Favourite an album to see it in your library"
                   />
+                ) : (
+                  albumsData?.items.map((album, i) => (
+                    <Card
+                      key={album.id}
+                      title={album.title}
+                      subtitle={album.artist}
+                      artVariant={`a${(i % 12) + 1}` as any}
+                      thumbnail={album.thumbnail || `/api/v1/albums/${album.id}/artwork?size=140`}
+                      to={`/album/${album.id}`}
+                    />
+                  ))
                 )}
-            </>
-          )}
-        </motion.div>
-      </AnimatePresence>
+              </div>
+            ) : activeTab === 'Artists' ? (
+              <div className="flex gap-4 flex-wrap">
+                {artistsLoading ? (
+                  <div className="flex gap-4 animate-pulse">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <div key={i} className="w-[160px] h-[160px] bg-s2/40 rounded-full" />
+                    ))}
+                  </div>
+                ) : (artistsData?.items || []).length === 0 ? (
+                  <EmptyState
+                    icon="mic"
+                    title="No artists yet"
+                    description="Follow artists, like songs or add them to a playlist to see their artists here"
+                  />
+                ) : (
+                  artistsData?.items.map((artist, i) => (
+                    <Link
+                      key={artist.id}
+                      to={`/artist/${artist.id}`}
+                      className="acard w-[160px] no-underline text-inherit flex flex-col items-center text-center p-3 surf2 rounded-lg"
+                    >
+                      <Artwork
+                        src={artist.thumbnail || `/api/v1/artists/${artist.id}/artwork?size=140`}
+                        alt={artist.name}
+                        variant={`a${(i % 12) + 1}` as any}
+                        size={110}
+                        radius="circ"
+                      />
+                      <span className="text-label-l text-t1 truncate mt-2 w-full">{artist.name}</span>
+                      <span className="text-label-s text-t3 truncate">
+                        {artist.following
+                          ? 'Following'
+                          : artist.songCount
+                            ? `${artist.songCount} ${artist.songCount === 1 ? 'song' : 'songs'} in your library`
+                            : 'Artist'}
+                      </span>
+                    </Link>
+                  ))
+                )}
+              </div>
+            ) : tracks.length === 0 && !librarySongs.loading ? (
+              <EmptyState
+                icon="music"
+                title="No songs found"
+                description={
+                  activeTab === 'Songs' && !isLikedView
+                    ? 'Songs you like or add to a playlist show up here.'
+                    : isLikedView
+                      ? 'Heart a song to add it to your Liked Songs.'
+                      : 'Add songs or go online to browse catalog'
+                }
+              />
+            ) : (
+              <>
+                {view === 'grid' ? (
+                  <div className="flex gap-4 flex-wrap">
+                    {tracks.map((track, i) => (
+                      <Card
+                        key={track.id}
+                        title={track.title}
+                        subtitle={track.artist}
+                        artVariant={`a${(i % 12) + 1}` as any}
+                        thumbnail={trackArtwork(track, 140)}
+                        to={track.albumId ? `/album/${track.albumId}` : undefined}
+                        onPlay={() => playTrack(track, tracks, from)}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div data-virtual-rows className="flex flex-col gap-0.5 shrink-0" style={virtual.style}>
+                    {tracks.slice(virtual.start, virtual.end).map((track, i) => {
+                      const absoluteIndex = virtual.start + i;
+                      return (
+                        <SongRow
+                          key={track.id}
+                          track={track}
+                          index={absoluteIndex + 1}
+                          isActive={currentTrack?.id === track.id}
+                          onClick={() => playTrack(track, tracks, from)}
+                          showPlays
+                          showPlaysSubtitle={isMostPlayedView}
+                          selected={isSelecting ? selectedIds.has(track.id) : undefined}
+                          onToggleSelect={
+                            isSelecting ? (e) => handleToggleSelect(track.id, absoluteIndex, e) : undefined
+                          }
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+                {/* Load more: only for server-paged views when not filtered to device-only */}
+                {(activeTab === 'Songs' || isLikedView) &&
+                  !isOffline &&
+                  sourceFilter !== 'local' &&
+                  !downloadedOnly &&
+                  librarySongs.hasMore && (
+                    <LoadMore
+                      loading={librarySongs.loadingMore}
+                      error={librarySongs.moreError}
+                      onClick={librarySongs.loadMore}
+                    />
+                  )}
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      )}
 
       {/* Floating selection action bar */}
       <AnimatePresence>

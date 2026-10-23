@@ -621,13 +621,15 @@ describe('Library', () => {
     expect(getByLabelText(`Mine 1 by ${mine[0].artist}`)).toBeTruthy();
   });
 
-  it('MOB-LIB-S-005 there is no Folders tab (Settings has music folders); Downloads opens downloads', async () => {
+  it('MOB-LIB-S-005 there is no Folders tab (Settings has music folders); Downloads tab switches to downloads view', async () => {
     signIn();
     stub('libraryTracks', async () => page([]));
-    const { queryByText, getByLabelText } = render(<LibraryScreen />);
+    const { queryByText, getByText } = render(<LibraryScreen />);
     expect(queryByText('Folders')).toBeNull();
-    fireEvent.press(getByLabelText('Downloads'));
-    expect(nav.navigate).toHaveBeenCalledWith('Downloads');
+    expect(queryByText(/^Saving to /)).toBeNull();
+    fireEvent.press(getByText('Downloads'));
+    // The downloads list itself shows in the tab: its header says where songs are saved.
+    expect(getByText(/^Saving to /)).toBeTruthy();
   });
 });
 

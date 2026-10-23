@@ -360,7 +360,7 @@ describe('Create with AI', () => {
           }),
         ),
       );
-      expect(downloadName(updatedItem)).toBe('Rick Astley - Never Gonna Give You Up [dQw4w9WgXcQ]');
+      expect(downloadName(updatedItem)).toBe('Never Gonna Give You Up');
 
       await useDownloadsStore.getState().remove(messyTrack.id);
     });

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from './api';
 import type { Track, Page } from './types';
+import { fetchAllPages } from '../../../shared/api/pages';
 
 export interface AsyncState<T> {
   data: T | null;
@@ -185,16 +186,11 @@ export const usePagedTracks = (
 
   const loadAll = useCallback(async (): Promise<Track[]> => {
     const gen = generation.current;
-    // Return what we already have if nothing more is pending; else fetch every remaining page.
-    let all: Track[] = [...itemsRef.current];
-    let next = cursorRef.current;
-    while (next) {
-      const page: Page<Track> = await api.libraryTracks({ filter, sort, limit: PAGE, cursor: next });
-      const seen = new Set(all.map((t) => t.id));
-      const fresh = page.items.filter((t) => !seen.has(t.id));
-      all = [...all, ...fresh];
-      next = page.meta?.nextCursor;
-    }
+    // What we already have, plus every page still to come (none when nothing more is pending).
+    const all = await fetchAllPages((next) => api.libraryTracks({ filter, sort, limit: PAGE, cursor: next }), {
+      items: itemsRef.current,
+      cursor: cursorRef.current,
+    });
     // If the generation changed while it was fetching (sort/filter/user changed), don't write its result into state; just return it.
     if (gen === generation.current) {
       setItems(all);

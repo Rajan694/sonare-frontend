@@ -97,22 +97,18 @@ describe('songs on the phone', () => {
     expect(result.current[1]).toMatchObject({ source: 'local' });
   });
 
-  it('MOB-FOLD-005 the offline player and downloading offer the permission once each; blocked opens settings', async () => {
-    offerMusicAccess('offline');
+  it('MOB-FOLD-005 the offline player offers the permission once; blocked opens settings', async () => {
+    offerMusicAccess();
     expect(alert).toHaveBeenCalledTimes(1);
     permissions.request.mockResolvedValue('granted');
     await act(async () => pressAlertButton('Allow'));
     await waitFor(() => expect(useLocalMusicStore.getState().permission).toBe('granted'));
-    offerMusicAccess('offline');
-    expect(alert).toHaveBeenCalledTimes(1);
-
-    // Already allowed: nothing to ask when downloading.
-    offerMusicAccess('download');
+    offerMusicAccess();
     expect(alert).toHaveBeenCalledTimes(1);
 
     resetMusicAccessOffers();
     useLocalMusicStore.setState({ permission: 'blocked' });
-    offerMusicAccess('download');
+    offerMusicAccess();
     expect(alert).toHaveBeenCalledTimes(2);
     pressAlertButton('Open settings');
     expect(Linking.openSettings).toHaveBeenCalled();

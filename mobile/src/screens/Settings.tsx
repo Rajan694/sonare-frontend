@@ -8,6 +8,8 @@ import { IconButton } from '../components/ui/IconButton';
 import { SegmentedControl } from '../components/ui/Segmented';
 import { Button } from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
+import { Chip } from '../components/ui/Chip';
+import { useSectionJump } from '../hooks/useSectionJump';
 import { useModeStore } from '../store/mode';
 import { useAuthStore } from '../data/auth';
 import { useSyncStatus } from '../data/sync';
@@ -28,6 +30,21 @@ import type { AppRelease } from '../data/types';
 import { musicFolders, useLocalMusicStore } from '../store/localMusic';
 
 const plays = (n: number) => `${n} ${n === 1 ? 'play' : 'plays'}`;
+
+export const SETTINGS_SECTIONS = [
+  { id: 'connection', label: 'Connection mode' },
+  { id: 'playback', label: 'Playback' },
+  { id: 'library', label: 'Library' },
+  { id: 'account', label: 'Account' },
+  { id: 'about', label: 'About' },
+] as const;
+
+export type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id'];
+
+export const SECTION_LABELS = Object.fromEntries(SETTINGS_SECTIONS.map((s) => [s.id, s.label])) as Record<
+  SettingsSectionId,
+  string
+>;
 
 export const SettingsScreen = () => {
   // Music folders: how many, or that Sonare may not read them yet.
@@ -98,6 +115,14 @@ export const SettingsScreen = () => {
       ],
     );
 
+  // The Account section exists only when signed in; its chip with it.
+  const signedIn = !!user;
+  const visibleIds = React.useMemo(
+    () => SETTINGS_SECTIONS.filter((s) => s.id !== 'account' || signedIn).map((s) => s.id),
+    [signedIn],
+  );
+  const sections = useSectionJump(visibleIds);
+
   return (
     <Screen scrollable={false} className="bg-bg">
       <Header
@@ -112,7 +137,34 @@ export const SettingsScreen = () => {
         }
       />
 
-      <ScrollView className="flex-1 px-5 pt-2" contentContainerStyle={{ paddingBottom: 160, gap: 18 }}>
+      {/* Sticky Quick-jump Chips */}
+      <View className="border-b border-ln bg-bg">
+        <ScrollView
+          ref={sections.chipRowRef}
+          testID="settings-chips-scroll"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          className="py-2.5"
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          accessibilityRole="tablist"
+        >
+          {visibleIds.map((id) => (
+            <View key={id} testID={`settings-chip-container-${id}`} onLayout={sections.chipLayout(id)}>
+              <Chip label={SECTION_LABELS[id]} active={sections.active === id} onPress={() => sections.jumpTo(id)} />
+            </View>
+          ))}
+        </ScrollView>
+      </View>
+
+      <ScrollView
+        ref={sections.listRef}
+        testID="settings-main-scroll"
+        onScroll={sections.onScroll}
+        onScrollBeginDrag={sections.onScrollBeginDrag}
+        scrollEventThrottle={16}
+        className="flex-1 px-5 pt-2"
+        contentContainerStyle={{ paddingBottom: 160, gap: 18 }}
+      >
         {/* Account Profile Card */}
         <View className="bg-s1 border border-ln rounded-lg p-3.5 flex-row items-center gap-3.5">
           <View className="w-[52px] h-[52px] rounded-full bg-s3 items-center justify-center overflow-hidden">
@@ -182,9 +234,13 @@ export const SettingsScreen = () => {
         )}
 
         {/* Connection Mode Section */}
-        <View className="bg-s1 border border-ln rounded-lg p-3.5 gap-3">
+        <View
+          testID="settings-section-connection"
+          className="bg-s1 border border-ln rounded-lg p-3.5 gap-3"
+          onLayout={sections.sectionLayout('connection')}
+        >
           <View className="gap-0.5">
-            <Text className="text-tm font-semibold text-t1">Connection mode</Text>
+            <Text className="text-tm font-semibold text-t1">{SECTION_LABELS.connection}</Text>
             <Text className="text-bs text-t3">Controls what the whole app shows</Text>
           </View>
           <SegmentedControl
@@ -226,8 +282,8 @@ export const SettingsScreen = () => {
         </View>
 
         {/* Playback Settings Group */}
-        <View className="gap-2">
-          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Playback</Text>
+        <View testID="settings-section-playback" className="gap-2" onLayout={sections.sectionLayout('playback')}>
+          <Text className="text-ov font-semibold text-t3 uppercase pl-1">{SECTION_LABELS.playback}</Text>
           <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
             <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
               <View className="gap-0.5">
@@ -286,8 +342,8 @@ export const SettingsScreen = () => {
         </View>
 
         {/* Downloads */}
-        <View className="gap-2">
-          <Text className="text-ov font-semibold text-t3 uppercase pl-1">Library</Text>
+        <View testID="settings-section-library" className="gap-2" onLayout={sections.sectionLayout('library')}>
+          <Text className="text-ov font-semibold text-t3 uppercase pl-1">{SECTION_LABELS.library}</Text>
           <View className="bg-s1 border border-ln rounded-lg overflow-hidden">
             <Pressable
               onPress={() => navigation.navigate('Folders')}
@@ -376,11 +432,9 @@ export const SettingsScreen = () => {
           </View>
         </View>
 
-        <AboutSection online={mode !== 'offline'} />
-
         {user && (
-          <View className="gap-2">
-            <Text className="text-ov font-semibold text-t3 uppercase pl-1">Account</Text>
+          <View testID="settings-section-account" className="gap-2" onLayout={sections.sectionLayout('account')}>
+            <Text className="text-ov font-semibold text-t3 uppercase pl-1">{SECTION_LABELS.account}</Text>
             <View className="bg-s1 border border-ln rounded-lg py-1 overflow-hidden">
               <Pressable
                 onPress={() => navigation.navigate('Account')}
@@ -418,6 +472,10 @@ export const SettingsScreen = () => {
             </View>
           </View>
         )}
+
+        <View testID="settings-section-about" onLayout={sections.sectionLayout('about')}>
+          <AboutSection online={mode !== 'offline'} />
+        </View>
       </ScrollView>
     </Screen>
   );

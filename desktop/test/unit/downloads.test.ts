@@ -207,7 +207,7 @@ describe('queueing downloads', () => {
 });
 
 describe('downloading', () => {
-  it('WEB-DL-003 fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm"', async () => {
+  it('WEB-DL-003 fetches the file in 2 MB ranges and saves the exact bytes as "Title.webm"', async () => {
     const bytes = audioBytes(5 * MB);
     streamInfo({ contentLength: bytes.length });
     const ranges = relay(bytes);
@@ -216,7 +216,7 @@ describe('downloading', () => {
     await waitForStatus(dl, 'yt:big', 'done');
     expect(ranges).toEqual([`bytes=0-${2 * MB - 1}`, `bytes=${2 * MB}-${4 * MB - 1}`, `bytes=${4 * MB}-${6 * MB - 1}`]);
     const file = h.files.get('yt:big')!;
-    expect(file.name).toBe('Radiohead - Reckoner [big].webm');
+    expect(file.name).toBe('Reckoner.webm');
     expect(sameBytes(file.bytes, bytes)).toBe(true);
     expect(item(dl, 'yt:big')).toMatchObject({
       receivedBytes: bytes.length,
@@ -233,7 +233,7 @@ describe('downloading', () => {
     const dl = await fresh();
     await dl.downloads.enqueue([song({ id: 'yt:n', artist: 'AC/DC', title: 'What?  Is: "This"' })]);
     await waitForStatus(dl, 'yt:n', 'done');
-    expect(h.files.get('yt:n')!.name).toBe('AC_DC - What_ Is_ _This_ [n].m4a');
+    expect(h.files.get('yt:n')!.name).toBe('What_ Is_ _This_.m4a');
   });
 
   it('WEB-DL-005 with no size from the server, a short final range ends the download', async () => {
@@ -533,7 +533,7 @@ describe('managing finished downloads', () => {
   it('WEB-DL-019 deleting a finished download removes its file and the list entry', async () => {
     const dl = await finished('yt:del');
     await expect(dl.downloads.remove('yt:del')).resolves.toEqual({ fileDeleted: true });
-    expect(h.state.removed).toEqual(['Radiohead - Reckoner [del].webm']);
+    expect(h.state.removed).toEqual(['Reckoner.webm']);
     expect(item(dl, 'yt:del')).toBeUndefined();
     expect(JSON.parse(localStorage.getItem('sonare_downloads')!)).toEqual([]);
   });
@@ -573,7 +573,7 @@ describe('managing finished downloads', () => {
   it('WEB-DL-023 "save again" hands the kept copy to the browser, and reports when there is none', async () => {
     const dl = await finished('yt:again2');
     await expect(dl.downloads.saveAgain('yt:again2')).resolves.toBe(true);
-    expect(h.state.savedAgain).toEqual(['Radiohead - Reckoner [again2].webm']);
+    expect(h.state.savedAgain).toEqual(['Reckoner.webm']);
     h.files.delete('yt:again2');
     await expect(dl.downloads.saveAgain('yt:again2')).resolves.toBe(false);
     expect(item(dl, 'yt:again2')!.copyKept).toBe(false);
@@ -672,11 +672,11 @@ describe('managing finished downloads', () => {
 
     expect(item(dl, 'yt:katha1')?.title).toBe('Shri Ram Katha · Day 7');
     expect(item(dl, 'yt:katha1')?.artist).toBe('Pujya Rajan Jee');
-    expect(h.files.get('yt:katha1')?.name).toBe('Pujya Rajan Jee - Shri Ram Katha · Day 7 [katha1].webm');
+    expect(h.files.get('yt:katha1')?.name).toBe('Shri Ram Katha · Day 7.webm');
 
     expect(item(dl, 'yt:emptyArt')?.title).toBe('Clean Song Title');
     expect(item(dl, 'yt:emptyArt')?.artist).toBe('Original Artist');
-    expect(h.files.get('yt:emptyArt')?.name).toBe('Original Artist - Clean Song Title [emptyArt].webm');
+    expect(h.files.get('yt:emptyArt')?.name).toBe('Clean Song Title.webm');
   });
 
   it('WEB-DL-027 download enqueue falls back to original titles without waiting when AI is off, offline, or failing', async () => {

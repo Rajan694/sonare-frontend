@@ -6,32 +6,33 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/components-behaviour.test.tsx`
 
-| ID             | Use case                                                                                    |
-| :------------- | :------------------------------------------------------------------------------------------ |
-| `MOB-COMP-002` | BrandMark is decorative and drawn at the requested size                                     |
-| `MOB-COMP-007` | Icon draws the mapped glyph at its size and colour, and nothing for an unknown name         |
-| `MOB-COMP-022` | EqualizerBars draws three bars in the given colour                                          |
-| `MOB-COMP-023` | SourceGlyph shows a gold phone for local files and a green cloud for the server             |
-| `MOB-COMP-013` | Toast shows its message and detail, and fades out when hidden                               |
-| `MOB-COMP-017` | shows the image, falls back to the second url, then to a plain tile                         |
-| `MOB-COMP-036` | without an image, a gradient is drawn, with rings when asked                                |
-| `MOB-COMP-006` | GuestPrompt offers to create an account or sign in                                          |
-| `MOB-COMP-010` | Sheet shows its content, closes from the backdrop or back button, and unmounts when closed  |
-| `MOB-COMP-019` | shows the song, pauses, skips, hearts, and opens Now Playing                                |
-| `MOB-COMP-037` | is hidden when nothing is loaded, and shows a saved song as on the phone                    |
-| `MOB-COMP-020` | "Play next" and "Add to queue" go to the player and close the menu                          |
-| `MOB-COMP-038` | a guest choosing favourites or playlists is asked to create an account                      |
-| `MOB-COMP-039` | a signed-in user picks a playlist, or names a new one, to add the song to                   |
-| `MOB-COMP-040` | a playlist that cannot be updated shows why and stays open                                  |
-| `MOB-COMP-041` | the download item follows the song's download state, and hides offline                      |
-| `MOB-COMP-042` | a screen can add its own action, e.g. "Remove from playlist"                                |
-| `MOB-COMP-021` | tapping seeks to that fraction; played bars are coloured by mode                            |
-| `MOB-COMP-043` | without a seek handler the waveform cannot be tapped                                        |
-| `MOB-COMP-044` | "Go to album" and "Go to artist" open those pages, closing Now Playing first                |
-| `MOB-COMP-045` | a guest hearting from the mini player is asked to sign up; nothing is saved                 |
-| `MOB-COMP-046` | a playback error turns the play button into Retry, which reloads the song                   |
-| `MOB-COMP-025` | one song: download, pause while running, resume, delete once saved; nothing for local files |
-| `MOB-COMP-024` | a whole album: download the server songs, show progress, offer delete when all are saved    |
+| ID             | Use case                                                                                                        |
+| :------------- | :-------------------------------------------------------------------------------------------------------------- |
+| `MOB-COMP-002` | BrandMark is decorative and drawn at the requested size                                                         |
+| `MOB-COMP-007` | Icon draws the mapped glyph at its size and colour, and nothing for an unknown name                             |
+| `MOB-COMP-022` | EqualizerBars draws three bars in the given colour                                                              |
+| `MOB-COMP-023` | SourceGlyph shows a gold phone for local files and a green cloud for the server                                 |
+| `MOB-COMP-013` | Toast shows its message and detail, and fades out when hidden                                                   |
+| `MOB-COMP-017` | shows the image, falls back to the second url, then to a plain tile                                             |
+| `MOB-COMP-036` | without an image, a gradient is drawn, with rings when asked                                                    |
+| `MOB-COMP-006` | GuestPrompt offers to create an account or sign in                                                              |
+| `MOB-COMP-010` | Sheet shows its content, closes from the backdrop or back button, and unmounts when closed                      |
+| `MOB-COMP-019` | shows the song, pauses, skips, hearts, and opens Now Playing                                                    |
+| `MOB-COMP-037` | is hidden when nothing is loaded, and shows a saved song as on the phone                                        |
+| `MOB-COMP-020` | "Play next" and "Add to queue" go to the player and close the menu                                              |
+| `MOB-COMP-038` | a guest choosing favourites or playlists is asked to create an account                                          |
+| `MOB-COMP-039` | a signed-in user picks a playlist, or names a new one, to add the song to                                       |
+| `MOB-COMP-040` | a playlist that cannot be updated shows why and stays open                                                      |
+| `MOB-COMP-041` | the download item follows the song's download state, and hides offline                                          |
+| `MOB-COMP-042` | a screen can add its own action, e.g. "Remove from playlist"                                                    |
+| `MOB-COMP-021` | tapping seeks to that fraction; played bars are coloured by mode                                                |
+| `MOB-COMP-043` | without a seek handler the waveform cannot be tapped                                                            |
+| `MOB-COMP-044` | "Go to album" and "Go to artist" open those pages, closing Now Playing first                                    |
+| `MOB-COMP-045` | a guest hearting from the mini player is asked to sign up; nothing is saved                                     |
+| `MOB-COMP-046` | a playback error turns the play button into Retry, which reloads the song                                       |
+| `MOB-COMP-025` | one song: download, pause while running, resume, delete once saved; nothing for local files                     |
+| `MOB-COMP-024` | a whole album: download the server songs, show progress, offer delete when all are saved                        |
+| `MOB-COMP-047` | downloading from the track menu, TrackDownloadButton, or DownloadAllButton does not prompt for music permission |
 
 ## `__tests__/components.test.tsx`
 
@@ -473,14 +474,17 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/local-music.test.ts`
 
-| ID              | Use case                                                                          |
-| :-------------- | :-------------------------------------------------------------------------------- |
-| `MOB-LOCAL-001` | without the music permission nothing is read; allowing it scans                   |
-| `MOB-LOCAL-002` | songs are grouped by folder, and a hidden folder leaves the list and stays hidden |
-| `MOB-LOCAL-003` | a download names its file with the song id, so it can be found again              |
-| `MOB-LOCAL-004` | downloads the list lost (a reinstall) come back from Music/Sonare, shown once     |
-| `MOB-LOCAL-005` | a song on the phone plays from its content uri                                    |
-| `MOB-LOCAL-006` | an untagged download found again takes its artist and title from its file name    |
+| ID              | Use case                                                                                                    |
+| :-------------- | :---------------------------------------------------------------------------------------------------------- |
+| `MOB-LOCAL-001` | without the music permission nothing is read; allowing it scans                                             |
+| `MOB-LOCAL-002` | songs are grouped by folder, and a hidden folder leaves the list and stays hidden                           |
+| `MOB-LOCAL-003` | a download names its file with the song id, so it can be found again                                        |
+| `MOB-LOCAL-004` | downloads the list lost (a reinstall) come back from Music/Sonare, shown once                               |
+| `MOB-LOCAL-005` | a song on the phone plays from its content uri                                                              |
+| `MOB-LOCAL-006` | an untagged download found again takes its artist and title from its file name                              |
+| `MOB-LOCAL-007` | a title-only download in Music/Sonare matching a done download is not a phone song, but an unmatched one is |
+| `MOB-LOCAL-008` | an old [id] file is still adopted on scan, while title-only files without an id are not                     |
+| `MOB-LOCAL-009` | a file with the same name as a default download in another folder stays a phone song                        |
 
 ## `__tests__/music-folders.test.tsx`
 
@@ -643,3 +647,60 @@ navigation mock live in `test-utils/`.
 | `MOB-SPATIAL-014` | Soundstage renders 2D disc with polar readout and handles touch or accessibility adjustment                   |
 | `MOB-SPATIAL-015` | SpatialControls renders quick placement buttons and sliders for distance, width, intensity, ambience          |
 | `MOB-SPATIAL-016` | leaving the Audio screen ends Compare                                                                         |
+
+## `__tests__/collection-menu.test.tsx`
+
+| ID            | Use case                                                                                                                                |
+| :------------ | :-------------------------------------------------------------------------------------------------------------------------------------- |
+| `MOB-COL-001` | album and playlist results in Search show more button that opens collection menu sheet                                                  |
+| `MOB-COL-002` | top result card when album or playlist shows more button                                                                                |
+| `MOB-COL-003` | pasted playlist link shows more button opening collection menu                                                                          |
+| `MOB-COL-004` | Add to queue fetches all pages of a two-page playlist, queues all songs, and shows snackbar                                             |
+| `MOB-COL-005` | Add to playlist in collection sheet fetches tracks and opens PlaylistPicker                                                             |
+| `MOB-COL-006` | Save / Remove album toggles saved status                                                                                                |
+| `MOB-COL-007` | fetch error shows Retry button and retrying re-fetches                                                                                  |
+| `MOB-COL-008` | AlbumScreen action row has "Add to playlist" button; with remaining pages, menu loads all and opens picker                              |
+| `MOB-COL-009` | PlaylistDetail action row has "Add to playlist" button disabled when no tracks, and with remaining pages loads all and opens picker     |
+| `MOB-COL-010` | guest tapping Add to playlist closes sheet, and after sign-in reopens menu in playlists view                                            |
+| `MOB-COL-011` | AlbumScreen action row "Add to queue" with remaining pages fetches all tracks first, queues them, and shows snackbar with full count    |
+| `MOB-COL-012` | PlaylistDetail action row "Add to queue" with remaining pages fetches all tracks first, queues them, and shows snackbar with full count |
+| `MOB-COL-013` | when the remaining pages fail to load, nothing is queued and the snackbar says so                                                       |
+
+## `__tests__/settings-chips.test.tsx`
+
+| ID                 | Use case                                                                                  |
+| :----------------- | :---------------------------------------------------------------------------------------- |
+| `MOB-SET-CHIP-001` | guest sees Connection mode, Playback, Library, and About chips (no Account)               |
+| `MOB-SET-CHIP-002` | signed-in user sees Account chip in the expected order                                    |
+| `MOB-SET-CHIP-003` | a chip scrolls the list to its measured section and keeps that chip in view               |
+| `MOB-SET-CHIP-004` | scrolling main ScrollView updates the active highlighted chip                             |
+| `MOB-SET-CHIP-005` | at the end of the list the last section is highlighted even if its top never got up there |
+| `MOB-SET-CHIP-006` | after a jump the chosen chip stays until the user drags the list                          |
+
+## `__tests__/snackbar.test.tsx`
+
+| ID              | Use case                                                                             |
+| :-------------- | :----------------------------------------------------------------------------------- |
+| `MOB-SNACK-001` | store sets visible and auto-hides after ~2.5s                                        |
+| `MOB-SNACK-002` | new snackbar replaces current one and resets hide timer                              |
+| `MOB-SNACK-003` | hideSnackbar dismisses immediately                                                   |
+| `MOB-SNACK-004` | SnackbarHost renders visible snackbar content with polite accessibility              |
+| `MOB-SNACK-005` | TrackMenu Play next and Add to queue trigger snackbar                                |
+| `MOB-SNACK-006` | PlaylistPicker shows "Added to <name>" on success for single song and multiple songs |
+| `MOB-SNACK-007` | PlaylistDetail "Add to queue" button queues all tracks at once and triggers snackbar |
+| `MOB-SNACK-008` | Album "Add to queue" button queues all tracks at once and triggers snackbar          |
+| `MOB-SNACK-009` | Library selection bar "Add to queue" queues array and triggers snackbar              |
+
+## `__tests__/track-list.test.tsx`
+
+| ID             | Use case                                                                  |
+| :------------- | :------------------------------------------------------------------------ |
+| `MOB-TRKL-001` | renders exactly 4 tabs: Songs, Albums, Artists, Downloads                 |
+| `MOB-TRKL-002` | Downloads tab renders DownloadsView inline without header download button |
+| `MOB-TRKL-003` | shows pinned Liked Songs and Most played rows at top in online mode       |
+| `MOB-TRKL-004` | hides Most played pinned row when offline but keeps Liked Songs           |
+| `MOB-TRKL-005` | renders Liked Songs screen with back button and fetches liked tracks      |
+| `MOB-TRKL-006` | renders Most played screen with "N plays" counter on rows                 |
+| `MOB-TRKL-007` | does not display "N plays" in Liked Songs screen                          |
+| `MOB-TRKL-008` | prompts guest users to sign in                                            |
+| `MOB-TRKL-009` | favourites shelf "See all" navigates to TrackList with kind: liked        |

@@ -284,6 +284,10 @@ describe('sidebar', () => {
     expect(screen.getByRole('link', { name: 'Sign in to make playlists' })).toHaveAttribute('href', '/signin');
     expect(screen.getByText('ONLINE · GUEST')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Home' })).toHaveClass('on');
+    expect(screen.getByRole('link', { name: 'Songs' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Albums' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Artists' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Folders' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'New playlist' }));
     expect(navigate).toHaveBeenCalledWith('/signin', expect.anything());
   });

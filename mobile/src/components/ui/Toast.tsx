@@ -5,17 +5,32 @@ import { MotiView, MotiTransitionProp } from 'moti';
 import { springs } from '../../lib/motion';
 import { cn } from '../../lib/cn';
 
-interface ToastProps {
+export interface ToastProps {
   visible: boolean;
   message: string;
   subtext?: string;
   icon?: React.ReactNode;
   mode?: 'online' | 'offline';
+  bottom?: number;
+  accessibilityLiveRegion?: 'none' | 'polite' | 'assertive';
 }
 
-export const Toast = ({ visible, message, subtext, icon, mode = 'online' }: ToastProps) => {
+export const Toast = ({
+  visible,
+  message,
+  subtext,
+  icon,
+  mode = 'online',
+  bottom,
+  accessibilityLiveRegion,
+}: ToastProps) => {
   return (
-    <View className="absolute bottom-20 left-0 right-0 items-center pointer-events-none z-50">
+    <View
+      pointerEvents="box-none"
+      className="absolute left-0 right-0 items-center z-50"
+      style={{ bottom: bottom ?? 80 }}
+      accessibilityLiveRegion={accessibilityLiveRegion}
+    >
       <MotiView
         animate={{
           opacity: visible ? 1 : 0,
@@ -28,7 +43,10 @@ export const Toast = ({ visible, message, subtext, icon, mode = 'online' }: Toas
           } as MotiTransitionProp
         }
       >
-        <View className="bg-s2 border border-ln rounded-lg p-3 flex-row items-center gap-3 w-80 shadow-e3">
+        <View
+          pointerEvents="auto"
+          className="bg-s2 border border-ln rounded-lg p-3 flex-row items-center gap-3 w-80 shadow-e3"
+        >
           {icon && (
             <View
               className={cn(

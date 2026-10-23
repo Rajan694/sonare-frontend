@@ -200,7 +200,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-028` | "stay offline" survives a restart; going online clears it                                     |
 | `DSK-029` | offline, the queue skips songs that are not on this device                                    |
 | `DSK-030` | the confirmation shows what stays available and remembers "stay offline"                      |
-| `DSK-031` | settings on the desktop include the connection mode and the library sections                  |
+| `DSK-031` | settings on the desktop include connection mode and no longer a library & scanning section    |
 | `DSK-053` | About in the desktop app checks for a newer build; "What's new" shows its changes in a dialog |
 | `DSK-082` | on the latest release About says so, offers its notes and no download                         |
 | `DSK-054` | the desktop settings have no server address and no appearance section                         |
@@ -209,6 +209,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `DSK-033` | lists folders; scanning reports what changed; open, exclude and remove work                   |
 | `DSK-034` | a failed scan is reported instead of breaking the page                                        |
 | `DSK-035` | the downloads folder cannot be removed from the list                                          |
+| `DSK-092` | Settings › Connection mode shows the music folders and Add folder in the desktop window       |
 
 ## `test/desktop/player.test.ts`
 
@@ -263,51 +264,54 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/screens/library-catalog.test.tsx`
 
-| ID                | Use case                                                                                 |
-| :---------------- | :--------------------------------------------------------------------------------------- |
-| `WEB-LIBRARY-001` | lists the saved songs with a count; Play all plays them in order                         |
-| `WEB-LIBRARY-002` | shuffle plays every saved song in some order                                             |
-| `WEB-LIBRARY-003` | sorts by title (case-insensitive), then reverses on a second click; sorts by duration    |
-| `WEB-LIBRARY-004` | filtering to "On device" on the web leaves nothing, and says so                          |
-| `WEB-LIBRARY-005` | grid view shows the songs as cards that play in the list                                 |
-| `WEB-LIBRARY-006` | tabs are reflected in the address, and the address opens a tab                           |
-| `WEB-LIBRARY-007` | followed artists link to their pages; empty albums and artists say so                    |
-| `WEB-LIBRARY-008` | an old ?view=favourites link opens Songs                                                 |
-| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs works                          |
-| `WEB-LIBRARY-010` | genres link to a search for that genre                                                   |
-| `WEB-LIBRARY-014` | an empty Songs list shows the empty state, not a chart                                   |
-| `WEB-ALBUM-001`   | shows the album, its artist link, year, size and total length                            |
-| `WEB-ALBUM-002`   | play and shuffle play the whole album                                                    |
-| `WEB-ALBUM-003`   | an unknown album shows "Album not found" with the reason                                 |
-| `WEB-ALBUM-004`   | hearting an album saves it, and a failed un-heart puts the heart back                    |
-| `WEB-ALBUM-007`   | an album already saved in the library starts hearted                                     |
-| `WEB-ALBUM-005`   | a guest hearting an album is asked to sign up                                            |
-| `WEB-ALBUM-006`   | "More options" opens the menu for all the album's songs                                  |
-| `WEB-ARTIST-001`  | shows the album count, the top five songs and the discography, without a listener figure |
-| `WEB-ARTIST-002`  | playing a popular song queues all of the artist's top songs                              |
-| `WEB-ARTIST-003`  | follow and unfollow, with the button following the saved state                           |
-| `WEB-ARTIST-004`  | a failed follow is undone                                                                |
-| `WEB-ARTIST-005`  | an artist with no songs says so and disables play; an unknown artist is "not found"      |
-| `WEB-LIBRARY-011` | artists from liked and playlisted songs show their song count; followed ones say so      |
-| `WEB-LIBRARY-012` | genres show the browse categories and search for their query                             |
-| `WEB-LIBRARY-015` | first page request carries limit, sort, and filter params                                |
-| `WEB-LIBRARY-016` | Load more requests cursor and appends tracks                                             |
-| `WEB-LIBRARY-017` | device file merge: local file sorting after last server song is hidden until last page   |
-| `WEB-LIBRARY-018` | Play all loads all pages before starting playback and includes device files              |
-| `WEB-LIBRARY-019` | offline Most played shows only local and downloaded tracks                               |
-| `WEB-LIBRARY-020` | offline Favourites shows only liked device songs                                         |
-| `WEB-LIBRARY-021` | grid view renders Load more and allows loading more songs                                |
-| `WEB-LIBRARY-022` | unliking in Liked view hides row without sending refetch request                         |
-| `WEB-LIBRARY-023` | selection mode toggle (toolbar button, Esc, Cancel)                                      |
-| `WEB-LIBRARY-024` | row click and Shift-click range selection                                                |
-| `WEB-LIBRARY-025` | select-all header checkbox handles all/none/indeterminate                                |
-| `WEB-LIBRARY-026` | batch queue enqueues all selected tracks in order and clears selection                   |
-| `WEB-LIBRARY-027` | batch add-to-playlist opens picker with selected tracks and clears selection             |
-| `WEB-LIBRARY-028` | batch download enqueues only downloadable server tracks                                  |
-| `WEB-LIBRARY-029` | batch remove from liked asks confirmation when >1 liked track selected, deletes in bulk  |
-| `WEB-LIBRARY-030` | batch remove from liked removes immediately without dialog when 1 liked track selected   |
-| `WEB-LIBRARY-031` | selection resets on tab change and sort change                                           |
-| `WEB-LIBRARY-032` | floating action bar renders icon-only buttons with aria-labels and tooltips in narrow    |
+| ID                | Use case                                                                                  |
+| :---------------- | :---------------------------------------------------------------------------------------- |
+| `WEB-LIBRARY-001` | lists the saved songs with a count; Play all plays them in order                          |
+| `WEB-LIBRARY-002` | shuffle plays every saved song in some order                                              |
+| `WEB-LIBRARY-003` | sorts by title (case-insensitive), then reverses on a second click; sorts by duration     |
+| `WEB-LIBRARY-004` | filtering to "On device" on the web leaves nothing, and says so                           |
+| `WEB-LIBRARY-005` | grid view shows the songs as cards that play in the list                                  |
+| `WEB-LIBRARY-006` | tabs are reflected in the address, and the address opens a tab                            |
+| `WEB-LIBRARY-007` | followed artists link to their pages; empty albums and artists say so                     |
+| `WEB-LIBRARY-008` | an old ?view=favourites link opens Songs                                                  |
+| `WEB-LIBRARY-009` | a guest's account-only tabs invite them to sign up; Songs works                           |
+| `WEB-LIBRARY-010` | genres link to a search for that genre                                                    |
+| `WEB-LIBRARY-014` | an empty Songs list shows the empty state, not a chart                                    |
+| `WEB-ALBUM-001`   | shows the album, its artist link, year, size and total length                             |
+| `WEB-ALBUM-002`   | play and shuffle play the whole album                                                     |
+| `WEB-ALBUM-003`   | an unknown album shows "Album not found" with the reason                                  |
+| `WEB-ALBUM-004`   | hearting an album saves it, and a failed un-heart puts the heart back                     |
+| `WEB-ALBUM-007`   | an album already saved in the library starts hearted                                      |
+| `WEB-ALBUM-005`   | a guest hearting an album is asked to sign up                                             |
+| `WEB-ALBUM-006`   | "More options" opens the menu for all the album's songs                                   |
+| `WEB-ARTIST-001`  | shows the album count, the top five songs and the discography, without a listener figure  |
+| `WEB-ARTIST-002`  | playing a popular song queues all of the artist's top songs                               |
+| `WEB-ARTIST-003`  | follow and unfollow, with the button following the saved state                            |
+| `WEB-ARTIST-004`  | a failed follow is undone                                                                 |
+| `WEB-ARTIST-005`  | an artist with no songs says so and disables play; an unknown artist is "not found"       |
+| `WEB-LIBRARY-011` | artists from liked and playlisted songs show their song count; followed ones say so       |
+| `WEB-LIBRARY-012` | genres show the browse categories and search for their query                              |
+| `WEB-LIBRARY-015` | first page request carries limit, sort, and filter params                                 |
+| `WEB-LIBRARY-016` | Load more requests cursor and appends tracks                                              |
+| `WEB-LIBRARY-017` | device file merge: local file sorting after last server song is hidden until last page    |
+| `WEB-LIBRARY-018` | Play all loads all pages before starting playback and includes device files               |
+| `WEB-LIBRARY-019` | offline Most played shows only local and downloaded tracks                                |
+| `WEB-LIBRARY-020` | offline Favourites shows only liked device songs                                          |
+| `WEB-LIBRARY-021` | grid view renders Load more and allows loading more songs                                 |
+| `WEB-LIBRARY-022` | unliking in Liked view hides row without sending refetch request                          |
+| `WEB-LIBRARY-023` | selection mode toggle (toolbar button, Esc, Cancel)                                       |
+| `WEB-LIBRARY-024` | row click and Shift-click range selection                                                 |
+| `WEB-LIBRARY-025` | select-all header checkbox handles all/none/indeterminate                                 |
+| `WEB-LIBRARY-026` | batch queue enqueues all selected tracks in order and clears selection                    |
+| `WEB-LIBRARY-027` | batch add-to-playlist opens picker with selected tracks and clears selection              |
+| `WEB-LIBRARY-028` | batch download enqueues only downloadable server tracks                                   |
+| `WEB-LIBRARY-029` | batch remove from liked asks confirmation when >1 liked track selected, deletes in bulk   |
+| `WEB-LIBRARY-030` | batch remove from liked removes immediately without dialog when 1 liked track selected    |
+| `WEB-LIBRARY-031` | selection resets on tab change and sort change                                            |
+| `WEB-LIBRARY-032` | floating action bar renders icon-only buttons with aria-labels and tooltips in narrow     |
+| `WEB-LIBRARY-033` | phone and tablet show Songs, Albums, Artists, Downloads tabs; Downloads renders downloads |
+| `WEB-LIBRARY-034` | pinned views render without tabs and with phone back button navigating back or playlists  |
+| `WEB-LIBRARY-035` | Most played view displays plays count in track subtitle below 720px                       |
 
 ## `test/screens/player-screens.test.tsx`
 
@@ -362,6 +366,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PLAYLISTS-002` | lists the user's playlists with size and where they live                                               |
 | `WEB-PLAYLISTS-003` | creating a playlist opens it; a failure is reported                                                    |
 | `WEB-PLAYLISTS-004` | in Offline Mode the stored own playlists are shown with device counts; no server call                  |
+| `WEB-PLAYLISTS-005` | Playlists screen pins Liked Songs first and Most played second (online user only)                      |
 | `WEB-PLAYLIST-001`  | the user's own playlist shows "Made by you", its length, and an Add songs link                         |
 | `WEB-PLAYLIST-002`  | a public playlist cannot be edited                                                                     |
 | `WEB-PLAYLIST-003`  | play and shuffle play the playlist                                                                     |
@@ -452,6 +457,13 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DLPAGE-007`   | "Delete all" removes every finished download                                                          |
 | `WEB-SETTINGS-011` | audio: the lyrics language is chosen per device; there is no output row                               |
 | `WEB-SETTINGS-012` | the web build lists no app downloads (the intro page has them); "What's new" shows the latest release |
+| `WEB-SETTINGS-013` | at phone width a row of chips jumps to each shown section, in page order                              |
+| `WEB-SETTINGS-014` | tapping a chip smooth-scrolls its section to the top and highlights it                                |
+| `WEB-SETTINGS-015` | ?section= opens the phone layout at that section with its chip highlighted                            |
+| `WEB-SETTINGS-016` | scrolling moves the highlight to the last section that reached the chip row                           |
+| `WEB-SETTINGS-017` | opened with ?section=, scrolling past it moves the highlight and never pulls the page back            |
+| `WEB-SETTINGS-018` | scrolled to the very bottom, the last section is highlighted                                          |
+| `WEB-SETTINGS-019` | a tapped chip stays highlighted while the jump scrolls, until the user scrolls                        |
 
 ## `test/screens/signin.test.tsx`
 
@@ -1196,3 +1208,16 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-ACCT-004` | cancelling clear play history does nothing                                                                                                      |
 | `WEB-ACCT-005` | confirming clear play history calls DELETE /me/history, clears local plays, drops pending plays, clears AI picks, notifies listeners and toasts |
 | `WEB-ACCT-006` | failure when clearing play history reports error and keeps local plays and pending plays                                                        |
+
+## `test/screens/search-card-menu.test.tsx`
+
+| ID                | Use case                                                                                    |
+| :---------------- | :------------------------------------------------------------------------------------------ |
+| `WEB-COLMENU-001` | album and playlist results have a ⋯ button: Add to queue, Add to playlist…, Save to library |
+| `WEB-COLMENU-002` | Add to queue fetches the album songs on demand and enqueues them                            |
+| `WEB-COLMENU-003` | Save to library calls the API and flips to Remove from library, and back                    |
+| `WEB-COLMENU-004` | Add to playlist… fetches the songs and adds them to the picked playlist                     |
+| `WEB-COLMENU-005` | a failed fetch shows a toast and queues nothing                                             |
+| `WEB-COLMENU-006` | at phone width the toasts sit above the mini player and bottom tabs                         |
+| `WEB-COLMENU-007` | a playlist with several pages queues every song, not just the first page                    |
+| `WEB-COLMENU-008` | a song's menu doesn't fetch the saved albums or playlists; an album's does                  |

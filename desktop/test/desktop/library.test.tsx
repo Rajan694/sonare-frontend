@@ -20,7 +20,7 @@ beforeEach(() => resetFs());
 describe('library (desktop window)', () => {
   it('DSK-051 folders open from the Songs view only; the sidebar picks the view, so there are no tabs', () => {
     const songs = renderWithProviders(<Library />, { route: '/library', mode: 'offline' });
-    expect(screen.getByRole('link', { name: 'Folders' })).toHaveAttribute('href', '/folders');
+    expect(screen.getByRole('link', { name: 'Folders' })).toHaveAttribute('href', '/settings?section=connection');
     expect(screen.queryByRole('button', { name: 'Albums' })).not.toBeInTheDocument();
     songs.unmount();
     for (const view of ['albums', 'artists', 'favourites', 'most-played']) {

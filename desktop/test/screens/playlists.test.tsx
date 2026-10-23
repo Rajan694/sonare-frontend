@@ -66,7 +66,7 @@ describe('playlists page', () => {
     expect(within(gym).getByText('12 songs')).toBeInTheDocument();
     expect(within(gym).getByText('SYNCED')).toBeInTheDocument();
     expect(within(screen.getByRole('link', { name: /Chart/ })).getByText('ONLINE')).toBeInTheDocument();
-    expect(screen.getByText('3 playlists in your collection')).toBeInTheDocument();
+    expect(screen.getByText('4 playlists in your collection')).toBeInTheDocument();
     expect(screen.queryByText('Create and sync playlists')).not.toBeInTheDocument();
   });
 
@@ -124,6 +124,48 @@ describe('playlists page', () => {
     // Playlists with no songs on device are shown dimmed.
     const gymLink = screen.getByRole('link', { name: /Gym/ });
     expect(gymLink).toHaveClass('opacity-60');
+  });
+
+  it('WEB-PLAYLISTS-005 Playlists screen pins Liked Songs first and Most played second (online user only)', async () => {
+    // 1. Signed-in online user: both Liked Songs and Most played pinned first
+    setSession('a', 'r', testUser);
+    server.use(
+      http.get(`${API}/me/playlists`, () =>
+        HttpResponse.json(page([makePlaylist({ id: 'sonare:p1', name: 'Chill' })])),
+      ),
+      http.get(`${API}/me/saved-playlists`, () => HttpResponse.json(page([]))),
+    );
+    const userView = renderWithProviders(<Playlists />);
+    expect(await screen.findByRole('link', { name: /Liked Songs/ })).toHaveAttribute(
+      'href',
+      '/library?view=favourites',
+    );
+    const mostPlayedLink = screen.getByRole('link', { name: /Most played/ });
+    expect(mostPlayedLink).toHaveAttribute('href', '/library?view=most-played');
+    expect(within(mostPlayedLink).getByText('Your top tracks')).toBeInTheDocument();
+
+    // Verify ordering: Liked Songs is 1st link in grid, Most played is 2nd
+    const links = screen.getAllByRole('link', { name: /(Liked Songs|Most played|Chill)/ });
+    expect(links.map((l) => within(l).getByText(/Liked Songs|Most played|Chill/).textContent)).toEqual([
+      'Liked Songs',
+      'Most played',
+      'Chill',
+    ]);
+    userView.unmount();
+
+    // 2. Guest user: Liked Songs pinned, but Most played hidden
+    clearSession();
+    const guest = renderWithProviders(<Playlists />);
+    expect(await screen.findByRole('link', { name: /Liked Songs/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Most played/ })).not.toBeInTheDocument();
+    guest.unmount();
+
+    // 3. Offline mode: Most played hidden
+    setSession('a', 'r', testUser);
+    const offline = renderWithProviders(<Playlists />, { mode: 'offline' });
+    expect(await screen.findByRole('link', { name: /Liked Songs/ })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Most played/ })).not.toBeInTheDocument();
+    offline.unmount();
   });
 });
 
@@ -370,7 +412,7 @@ describe('playlist page', () => {
     expect(savedLink).toHaveAttribute('href', '/playlist/yt:PL999');
     expect(within(savedLink).getByText('Lofi Girl · 50 songs')).toBeInTheDocument();
     expect(within(savedLink).getByText('YOUTUBE')).toBeInTheDocument();
-    expect(screen.getByText(/3 playlists in your collection/)).toBeInTheDocument();
+    expect(screen.getByText(/4 playlists in your collection/)).toBeInTheDocument();
   });
 
   it('WEB-PLAYLIST-012 PlaylistDetail reads saved state from saved playlists, unsaves via DELETE, and fires playlists-changed', async () => {

@@ -160,7 +160,7 @@ const Home = () => {
         </div>
         <div className="flex items-center gap-2.5">
           {!isOnline && CAPS.localLibrary && (
-            <Link to="/folders" className="btn btn-out">
+            <Link to="/settings?section=connection" className="btn btn-out">
               <Icon name="folder" size={16} />
               <span>Scan folders</span>
             </Link>

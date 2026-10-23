@@ -41,7 +41,9 @@ const Playlists = () => {
 
   const playlists = rawPlaylists;
 
-  const totalCount = playlists.length + 1 + savedPlaylists.length;
+  // Most played is server-only and lives in the account; hide for guests and in Offline Mode
+  const showMostPlayed = !isOffline && !!user;
+  const totalCount = playlists.length + 1 + (showMostPlayed ? 1 : 0) + savedPlaylists.length;
   const countLabel = `${totalCount.toLocaleString()} ${totalCount === 1 ? 'playlist' : 'playlists'}`;
 
   const handleCreatePlaylist = () => requireAccount('Create a free account to make playlists.', createPlaylist);
@@ -133,6 +135,25 @@ const Playlists = () => {
             </div>
           </div>
         </Link>
+
+        {/* Most played Card (Pinned Second) */}
+        {showMostPlayed && (
+          <Link
+            to="/library?view=most-played"
+            className="surf2 p-3.5 rounded-xl no-underline text-inherit flex flex-col gap-3 group hover:border-ln3 transition-colors w-full"
+          >
+            <div className="aspect-square w-full rounded-lg bg-goldbg flex items-center justify-center relative overflow-hidden shadow-lg">
+              <Icon name="trending" size={36} className="text-gold" />
+            </div>
+            <div className="flex flex-col gap-1 min-w-0">
+              <span className="text-title-m font-semibold text-t1 truncate">Most played</span>
+              <span className="text-body-s text-t2 truncate">Your top tracks</span>
+              <div className="mt-1">
+                <span className="badge bg-neutral text-[10px]">TOP TRACKS</span>
+              </div>
+            </div>
+          </Link>
+        )}
 
         {/* User / Catalog Playlists */}
         {playlistsLoading

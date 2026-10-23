@@ -96,6 +96,9 @@ export const PlaylistsScreen = () => {
   const playableCount = (playlist: Playlist) =>
     playablePlaylistTracks(savedTracks[playlist.id] ?? [], phoneTracks).playable.length;
   const lists = online ? playlists : savedPlaylists;
+  const favouriteCount = useLibraryStore((state) => Object.keys(state.favouriteIds).length);
+  const showLiked = signedIn;
+  const showMostPlayed = signedIn && online;
 
   return (
     <Screen scrollable={false}>
@@ -128,6 +131,48 @@ export const PlaylistsScreen = () => {
       <FlatList
         data={lists}
         keyExtractor={(item) => item.id}
+        ListHeaderComponent={
+          showLiked || showMostPlayed ? (
+            <View className="mb-1">
+              {showLiked && (
+                <Pressable
+                  onPress={() => navigation.navigate('TrackList', { kind: 'liked' })}
+                  className="flex-row items-center px-2.5 py-2.5 rounded-md gap-3"
+                  accessibilityRole="button"
+                  accessibilityLabel="Liked Songs"
+                >
+                  <View className="w-[56px] h-[56px] rounded-md bg-accbg items-center justify-center">
+                    <Icon name="heart-filled" size={24} color="#00E28A" />
+                  </View>
+                  <View className="flex-1 gap-1 min-w-0">
+                    <Text className="text-tm font-medium text-t1 truncate" numberOfLines={1}>
+                      Liked Songs
+                    </Text>
+                    <Text className="text-bs text-t2">{songCount(favouriteCount)}</Text>
+                  </View>
+                </Pressable>
+              )}
+              {showMostPlayed && (
+                <Pressable
+                  onPress={() => navigation.navigate('TrackList', { kind: 'mostPlayed' })}
+                  className="flex-row items-center px-2.5 py-2.5 rounded-md gap-3"
+                  accessibilityRole="button"
+                  accessibilityLabel="Most played"
+                >
+                  <View className="w-[56px] h-[56px] rounded-md bg-goldbg items-center justify-center">
+                    <Icon name="visualizer" size={24} color="#FFC24D" />
+                  </View>
+                  <View className="flex-1 gap-1 min-w-0">
+                    <Text className="text-tm font-medium text-t1 truncate" numberOfLines={1}>
+                      Most played
+                    </Text>
+                    <Text className="text-bs text-t2">Your top tracks</Text>
+                  </View>
+                </Pressable>
+              )}
+            </View>
+          ) : undefined
+        }
         renderItem={({ item }) => {
           const playable = playableCount(item);
           const total = item.trackCount ?? savedTracks[item.id]?.length ?? 0;

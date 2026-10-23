@@ -305,9 +305,10 @@ export const HomeScreen = () => {
                   <View className="flex-row items-baseline justify-between">
                     <Text className="text-h2 font-semibold text-t1">Your favourites</Text>
                     <Pressable
-                      onPress={() => navigation.navigate('Library')}
+                      onPress={() => navigation.navigate('TrackList', { kind: 'liked' })}
                       className="flex-row items-center gap-0.5"
                       accessibilityRole="button"
+                      accessibilityLabel="See all favourites"
                     >
                       <Text className="text-t2 text-ll">All</Text>
                       <Icon name="chevron-right" size={14} color="#9A9AA8" />
