@@ -76,6 +76,32 @@ describe('Search & Collections Menu (M3)', () => {
     expect(useCollectionMenuStore.getState().target).toEqual({ kind: 'playlist', item: plSearch });
   });
 
+  it('MOB-COL-014 an album-shaped hit in the Playlists chip gets the playlist menu (Save playlist), like the page it opens', async () => {
+    const albumShaped = {
+      ...makeAlbum({ id: 'yt:PLshape', title: 'Shaped Mix', artist: 'Some Channel' }),
+      kind: 'album' as const,
+    };
+    jest.spyOn(api, 'search').mockResolvedValue(page([albumShaped] as any));
+
+    const { getByLabelText, findAllByLabelText, findByText } = render(
+      <>
+        <SearchScreen />
+        <CollectionMenuHost />
+      </>,
+    );
+    fireEvent.changeText(getByLabelText('Search all music'), 'mix');
+    fireEvent.press(getByLabelText('Playlists'));
+
+    // The last one is the row in the playlists list (the first is the top result card).
+    const more = await findAllByLabelText('More options for Shaped Mix');
+    fireEvent.press(more[more.length - 1]);
+    expect(useCollectionMenuStore.getState().target).toMatchObject({
+      kind: 'playlist',
+      item: { id: 'yt:PLshape', name: 'Shaped Mix', owner: 'Some Channel' },
+    });
+    expect(await findByText('Save playlist')).toBeTruthy();
+  });
+
   it('MOB-COL-002 top result card when album or playlist shows more button', async () => {
     jest.spyOn(api, 'search').mockResolvedValue(page([album1] as any));
 

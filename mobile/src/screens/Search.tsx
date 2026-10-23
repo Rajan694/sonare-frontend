@@ -46,6 +46,21 @@ const toSearchType = (filter: Filter): SearchType => {
 
 type TrackHit = Extract<SearchItem, { kind: 'track' }>;
 type AlbumHit = Extract<SearchItem, { kind: 'album' }>;
+type PlaylistHit = Extract<SearchItem, { kind: 'playlist' }>;
+
+/** A playlist result as a playlist, also when it came back album-shaped (title + channel as artist). */
+const asPlaylistHit = (item: PlaylistHit | AlbumHit): PlaylistHit =>
+  item.kind === 'playlist'
+    ? item
+    : {
+        kind: 'playlist',
+        id: item.id,
+        name: item.title,
+        owner: item.artist || undefined,
+        thumbnail: item.thumbnail,
+        trackCount: item.trackCount ?? null,
+        downloadedCount: 0,
+      };
 type ArtistHit = Extract<SearchItem, { kind: 'artist' }>;
 
 /**
@@ -737,10 +752,12 @@ export const SearchScreen = () => {
                               <IconButton
                                 icon={<Icon name="more" size={16} color="#7E7E8C" />}
                                 size={32}
+                                // The row opens the Playlist page, so its menu is the playlist's too,
+                                // also for a hit that came back album-shaped.
                                 onPress={() =>
-                                  item.kind === 'album'
-                                    ? useCollectionMenuStore.getState().open({ kind: 'album', item })
-                                    : useCollectionMenuStore.getState().open({ kind: 'playlist', item })
+                                  useCollectionMenuStore
+                                    .getState()
+                                    .open({ kind: 'playlist', item: asPlaylistHit(item) })
                                 }
                                 accessibilityLabel={`More options for ${title}`}
                               />

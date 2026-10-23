@@ -77,8 +77,12 @@ const playlistSubtitle = (pl: Playlist | Album): string => {
 /** The "more" menu of an album or playlist result: its songs are fetched when an action needs them. */
 const albumMenu = (album: Album) => (e: React.MouseEvent) =>
   openCollectionMenu({ kind: 'album', id: album.id, title: album.title, raw: album }, e);
-const playlistMenu = (pl: Playlist) => (e: React.MouseEvent) =>
-  openCollectionMenu({ kind: 'playlist', id: pl.id, title: playlistTitle(pl), raw: pl }, e);
+const playlistMenu = (pl: Playlist) => (e: React.MouseEvent) => {
+  // A hit can come back album-shaped (title, channel as artist): saving it needs the playlist's name and owner.
+  const artist = 'artist' in pl && typeof pl.artist === 'string' ? pl.artist : undefined;
+  const raw: Playlist = { ...pl, name: playlistTitle(pl), owner: pl.owner || artist };
+  openCollectionMenu({ kind: 'playlist', id: pl.id, title: raw.name, raw }, e);
+};
 
 const Search = () => {
   const { mode, setMode } = useModeStore();

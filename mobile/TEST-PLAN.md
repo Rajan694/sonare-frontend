@@ -665,6 +665,7 @@ navigation mock live in `test-utils/`.
 | `MOB-COL-011` | AlbumScreen action row "Add to queue" with remaining pages fetches all tracks first, queues them, and shows snackbar with full count    |
 | `MOB-COL-012` | PlaylistDetail action row "Add to queue" with remaining pages fetches all tracks first, queues them, and shows snackbar with full count |
 | `MOB-COL-013` | when the remaining pages fail to load, nothing is queued and the snackbar says so                                                       |
+| `MOB-COL-014` | an album-shaped hit in the Playlists chip gets the playlist menu (Save playlist), like the page it opens                                |
 
 ## `__tests__/settings-chips.test.tsx`
 
