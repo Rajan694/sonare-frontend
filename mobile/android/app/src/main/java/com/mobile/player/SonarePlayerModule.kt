@@ -282,6 +282,12 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     main.post { PlaybackEngine.instance?.setFades(enabled) }
   }
 
+  /** Headset button actions for 1, 2, and 3 clicks ({ single, double, triple }). */
+  @ReactMethod
+  fun setHeadsetActions(actions: ReadableMap) {
+    SonarePlaybackService.headsetActions = HeadsetActions.fromReadableMap(actions)
+  }
+
   /** `{ enabled, gains: number[8], bassBoost, virtualizer, normalization }` for the audio processor. */
   @ReactMethod
   fun setAudioEffects(options: ReadableMap) {

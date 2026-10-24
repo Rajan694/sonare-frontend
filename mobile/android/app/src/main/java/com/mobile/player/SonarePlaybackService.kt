@@ -3,6 +3,11 @@ package com.mobile.player
 import android.app.PendingIntent
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.view.KeyEvent
 import androidx.annotation.OptIn
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
@@ -75,9 +80,12 @@ class SonarePlaybackService : MediaSessionService() {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
       )
 
+    val callback = HeadsetSessionCallback(engine)
+
     session =
       MediaSession.Builder(this, QueueForwardingPlayer(engine.active, engine))
         .setSessionActivity(openApp)
+        .setCallback(callback)
         // Cached: without it every notification and session update downloads the artwork again
         // (the default loader is wrapped the same way; a custom one isn't).
         .setBitmapLoader(
@@ -104,6 +112,80 @@ class SonarePlaybackService : MediaSessionService() {
     engine = null
     PlaybackEngine.instance = null
     super.onDestroy()
+  }
+
+  companion object {
+    /** Stored actions for headset button presses, set from JS; survives service restarts. */
+    @Volatile var headsetActions: HeadsetActions = HeadsetActions.DEFAULT
+  }
+}
+
+/**
+ * Handles media button events for headset hook and play/pause buttons.
+ *
+ * Counts rapid presses within 400 ms. When the window expires with no further presses,
+ * runs the action assigned to 1, 2, or 3 presses (e.g. play/pause, next, previous, like).
+ * Other buttons or long presses fall back to Media3 defaults.
+ */
+@OptIn(UnstableApi::class)
+private class HeadsetSessionCallback(private val engine: PlaybackEngine) : MediaSession.Callback {
+  private val handler = Handler(Looper.getMainLooper())
+  private val detector = HeadsetButtonDetector(400L)
+
+  private val commitTask = Runnable {
+    val count = detector.takeCount()
+    if (count <= 0) return@Runnable
+    val action = SonarePlaybackService.headsetActions.actionForCount(count)
+    executeAction(action)
+  }
+
+  override fun onMediaButtonEvent(
+    session: MediaSession,
+    controllerInfo: MediaSession.ControllerInfo,
+    intent: Intent,
+  ): Boolean {
+    val keyEvent =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT) as? KeyEvent
+      } ?: return super.onMediaButtonEvent(session, controllerInfo, intent)
+
+    val keyCode = keyEvent.keyCode
+    val isHeadsetButton = keyCode == KeyEvent.KEYCODE_HEADSETHOOK || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+
+    if (!isHeadsetButton) {
+      return super.onMediaButtonEvent(session, controllerInfo, intent)
+    }
+
+    // Long presses have repeatCount > 0 or are left to the system; only count initial down.
+    if (keyEvent.action != KeyEvent.ACTION_DOWN || keyEvent.repeatCount != 0) {
+      return super.onMediaButtonEvent(session, controllerInfo, intent)
+    }
+
+    handler.removeCallbacks(commitTask)
+    detector.recordPress(SystemClock.uptimeMillis())
+    handler.postDelayed(commitTask, 400L)
+    return true
+  }
+
+  private fun executeAction(action: HeadsetAction) {
+    when (action) {
+      HeadsetAction.PLAY_PAUSE -> {
+        // Forwarding player path: finish fade then toggle play/pause so volume ramps apply.
+        engine.finishFade()
+        if (engine.active.playWhenReady) {
+          engine.pause()
+        } else {
+          engine.play()
+        }
+      }
+      HeadsetAction.NEXT -> RemoteCommands.send("next")
+      HeadsetAction.PREVIOUS -> RemoteCommands.send("previous")
+      HeadsetAction.LIKE -> RemoteCommands.send("like")
+      HeadsetAction.NONE -> { /* do nothing */ }
+    }
   }
 }
 
