@@ -288,6 +288,12 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     SonarePlaybackService.headsetActions = HeadsetActions.fromReadableMap(actions)
   }
 
+  /** Whether the current song is liked: the home-screen widget's heart shows it. */
+  @ReactMethod
+  fun setLiked(liked: Boolean) {
+    SonarePlaybackService.setLiked(context, liked)
+  }
+
   /** `{ enabled, gains: number[8], bassBoost, virtualizer, normalization }` for the audio processor. */
   @ReactMethod
   fun setAudioEffects(options: ReadableMap) {
