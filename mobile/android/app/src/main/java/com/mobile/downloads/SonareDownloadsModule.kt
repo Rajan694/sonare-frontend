@@ -294,38 +294,8 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
   )
 
   private fun fetchCover(artworkUrl: String?): Cover? {
-    if (artworkUrl.isNullOrEmpty()) return null
-    var currentUrl = artworkUrl
-    var redirects = 0
-    while (redirects < 5) {
-      var conn: HttpURLConnection? = null
-      try {
-        val url = URL(currentUrl)
-        conn = (url.openConnection() as HttpURLConnection).apply {
-          instanceFollowRedirects = false
-          connectTimeout = 10_000
-          readTimeout = 10_000
-          setRequestProperty("User-Agent", "Sonare/Mobile")
-        }
-        val code = conn.responseCode
-        if (code in 300..399) {
-          val location = conn.getHeaderField("Location") ?: return null
-          currentUrl = URL(url, location).toString()
-          redirects++
-          continue
-        }
-        if (code != 200) return null
-        val bytes = conn.inputStream.use { it.readBytes() }
-        if (bytes.isEmpty()) return null
-        return CoverArt.imageInfo(bytes)
-      } catch (e: Exception) {
-        Log.w(NAME, "Failed to fetch cover from $artworkUrl: ${e.message}")
-        return null
-      } finally {
-        conn?.disconnect()
-      }
-    }
-    return null
+    val bytes = HttpUtil.fetchBytes(artworkUrl) ?: return null
+    return CoverArt.imageInfo(bytes)
   }
 
   private fun postProcess(part: File, target: Target): ProcessedResult {
