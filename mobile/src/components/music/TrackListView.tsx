@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from 'react-native';
+import { useGrid } from '../../hooks/useGrid';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../ui/Text';
 import { Button } from '../ui/Button';
@@ -36,8 +37,7 @@ interface TrackListViewProps {
 }
 
 export const TrackListView = ({ state }: TrackListViewProps) => {
-  const { width: screenWidth } = useWindowDimensions();
-  const cell = (columns: number, gap: number) => ({ width: (screenWidth - 24 - gap * (columns - 1)) / columns });
+  const grid = useGrid(150, 12);
   const insets = useSafeAreaInsets();
   const playTrack = usePlayerStore((s) => s.playTrack);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
@@ -125,17 +125,17 @@ export const TrackListView = ({ state }: TrackListViewProps) => {
 
       {/* Track list */}
       <FlatList
-        key={`${state.kind}-${state.selectionMode ? 'select' : state.viewMode}`}
+        key={`${state.kind}-${state.selectionMode ? 'select' : state.viewMode}-${grid.columns}`}
         data={state.displayTracks}
         keyExtractor={(item) => item.id}
-        numColumns={state.selectionMode ? 1 : state.viewMode === 'grid' ? 2 : 1}
+        numColumns={state.selectionMode ? 1 : state.viewMode === 'grid' ? grid.columns : 1}
         columnWrapperStyle={!state.selectionMode && state.viewMode === 'grid' ? { gap: 12 } : undefined}
         renderItem={({ item, index }) =>
           !state.selectionMode && state.viewMode === 'grid' ? (
             <Pressable
               onPress={() => playTrack(item, state.displayTracks, state.from)}
               className="p-1 mb-3"
-              style={cell(2, 12)}
+              style={grid.cell}
               accessibilityRole="button"
               accessibilityLabel={`Play ${item.title} by ${item.artist}`}
             >

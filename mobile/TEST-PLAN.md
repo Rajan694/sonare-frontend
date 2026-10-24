@@ -746,3 +746,11 @@ navigation mock live in `test-utils/`.
 | `MOB-DART-002` | useDeviceArt hook returns cached artwork URI for local tracks and requests artwork if not cached |
 | `MOB-DART-003` | useArtColor extracts dominant color from 16x16 pixels base64 and caches the result               |
 | `MOB-DART-004` | useArtColor gives null (no tint) without a cover, for unreadable pixels and on errors            |
+
+## `__tests__/landscape.test.tsx`
+
+| ID             | Use case                                                                    |
+| :------------- | :-------------------------------------------------------------------------- |
+| `MOB-LAND-001` | useGrid keeps 2 album / 3 artist columns on phones and fits more sideways   |
+| `MOB-LAND-002` | the Songs grid gets 5 columns sideways while the list view stays one column |
+| `MOB-LAND-003` | the offline Albums grid follows the window width                            |
