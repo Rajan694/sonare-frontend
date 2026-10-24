@@ -94,6 +94,10 @@ let retriedForTrack: string | null = null;
 /** The element emits timeupdate on its own; a decoded track needs a clock for it. */
 let ticker: ReturnType<typeof setInterval> | null = null;
 
+/** The quick fade running now (pause, or the old song before a skip) and what follows it. */
+let pendingFadeTimer: ReturnType<typeof setTimeout> | undefined;
+let pendingFadeAction: (() => void) | null = null;
+
 // Linux only: WebKitGTK is where the element drops audio, and decoding costs memory
 // (about 10 MB per minute), which other platforms' players don't need to spend.
 const DECODE_LOCAL_FILES = CAPS.localLibrary && window.NL_OS === 'Linux';
@@ -102,10 +106,13 @@ const MAX_DECODE_MS = 15 * 60_000;
 const MAX_DECODE_BYTES = 60 * 1024 * 1024;
 /**
  * How long before the end of a song the next one is looked up and loaded. Late, so a song that is
- * skipped or stopped never costs the next one's download; still enough for gapless and the 6 s
+ * skipped or stopped never costs the next one's download; still enough for gapless and the
  * crossfade on a slow connection.
  */
 const PREPARE_BEFORE_END_S = 15;
+/** Quick fades on play/pause and track skip. */
+const FADE_MS = 300;
+const FADE_S = FADE_MS / 1000;
 
 const media = (slot: Slot) => slot.decoded ?? slot.audio;
 
@@ -679,6 +686,7 @@ const takeStandby = () => {
  * missing or past `expiresAt`. Does not start playback on its own.
  */
 export const load = async (trackId: string, force = false): Promise<void> => {
+  finishPendingFade();
   finishFade();
   // The next song, already prepared in the standby slot: take it over instead of loading again.
   if (!force && standby.trackId === trackId && slotLoaded(standby)) {
@@ -712,6 +720,13 @@ const seekWhenReady = (positionMs: number) => {
 export const playTrackId = async (trackId: string, fromStart = false, startMs = 0): Promise<void> => {
   const same = active.trackId === trackId;
   if (!same) retriedForTrack = null;
+
+  const m = media(active);
+  const isAudible = !!m && !m.paused && !m.ended;
+  if (!same && isAudible && dsp.getDsp().fades && canFade(active)) {
+    await new Promise<void>((resolve) => fadeOutThen(resolve));
+  }
+
   await load(trackId);
   if (active.trackId !== trackId) return;
   if (startMs > 0) seekWhenReady(startMs);
@@ -757,11 +772,62 @@ const playSlot = async (slot: Slot): Promise<void> => {
   }
 };
 
-export const play = (): Promise<void> => playSlot(active);
+/**
+ * A quick fade (pause, or the old song before a skip) still running when another command comes:
+ * do what it was for at once, so no command is lost and nothing waits on a fade that never ends.
+ */
+const finishPendingFade = () => {
+  if (pendingFadeTimer !== undefined) {
+    clearTimeout(pendingFadeTimer);
+    pendingFadeTimer = undefined;
+  }
+  const act = pendingFadeAction;
+  pendingFadeAction = null;
+  act?.();
+};
+
+/** Ramps the active song to silence over FADE_MS, then runs `action` (unless a command runs it first). */
+const fadeOutThen = (action: () => void) => {
+  finishPendingFade();
+  fadeSlot(active, 0, FADE_S);
+  pendingFadeAction = action;
+  pendingFadeTimer = setTimeout(finishPendingFade, FADE_MS);
+};
+
+const reallyPauseSlot = (slot: Slot) => {
+  if (slot.decoded) {
+    slot.decoded.pause();
+    stopTicker();
+    emit();
+    return;
+  }
+  slot.audio?.pause();
+};
+
+export const play = async (): Promise<void> => {
+  finishPendingFade();
+  // Ensure active level is restored to 1 if a previous pause-fade had ramped it down
+  const m = media(active);
+  const wasPaused = !m || m.paused;
+  // If a crossfade is currently fading this slot in, do not reset its level
+  const inCrossfade = fading !== null;
+  const wantFade = !inCrossfade && dsp.getDsp().fades && wasPaused && canFade(active);
+  if (wantFade) {
+    setLevel(active, 0);
+  } else if (!inCrossfade) {
+    setLevel(active, 1);
+  }
+  await playSlot(active);
+  if (wantFade) {
+    fadeSlot(active, 1, FADE_S);
+  }
+};
 
 /** Calls the user makes (pause, seek, another song) end a crossfade or a scheduled gapless start. */
 const settle = () => {
+  finishPendingFade();
   finishFade();
+  setLevel(active, 1);
   if (gaplessScheduled) {
     gaplessScheduled = false;
     standby.decoded?.pause();
@@ -770,14 +836,27 @@ const settle = () => {
 };
 
 export const pause = (): void => {
-  settle();
-  if (active.decoded) {
-    active.decoded.pause();
-    stopTicker();
-    emit();
+  const m = media(active);
+  if (!m || m.paused) {
+    finishPendingFade();
     return;
   }
-  active.audio?.pause();
+  if (fading) {
+    // Crossfade in progress: settle() finishes it immediately (leaves new song at full level), then pause
+    settle();
+    reallyPauseSlot(active);
+    return;
+  }
+  if (dsp.getDsp().fades && canFade(active)) {
+    const slot = active;
+    fadeOutThen(() => {
+      reallyPauseSlot(slot);
+      setLevel(slot, 1);
+    });
+    return;
+  }
+  settle();
+  reallyPauseSlot(active);
 };
 
 export const toggle = (): void => {
@@ -900,7 +979,7 @@ function checkTransition() {
   }
   if (!slotLoaded(standby) || fading) return;
 
-  const fadeS = dsp.CROSSFADE_MS / 1000;
+  const fadeS = dsp.getDsp().crossfadeMs / 1000;
   if (wantCrossfade() && remaining <= fadeS && m.duration > fadeS * 2 && canFade(active) && canFade(standby)) {
     startNext(remaining);
     return;

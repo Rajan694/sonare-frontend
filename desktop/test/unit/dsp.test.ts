@@ -256,6 +256,38 @@ describe('equalizer state', () => {
     act(() => d.setDsp({ speed: 1.25 }));
     expect(result.current.speed).toBe(1.25);
   });
+
+  it('WEB-DSP-031 clamps crossfadeMs to 1000..12000 in steps of 500 on load and set', async () => {
+    const d = await fresh();
+    expect(d.getDsp().crossfadeMs).toBe(6000);
+    expect(d.getDsp().fades).toBe(false);
+
+    d.setDsp({ crossfadeMs: 500 });
+    expect(d.getDsp().crossfadeMs).toBe(1000);
+
+    d.setDsp({ crossfadeMs: 15000 });
+    expect(d.getDsp().crossfadeMs).toBe(12000);
+
+    d.setDsp({ crossfadeMs: 4200 });
+    expect(d.getDsp().crossfadeMs).toBe(4000);
+
+    d.setDsp({ crossfadeMs: 4300 });
+    expect(d.getDsp().crossfadeMs).toBe(4500);
+
+    d.setDsp({ fades: true });
+    expect(d.getDsp().fades).toBe(true);
+
+    // Persisted state loading with missing or out-of-range values
+    localStorage.setItem('sonare_dsp', JSON.stringify({ crossfadeMs: 18000, fades: true }));
+    const d2 = await fresh();
+    expect(d2.getDsp().crossfadeMs).toBe(12000);
+    expect(d2.getDsp().fades).toBe(true);
+
+    localStorage.setItem('sonare_dsp', JSON.stringify({ crossfade: true }));
+    const d3 = await fresh();
+    expect(d3.getDsp().crossfadeMs).toBe(6000);
+    expect(d3.getDsp().fades).toBe(false);
+  });
 });
 
 describe('audio graph', () => {

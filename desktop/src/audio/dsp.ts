@@ -33,14 +33,26 @@ export interface DspState {
   /** 0..100 → stereo width 1× .. 2.5×. */
   virtualizer: number;
   speed: number;
-  /** Fade songs into each other over the last CROSSFADE_MS (Android has the same switch). */
+  /** Fade songs into each other over the last crossfadeMs (Android has the same switch). */
   crossfade: boolean;
+  /** Crossfade duration in milliseconds (1000..12000 in steps of 500). */
+  crossfadeMs: number;
+  /** Quick fades on play/pause and track skips (~300 ms). */
+  fades: boolean;
 }
 
-/** Fixed, like the Android app's. */
-export const CROSSFADE_MS = 6000;
-
 const STORAGE_KEY = 'sonare_dsp';
+
+export const MIN_CROSSFADE_MS = 1000;
+export const MAX_CROSSFADE_MS = 12000;
+export const STEP_CROSSFADE_MS = 500;
+export const DEFAULT_CROSSFADE_MS = 6000;
+
+export const clampCrossfadeMs = (ms: unknown): number => {
+  const n = typeof ms === 'number' && Number.isFinite(ms) ? ms : DEFAULT_CROSSFADE_MS;
+  const stepped = Math.round(n / STEP_CROSSFADE_MS) * STEP_CROSSFADE_MS;
+  return Math.max(MIN_CROSSFADE_MS, Math.min(MAX_CROSSFADE_MS, stepped));
+};
 
 // The default preset is the settings' default (Sonare on both apps).
 const DEFAULT_STATE: DspState = {
@@ -51,15 +63,27 @@ const DEFAULT_STATE: DspState = {
   virtualizer: 0,
   speed: 1,
   crossfade: false,
+  crossfadeMs: DEFAULT_CROSSFADE_MS,
+  fades: false,
+};
+
+const sanitizeState = (raw: Partial<DspState>): DspState => {
+  const gains =
+    Array.isArray(raw.gains) && raw.gains.length === EQ_BANDS.length ? [...raw.gains] : [...DEFAULT_STATE.gains];
+  return {
+    ...DEFAULT_STATE,
+    ...raw,
+    gains,
+    crossfadeMs: clampCrossfadeMs(raw.crossfadeMs),
+    fades: typeof raw.fades === 'boolean' ? raw.fades : DEFAULT_STATE.fades,
+  };
 };
 
 const loadState = (): DspState => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_STATE;
-    const s = { ...DEFAULT_STATE, ...JSON.parse(raw) } as DspState;
-    if (!Array.isArray(s.gains) || s.gains.length !== EQ_BANDS.length) s.gains = [...DEFAULT_STATE.gains];
-    return s;
+    return sanitizeState(JSON.parse(raw));
   } catch {
     return DEFAULT_STATE;
   }
@@ -298,7 +322,11 @@ export const useDsp = (): DspState => {
 };
 
 export const setDsp = (patch: Partial<DspState>): void => {
-  state = { ...state, ...patch };
+  const nextPatch = { ...patch };
+  if (nextPatch.crossfadeMs !== undefined) {
+    nextPatch.crossfadeMs = clampCrossfadeMs(nextPatch.crossfadeMs);
+  }
+  state = { ...state, ...nextPatch };
   emit();
 };
 

@@ -417,7 +417,17 @@ describe('queue route', () => {
 
 describe('equalizer', () => {
   beforeEach(() => {
-    setDsp({ enabled: true, preset: 'Flat', gains: [...EQ_PRESETS.Flat], bassBoost: 0, virtualizer: 0, speed: 1 });
+    setDsp({
+      enabled: true,
+      preset: 'Flat',
+      gains: [...EQ_PRESETS.Flat],
+      bassBoost: 0,
+      virtualizer: 0,
+      speed: 1,
+      crossfade: false,
+      crossfadeMs: 6000,
+      fades: false,
+    });
     updateSettings({ gapless: false, normalization: true });
     setSpatial({ enabled: false, mode: 'presets', preset: 'concert' });
     setSpatialBypass(false);
@@ -476,6 +486,29 @@ describe('equalizer', () => {
     await user.click(screen.getByRole('switch', { name: 'Toggle crossfade' }));
     expect(getDsp().crossfade).toBe(true);
     expect(screen.getByText('No crossfade between tracks of one album')).toBeInTheDocument();
+  });
+
+  it('WEB-EQ-017 crossfade length slider and fade-on-play-pause switch control dsp state', async () => {
+    const { user } = renderWithProviders(<Equalizer />);
+    // Fade on play & pause switch
+    const fadeSwitch = screen.getByRole('switch', { name: 'Toggle fade on play & pause' });
+    expect(getDsp().fades).toBe(false);
+    await user.click(fadeSwitch);
+    expect(getDsp().fades).toBe(true);
+
+    // Crossfade length slider hidden when crossfade is off
+    expect(screen.queryByRole('slider', { name: 'Crossfade length' })).toBeNull();
+
+    // Turn crossfade on
+    await user.click(screen.getByRole('switch', { name: 'Toggle crossfade' }));
+    const slider = screen.getByRole('slider', { name: 'Crossfade length' });
+    expect(slider).toBeInTheDocument();
+    expect(screen.getByText('6 s')).toBeInTheDocument();
+
+    slider.focus();
+    await user.keyboard('{ArrowRight}');
+    expect(getDsp().crossfadeMs).toBe(6500);
+    expect(screen.getByText('6.5 s')).toBeInTheDocument();
   });
 
   it('WEB-EQ-007 toggling spatial audio enables presets and soundstage controls', async () => {

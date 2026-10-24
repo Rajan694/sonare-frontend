@@ -104,10 +104,9 @@ vi.mock('../../src/audio/dsp', () => ({
   bindElement: () => {},
   ensureGraph: async () => {},
   graphInput: async () => ({ ctx: h.ctx, input: {} }),
-  getDsp: () => ({ speed: 1, crossfade: false }),
+  getDsp: () => ({ speed: 1, crossfade: false, crossfadeMs: 6000, fades: false }),
   subscribeDsp: () => () => {},
   faderFor: () => null,
-  CROSSFADE_MS: 6000,
 }));
 
 useMockServer();

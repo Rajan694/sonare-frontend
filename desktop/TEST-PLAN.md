@@ -213,18 +213,22 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/player.test.ts`
 
-| ID        | Use case                                                                        |
-| :-------- | :------------------------------------------------------------------------------ |
-| `DSK-036` | a short file is decoded and played through Web Audio, leaving the element empty |
-| `DSK-037` | pause, play, seek and volume act on the decoded track                           |
-| `DSK-038` | the end of a decoded track tells the queue to move on                           |
-| `DSK-039` | a file too long to decode whole is streamed; a stream failure is reported       |
-| `DSK-040` | a format neither path can read plays through the audio element from a blob url  |
-| `DSK-041` | choosing another song stops and releases the previous decoded one               |
-| `DSK-042` | a downloaded song plays from disk, never from the server                        |
-| `DSK-043` | a blocked start asks the user to press play                                     |
-| `DSK-076` | the next song fades in over the last 6 seconds while this one fades out         |
-| `DSK-077` | songs of one album join without a crossfade while gapless is on                 |
+| ID        | Use case                                                                               |
+| :-------- | :------------------------------------------------------------------------------------- |
+| `DSK-036` | a short file is decoded and played through Web Audio, leaving the element empty        |
+| `DSK-037` | pause, play, seek and volume act on the decoded track                                  |
+| `DSK-038` | the end of a decoded track tells the queue to move on                                  |
+| `DSK-039` | a file too long to decode whole is streamed; a stream failure is reported              |
+| `DSK-040` | a format neither path can read plays through the audio element from a blob url         |
+| `DSK-041` | choosing another song stops and releases the previous decoded one                      |
+| `DSK-042` | a downloaded song plays from disk, never from the server                               |
+| `DSK-043` | a blocked start asks the user to press play                                            |
+| `DSK-076` | the next song fades in over the last 6 seconds while this one fades out                |
+| `DSK-077` | songs of one album join without a crossfade while gapless is on                        |
+| `DSK-093` | crossfade starts at custom crossfadeMs before the end                                  |
+| `DSK-094` | fades on play and pause ramp volume and cancel cleanly on rapid toggle                 |
+| `DSK-095` | skipping to another song while playing fades out the old one before new starts         |
+| `DSK-096` | a seek during the pause fade still pauses, and a skip during the skip fade still loads |
 
 ## `test/screens/home-search.test.tsx`
 
@@ -350,6 +354,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-014`     | leaving the Audio screen ends Compare, and Reset position keeps the sliders            |
 | `WEB-EQ-015`     | without Web Audio the section says so and spatial audio cannot be switched on          |
 | `WEB-EQ-016`     | in offline mode the spatial preset cards use the gold accent                           |
+| `WEB-EQ-017`     | crossfade length slider and fade-on-play-pause switch control dsp state                |
 | `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                               |
 | `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in                  |
 | `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                           |
@@ -683,6 +688,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-028` | the renderer probe accepts a real HRTF response and rejects equal-power or silent ones             |
 | `WEB-DSP-029` | without Web Audio, spatial audio reports that it is unsupported                                    |
 | `WEB-DSP-030` | the renderer probe keeps its source playing well past the impulse, so WebKitGTK renders it         |
+| `WEB-DSP-031` | clamps crossfadeMs to 1000..12000 in steps of 500 on load and set                                  |
 
 ## `test/unit/spatial.test.ts`
 
