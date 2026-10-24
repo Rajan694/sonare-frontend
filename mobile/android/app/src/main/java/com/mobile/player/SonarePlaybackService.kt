@@ -130,17 +130,17 @@ private class QueueForwardingPlayer(player: Player, private val engine: Playback
   // Any command from the user ends a crossfade at once rather than fighting it.
   override fun play() {
     engine.finishFade()
-    super.play()
+    engine.play()
   }
 
   override fun pause() {
     engine.finishFade()
-    super.pause()
+    engine.pause()
   }
 
   override fun setPlayWhenReady(playWhenReady: Boolean) {
     engine.finishFade()
-    super.setPlayWhenReady(playWhenReady)
+    engine.setPlayWhenReady(playWhenReady)
   }
 
   override fun seekTo(positionMs: Long) {

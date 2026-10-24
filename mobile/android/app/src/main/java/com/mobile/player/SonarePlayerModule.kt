@@ -267,6 +267,21 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
     main.post { PlaybackEngine.instance?.setSpeed(value) }
   }
 
+  /** Pitch shift in semitones (-6..6), independent of speed. */
+  @ReactMethod
+  fun setPitch(semitones: Double) {
+    val value = semitones.toFloat().coerceIn(-6f, 6f)
+    PlaybackEngine.pendingPitch = value
+    main.post { PlaybackEngine.instance?.setPitch(value) }
+  }
+
+  /** Short volume fades (~300 ms) on play, pause, and track load. */
+  @ReactMethod
+  fun setFades(enabled: Boolean) {
+    PlaybackEngine.pendingFades = enabled
+    main.post { PlaybackEngine.instance?.setFades(enabled) }
+  }
+
   /** `{ enabled, gains: number[8], bassBoost, virtualizer, normalization }` for the audio processor. */
   @ReactMethod
   fun setAudioEffects(options: ReadableMap) {

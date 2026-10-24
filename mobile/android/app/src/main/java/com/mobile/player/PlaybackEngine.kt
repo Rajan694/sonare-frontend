@@ -7,6 +7,7 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.util.UnstableApi
@@ -25,10 +26,16 @@ import androidx.media3.exoplayer.upstream.DefaultLoadErrorHandlingPolicy
 import com.mobile.player.dsp.SonareAudioProcessor
 import kotlin.math.PI
 import kotlin.math.cos
+import kotlin.math.pow
 import kotlin.math.sin
 
 /** How tracks follow each other; set from JS (SonarePlayerModule.setTransitions). */
 data class Transitions(val crossfadeMs: Long = 0, val gapless: Boolean = false)
+
+private enum class RampType { IN, OUT }
+
+/** A play / pause / skip fade on one player; [onDone] runs when it ends (pause, load the next track). */
+private data class Ramp(val player: ExoPlayer, val type: RampType, val onDone: (() -> Unit)? = null)
 
 /**
  * The service's audio engine: two ExoPlayers, each with [SonareAudioProcessor] in its audio
@@ -65,6 +72,12 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   private var next: MediaItem? = null
   private var transitions = pendingTransitions
   private var speed = pendingSpeed
+  private var pitch = pendingPitch
+  private var fades = pendingFades
+
+  /** The play / pause / skip fade running now ([setFades]); null when the volume is steady. */
+  private var currentRamp: Ramp? = null
+  private var rampElapsedMs = 0L
 
   /** Called with the new active player when a crossfade hands over (the session follows it). */
   var onActiveChanged: ((ExoPlayer) -> Unit)? = null
@@ -97,7 +110,8 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     standby.addListener(activeListener(standby))
     active.addAnalyticsListener(refusedStreams)
     standby.addAnalyticsListener(refusedStreams)
-    setSpeed(speed)
+    applyPlaybackParameters(active)
+    applyPlaybackParameters(standby)
   }
 
   private fun buildPlayer(): ExoPlayer {
@@ -159,13 +173,58 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
 
   // ---- commands from JS ----
 
-  /** Replaces whatever plays with one track. */
+  /**
+   * Replaces whatever plays with one track. With fades on, a track that is audible fades out
+   * first and the new one fades in.
+   */
   fun load(item: MediaItem, startMs: Long, autoplay: Boolean) {
     finishFade()
     next = null
-    active.setMediaItem(item, startMs)
-    active.prepare()
-    active.playWhenReady = autoplay
+    val start = {
+      active.setMediaItem(item, startMs)
+      active.prepare()
+      if (fades && autoplay) {
+        fadeIn()
+      } else {
+        active.volume = 1f
+        active.playWhenReady = autoplay
+      }
+    }
+    if (fades && active.isPlaying) startRamp(active, RampType.OUT, start) else start()
+  }
+
+  /** Plays; with fades on, from silence up to full volume. */
+  fun play() {
+    finishRamp()
+    if (fades && !active.isPlaying) {
+      fadeIn()
+    } else {
+      active.volume = 1f
+      active.play()
+    }
+  }
+
+  /** Pauses; with fades on, an audible track fades out first. Paused, the volume is back to full. */
+  fun pause() {
+    finishRamp()
+    val player = active
+    if (fades && player.isPlaying) {
+      startRamp(player, RampType.OUT) {
+        player.pause()
+        player.volume = 1f
+      }
+    } else {
+      player.pause()
+      player.volume = 1f
+    }
+  }
+
+  fun setPlayWhenReady(playWhenReady: Boolean) = if (playWhenReady) play() else pause()
+
+  private fun fadeIn() {
+    active.volume = 0f
+    active.play()
+    startRamp(active, RampType.IN)
   }
 
   /** Stops and unloads; the notification goes away with it. */
@@ -174,6 +233,7 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     next = null
     active.stop()
     active.clearMediaItems()
+    active.volume = 1f
   }
 
   /** The track to move on to after the current one, or null (end of queue, repeat one). */
@@ -187,15 +247,78 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     syncQueuedNext()
   }
 
-  /** Playback speed; Media3 time-stretches, so pitch stays the same. */
+  /** Playback speed (0.5..2); pitch is preserved. */
   fun setSpeed(value: Float) {
-    speed = value
-    active.setPlaybackSpeed(value)
-    standby.setPlaybackSpeed(value)
+    speed = value.coerceIn(0.5f, 2f)
+    applyPlaybackParameters(active)
+    applyPlaybackParameters(standby)
   }
+
+  /** Pitch shift in semitones (-6..6), independent of speed. Factor is 2^(s/12). */
+  fun setPitch(semitones: Float) {
+    pitch = semitones.coerceIn(-6f, 6f)
+    applyPlaybackParameters(active)
+    applyPlaybackParameters(standby)
+  }
+
+  /** Short fades on play, pause and skip ([SIMPLE_FADE_MS]); crossfades between songs are separate. */
+  fun setFades(enabled: Boolean) {
+    fades = enabled
+  }
+
+  private fun applyPlaybackParameters(player: ExoPlayer) {
+    val pitchFactor = pitchFactor(pitch)
+    player.playbackParameters = PlaybackParameters(speed, pitchFactor)
+  }
+
+  /**
+   * A play / pause / skip fade still running when another command comes: jump to its end and do
+   * what it was for (pause, load the next track), so no command is lost and nothing stays silent.
+   */
+  private fun finishRamp() {
+    val ramp = currentRamp ?: return
+    currentRamp = null
+    main.removeCallbacks(rampTick)
+    if (ramp.type == RampType.IN) ramp.player.volume = 1f
+    ramp.onDone?.invoke()
+  }
+
+  private fun startRamp(player: ExoPlayer, type: RampType, onDone: (() -> Unit)? = null) {
+    finishRamp()
+    rampElapsedMs = 0
+    currentRamp = Ramp(player, type, onDone)
+    main.post(rampTick)
+  }
+
+  private val rampTick =
+    object : Runnable {
+      override fun run() {
+        val ramp = currentRamp ?: return
+        if (ramp.type == RampType.IN) {
+          // Paused or failed elsewhere: nothing to fade in any more.
+          if (!ramp.player.playWhenReady || ramp.player.playbackState == Player.STATE_IDLE) {
+            finishRamp()
+            return
+          }
+          // The clock only runs while the track is audible, so buffering doesn't eat the fade-in.
+          if (ramp.player.isPlaying) rampElapsedMs += FADE_STEP_MS
+          ramp.player.volume = fadeInVolume(rampElapsedMs, SIMPLE_FADE_MS)
+        } else {
+          rampElapsedMs += FADE_STEP_MS
+          ramp.player.volume = fadeOutVolume(rampElapsedMs, SIMPLE_FADE_MS)
+        }
+        if (rampElapsedMs >= SIMPLE_FADE_MS) {
+          currentRamp = null
+          ramp.onDone?.invoke()
+        } else {
+          main.postDelayed(this, FADE_STEP_MS)
+        }
+      }
+    }
 
   /** Called by the session player before any user command (play, pause, seek, stop…). */
   fun finishFade() {
+    finishRamp()
     val out = fadingOut ?: return
     fadingOut = null
     main.removeCallbacks(fadeTick)
@@ -239,7 +362,8 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
         val p = active
         if (!p.isPlaying) return // resumes from onIsPlayingChanged
         val duration = p.duration
-        if (fadingOut == null && crossfadeNext() && duration != C.TIME_UNSET) {
+        // Not while a pause or skip fades out: that command decides what plays next.
+        if (fadingOut == null && currentRamp == null && crossfadeNext() && duration != C.TIME_UNSET) {
           val remaining = duration - p.currentPosition
           // Leave out very short tracks: the fade would swallow them.
           if (remaining <= transitions.crossfadeMs && duration > transitions.crossfadeMs * 2) {
@@ -263,7 +387,7 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     next = null
 
     incoming.setMediaItem(item)
-    incoming.setPlaybackSpeed(speed)
+    applyPlaybackParameters(incoming)
     incoming.volume = 0f
     incoming.prepare()
     incoming.play()
@@ -291,8 +415,8 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
         if (active.isPlaying) fadeElapsedMs += FADE_STEP_MS
         val t = (fadeElapsedMs.toDouble() / fadeLengthMs).coerceIn(0.0, 1.0)
         // Equal-power curve: the sum stays about as loud as either track alone.
-        active.volume = sin(t * PI / 2).toFloat()
-        out.volume = cos(t * PI / 2).toFloat()
+        active.volume = fadeInVolume(fadeElapsedMs, fadeLengthMs)
+        out.volume = fadeOutVolume(fadeElapsedMs, fadeLengthMs)
         if (t >= 1.0 || out.playbackState == Player.STATE_ENDED) {
           finishFade()
           startWatching()
@@ -305,6 +429,24 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
   companion object {
     private const val WATCH_INTERVAL_MS = 100L
     private const val FADE_STEP_MS = 50L
+    const val SIMPLE_FADE_MS = 300L
+
+    /** Computes ExoPlayer pitch factor from semitones: 2^(s/12). */
+    fun pitchFactor(semitones: Float): Float = 2.0.pow(semitones.coerceIn(-6f, 6f) / 12.0).toFloat()
+
+    /** Computes equal-power fade-in volume for elapsed time within duration. */
+    fun fadeInVolume(elapsedMs: Long, lengthMs: Long): Float {
+      if (lengthMs <= 0) return 1f
+      val t = (elapsedMs.toDouble() / lengthMs).coerceIn(0.0, 1.0)
+      return sin(t * PI / 2).toFloat()
+    }
+
+    /** Computes equal-power fade-out volume for elapsed time within duration. */
+    fun fadeOutVolume(elapsedMs: Long, lengthMs: Long): Float {
+      if (lengthMs <= 0) return 0f
+      val t = (elapsedMs.toDouble() / lengthMs).coerceIn(0.0, 1.0)
+      return cos(t * PI / 2).toFloat()
+    }
 
     /** The running engine, created by [SonarePlaybackService]; null while the service is down. */
     @Volatile var instance: PlaybackEngine? = null
@@ -312,6 +454,8 @@ class PlaybackEngine(private val context: Context, private val dataSourceFactory
     // JS sends these at start-up, possibly before the service exists; a new engine starts with them.
     @Volatile var pendingTransitions = Transitions()
     @Volatile var pendingSpeed = 1f
+    @Volatile var pendingPitch = 0f
+    @Volatile var pendingFades = false
 
     private const val BUFFER_AHEAD_MS = 2 * 60_000
     private const val BUFFER_MIN_MS = 90_000
