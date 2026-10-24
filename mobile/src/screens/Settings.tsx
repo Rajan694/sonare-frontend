@@ -411,7 +411,7 @@ export const SettingsScreen = () => {
               </View>
               <SegmentedControl
                 options={[
-                  { value: 'opus', label: 'Opus (.mka)' },
+                  { value: 'opus', label: 'Opus (.opus)' },
                   { value: 'm4a', label: 'AAC (.m4a)' },
                 ]}
                 value={downloadFormat}

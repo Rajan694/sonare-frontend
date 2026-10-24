@@ -1,9 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import { PermissionsAndroid, Platform } from 'react-native';
 import { create } from 'zustand';
 import { shortTitlesFor } from '../../../shared/ai/downloadTitles';
 import { api } from '../data/api';
-import { absoluteUrl } from '../data/config';
+import { absoluteUrl, artworkUrl } from '../data/config';
 import { API_QUALITY, useSettingsStore, type AudioQuality, type DownloadFormat } from '../data/settings';
 import type { StreamInfo, Track } from '../data/types';
 import { SonareDownloads } from '../native/SonareDownloads';
@@ -138,6 +139,32 @@ const bareMime = (mimeType: string) => mimeType.split(';')[0].trim() || 'audio/w
 /** The server says 0 (or -1, from NewPipe) when YouTube didn't give a size: unknown. */
 const knownSize = (n: number | undefined) => (n && n > 0 ? n : 0);
 
+let notificationRequested = false;
+export const resetNotificationRequested = () => {
+  notificationRequested = false;
+};
+/**
+ * Android 13+ shows the download progress notification only with this permission. Asked once per
+ * run, at the first download; a refusal still downloads, just without the notification.
+ */
+export const requestNotificationPermission = async () => {
+  if (notificationRequested) return;
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    notificationRequested = true;
+    try {
+      const perm = PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS;
+      if (perm) {
+        const has = await PermissionsAndroid.check(perm);
+        if (!has) {
+          await PermissionsAndroid.request(perm);
+        }
+      }
+    } catch {
+      // Refusal of notification permission must not block downloads.
+    }
+  }
+};
+
 export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
   const patch = (id: string, change: Partial<DownloadItem>, persistNow = true) => {
     const item = get().items[id];
@@ -218,6 +245,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
         title: item.title,
         artist: item.artist,
         album: item.album ?? undefined,
+        artworkUrl: artworkUrl(item, 640),
         treeUri: item.treeUri,
       });
     } catch (e: any) {
@@ -321,6 +349,7 @@ export const useDownloadsStore = create<DownloadsStore>((set, get, store) => {
     },
 
     enqueue: (tracks) => {
+      requestNotificationPermission().catch(() => {});
       const { downloadQuality, downloadFormat } = useSettingsStore.getState();
       const { items, location } = get();
       const next = { ...items };

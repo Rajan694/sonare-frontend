@@ -15,11 +15,18 @@ import { useAuthStore } from '../data/auth';
 export const TrackListScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const kind: TrackListKind = route.params?.kind ?? 'liked';
+  const folder: string | undefined = route.params?.folder;
+  const folderTitle: string | undefined = route.params?.title;
+  const kind: TrackListKind = route.params?.kind ?? (folder ? 'folder' : 'liked');
   const userId = useAuthStore((state) => state.user?.id);
 
-  const state = useTrackList({ kind });
-  const title = kind === 'mostPlayed' ? 'Most played' : 'Liked Songs';
+  const state = useTrackList({ kind, folder });
+  const title =
+    kind === 'mostPlayed'
+      ? 'Most played'
+      : kind === 'folder' || folder
+        ? (folderTitle ?? folder ?? 'Folder')
+        : 'Liked Songs';
 
   return (
     <Screen scrollable={false} className="bg-bg">
@@ -55,7 +62,7 @@ export const TrackListScreen = () => {
         />
       )}
 
-      {state.online && !userId ? (
+      {state.online && !userId && kind !== 'folder' && !folder ? (
         <GuestPrompt
           icon={kind === 'mostPlayed' ? 'trending' : 'heart'}
           title={kind === 'mostPlayed' ? 'Most played lives in your account' : 'Your liked songs live in your account'}

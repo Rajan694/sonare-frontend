@@ -3,7 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { SonareLibrary, type DeviceSong } from '../native/SonareLibrary';
 import { hasMusicPermission, requestMusicPermission, type MusicPermission } from '../lib/musicPermission';
-import { downloadedTracks, idInFileName, useDownloadsStore, type FoundDownload } from './downloads';
+import {
+  downloadedTracks,
+  downloadTrack,
+  idInFileName,
+  useDownloadsStore,
+  type DownloadItem,
+  type FoundDownload,
+} from './downloads';
 import type { Track } from '../data/types';
 import { parseDownloadName } from '../../../shared/downloads/fileNames';
 
@@ -220,6 +227,37 @@ export const deviceUriFor = (trackId: string): string | null => {
   if (!trackId.startsWith('local:')) return null;
   const song = useLocalMusicStore.getState().songs.find((s) => localId(s) === trackId);
   return song?.uri ?? null;
+};
+
+/** The MediaStore row id of a song on the phone (a `local:` id), for cover art. */
+export const mediaIdFor = (trackId: string): string | null => {
+  if (!trackId.startsWith('local:')) return null;
+  const song = useLocalMusicStore.getState().songs.find((s) => localId(s) === trackId);
+  return song?.mediaId ?? null;
+};
+
+/**
+ * The songs in one music folder (a path from musicFolders), as the offline search's folder results
+ * open them. Sonare's own downloads there show as their catalogue songs, like everywhere else.
+ */
+export const tracksInFolder = (
+  folder: string,
+  songs: DeviceSong[],
+  downloads: Record<string, DownloadItem>,
+): Track[] => {
+  const byUri = new Map<string, DownloadItem>();
+  const byName = new Map<string, DownloadItem>();
+  for (const d of Object.values(downloads)) {
+    if (d.status !== 'done' || d.missing) continue;
+    if (d.uri) byUri.set(d.uri, d);
+    if (d.fileName) byName.set(d.fileName, d);
+  }
+  return songs
+    .filter((s) => (s.folder || 'Internal storage') === folder)
+    .map((s) => {
+      const own = (s.uri && byUri.get(s.uri)) || (s.fileName && byName.get(s.fileName));
+      return own ? downloadTrack(own) : deviceTrack(s);
+    });
 };
 
 /** Everything that plays without a network: downloads (newest first), then the music folders' songs. */

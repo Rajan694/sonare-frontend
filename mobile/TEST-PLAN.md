@@ -205,6 +205,8 @@ navigation mock live in `test-utils/`.
 | `MOB-SEARCH-014` | pasting a YouTube song link shows one song row, plays on tap, and skips normal search  |
 | `MOB-SEARCH-015` | pasting a YouTube playlist link shows owner and song count and navigates to Playlist   |
 | `MOB-SEARCH-016` | pasting an invalid YouTube link shows error; plain text still searches                 |
+| `MOB-SEARCH-017` | offline search displays Playlists filter chip and searches offline playlists by title  |
+| `MOB-SEARCH-018` | offline search displays Folders filter chip and searches music folders by folder name  |
 | `MOB-LIB-S-001`  | a guest is invited to create an account instead of seeing a library                    |
 | `MOB-LIB-S-002`  | lists the saved server songs; Play all plays them in order                             |
 | `MOB-LIB-S-003`  | the sort chip opens a sheet of orders; picking one refetches                           |
@@ -298,40 +300,41 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/store.test.ts`
 
-| ID              | Use case                                                                                         |
-| :-------------- | :----------------------------------------------------------------------------------------------- |
-| `MOB-STORE-001` | playTrack sets current track, queue, playing state, and seek request                             |
-| `MOB-STORE-002` | setCurrentTrack, setQueue, setIsPlaying, setPositionMs, setDurationMs, setBuffering update state |
-| `MOB-STORE-003` | setError sets error message and pauses playback                                                  |
-| `MOB-STORE-004` | seekTo updates positionMs and seekRequest nonce                                                  |
-| `MOB-STORE-005` | playNextInQueue inserts track immediately after current track                                    |
-| `MOB-STORE-006` | addToQueue appends track to end of queue                                                         |
-| `MOB-STORE-007` | toggleShuffle shuffles remaining queue keeping current track first                               |
-| `MOB-STORE-008` | cycleRepeat cycles between off, all, one                                                         |
-| `MOB-STORE-009` | playNext advances to next track in queue or loops if repeat all                                  |
-| `MOB-STORE-010` | playPrevious moves to previous track or seeks to start if position > 3s                          |
-| `MOB-STORE-011` | onTrackEnded handles repeat one, repeat all, and end of queue                                    |
-| `MOB-STORE-012` | hydrate loads saved downloads list and location from AsyncStorage                                |
-| `MOB-STORE-013` | enqueue adds new server tracks and skips existing ones                                           |
-| `MOB-STORE-014` | pause and resume toggle download states                                                          |
-| `MOB-STORE-015` | pauseAll and resumeAll batch update active downloads                                             |
-| `MOB-STORE-016` | remove discards active download and deletes finished file                                        |
-| `MOB-STORE-017` | chooseLocation and resetLocation update download directory                                       |
-| `MOB-STORE-018` | checkFiles checks existence of downloaded files on disk                                          |
-| `MOB-STORE-019` | localUriFor, downloadProgress, downloadTrack, downloadedTracks helper functions                  |
-| `MOB-STORE-020` | load fetches favourite ids and user playlists from server                                        |
-| `MOB-STORE-021` | reset clears favourites and playlists                                                            |
-| `MOB-STORE-022` | isFavourite checks presence in favouriteIds                                                      |
-| `MOB-STORE-023` | toggleFavourite optimistically toggles and calls api.setFavourite                                |
-| `MOB-STORE-024` | reloadPlaylists, createPlaylist, deletePlaylist, addToPlaylist manage playlist state             |
-| `MOB-STORE-025` | setMode updates mode, userChangedMode flag, and triggers toast                                   |
-| `MOB-STORE-026` | toggleMode toggles between online and offline                                                    |
-| `MOB-STORE-027` | hideToast dismisses mode toast                                                                   |
-| `MOB-STORE-028` | open, setView, close manage track action sheet state                                             |
-| `MOB-STORE-029` | the next track is the following one; repeat all wraps; repeat one and the end have none          |
-| `MOB-STORE-030` | saved audio settings come back on launch; broken values are ignored                              |
-| `MOB-STORE-031` | recent searches are trimmed, deduped and kept on the phone across a restart                      |
-| `MOB-STORE-032` | asks for a song once and remembers whether its lyrics were found; no network is no answer        |
+| ID              | Use case                                                                                                |
+| :-------------- | :------------------------------------------------------------------------------------------------------ |
+| `MOB-STORE-001` | playTrack sets current track, queue, playing state, and seek request                                    |
+| `MOB-STORE-002` | setCurrentTrack, setQueue, setIsPlaying, setPositionMs, setDurationMs, setBuffering update state        |
+| `MOB-STORE-003` | setError sets error message and pauses playback                                                         |
+| `MOB-STORE-004` | seekTo updates positionMs and seekRequest nonce                                                         |
+| `MOB-STORE-005` | playNextInQueue inserts track immediately after current track                                           |
+| `MOB-STORE-006` | addToQueue appends track to end of queue                                                                |
+| `MOB-STORE-007` | toggleShuffle shuffles remaining queue keeping current track first                                      |
+| `MOB-STORE-008` | cycleRepeat cycles between off, all, one                                                                |
+| `MOB-STORE-009` | playNext advances to next track in queue or loops if repeat all                                         |
+| `MOB-STORE-010` | playPrevious moves to previous track or seeks to start if position > 3s                                 |
+| `MOB-STORE-011` | onTrackEnded handles repeat one, repeat all, and end of queue                                           |
+| `MOB-STORE-012` | hydrate loads saved downloads list and location from AsyncStorage                                       |
+| `MOB-STORE-013` | enqueue adds new server tracks and skips existing ones                                                  |
+| `MOB-STORE-014` | pause and resume toggle download states                                                                 |
+| `MOB-STORE-015` | pauseAll and resumeAll batch update active downloads                                                    |
+| `MOB-STORE-016` | remove discards active download and deletes finished file                                               |
+| `MOB-STORE-017` | chooseLocation and resetLocation update download directory                                              |
+| `MOB-STORE-018` | checkFiles checks existence of downloaded files on disk                                                 |
+| `MOB-STORE-019` | localUriFor, downloadProgress, downloadTrack, downloadedTracks helper functions                         |
+| `MOB-STORE-020` | load fetches favourite ids and user playlists from server                                               |
+| `MOB-STORE-021` | reset clears favourites and playlists                                                                   |
+| `MOB-STORE-022` | isFavourite checks presence in favouriteIds                                                             |
+| `MOB-STORE-023` | toggleFavourite optimistically toggles and calls api.setFavourite                                       |
+| `MOB-STORE-024` | reloadPlaylists, createPlaylist, deletePlaylist, addToPlaylist manage playlist state                    |
+| `MOB-STORE-025` | setMode updates mode, userChangedMode flag, and triggers toast                                          |
+| `MOB-STORE-026` | toggleMode toggles between online and offline                                                           |
+| `MOB-STORE-027` | hideToast dismisses mode toast                                                                          |
+| `MOB-STORE-028` | open, setView, close manage track action sheet state                                                    |
+| `MOB-STORE-029` | the next track is the following one; repeat all wraps; repeat one and the end have none                 |
+| `MOB-STORE-030` | saved audio settings come back on launch; broken values are ignored                                     |
+| `MOB-STORE-031` | recent searches are trimmed, deduped and kept on the phone across a restart                             |
+| `MOB-STORE-032` | asks for a song once and remembers whether its lyrics were found; no network is no answer               |
+| `MOB-STORE-033` | downloads request notification permission on Android 13+ and pass artworkUrl to native download manager |
 
 ## `__tests__/audio.test.tsx`
 
@@ -474,17 +477,19 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/local-music.test.ts`
 
-| ID              | Use case                                                                                                    |
-| :-------------- | :---------------------------------------------------------------------------------------------------------- |
-| `MOB-LOCAL-001` | without the music permission nothing is read; allowing it scans                                             |
-| `MOB-LOCAL-002` | songs are grouped by folder, and a hidden folder leaves the list and stays hidden                           |
-| `MOB-LOCAL-003` | a download names its file with the song id, so it can be found again                                        |
-| `MOB-LOCAL-004` | downloads the list lost (a reinstall) come back from Music/Sonare, shown once                               |
-| `MOB-LOCAL-005` | a song on the phone plays from its content uri                                                              |
-| `MOB-LOCAL-006` | an untagged download found again takes its artist and title from its file name                              |
-| `MOB-LOCAL-007` | a title-only download in Music/Sonare matching a done download is not a phone song, but an unmatched one is |
-| `MOB-LOCAL-008` | an old [id] file is still adopted on scan, while title-only files without an id are not                     |
-| `MOB-LOCAL-009` | a file with the same name as a default download in another folder stays a phone song                        |
+| ID              | Use case                                                                                                            |
+| :-------------- | :------------------------------------------------------------------------------------------------------------------ |
+| `MOB-LOCAL-001` | without the music permission nothing is read; allowing it scans                                                     |
+| `MOB-LOCAL-002` | songs are grouped by folder, and a hidden folder leaves the list and stays hidden                                   |
+| `MOB-LOCAL-003` | a download names its file with the song id, so it can be found again                                                |
+| `MOB-LOCAL-004` | downloads the list lost (a reinstall) come back from Music/Sonare, shown once                                       |
+| `MOB-LOCAL-005` | a song on the phone plays from its content uri                                                                      |
+| `MOB-LOCAL-006` | an untagged download found again takes its artist and title from its file name                                      |
+| `MOB-LOCAL-007` | a title-only download in Music/Sonare matching a done download is not a phone song, but an unmatched one is         |
+| `MOB-LOCAL-008` | an old [id] file is still adopted on scan, while title-only files without an id are not                             |
+| `MOB-LOCAL-009` | a file with the same name as a default download in another folder stays a phone song                                |
+| `MOB-LOCAL-010` | a folder lists only its own songs, with Sonare downloads as their catalogue songs                                   |
+| `MOB-LOCAL-011` | tracksInFolder returns playable tracks in folder including downloads and device songs while excluding own downloads |
 
 ## `__tests__/music-folders.test.tsx`
 
@@ -694,17 +699,18 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/track-list.test.tsx`
 
-| ID             | Use case                                                                  |
-| :------------- | :------------------------------------------------------------------------ |
-| `MOB-TRKL-001` | renders exactly 4 tabs: Songs, Albums, Artists, Downloads                 |
-| `MOB-TRKL-002` | Downloads tab renders DownloadsView inline without header download button |
-| `MOB-TRKL-003` | shows pinned Liked Songs and Most played rows at top in online mode       |
-| `MOB-TRKL-004` | hides Most played pinned row when offline but keeps Liked Songs           |
-| `MOB-TRKL-005` | renders Liked Songs screen with back button and fetches liked tracks      |
-| `MOB-TRKL-006` | renders Most played screen with "N plays" counter on rows                 |
-| `MOB-TRKL-007` | does not display "N plays" in Liked Songs screen                          |
-| `MOB-TRKL-008` | prompts guest users to sign in                                            |
-| `MOB-TRKL-009` | favourites shelf "See all" navigates to TrackList with kind: liked        |
+| ID             | Use case                                                                                 |
+| :------------- | :--------------------------------------------------------------------------------------- |
+| `MOB-TRKL-001` | renders exactly 4 tabs: Songs, Albums, Artists, Downloads                                |
+| `MOB-TRKL-002` | Downloads tab renders DownloadsView inline without header download button                |
+| `MOB-TRKL-003` | shows pinned Liked Songs and Most played rows at top in online mode                      |
+| `MOB-TRKL-004` | hides Most played pinned row when offline but keeps Liked Songs                          |
+| `MOB-TRKL-005` | renders Liked Songs screen with back button and fetches liked tracks                     |
+| `MOB-TRKL-006` | renders Most played screen with "N plays" counter on rows                                |
+| `MOB-TRKL-007` | does not display "N plays" in Liked Songs screen                                         |
+| `MOB-TRKL-008` | prompts guest users to sign in                                                           |
+| `MOB-TRKL-009` | favourites shelf "See all" navigates to TrackList with kind: liked                       |
+| `MOB-TRKL-010` | TrackList displays folder name and renders tracks inside that folder when kind is folder |
 
 ## `__tests__/audio-controls.test.tsx`
 
@@ -731,3 +737,12 @@ navigation mock live in `test-utils/`.
 | `MOB-HEADSET-007` | remote like command does not display snackbar when app is in background                                               |
 | `MOB-HEADSET-008` | remote like command gates guest users with requireAccount                                                             |
 | `MOB-HEADSET-009` | remote next and previous commands advance and rewind player queue                                                     |
+
+## `__tests__/device-art-color.test.tsx`
+
+| ID             | Use case                                                                                         |
+| :------------- | :----------------------------------------------------------------------------------------------- |
+| `MOB-DART-001` | useDeviceArtStore debounces requests and batches media IDs in chunks up to 50                    |
+| `MOB-DART-002` | useDeviceArt hook returns cached artwork URI for local tracks and requests artwork if not cached |
+| `MOB-DART-003` | useArtColor extracts dominant color from 16x16 pixels base64 and caches the result               |
+| `MOB-DART-004` | useArtColor gives null (no tint) without a cover, for unreadable pixels and on errors            |

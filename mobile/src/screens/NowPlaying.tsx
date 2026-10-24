@@ -27,6 +27,8 @@ import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
 import { useWaveform } from '../store/waveforms';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
+import { useTrackArtwork } from '../store/deviceArt';
+import { useArtColor } from '../hooks/useArtColor';
 
 const SWIPE_THRESHOLD = 50;
 
@@ -111,6 +113,9 @@ export const NowPlayingScreen = () => {
 
   const AnimatedViewComponent = Animated.View as any;
 
+  const artUri = useTrackArtwork(currentTrack, 640);
+  const artColor = useArtColor(artUri);
+
   if (!currentTrack) {
     return (
       <Screen>
@@ -137,7 +142,7 @@ export const NowPlayingScreen = () => {
 
   return (
     <Screen scrollable={false} className="bg-bg">
-      <Ambient uri={artworkUrl(currentTrack, 64)} />
+      <Ambient uri={artUri} color={artColor} />
       <Header
         left={
           <IconButton
@@ -176,8 +181,8 @@ export const NowPlayingScreen = () => {
           <AnimatedViewComponent style={artworkStyle} className="self-center mt-3 mb-[26px]">
             <View className="relative">
               <Artwork
-                uri={artworkUrl(currentTrack, 640)}
-                fallbackUri={artworkUrl(currentTrack, 300)}
+                uri={artUri}
+                fallbackUri={currentTrack.source === 'local' ? undefined : artworkUrl(currentTrack, 300)}
                 size={artSize}
                 rings
                 className="rounded-xl shadow-e4"

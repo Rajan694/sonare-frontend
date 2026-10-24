@@ -8,7 +8,7 @@ import { usePlayerStore } from '../../store/player';
 import { useLibraryStore } from '../../store/library';
 import { Artwork } from './Artwork';
 import { SourceGlyph } from './SourceGlyph';
-import { artworkUrl } from '../../data/config';
+import { useTrackArtwork } from '../../store/deviceArt';
 import { IconButton } from '../ui/IconButton';
 import Icon from '../ui/Icon';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
@@ -28,6 +28,7 @@ export const MiniPlayer = () => {
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
   const error = usePlayerStore((state) => state.error);
   const playNext = usePlayerStore((state) => state.playNext);
+  const artUri = useTrackArtwork(currentTrack, 140);
   const favourite = useLibraryStore((s) => (currentTrack ? !!s.favouriteIds[currentTrack.id] : false));
   const toggleFavourite = useLibraryStore((s) => s.toggleFavourite);
   // A finished download plays from the phone.
@@ -89,7 +90,7 @@ export const MiniPlayer = () => {
           className="flex-row items-center gap-3 flex-1 min-w-0 mr-1"
         >
           <Artwork
-            uri={artworkUrl(currentTrack, 140)}
+            uri={artUri}
             size={44}
             rings
             className="rounded-sm"

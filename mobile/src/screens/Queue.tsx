@@ -20,7 +20,8 @@ import { api } from '../data/api';
 import { requireAccount } from '../data/accountGate';
 import { AnimatedView } from '../lib/motion';
 import { formatDuration, songCount } from '../lib/format';
-import { artworkUrl } from '../data/config';
+import { useTrackArtwork } from '../store/deviceArt';
+import { useArtColor } from '../hooks/useArtColor';
 import { cn } from '../lib/cn';
 import { nextQueuePlaylistName } from '../../../shared/player/playlistNames';
 import type { Track } from '../data/types';
@@ -47,6 +48,9 @@ export const QueueScreen = () => {
   const [saved, setSaved] = useState<string | null>(null);
   // A drag on a row turns the list's own scrolling off, so the drag can't scroll it.
   const [dragging, setDragging] = useState(false);
+
+  const artUri = useTrackArtwork(currentTrack, 140);
+  const artColor = useArtColor(artUri);
 
   const saveAsPlaylist = () =>
     requireAccount('Create a free account to save your queue as a playlist.', async () => {
@@ -103,7 +107,7 @@ export const QueueScreen = () => {
 
   return (
     <Screen scrollable={false} className="bg-bg">
-      <Ambient uri={artworkUrl(currentTrack, 64)} />
+      <Ambient uri={artUri} color={artColor} />
       <Header
         title={<Text className="text-ll font-semibold text-t1">Queue</Text>}
         left={
@@ -175,7 +179,7 @@ export const QueueScreen = () => {
             {/* Now playing (design M12): the current song with its progress and a pause button */}
             <Text className="text-t3 text-ov uppercase mb-2">Now playing</Text>
             <View className="-mx-2 flex-row items-center gap-3 p-2 bg-s2 border border-ln2 rounded-md mb-6">
-              <Artwork uri={artworkUrl(currentTrack, 140)} size={48} className="rounded-sm" />
+              <Artwork uri={artUri} size={48} className="rounded-sm" />
               <View className="flex-1 gap-1.5 min-w-0">
                 <View className="flex-row items-center gap-1.5 min-w-0">
                   <Text className={cn('text-tm shrink', isGold ? 'text-gold' : 'text-acc')} numberOfLines={1}>
@@ -284,6 +288,7 @@ const QueueRow = ({
   onDraggingChange: (dragging: boolean) => void;
 }) => {
   const { gesture, style, dragging } = useRowDrag(ROW_HEIGHT, onMove);
+  const rowArtUri = useTrackArtwork(track, 140);
 
   useEffect(() => onDraggingChange(dragging), [dragging, onDraggingChange]);
 
@@ -296,7 +301,7 @@ const QueueRow = ({
         className={cn('flex-row items-center gap-3 px-2 rounded-md', dragging && 'bg-s2 border border-ln2')}
         style={{ height: ROW_HEIGHT }}
       >
-        <Artwork uri={artworkUrl(track, 140)} size={44} className="rounded-sm" />
+        <Artwork uri={rowArtUri} size={44} className="rounded-sm" />
         <View className="flex-1 gap-0.5 min-w-0">
           <View className="flex-row items-center gap-1.5 min-w-0">
             <Text className="text-tm text-t1 shrink" numberOfLines={1}>

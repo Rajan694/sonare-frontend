@@ -1,3 +1,4 @@
+import { PermissionsAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { usePlayerStore } from '../src/store/player';
 import { useAudioStore } from '../src/store/audio';
@@ -7,6 +8,7 @@ import {
   downloadProgress,
   downloadTrack,
   downloadedTracks,
+  resetNotificationRequested,
 } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
 import { useModeStore } from '../src/store/mode';
@@ -678,6 +680,39 @@ describe('Store Layer', () => {
       // Local files are never asked for, exactly like the Lyrics screen.
       await store.getState().check({ ...mockTrack3, source: 'local' as const }, 'original');
       expect(lyrics).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  describe('downloads notification permission & artworkUrl', () => {
+    it('MOB-STORE-033 downloads request notification permission and pass artworkUrl on download start', async () => {
+      resetNotificationRequested();
+      const reqPerm = jest.spyOn(PermissionsAndroid, 'request').mockResolvedValue('granted' as never);
+      jest.spyOn(PermissionsAndroid, 'check').mockResolvedValue(false as never);
+      const startSpy = jest.spyOn(SonareDownloads, 'start').mockResolvedValue(undefined as never);
+      jest.spyOn(api, 'stream').mockResolvedValue({
+        url: 'https://stream.example/song.opus',
+        itag: 251,
+        mimeType: 'audio/webm; codecs="opus"',
+        codec: 'opus',
+        bitrateKbps: 160,
+      } as never);
+
+      useDownloadsStore.setState({ items: {}, ready: true });
+      const trackWithArt: Track = {
+        ...mockTrack1,
+        id: 'yt:art1',
+        thumbnail: 'https://img.example/cover.jpg',
+      };
+
+      useDownloadsStore.getState().enqueue([trackWithArt]);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(reqPerm).toHaveBeenCalledWith('android.permission.POST_NOTIFICATIONS');
+      expect(startSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: 'yt:art1',
+          artworkUrl: expect.stringContaining('http'),
+        }),
+      );
     });
   });
 });

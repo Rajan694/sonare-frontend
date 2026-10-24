@@ -304,8 +304,9 @@ describe('Lyrics', () => {
       offsetMs: 0,
       provider: 'lrclib',
     } as never);
-    const { findByText, getByText } = render(<LyricsScreen />);
+    const { findByText, getByText, getAllByText } = render(<LyricsScreen />);
     expect(await findByText('Second line')).toBeTruthy();
+    expect(getAllByText('Synced').length).toBeGreaterThanOrEqual(1);
     expect(getByText('Second line').props.className).toContain('text-t1');
     expect(getByText('First line').props.className).toContain('text-t3');
     fireEvent.press(getByText('Third line'));
@@ -635,6 +636,7 @@ describe('Settings', () => {
       update,
     } as never);
     const { getByText, rerender } = render(<SettingsScreen />);
+    expect(getByText('Opus (.opus)')).toBeTruthy();
     expect(getByText('Low ≈ 60 kbps · Normal ≈ 75 kbps · High ≈ 150 kbps')).toBeTruthy();
     fireEvent.press(getByText('AAC (.m4a)'));
     expect(update).toHaveBeenCalledWith({ downloadFormat: 'm4a' });

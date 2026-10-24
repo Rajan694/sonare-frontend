@@ -14,6 +14,8 @@ import { useModeStore } from '../src/store/mode';
 import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
+import { useLocalMusicStore } from '../src/store/localMusic';
+import { useOfflinePlaylistsStore } from '../src/store/offlinePlaylists';
 import { useRecentSearchesStore } from '../src/store/recentSearches';
 import { navigationRef } from '../src/data/accountGate';
 import * as NetInfo from '@react-native-community/netinfo';
@@ -46,6 +48,8 @@ beforeEach(() => {
   });
   useDownloadsStore.setState({ items: {} });
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
+  useLocalMusicStore.setState({ songs: [], hidden: [] });
+  useOfflinePlaylistsStore.setState({ playlists: [], tracks: {} });
   useRecentSearchesStore.setState({ searches: [] });
   // Online and reachable unless a test says otherwise.
   (NetInfo.useNetInfo as jest.Mock).mockReturnValue({ isConnected: true, isInternetReachable: true });
@@ -560,6 +564,69 @@ describe('Search', () => {
     // Plain text resumes normal search
     fireEvent.changeText(getByLabelText('Search all music'), 'daft punk');
     await waitFor(() => expect(searchSpy).toHaveBeenCalledWith('daft punk', 'all', undefined));
+  });
+
+  it('MOB-SEARCH-017 offline, the Playlists chip filters library playlists and opens playlist detail on press', async () => {
+    useModeStore.setState({ mode: 'offline' });
+    const pl1 = makePlaylist({ id: 'sonare:p1', name: 'Roadtrip Rock' });
+    const pl2 = makePlaylist({ id: 'sonare:p2', name: 'Chill Beats' });
+    useOfflinePlaylistsStore.setState({ playlists: [pl1, pl2] });
+
+    const { getByLabelText, findByLabelText, queryByLabelText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search music on this device'), 'road');
+
+    fireEvent.press(getByLabelText('Playlists'));
+    expect(await findByLabelText('Playlist Roadtrip Rock')).toBeTruthy();
+    expect(queryByLabelText('Playlist Chill Beats')).toBeNull();
+
+    fireEvent.press(getByLabelText('Playlist Roadtrip Rock'));
+    expect(nav.navigate).toHaveBeenCalledWith('Playlist', { id: 'sonare:p1' });
+  });
+
+  it('MOB-SEARCH-018 offline, the Folders chip filters local folders and opens TrackList folder view on press', async () => {
+    useModeStore.setState({ mode: 'offline' });
+    useLocalMusicStore.setState({
+      songs: [
+        {
+          mediaId: '1',
+          uri: 'content://1',
+          title: 'Track A',
+          artist: 'Artist',
+          album: null,
+          durationMs: 120000,
+          folder: 'Downloads',
+          fileName: 'a.mp3',
+          size: 1000,
+          modifiedAt: 1,
+        },
+        {
+          mediaId: '2',
+          uri: 'content://2',
+          title: 'Track B',
+          artist: 'Artist',
+          album: null,
+          durationMs: 120000,
+          folder: 'Podcasts',
+          fileName: 'b.mp3',
+          size: 1000,
+          modifiedAt: 1,
+        },
+      ],
+    });
+
+    const { getByLabelText, findByLabelText, queryByLabelText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search music on this device'), 'down');
+
+    fireEvent.press(getByLabelText('Folders'));
+    expect(await findByLabelText('Folder Downloads')).toBeTruthy();
+    expect(queryByLabelText('Folder Podcasts')).toBeNull();
+
+    fireEvent.press(getByLabelText('Folder Downloads'));
+    expect(nav.navigate).toHaveBeenCalledWith('TrackList', {
+      kind: 'folder',
+      title: 'Downloads',
+      folder: 'Downloads',
+    });
   });
 });
 
