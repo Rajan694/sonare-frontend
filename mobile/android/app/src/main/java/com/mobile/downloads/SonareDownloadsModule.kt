@@ -3,12 +3,14 @@ package com.mobile.downloads
 import android.app.Activity
 import android.content.ContentValues
 import android.content.Intent
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.SystemClock
 import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.util.Log
 import android.webkit.MimeTypeMap
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
@@ -110,6 +112,7 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
         title = options.optString("title"),
         artist = options.optString("artist"),
         album = options.optString("album"),
+        artworkUrl = options.optString("artworkUrl"),
         treeUri = options.optString("treeUri"),
       )
     val knownTotal = if (options.hasKey("totalBytes")) options.getDouble("totalBytes").toLong() else 0L
@@ -160,6 +163,7 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
     val title: String?,
     val artist: String?,
     val album: String?,
+    val artworkUrl: String?,
     val treeUri: String?,
   )
 
@@ -282,67 +286,177 @@ class SonareDownloadsModule(private val context: ReactApplicationContext) :
 
   private data class Saved(val uri: String, val name: String, val size: Long)
 
-  private fun moveIntoPlace(part: File, target: Target): Saved {
-    // Android's MIME table has no audio/webm - MediaStore rejects it ("Unsupported MIME type")
-    // and scans a .webm file as video - so Opus in WebM is saved as Matroska audio (.mka),
-    // which WebM is a subset of. Players that read .webm read .mka.
-    val mimeType = if (target.mimeType == "audio/webm") "audio/x-matroska" else target.mimeType
-    // Use Android's extension for the mime type, or MediaStore / SAF would append their own.
-    val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) ?: target.extension
-    val displayName = "${target.baseName}.$ext"
-    val size = part.length()
-    val resolver = context.contentResolver
+  private data class ProcessedResult(
+    val file: File,
+    val mimeType: String,
+    val extension: String,
+    val isTemp: Boolean
+  )
 
-    if (!target.treeUri.isNullOrEmpty()) {
-      val tree = Uri.parse(target.treeUri)
-      val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
-      // The provider picks a free name ("Song (1).webm") when this one is taken.
-      val doc =
-        DocumentsContract.createDocument(resolver, parent, mimeType, displayName)
-          ?: throw IOException("Could not create the file in the chosen folder")
+  private fun fetchCover(artworkUrl: String?): Cover? {
+    if (artworkUrl.isNullOrEmpty()) return null
+    var currentUrl = artworkUrl
+    var redirects = 0
+    while (redirects < 5) {
+      var conn: HttpURLConnection? = null
       try {
-        copy(part, doc)
-      } catch (e: Exception) {
-        runCatching { DocumentsContract.deleteDocument(resolver, doc) }
-        throw e
-      }
-      part.delete()
-      return Saved(doc.toString(), displayNameOf(doc) ?: displayName, size)
-    }
-
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      val values =
-        ContentValues().apply {
-          put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
-          put(MediaStore.Audio.Media.MIME_TYPE, mimeType)
-          put(MediaStore.Audio.Media.RELATIVE_PATH, DEFAULT_RELATIVE_PATH)
-          target.title?.let { put(MediaStore.Audio.Media.TITLE, it) }
-          target.artist?.let { put(MediaStore.Audio.Media.ARTIST, it) }
-          target.album?.let { put(MediaStore.Audio.Media.ALBUM, it) }
-          put(MediaStore.Audio.Media.IS_PENDING, 1)
+        val url = URL(currentUrl)
+        conn = (url.openConnection() as HttpURLConnection).apply {
+          instanceFollowRedirects = false
+          connectTimeout = 10_000
+          readTimeout = 10_000
+          setRequestProperty("User-Agent", "Sonare/Mobile")
         }
-      val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-      val uri = resolver.insert(collection, values) ?: throw IOException("Could not add the file to $DEFAULT_RELATIVE_PATH")
-      try {
-        copy(part, uri)
-        resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+        val code = conn.responseCode
+        if (code in 300..399) {
+          val location = conn.getHeaderField("Location") ?: return null
+          currentUrl = URL(url, location).toString()
+          redirects++
+          continue
+        }
+        if (code != 200) return null
+        val bytes = conn.inputStream.use { it.readBytes() }
+        if (bytes.isEmpty()) return null
+        return CoverArt.imageInfo(bytes)
       } catch (e: Exception) {
-        runCatching { resolver.delete(uri, null, null) }
-        throw e
+        Log.w(NAME, "Failed to fetch cover from $artworkUrl: ${e.message}")
+        return null
+      } finally {
+        conn?.disconnect()
       }
-      part.delete()
-      return Saved(uri.toString(), displayNameOf(uri) ?: displayName, size)
+    }
+    return null
+  }
+
+  private fun postProcess(part: File, target: Target): ProcessedResult {
+    if (target.mimeType == "audio/webm") {
+      val tempOgg = File(part.parentFile, "${part.name}.opus.tmp")
+      try {
+        val cover = fetchCover(target.artworkUrl)
+        val picBlock = cover?.let { OggOpusWriter.buildPictureBlock(it.data, it.mime, it.width, it.height) }
+        OggOpusWriter.remuxWebm(part, tempOgg, target.title, target.artist, target.album, picBlock)
+        return ProcessedResult(file = tempOgg, mimeType = "audio/ogg", extension = "opus", isTemp = true)
+      } catch (e: Exception) {
+        Log.w(NAME, "Failed to remux Opus in WebM, falling back to original part: ${e.message}")
+        tempOgg.delete()
+        val originalMime = "audio/x-matroska"
+        val originalExt = MimeTypeMap.getSingleton().getExtensionFromMimeType(originalMime) ?: "mka"
+        return ProcessedResult(file = part, mimeType = originalMime, extension = originalExt, isTemp = false)
+      }
     }
 
-    val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_MUSIC), "Sonare").apply { mkdirs() }
-    var file = File(dir, displayName)
-    var n = 2
-    while (file.exists()) file = File(dir, "${target.baseName} (${n++}).$ext")
-    if (!part.renameTo(file)) {
-      copy(part, Uri.fromFile(file))
-      part.delete()
+    if (target.mimeType == "audio/mp4") {
+      val tempMp4 = File(part.parentFile, "${part.name}.m4a.tmp")
+      try {
+        val cover = fetchCover(target.artworkUrl)
+        val tagged = Mp4Tagger.tagFile(
+          inputFile = part,
+          outputFile = tempMp4,
+          title = target.title,
+          artist = target.artist,
+          album = target.album,
+          coverBytes = cover?.data,
+          coverMime = cover?.mime ?: "image/jpeg"
+        )
+        if (tagged) {
+          val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(target.mimeType) ?: target.extension
+          return ProcessedResult(file = tempMp4, mimeType = target.mimeType, extension = ext, isTemp = true)
+        } else {
+          throw IOException("Mp4Tagger returned false")
+        }
+      } catch (e: Exception) {
+        Log.w(NAME, "Failed to tag MP4, falling back to original part: ${e.message}")
+        tempMp4.delete()
+        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(target.mimeType) ?: target.extension
+        return ProcessedResult(file = part, mimeType = target.mimeType, extension = ext, isTemp = false)
+      }
     }
-    return Saved(Uri.fromFile(file).toString(), file.name, file.length())
+
+    val mimeType = if (target.mimeType == "audio/webm") "audio/x-matroska" else target.mimeType
+    val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType) ?: target.extension
+    return ProcessedResult(file = part, mimeType = mimeType, extension = ext, isTemp = false)
+  }
+
+  private fun moveIntoPlace(part: File, target: Target): Saved {
+    val processed = postProcess(part, target)
+    val fileToSave = processed.file
+    try {
+      val mimeType = processed.mimeType
+      val ext = processed.extension
+      var displayName = "${target.baseName}.$ext"
+      val size = fileToSave.length()
+      val resolver = context.contentResolver
+
+      if (!target.treeUri.isNullOrEmpty()) {
+        val tree = Uri.parse(target.treeUri)
+        val parent = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
+        var doc = DocumentsContract.createDocument(resolver, parent, mimeType, displayName)
+        if (doc == null && ext == "opus") {
+          displayName = "${target.baseName}.ogg"
+          doc = DocumentsContract.createDocument(resolver, parent, mimeType, displayName)
+        }
+        if (doc == null) throw IOException("Could not create the file in the chosen folder")
+        try {
+          copy(fileToSave, doc)
+        } catch (e: Exception) {
+          runCatching { DocumentsContract.deleteDocument(resolver, doc) }
+          throw e
+        }
+        part.delete()
+        return Saved(doc.toString(), displayNameOf(doc) ?: displayName, size)
+      }
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val values =
+          ContentValues().apply {
+            put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
+            put(MediaStore.Audio.Media.MIME_TYPE, mimeType)
+            put(MediaStore.Audio.Media.RELATIVE_PATH, DEFAULT_RELATIVE_PATH)
+            target.title?.let { put(MediaStore.Audio.Media.TITLE, it) }
+            target.artist?.let { put(MediaStore.Audio.Media.ARTIST, it) }
+            target.album?.let { put(MediaStore.Audio.Media.ALBUM, it) }
+            put(MediaStore.Audio.Media.IS_PENDING, 1)
+          }
+        val collection = MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        var uri = resolver.insert(collection, values)
+        if (uri == null && ext == "opus") {
+          displayName = "${target.baseName}.ogg"
+          values.put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
+          uri = resolver.insert(collection, values)
+        }
+        if (uri == null) throw IOException("Could not add the file to $DEFAULT_RELATIVE_PATH")
+        try {
+          copy(fileToSave, uri)
+          resolver.update(uri, ContentValues().apply { put(MediaStore.Audio.Media.IS_PENDING, 0) }, null, null)
+        } catch (e: Exception) {
+          runCatching { resolver.delete(uri, null, null) }
+          throw e
+        }
+        part.delete()
+        return Saved(uri.toString(), displayNameOf(uri) ?: displayName, size)
+      }
+
+      val dir = File(context.getExternalFilesDir(Environment.DIRECTORY_MUSIC), "Sonare").apply { mkdirs() }
+      var file = File(dir, displayName)
+      var n = 2
+      while (file.exists()) file = File(dir, "${target.baseName} (${n++}).$ext")
+      if (processed.isTemp) {
+        if (!fileToSave.renameTo(file)) {
+          copy(fileToSave, Uri.fromFile(file))
+        }
+        part.delete()
+      } else {
+        if (!part.renameTo(file)) {
+          copy(part, Uri.fromFile(file))
+          part.delete()
+        }
+      }
+      return Saved(Uri.fromFile(file).toString(), file.name, file.length())
+    } finally {
+      if (processed.isTemp) {
+        fileToSave.delete()
+      }
+    }
   }
 
   private fun copy(from: File, to: Uri) {
