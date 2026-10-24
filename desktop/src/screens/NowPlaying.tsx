@@ -7,6 +7,7 @@ import { usePlaybackPosition } from '../store/playbackPosition';
 import { useWaveform } from '../audio/waveform';
 import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
+import { useArtColor } from '../lib/useArtColor';
 import Waveform from '../components/music/Waveform';
 import TrackDownloadButton from '../components/music/TrackDownloadButton';
 import LyricsButton from '../components/music/LyricsButton';
@@ -50,6 +51,7 @@ const NowPlaying = () => {
 
   const { peaks, real: realPeaks } = useWaveform(currentTrack);
   const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack);
+  const artColor = useArtColor(currentTrack ? trackArtwork(currentTrack, 640) : null);
 
   if (!currentTrack) {
     return (
@@ -101,6 +103,11 @@ const NowPlaying = () => {
     }
   }
 
+  // The two main glows take the cover's colour when it has one; the fixed colours otherwise.
+  const glow = artColor
+    ? { backgroundColor: artColor, transition: 'background-color 600ms ease' }
+    : { transition: 'background-color 600ms ease' };
+
   return (
     <div className="@container relative w-full h-full min-h-full overflow-y-auto @3xl:overflow-hidden bg-bg text-t1 flex flex-col justify-between select-none">
       {/* Ambient glowing background */}
@@ -110,14 +117,14 @@ const NowPlaying = () => {
             isOffline ? 'bg-gold' : 'bg-[#2A5AA8]',
             'w-[400px] h-[400px] @3xl:w-[700px] @3xl:h-[700px] -top-[120px] @3xl:-top-[200px] -left-[100px] @3xl:-left-[180px]',
           )}
-          style={{ opacity: isOffline ? 0.18 : 0.45 }}
+          style={{ opacity: isOffline ? 0.18 : 0.45, ...glow }}
         />
         <i
           className={cn(
             isOffline ? 'bg-[#A86B25]' : 'bg-[#0F7A5E]',
             'w-[350px] h-[350px] @3xl:w-[560px] @3xl:h-[560px] top-[100px] @3xl:top-[140px] -right-[100px] @3xl:-right-[140px]',
           )}
-          style={{ opacity: isOffline ? 0.2 : 0.4 }}
+          style={{ opacity: isOffline ? 0.2 : 0.4, ...glow }}
         />
         <i
           className="bg-[#6B3FA0] w-[300px] h-[300px] @3xl:w-[460px] @3xl:h-[460px] bottom-[10px] @3xl:top-[440px] left-[50px] @3xl:left-[480px]"

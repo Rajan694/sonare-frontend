@@ -49,6 +49,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-QUEUE-028` | the last song asks once for similar songs, adds the new ones, and they play next                     |
 | `WEB-QUEUE-029` | nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device |
 | `WEB-QUEUE-030` | an answer that arrives after another song was picked is dropped                                      |
+| `WEB-QUEUE-031` | the "Added to queue" toast counts only songs that really went in, and says when none did             |
 
 ## `test/components/layout.test.tsx`
 
@@ -752,6 +753,14 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SPATIAL-013` | energy decay curve gives RT60 within ±20%               |
 | `WEB-SPATIAL-014` | early reflection taps land at the right sample offsets  |
 | `WEB-SPATIAL-015` | impulse response lengths follow Cafe < Concert < Hall   |
+
+## `test/unit/useArtColor.test.tsx`
+
+| ID             | Use case                                                                         |
+| :------------- | :------------------------------------------------------------------------------- |
+| `WEB-GLOW-001` | a red cover gives a red glow, sampled once per cover                             |
+| `WEB-GLOW-002` | no cover, a cover that fails to load and a grey cover all keep the fixed colours |
+| `WEB-GLOW-003` | Now Playing paints its two main glows in the cover colour                        |
 
 ## `test/unit/waveform.test.tsx`
 
