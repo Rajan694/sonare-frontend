@@ -717,3 +717,17 @@ navigation mock live in `test-utils/`.
 | `MOB-ACTRL-005` | pitch slider and reset button update pitch in store and UI                                            |
 | `MOB-ACTRL-006` | crossfade length slider hides when crossfade is off and displays when on                              |
 | `MOB-ACTRL-007` | fade on play & pause switch toggles fades in audio store                                              |
+
+## `__tests__/headset-remote.test.tsx`
+
+| ID                | Use case                                                                                                              |
+| :---------------- | :-------------------------------------------------------------------------------------------------------------------- |
+| `MOB-HEADSET-001` | devicePrefs sanitizes and persists headset button actions to AsyncStorage with default fallback                       |
+| `MOB-HEADSET-002` | PlayerSheets HeadsetSheet lets user select single/double/triple click action and calls SonarePlayer.setHeadsetActions |
+| `MOB-HEADSET-003` | Settings screen shows Headset buttons row with summary and opens the headset action sheet                             |
+| `MOB-HEADSET-004` | AudioEngine pushes headset button actions on start and when device preferences change                                 |
+| `MOB-HEADSET-005` | AudioEngine pushes liked state via SonarePlayer.setLiked when song changes or favourite toggles                       |
+| `MOB-HEADSET-006` | remote like command toggles favourite and displays snackbar in foreground                                             |
+| `MOB-HEADSET-007` | remote like command does not display snackbar when app is in background                                               |
+| `MOB-HEADSET-008` | remote like command gates guest users with requireAccount                                                             |
+| `MOB-HEADSET-009` | remote next and previous commands advance and rewind player queue                                                     |

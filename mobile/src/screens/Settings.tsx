@@ -18,7 +18,7 @@ import { useDownloadsStore } from '../store/downloads';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
 import { usePlayerSheets } from '../components/music/PlayerSheets';
-import { lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
+import { headsetActionLabel, lyricsScriptLabel, useDevicePrefsStore } from '../store/devicePrefs';
 import { useAppUpdateStore } from '../store/appUpdate';
 import { appVersion, isLocalBuild } from '../native/SonareBuild';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
@@ -79,6 +79,12 @@ export const SettingsScreen = () => {
   const lyricsScript = useDevicePrefsStore((st) => st.lyricsScript);
   const autoplaySimilar = useDevicePrefsStore((st) => st.autoplaySimilar);
   const setAutoplaySimilar = useDevicePrefsStore((st) => st.setAutoplaySimilar);
+  const headsetActions = useDevicePrefsStore((st) => st.headsetActions);
+  const headsetSummary = React.useMemo(
+    () =>
+      `${headsetActionLabel(headsetActions.single)} · ${headsetActionLabel(headsetActions.double)} · ${headsetActionLabel(headsetActions.triple)}`,
+    [headsetActions],
+  );
   const streamQuality = useSettingsStore((s) => s.streamQuality);
   const downloadQuality = useSettingsStore((s) => s.downloadQuality);
   const downloadFormat = useSettingsStore((s) => s.downloadFormat);
@@ -323,7 +329,7 @@ export const SettingsScreen = () => {
 
             <Pressable
               onPress={() => showSheet('lyrics')}
-              className="flex-row items-center gap-3.5 px-4 py-3.5"
+              className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln"
               accessibilityRole="button"
               accessibilityLabel="Lyrics language"
             >
@@ -334,6 +340,24 @@ export const SettingsScreen = () => {
                 <Text className="text-tm font-medium text-t1">Lyrics language</Text>
                 <Text className="text-bs text-t3 truncate" numberOfLines={1}>
                   {lyricsScriptLabel(lyricsScript)}
+                </Text>
+              </View>
+              <Icon name="chevron-right" size={16} color="#7E7E8C" />
+            </Pressable>
+
+            <Pressable
+              onPress={() => showSheet('headset')}
+              className="flex-row items-center gap-3.5 px-4 py-3.5"
+              accessibilityRole="button"
+              accessibilityLabel="Headset buttons"
+            >
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="headphones" size={18} color="#9A9AA8" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <Text className="text-tm font-medium text-t1">Headset buttons</Text>
+                <Text className="text-bs text-t3 truncate" numberOfLines={1}>
+                  {headsetSummary}
                 </Text>
               </View>
               <Icon name="chevron-right" size={16} color="#7E7E8C" />
