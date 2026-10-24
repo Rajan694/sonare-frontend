@@ -24,7 +24,7 @@ import { DOWNLOADS, detectOs, featuredDownload, latestDownloadUrl, releaseLabel 
  * way into the web app (/home). The desktop window opens straight on Home instead.
  */
 
-const TITLE = 'Sonare — music player for Android, Linux, Windows and the web';
+const TITLE = 'Sonare';
 const DESCRIPTION =
   'Sonare plays the YouTube Music catalogue with synced lyrics, offline downloads, an equalizer and your library on every device. Free for Android, Linux, Windows and the web.';
 

@@ -1,4 +1,3 @@
-import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, render, screen, within } from '@testing-library/react';
 import Landing from '../../src/screens/Landing';
@@ -182,7 +181,7 @@ describe('intro page', () => {
     visitAs(UA.mac);
     document.title = 'Sonare';
     const { unmount } = renderWithProviders(<Landing />);
-    expect(document.title).toBe('Sonare — music player for Android, Linux, Windows and the web');
+    expect(document.title).toBe('Sonare');
     expect(document.querySelector('meta[name="description"]')).toHaveAttribute(
       'content',
       expect.stringContaining('synced lyrics'),
