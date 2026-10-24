@@ -488,20 +488,19 @@ describe('Equalizer', () => {
 
   it('MOB-EQ-006 speed, crossfade and normalization change what the player gets', () => {
     const { getByText, getByLabelText } = render(<EqualizerScreen />);
-    expect(selected(getByText('1.0×'))).toBe(true);
-    fireEvent.press(getByText('1.5×'));
+    adjust(getByLabelText('Playback speed'), 'increment', 10); // 1.0 -> 1.5
     fireEvent.press(getByLabelText('Crossfade'));
     fireEvent.press(getByLabelText('Volume normalization'));
     expect(useAudioStore.getState()).toMatchObject({ speed: 1.5, crossfade: true });
     // On by default (Rajan's defaults for both apps), so the press turns it off.
     expect(useSettingsStore.getState().normalization).toBe(false);
-    expect(selected(getByText('1.5×'))).toBe(true);
+    expect(getByLabelText('Playback speed').props.accessibilityValue).toEqual({ text: '1.5×' });
     // With crossfade on, gapless keeps albums seamless.
     expect(getByText('No crossfade between tracks of one album')).toBeTruthy();
   });
 
   it('MOB-EQ-007 switching the equalizer off freezes the effects but not speed or transitions', () => {
-    const { getByText, getByLabelText } = render(<EqualizerScreen />);
+    const { getByLabelText } = render(<EqualizerScreen />);
     fireEvent.press(getByLabelText('Equalizer enabled'));
     expect(useAudioStore.getState().enabled).toBe(false);
     for (const label of ['1k Hz band', 'Bass boost', 'Virtualizer']) {
@@ -512,7 +511,7 @@ describe('Equalizer', () => {
     // Normalization is one of the frozen effects: it stays at its default (on).
     fireEvent.press(getByLabelText('Volume normalization'));
     expect(useSettingsStore.getState().normalization).toBe(true);
-    fireEvent.press(getByText('1.25×'));
+    adjust(getByLabelText('Playback speed'), 'increment', 5); // 1.0 -> 1.25
     fireEvent.press(getByLabelText('Crossfade'));
     expect(useAudioStore.getState()).toMatchObject({ speed: 1.25, crossfade: true });
   });

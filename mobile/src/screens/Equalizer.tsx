@@ -10,14 +10,18 @@ import { Chip } from '../components/ui/Chip';
 import { Slider } from '../components/ui/Slider';
 import { useModeStore } from '../store/mode';
 import { CUSTOM_PRESET, EQ_PRESETS, useSettingsStore } from '../data/settings';
-import { EQ_LABELS, EQ_MAX_DB, SPEEDS, currentGains, useAudioStore } from '../store/audio';
+import { EQ_LABELS, EQ_MAX_DB, currentGains, useAudioStore } from '../store/audio';
 import { cn } from '../lib/cn';
 import Icon from '../components/ui/Icon';
 import { SpatialAudioSection } from '../components/spatial/SpatialAudioSection';
 
 const formatDb = (db: number) => (db > 0 ? `+${db}` : db < 0 ? `−${-db}` : '0');
-/** 0.75×, 1.0×, 1.25×, 1.5× */
-const formatSpeed = (s: number) => `${Number.isInteger(s) ? s.toFixed(1) : s}×`;
+/** 0.5×..2.0× */
+const formatSpeed = (s: number) => `${s.toFixed(2).replace(/\.?0+$/, '')}×`;
+/** -6..+6 semitones */
+const formatPitch = (p: number) => (p > 0 ? `+${p} st` : p < 0 ? `−${-p} st` : '0');
+/** 1–12 s, in half seconds */
+const formatCrossfade = (ms: number) => `${ms % 1000 ? (ms / 1000).toFixed(1) : ms / 1000} s`;
 
 /**
  * The Audio screen. Everything here reaches the native player (AudioEngine sends it): the
@@ -40,6 +44,9 @@ export const EqualizerScreen = () => {
   const virtualizer = useAudioStore((state) => state.virtualizer);
   const speed = useAudioStore((state) => state.speed);
   const crossfade = useAudioStore((state) => state.crossfade);
+  const crossfadeMs = useAudioStore((state) => state.crossfadeMs);
+  const pitch = useAudioStore((state) => state.pitch);
+  const fades = useAudioStore((state) => state.fades);
   // Re-render when the hand-made curve changes, then read the curve in effect.
   useAudioStore((state) => state.customGains);
   const gains = currentGains(preset);
@@ -171,35 +178,77 @@ export const EqualizerScreen = () => {
 
         {/* Playback: these work with the equalizer switched off too. */}
         <View className="bg-s1 border border-ln rounded-lg py-1.5 overflow-hidden">
-          <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
+          {/* Playback speed */}
+          <View className="flex-row items-center gap-3.5 px-4 py-3 border-b border-ln">
             <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
               <Icon name="speed" size={18} color="#7E7E8C" />
             </View>
             <View className="flex-1 gap-0.5 min-w-0">
-              <Text className="text-tm font-medium text-t1 truncate">Playback speed</Text>
-              <Text className="text-bs text-t3">Pitch preserved</Text>
+              <View className="flex-row items-center justify-between">
+                <Text className="text-tm font-medium text-t1">Playback speed</Text>
+                <Text className="text-mono-s font-mono text-t2">{formatSpeed(speed)}</Text>
+              </View>
+              <Slider
+                value={speed}
+                min={0.5}
+                max={2.0}
+                step={0.05}
+                onChange={(value) => update({ speed: value })}
+                variant={variant}
+                accessibilityLabel="Playback speed"
+                accessibilityValueText={formatSpeed(speed)}
+              />
             </View>
-            <View className="flex-row items-center gap-1.5">
-              {SPEEDS.map((s) => (
-                <Chip
-                  key={s}
-                  size="sm"
-                  label={formatSpeed(s)}
-                  active={speed === s}
-                  variant={variant}
-                  onPress={() => update({ speed: s })}
-                />
-              ))}
-            </View>
+            <IconButton
+              size={32}
+              variant="bordered"
+              icon={<Icon name="reset" size={14} color="#7E7E8C" />}
+              onPress={() => update({ speed: 1 })}
+              accessibilityLabel="Reset playback speed"
+              disabled={speed === 1}
+            />
           </View>
 
+          {/* Pitch */}
+          <View className="flex-row items-center gap-3.5 px-4 py-3 border-b border-ln">
+            <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+              <Icon name="tune" size={18} color="#7E7E8C" />
+            </View>
+            <View className="flex-1 gap-0.5 min-w-0">
+              <View className="flex-row items-center justify-between">
+                <Text className="text-tm font-medium text-t1">Pitch</Text>
+                <Text className="text-mono-s font-mono text-t2">{formatPitch(pitch)}</Text>
+              </View>
+              <Slider
+                value={pitch}
+                min={-6}
+                max={6}
+                step={0.5}
+                origin="center"
+                onChange={(value) => update({ pitch: value })}
+                variant={variant}
+                accessibilityLabel="Pitch"
+                accessibilityValueText={formatPitch(pitch)}
+              />
+            </View>
+            <IconButton
+              size={32}
+              variant="bordered"
+              icon={<Icon name="reset" size={14} color="#7E7E8C" />}
+              onPress={() => update({ pitch: 0 })}
+              accessibilityLabel="Reset pitch"
+              disabled={pitch === 0}
+            />
+          </View>
+
+          {/* Crossfade switch */}
           <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
             <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
               <Icon name="refresh" size={18} color="#7E7E8C" />
             </View>
             <View className="flex-1 gap-0.5">
               <Text className="text-tm font-medium text-t1">Crossfade</Text>
-              <Text className="text-bs text-t3">6 seconds between tracks</Text>
+              <Text className="text-bs text-t3">Fade between tracks</Text>
             </View>
             <Switch
               value={crossfade}
@@ -209,7 +258,33 @@ export const EqualizerScreen = () => {
             />
           </View>
 
-          <View className="flex-row items-center gap-3.5 px-4 py-3.5">
+          {/* Crossfade length slider (only when crossfade is on) */}
+          {crossfade && (
+            <View className="flex-row items-center gap-3.5 px-4 py-3 border-b border-ln bg-s2/30">
+              <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+                <Icon name="timer" size={18} color="#7E7E8C" />
+              </View>
+              <View className="flex-1 gap-0.5 min-w-0">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-tm font-medium text-t1">Crossfade length</Text>
+                  <Text className="text-mono-s font-mono text-t2">{formatCrossfade(crossfadeMs)}</Text>
+                </View>
+                <Slider
+                  value={crossfadeMs}
+                  min={1000}
+                  max={12000}
+                  step={500}
+                  onChange={(value) => update({ crossfadeMs: value })}
+                  variant={variant}
+                  accessibilityLabel="Crossfade length"
+                  accessibilityValueText={formatCrossfade(crossfadeMs)}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Gapless playback switch */}
+          <View className="flex-row items-center gap-3.5 px-4 py-3.5 border-b border-ln">
             <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
               <Icon name="music" size={18} color="#7E7E8C" />
             </View>
@@ -223,6 +298,23 @@ export const EqualizerScreen = () => {
               value={gapless}
               onValueChange={(value) => updateSettings({ gapless: value })}
               accessibilityLabel="Gapless playback"
+              variant={variant}
+            />
+          </View>
+
+          {/* Fade on play & pause */}
+          <View className="flex-row items-center gap-3.5 px-4 py-3.5">
+            <View className="w-9 h-9 items-center justify-center rounded-sm bg-s3">
+              <Icon name="volume" size={18} color="#7E7E8C" />
+            </View>
+            <View className="flex-1 gap-0.5">
+              <Text className="text-tm font-medium text-t1">Fade on play & pause</Text>
+              <Text className="text-bs text-t3">Smooth volume ramps on play, pause and skip</Text>
+            </View>
+            <Switch
+              value={fades}
+              onValueChange={(value) => update({ fades: value })}
+              accessibilityLabel="Fade on play & pause"
               variant={variant}
             />
           </View>

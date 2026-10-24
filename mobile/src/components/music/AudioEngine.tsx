@@ -7,7 +7,7 @@ import { queuePlay } from '../../data/sync';
 import { API_QUALITY, useSettingsStore } from '../../data/settings';
 import type { StreamInfo, Track } from '../../data/types';
 import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
-import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
+import { currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
 import { localUriFor } from '../../store/downloads';
 import { deviceUriFor } from '../../store/localMusic';
@@ -175,7 +175,8 @@ const prepareNext = async () => {
   prefetchNext();
   const next = usePlayerStore.getState().upcomingTrack();
   const wanted =
-    (useSettingsStore.getState().gapless || useAudioStore.getState().crossfade) &&
+    (useSettingsStore.getState().gapless ||
+      (useAudioStore.getState().crossfade && useAudioStore.getState().crossfadeMs > 0)) &&
     (next?.source === 'server' || (!!next && !!onPhone(next.id))) &&
     loadedId !== null &&
     loadedId === current()?.id;
@@ -207,7 +208,12 @@ const pushAudioSettings = () => {
     normalization: settings.normalization,
   });
   SonarePlayer.setSpeed(audio.speed);
-  SonarePlayer.setTransitions({ crossfadeMs: audio.crossfade ? CROSSFADE_MS : 0, gapless: settings.gapless });
+  SonarePlayer.setPitch(audio.pitch);
+  SonarePlayer.setFades(audio.fades);
+  SonarePlayer.setTransitions({
+    crossfadeMs: audio.crossfade ? audio.crossfadeMs : 0,
+    gapless: settings.gapless,
+  });
 };
 
 /** Sends the spatial audio settings to the native player. */
@@ -400,7 +406,7 @@ const startAudio = () => {
   useAudioStore.getState().hydrate();
   useAudioStore.subscribe((state, prev) => {
     pushAudioSettings();
-    if (state.crossfade !== prev.crossfade) prepareNext();
+    if (state.crossfade !== prev.crossfade || state.crossfadeMs !== prev.crossfadeMs) prepareNext();
   });
   pushSpatialSettings();
   useSpatialStore.getState().hydrate();

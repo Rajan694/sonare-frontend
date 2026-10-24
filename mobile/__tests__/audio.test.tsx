@@ -52,12 +52,26 @@ describe('AudioEngine and the native player', () => {
       virtualizer: 0,
       normalization: false,
     });
-    act(() => useAudioStore.getState().update({ bassBoost: 40, virtualizer: 20, speed: 1.25, crossfade: true }));
+    act(() =>
+      useAudioStore
+        .getState()
+        .update({
+          bassBoost: 40,
+          virtualizer: 20,
+          speed: 1.25,
+          pitch: 2,
+          fades: true,
+          crossfade: true,
+          crossfadeMs: 8000,
+        }),
+    );
     expect(native.setAudioEffects).toHaveBeenLastCalledWith(
       expect.objectContaining({ bassBoost: 40, virtualizer: 20 }),
     );
     expect(native.setSpeed).toHaveBeenLastCalledWith(1.25);
-    expect(native.setTransitions).toHaveBeenLastCalledWith({ crossfadeMs: 6000, gapless: true });
+    expect(native.setPitch).toHaveBeenLastCalledWith(2);
+    expect(native.setFades).toHaveBeenLastCalledWith(true);
+    expect(native.setTransitions).toHaveBeenLastCalledWith({ crossfadeMs: 8000, gapless: true });
     act(() => useAudioStore.getState().setBand(0, 9));
     expect(native.setAudioEffects).toHaveBeenLastCalledWith(
       expect.objectContaining({ gains: [9, ...EQ_PRESET_GAINS.Bass.slice(1)] }),

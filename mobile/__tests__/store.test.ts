@@ -614,8 +614,14 @@ describe('Store Layer', () => {
       );
       await useAudioStore.getState().hydrate();
       const state = useAudioStore.getState();
-      expect(state).toMatchObject({ enabled: false, bassBoost: 100, virtualizer: 30, crossfade: true });
-      expect(state.speed).toBe(1); // 3× is not offered
+      expect(state).toMatchObject({
+        enabled: false,
+        bassBoost: 100,
+        virtualizer: 30,
+        crossfade: true,
+        crossfadeMs: 6000,
+      });
+      expect(state.speed).toBe(2); // clamped to 2
       expect(state.customGains).toHaveLength(8);
     });
   });

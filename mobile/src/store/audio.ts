@@ -13,8 +13,7 @@ import { CUSTOM_PRESET, EQ_PRESET_GAINS, useSettingsStore } from '../data/settin
 export const EQ_BANDS = [32, 64, 150, 400, 1000, 2400, 6000, 14000] as const;
 export const EQ_LABELS = ['32', '64', '150', '400', '1k', '2.4k', '6k', '14k'] as const;
 export const EQ_MAX_DB = 12;
-export const SPEEDS = [0.75, 1, 1.25, 1.5] as const;
-export const CROSSFADE_MS = 6000;
+export const DEFAULT_CROSSFADE_MS = 6000;
 
 const STORAGE_KEY = 'sonare.audio';
 
@@ -27,8 +26,16 @@ interface AudioState {
   bassBoost: number;
   /** 0..100. */
   virtualizer: number;
+  /** 0.5..2.0 in steps of 0.05. */
   speed: number;
+  /** -6..6 semitones in steps of 0.5; 0 is normal. */
+  pitch: number;
+  /** Volume fades on play, pause and track advance. */
+  fades: boolean;
+  /** Whether crossfading between tracks is enabled. */
   crossfade: boolean;
+  /** Crossfade duration in ms: 1000..12000 in steps of 500 (default 6000). */
+  crossfadeMs: number;
 }
 
 interface AudioStore extends AudioState {
@@ -44,30 +51,61 @@ const DEFAULTS: AudioState = {
   bassBoost: 0,
   virtualizer: 0,
   speed: 1,
+  pitch: 0,
+  fades: false,
   crossfade: false,
+  crossfadeMs: DEFAULT_CROSSFADE_MS,
 };
 
 const clampDb = (db: number) => Math.max(-EQ_MAX_DB, Math.min(EQ_MAX_DB, Math.round(db * 2) / 2));
 const clampPercent = (n: number) => Math.max(0, Math.min(100, Math.round(n)));
+const clampSpeed = (s: number) => {
+  const clamped = Math.max(0.5, Math.min(2, s));
+  return Math.round(clamped * 20) / 20;
+};
+const clampPitch = (p: number) => {
+  const clamped = Math.max(-6, Math.min(6, p));
+  return Math.round(clamped * 2) / 2;
+};
+const clampCrossfadeMs = (ms: number) => {
+  const clamped = Math.max(1000, Math.min(12000, ms));
+  return Math.round(clamped / 500) * 500;
+};
 
-const sanitize = (s: Record<string, unknown>): Partial<AudioState> => {
-  return {
+export const sanitize = (s: Record<string, unknown>): Partial<AudioState> => {
+  const res: Partial<AudioState> = {
     ...(typeof s.enabled === 'boolean' && { enabled: s.enabled }),
     ...(Array.isArray(s.customGains) &&
       s.customGains.length === EQ_BANDS.length &&
       s.customGains.every((g) => typeof g === 'number') && { customGains: s.customGains.map(clampDb) }),
-    ...(typeof s.bassBoost === 'number' && { bassBoost: clampPercent(s.bassBoost) }),
-    ...(typeof s.virtualizer === 'number' && { virtualizer: clampPercent(s.virtualizer) }),
-    ...(typeof s.speed === 'number' && (SPEEDS as readonly number[]).includes(s.speed) && { speed: s.speed }),
+    ...(typeof s.bassBoost === 'number' && !Number.isNaN(s.bassBoost) && { bassBoost: clampPercent(s.bassBoost) }),
+    ...(typeof s.virtualizer === 'number' &&
+      !Number.isNaN(s.virtualizer) && { virtualizer: clampPercent(s.virtualizer) }),
+    ...(typeof s.speed === 'number' && !Number.isNaN(s.speed) && { speed: clampSpeed(s.speed) }),
+    ...(typeof s.pitch === 'number' && !Number.isNaN(s.pitch) && { pitch: clampPitch(s.pitch) }),
+    ...(typeof s.fades === 'boolean' && { fades: s.fades }),
     ...(typeof s.crossfade === 'boolean' && { crossfade: s.crossfade }),
   };
+
+  if (typeof s.crossfadeMs === 'number' && !Number.isNaN(s.crossfadeMs)) {
+    if (s.crossfadeMs === 0) {
+      res.crossfade = false;
+    } else {
+      res.crossfadeMs = clampCrossfadeMs(s.crossfadeMs);
+      if (s.crossfade === undefined) res.crossfade = true;
+    }
+  } else if (s.crossfade === true && s.crossfadeMs === undefined) {
+    res.crossfadeMs = DEFAULT_CROSSFADE_MS;
+  }
+
+  return res;
 };
 
 const save = (s: AudioState) => {
-  const { enabled, customGains, bassBoost, virtualizer, speed, crossfade } = s;
+  const { enabled, customGains, bassBoost, virtualizer, speed, pitch, fades, crossfade, crossfadeMs } = s;
   AsyncStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ enabled, customGains, bassBoost, virtualizer, speed, crossfade }),
+    JSON.stringify({ enabled, customGains, bassBoost, virtualizer, speed, pitch, fades, crossfade, crossfadeMs }),
   ).catch(() => {});
 };
 

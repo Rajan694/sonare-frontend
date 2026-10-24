@@ -705,3 +705,15 @@ navigation mock live in `test-utils/`.
 | `MOB-TRKL-007` | does not display "N plays" in Liked Songs screen                          |
 | `MOB-TRKL-008` | prompts guest users to sign in                                            |
 | `MOB-TRKL-009` | favourites shelf "See all" navigates to TrackList with kind: liked        |
+
+## `__tests__/audio-controls.test.tsx`
+
+| ID              | Use case                                                                                              |
+| :-------------- | :---------------------------------------------------------------------------------------------------- |
+| `MOB-ACTRL-001` | sanitizes speed within 0.5..2 in steps of 0.05, pitch within -6..6 in steps of 0.5, and fades boolean |
+| `MOB-ACTRL-002` | migrates legacy crossfade: true to crossfadeMs 6000 and sanitizes crossfadeMs clamp/step              |
+| `MOB-ACTRL-003` | SonarePlayer native methods setPitch, setFades and setTransitions pass arguments                      |
+| `MOB-ACTRL-004` | speed slider and reset button update speed in store and UI                                            |
+| `MOB-ACTRL-005` | pitch slider and reset button update pitch in store and UI                                            |
+| `MOB-ACTRL-006` | crossfade length slider hides when crossfade is off and displays when on                              |
+| `MOB-ACTRL-007` | fade on play & pause switch toggles fades in audio store                                              |
