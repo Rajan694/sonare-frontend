@@ -150,7 +150,7 @@ export const showInMpris = (track: Track | null, isPlaying: boolean): void => {
       title: track.title,
       artist: track.artist,
       album: track.album ?? '',
-      artUrl: art && /^https?:\/\//.test(art) ? art : '',
+      artUrl: art && /^(https?|file):\/\//.test(art) ? art : '',
       lengthMs: track.durationMs ?? 0,
     },
   });

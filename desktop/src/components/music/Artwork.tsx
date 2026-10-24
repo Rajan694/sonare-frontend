@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { cn } from '../../lib/cn';
 import { API_BASE } from '../../api/auth';
 import { isInAppYoutubeAllowed } from '../../youtube/inApp';
+import { localArtUrl } from '../../storage/local';
 import { sizedImageUrl, trackThumbUrl } from '../../../../shared/catalog/images';
 
 type ArtVariant = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10' | 'a11' | 'a12';
@@ -39,6 +40,7 @@ export const trackArtwork = (
 
 export const resolveArtworkUrl = (url?: string | null, targetSize?: number): string | undefined => {
   if (!url) return undefined;
+  if (url.startsWith('file://')) return url;
   let resolved = url;
   if (!url.startsWith('http://') && !url.startsWith('https://')) {
     const origin = API_BASE.replace(/\/api\/v1\/?$/, '');
@@ -64,7 +66,19 @@ const Artwork = ({ src, alt = '', variant = 'a1', size, radius = 'md', rings = f
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
 
-  const resolvedSrc = resolveArtworkUrl(src, size);
+  // A local file's own cover (desktop window) is read from disk into a blob URL first.
+  const fileSrc = src?.startsWith('file://') ? src : undefined;
+  const [blobSrc, setBlobSrc] = useState<{ file: string; url?: string }>();
+  useEffect(() => {
+    if (!fileSrc) return;
+    let live = true;
+    void localArtUrl(fileSrc).then((url) => live && setBlobSrc({ file: fileSrc, url }));
+    return () => {
+      live = false;
+    };
+  }, [fileSrc]);
+
+  const resolvedSrc = fileSrc ? (blobSrc?.file === fileSrc ? blobSrc.url : undefined) : resolveArtworkUrl(src, size);
 
   return (
     <span

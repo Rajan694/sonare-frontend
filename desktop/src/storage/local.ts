@@ -212,6 +212,76 @@ const rangeReader = (path: string, fileSize: number) => {
   };
 };
 
+let artDirPromise: Promise<string> | null = null;
+
+const getArtDir = (): Promise<string> => {
+  artDirPromise ??= (async () => {
+    const base = `${(await os.getPath('data')).replace(/[/\\]+$/, '')}/sonare`;
+    for (const dir of [base, `${base}/art`]) {
+      await filesystem.createDirectory(dir).catch(() => {});
+    }
+    return `${base}/art`;
+  })();
+  return artDirPromise;
+};
+
+const hashPicture = async (data: Uint8Array): Promise<string> => {
+  const digest = await crypto.subtle.digest('SHA-256', data as unknown as BufferSource);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+const saveCoverArt = async (picture: { mime: string; data: Uint8Array }): Promise<string | undefined> => {
+  try {
+    const artDir = await getArtDir();
+    const hash = await hashPicture(picture.data);
+    const ext =
+      picture.mime === 'image/png'
+        ? 'png'
+        : picture.mime === 'image/webp'
+          ? 'webp'
+          : picture.mime === 'image/gif'
+            ? 'gif'
+            : 'jpg';
+    const filePath = `${artDir}/${hash}.${ext}`;
+    try {
+      await filesystem.getStats(filePath);
+    } catch {
+      const buffer = picture.data.buffer.slice(
+        picture.data.byteOffset,
+        picture.data.byteOffset + picture.data.byteLength,
+      ) as ArrayBuffer;
+      await filesystem.writeBinaryFile(filePath, buffer);
+    }
+    return filePath.startsWith('/') ? `file://${filePath}` : `file:///${filePath.replace(/\\/g, '/')}`;
+  } catch {
+    return undefined;
+  }
+};
+
+const artUrls = new Map<string, Promise<string | undefined>>();
+
+/**
+ * A cover a folder scan saved (a `file://` thumbnail) as a blob URL the window can show: the page
+ * can't load file:// urls itself. Read once per cover and kept for the session (covers are shared
+ * by a whole album, so there are few of them).
+ */
+export const localArtUrl = (fileUrl: string): Promise<string | undefined> => {
+  let url = artUrls.get(fileUrl);
+  if (!url) {
+    // file:///home/… on Linux, file:///C:/… on Windows.
+    const path = fileUrl.replace(/^file:\/\//, '').replace(/^\/([A-Za-z]:)/, '$1');
+    const mime = path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    url = filesystem
+      .readBinaryFile(path)
+      .then((data) => URL.createObjectURL(new Blob([data], { type: mime })))
+      .catch(() => undefined);
+    artUrls.set(fileUrl, url);
+  }
+  return url;
+};
+
 const indexFile = async (path: string, folderId: string, previous?: LocalEntry): Promise<LocalEntry | null> => {
   const stats = await filesystem.getStats(path);
   // A file Sonare downloaded is named `Artist - Title [videoId].ext`; the id in the name
@@ -225,6 +295,10 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
   }
   const tags = await readTags(path, stats.size, rangeReader(path, stats.size));
   const fromName = tagsFromFileName(path);
+  let thumbnail = previous?.thumbnail;
+  if (tags.picture) {
+    thumbnail = (await saveCoverArt(tags.picture)) ?? thumbnail;
+  }
   return {
     id: `local:${hash(path)}`,
     path,
@@ -241,7 +315,7 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
     bitrateKbps: tags.bitrateKbps,
     addedAt: previous?.addedAt ?? stats.createdAt ?? Date.now(),
     serverId: previous?.serverId ?? fromFileName ?? undefined,
-    thumbnail: previous?.thumbnail,
+    thumbnail,
   };
 };
 

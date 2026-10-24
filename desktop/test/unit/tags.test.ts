@@ -5,8 +5,11 @@ import {
   be32,
   cat,
   flac,
+  flacPictureBlock,
   id3Frame,
+  id3PicFrame,
   id3Tag,
+  id3v22PicFrame,
   latin1,
   le32,
   mp3Frame,
@@ -16,6 +19,7 @@ import {
   synchsafe,
   utf8,
   vorbisComments,
+  oggStream,
 } from '../helpers/audioFixtures';
 
 describe('file-name fallback', () => {
@@ -141,8 +145,7 @@ describe('older and newer tag layouts', () => {
     const idHeader = cat(latin1('\x01vorbis'), le32(0), [2], le32(44_100), new Array(16).fill(0));
     const comments = cat(latin1('\x03vorbis'), vorbisComments(['TITLE=Ogg Song', 'ARTIST=Ogg Band']));
     const granule = 44_100 * 90;
-    const lastPage = cat(latin1('OggS'), [0, 4], le32(granule), le32(0), new Array(12).fill(0));
-    const file = cat(latin1('OggS'), new Array(22).fill(0), idHeader, comments, lastPage);
+    const file = oggStream([idHeader, comments], granule);
     expect(await readTags('v.ogg', file.length, reader(file).read)).toEqual({
       codec: 'Vorbis',
       title: 'Ogg Song',
@@ -243,5 +246,63 @@ describe('unreadable input', () => {
     const truncated = full.slice(0, full.length - 5);
     const tags = await readTags('t.mp3', truncated.length, reader(truncated).read);
     expect(tags.title).toBe('Kept');
+  });
+
+  it('WEB-TAG-023 ID3v2.3/2.4 APIC: extracts cover image and prefers front cover (type 3)', async () => {
+    const fakeBackJpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3]);
+    const fakeFrontPng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 4, 5, 6]);
+    const backFrame = id3PicFrame('image/jpeg', 4, fakeBackJpeg);
+    const frontFrame = id3PicFrame('image/png', 3, fakeFrontPng);
+    const file = cat(id3Tag(id3Frame('TIT2', 'Cover Test'), backFrame, frontFrame), mp3Frame());
+    const tags = await readTags('cover.mp3', file.length, reader(file).read);
+    expect(tags.picture).toBeDefined();
+    expect(tags.picture?.mime).toBe('image/png');
+    expect(tags.picture?.data).toEqual(fakeFrontPng);
+  });
+
+  it('WEB-TAG-024 ID3v2.2 PIC: extracts picture data and format', async () => {
+    const fakeJpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 7, 8, 9]);
+    const picFrame = id3v22PicFrame('JPG', 3, fakeJpeg, 'Cover');
+    const textFrame = cat(latin1('TT2'), [0, 0, 4], [0], latin1('Old'));
+    const body = cat(textFrame, picFrame);
+    const file = cat(latin1('ID3'), [2, 0, 0], synchsafe(body.length), body, mp3Frame());
+    const tags = await readTags('v22_pic.mp3', file.length, reader(file).read);
+    expect(tags.picture).toBeDefined();
+    expect(tags.picture?.mime).toBe('image/jpeg');
+    expect(tags.picture?.data).toEqual(fakeJpeg);
+  });
+
+  it('WEB-TAG-025 FLAC: extracts picture from PICTURE block', async () => {
+    const fakePng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 10, 11, 12]);
+    const picBlock = flacPictureBlock(3, 'image/png', fakePng, 'Front');
+    const file = flac(44_100, 44_100 * 10, ['TITLE=Flac Art'], picBlock);
+    const tags = await readTags('art.flac', file.length, reader(file).read);
+    expect(tags.picture).toBeDefined();
+    expect(tags.picture?.mime).toBe('image/png');
+    expect(tags.picture?.data).toEqual(fakePng);
+  });
+
+  it('WEB-TAG-026 Ogg Vorbis/Opus: extracts picture from METADATA_BLOCK_PICTURE, also when it spans pages', async () => {
+    // 100 KB: the comment header runs over three pages, with page headers in between.
+    const fakeJpeg = Uint8Array.from({ length: 100_000 }, (_, i) => (i * 31) & 0xff);
+    const picBlock = flacPictureBlock(3, 'image/jpeg', fakeJpeg, 'Cover');
+    let binary = '';
+    for (let i = 0; i < picBlock.length; i++) binary += String.fromCharCode(picBlock[i]);
+    const b64 = btoa(binary);
+    const file = oggOpus(48_000 * 60, ['TITLE=Opus Art', `METADATA_BLOCK_PICTURE=${b64}`]);
+    const tags = await readTags('art.opus', file.length, reader(file).read);
+    expect(tags.picture).toBeDefined();
+    expect(tags.picture?.mime).toBe('image/jpeg');
+    expect(tags.picture?.data).toEqual(fakeJpeg);
+    expect(tags.title).toBe('Opus Art');
+  });
+
+  it('WEB-TAG-027 MP4: extracts covr image from ilst data atom', async () => {
+    const fakePng = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 16, 17, 18]);
+    const file = mp4(1000, 10_000, { '\xa9nam': 'MP4 Art' }, { data: fakePng, isPng: true });
+    const tags = await readTags('art.m4a', file.length, reader(file).read);
+    expect(tags.picture).toBeDefined();
+    expect(tags.picture?.mime).toBe('image/png');
+    expect(tags.picture?.data).toEqual(fakePng);
   });
 });

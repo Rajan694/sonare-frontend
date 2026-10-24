@@ -162,34 +162,38 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/local.test.ts`
 
-| ID        | Use case                                                                                     |
-| :-------- | :------------------------------------------------------------------------------------------- |
-| `DSK-001` | the Linux window has the local library, offline mode and native downloads, but no admin page |
-| `DSK-002` | adding a folder indexes its audio files recursively and ignores other files                  |
-| `DSK-003` | tags inside the file win over the file name, and site stamps are cleaned                     |
-| `DSK-004` | the same folder is not added twice                                                           |
-| `DSK-005` | without a path it asks with the folder picker (starting in Music); cancelling adds nothing   |
-| `DSK-006` | a rescan reports added and removed songs and does not re-read unchanged files                |
-| `DSK-007` | a file that cannot be read is skipped without failing the folder                             |
-| `DSK-008` | a folder that disappeared scans as empty                                                     |
-| `DSK-009` | excluding a folder hides its songs; including it brings them back                            |
-| `DSK-010` | removing a folder forgets its songs and their lyric timing, but leaves the files             |
-| `DSK-011` | the library is kept in Neutralino storage and restored at the next launch                    |
-| `DSK-012` | a corrupt stored library starts empty instead of crashing                                    |
-| `DSK-013` | "open folder" shows the file's folder in the file manager                                    |
-| `DSK-014` | reads a file's bytes with its type; an unknown id is an error                                |
-| `DSK-015` | the player's real duration is remembered for files the scan could not measure                |
-| `DSK-016` | server lists swap in this device's copy of a local song and drop ones it lacks               |
-| `DSK-017` | reads a sidecar .lrc next to the file, synced or plain                                       |
-| `DSK-018` | the timing fix the user sets applies to the sidecar lyrics                                   |
-| `DSK-019` | a finished download joins the library under "Sonare downloads" and replaces the stream       |
-| `DSK-020` | downloading the same song again keeps one copy; forgetting it unlinks the stream             |
-| `DSK-021` | rescanning downloads drops files deleted outside Sonare                                      |
-| `DSK-022` | downloads indexed by an older version are listed for the download manager to import          |
-| `DSK-023` | downloads go to ~/Music/Sonare until the user picks another folder, which is remembered      |
-| `DSK-024` | cancelling the folder picker keeps the current folder                                        |
-| `DSK-025` | a download is written to a hidden part file, then moved to a free name                       |
-| `DSK-091` | the Windows desktop window reports windows as its client                                     |
+| ID        | Use case                                                                                                      |
+| :-------- | :------------------------------------------------------------------------------------------------------------ |
+| `DSK-001` | the Linux window has the local library, offline mode and native downloads, but no admin page                  |
+| `DSK-002` | adding a folder indexes its audio files recursively and ignores other files                                   |
+| `DSK-003` | tags inside the file win over the file name, and site stamps are cleaned                                      |
+| `DSK-004` | the same folder is not added twice                                                                            |
+| `DSK-005` | without a path it asks with the folder picker (starting in Music); cancelling adds nothing                    |
+| `DSK-006` | a rescan reports added and removed songs and does not re-read unchanged files                                 |
+| `DSK-007` | a file that cannot be read is skipped without failing the folder                                              |
+| `DSK-008` | a folder that disappeared scans as empty                                                                      |
+| `DSK-009` | excluding a folder hides its songs; including it brings them back                                             |
+| `DSK-010` | removing a folder forgets its songs and their lyric timing, but leaves the files                              |
+| `DSK-011` | the library is kept in Neutralino storage and restored at the next launch                                     |
+| `DSK-012` | a corrupt stored library starts empty instead of crashing                                                     |
+| `DSK-013` | "open folder" shows the file's folder in the file manager                                                     |
+| `DSK-014` | reads a file's bytes with its type; an unknown id is an error                                                 |
+| `DSK-015` | the player's real duration is remembered for files the scan could not measure                                 |
+| `DSK-016` | server lists swap in this device's copy of a local song and drop ones it lacks                                |
+| `DSK-017` | reads a sidecar .lrc next to the file, synced or plain                                                        |
+| `DSK-018` | the timing fix the user sets applies to the sidecar lyrics                                                    |
+| `DSK-019` | a finished download joins the library under "Sonare downloads" and replaces the stream                        |
+| `DSK-020` | downloading the same song again keeps one copy; forgetting it unlinks the stream                              |
+| `DSK-021` | rescanning downloads drops files deleted outside Sonare                                                       |
+| `DSK-022` | downloads indexed by an older version are listed for the download manager to import                           |
+| `DSK-023` | downloads go to ~/Music/Sonare until the user picks another folder, which is remembered                       |
+| `DSK-024` | cancelling the folder picker keeps the current folder                                                         |
+| `DSK-025` | a download is written to a hidden part file, then moved to a free name                                        |
+| `DSK-091` | the Windows desktop window reports windows as its client                                                      |
+| `DSK-097` | embedded album art is extracted, cached by SHA-256 in app data, and deduplicated across tracks                |
+| `DSK-098` | rescanning retains existing cached artwork without re-reading files, and tracks without art keep placeholders |
+| `DSK-099` | local track with cached file:// artwork is preserved in MPRIS and resolveArtworkUrl                           |
+| `DSK-100` | a local cover shows through a blob URL read once from disk, and a missing one shows nothing                   |
 
 ## `test/desktop/offline.test.tsx`
 
@@ -928,30 +932,35 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/tags.test.ts`
 
-| ID            | Use case                                                                           |
-| :------------ | :--------------------------------------------------------------------------------- |
-| `WEB-TAG-001` | reads "Artist - Title" and uses the parent folder as the album                     |
-| `WEB-TAG-002` | removes download-site stamps, NULs and extra spaces                                |
-| `WEB-TAG-015` | strips ".info" download-site stamps completely                                     |
-| `WEB-TAG-003` | reads title, artist, album, year and genre from ID3v2.3 frames                     |
-| `WEB-TAG-004` | uses TLEN for the duration when present                                            |
-| `WEB-TAG-005` | works out a CBR duration from the bitrate and file size                            |
-| `WEB-TAG-006` | prefers the Xing frame count for VBR files                                         |
-| `WEB-TAG-007` | reads only the tag and the first frame, not the whole file                         |
-| `WEB-TAG-016` | ID3v2.4: synchsafe frame sizes, UTF-16BE text and TDRC dates                       |
-| `WEB-TAG-017` | ID3v2.2: three-letter frames with 3-byte sizes                                     |
-| `WEB-TAG-018` | an extended ID3 header is skipped before the frames                                |
-| `WEB-TAG-019` | MPEG-2 (22.05 kHz) files get a duration from their bitrate                         |
-| `WEB-TAG-020` | Ogg Vorbis: tags from the comment header, duration at the stream's own sample rate |
-| `WEB-TAG-021` | MP4 with a 64-bit atom size and a version-1 mvhd                                   |
-| `WEB-TAG-008` | FLAC: duration from STREAMINFO and tags from Vorbis comments                       |
-| `WEB-TAG-009` | Ogg Opus: tags from OpusTags and duration from the last granule at 48 kHz          |
-| `WEB-TAG-010` | MP4/M4A: finds moov after mdat, reads mvhd duration and ilst tags                  |
-| `WEB-TAG-011` | recognises the container by its bytes, not the extension                           |
-| `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                           |
-| `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing              |
-| `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                            |
-| `WEB-TAG-022` | a Sonare download without tags names its artist and title, not its id              |
+| ID            | Use case                                                                                |
+| :------------ | :-------------------------------------------------------------------------------------- |
+| `WEB-TAG-001` | reads "Artist - Title" and uses the parent folder as the album                          |
+| `WEB-TAG-002` | removes download-site stamps, NULs and extra spaces                                     |
+| `WEB-TAG-015` | strips ".info" download-site stamps completely                                          |
+| `WEB-TAG-003` | reads title, artist, album, year and genre from ID3v2.3 frames                          |
+| `WEB-TAG-004` | uses TLEN for the duration when present                                                 |
+| `WEB-TAG-005` | works out a CBR duration from the bitrate and file size                                 |
+| `WEB-TAG-006` | prefers the Xing frame count for VBR files                                              |
+| `WEB-TAG-007` | reads only the tag and the first frame, not the whole file                              |
+| `WEB-TAG-016` | ID3v2.4: synchsafe frame sizes, UTF-16BE text and TDRC dates                            |
+| `WEB-TAG-017` | ID3v2.2: three-letter frames with 3-byte sizes                                          |
+| `WEB-TAG-018` | an extended ID3 header is skipped before the frames                                     |
+| `WEB-TAG-019` | MPEG-2 (22.05 kHz) files get a duration from their bitrate                              |
+| `WEB-TAG-020` | Ogg Vorbis: tags from the comment header, duration at the stream's own sample rate      |
+| `WEB-TAG-021` | MP4 with a 64-bit atom size and a version-1 mvhd                                        |
+| `WEB-TAG-008` | FLAC: duration from STREAMINFO and tags from Vorbis comments                            |
+| `WEB-TAG-009` | Ogg Opus: tags from OpusTags and duration from the last granule at 48 kHz               |
+| `WEB-TAG-010` | MP4/M4A: finds moov after mdat, reads mvhd duration and ilst tags                       |
+| `WEB-TAG-011` | recognises the container by its bytes, not the extension                                |
+| `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                                |
+| `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing                   |
+| `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                                 |
+| `WEB-TAG-022` | a Sonare download without tags names its artist and title, not its id                   |
+| `WEB-TAG-023` | ID3v2.3/2.4 APIC: extracts cover image and prefers front cover (type 3)                 |
+| `WEB-TAG-024` | ID3v2.2 PIC: extracts picture data and format                                           |
+| `WEB-TAG-025` | FLAC: extracts picture from PICTURE block                                               |
+| `WEB-TAG-026` | Ogg Vorbis/Opus: extracts picture from METADATA_BLOCK_PICTURE, also when it spans pages |
+| `WEB-TAG-027` | MP4: extracts covr image from ilst data atom                                            |
 
 ## `test/components/dialogs-select.test.tsx`
 
