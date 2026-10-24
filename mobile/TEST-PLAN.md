@@ -749,11 +749,12 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/landscape.test.tsx`
 
-| ID             | Use case                                                                    |
-| :------------- | :-------------------------------------------------------------------------- |
-| `MOB-LAND-001` | useGrid keeps 2 album / 3 artist columns on phones and fits more sideways   |
-| `MOB-LAND-002` | the Songs grid gets 5 columns sideways while the list view stays one column |
-| `MOB-LAND-003` | the offline Albums grid follows the window width                            |
+| ID             | Use case                                                                        |
+| :------------- | :------------------------------------------------------------------------------ |
+| `MOB-LAND-001` | useGrid keeps 2 album / 3 artist columns on phones and fits more sideways       |
+| `MOB-LAND-002` | the Songs grid gets 5 columns sideways while the list view stays one column     |
+| `MOB-LAND-003` | the offline Albums grid follows the window width                                |
+| `MOB-LAND-006` | the grid leaves out the camera cutout the screen pads by, so no card is cut off |
 
 ## `__tests__/landscape-player.test.tsx`
 

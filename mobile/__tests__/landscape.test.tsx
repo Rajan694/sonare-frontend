@@ -1,6 +1,7 @@
 import React from 'react';
 import { FlatList, useWindowDimensions } from 'react-native';
 import { fireEvent, render, renderHook } from '@testing-library/react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGrid } from '../src/hooks/useGrid';
 import { LibraryScreen } from '../src/screens/Library';
 import { api } from '../src/data/api';
@@ -52,6 +53,20 @@ describe('phones turned sideways', () => {
     // The cells and the gaps between them fill the width inside the 24 px of padding.
     expect(albums.cell.width * 5 + 12 * 4).toBeCloseTo(844 - 24);
     expect(artists.cell.width * 7 + 8 * 6).toBeCloseTo(844 - 24);
+  });
+
+  it('MOB-LAND-006 the grid leaves out the camera cutout the screen pads by, so no card is cut off', () => {
+    // The shared inset mock: a 48 px cutout on the left of a phone turned sideways.
+    const insets = useSafeAreaInsets() as { left: number; right: number };
+    insets.left = 48;
+    try {
+      setWindow(844, 390);
+      const albums = renderHook(() => useGrid(150, 12)).result.current;
+      expect(albums.columns).toBe(4);
+      expect(albums.cell.width * 4 + 12 * 3).toBeCloseTo(844 - 48 - 24);
+    } finally {
+      insets.left = 0;
+    }
   });
 
   it('MOB-LAND-002 the Songs grid gets 5 columns sideways while the list view stays one column', async () => {
