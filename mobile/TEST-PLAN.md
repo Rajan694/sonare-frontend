@@ -754,3 +754,10 @@ navigation mock live in `test-utils/`.
 | `MOB-LAND-001` | useGrid keeps 2 album / 3 artist columns on phones and fits more sideways   |
 | `MOB-LAND-002` | the Songs grid gets 5 columns sideways while the list view stays one column |
 | `MOB-LAND-003` | the offline Albums grid follows the window width                            |
+
+## `__tests__/landscape-player.test.tsx`
+
+| ID             | Use case                                                                        |
+| :------------- | :------------------------------------------------------------------------------ |
+| `MOB-LAND-004` | Now Playing puts a smaller cover beside the controls when the phone is sideways |
+| `MOB-LAND-005` | a sheet is never taller than 90% of the window, also after turning the phone    |

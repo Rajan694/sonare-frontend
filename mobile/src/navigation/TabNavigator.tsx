@@ -76,6 +76,8 @@ export const TabNavigator = () => {
           tabBarStyle: {
             height: 64 + insets.bottom,
             paddingBottom: insets.bottom,
+            paddingLeft: insets.left,
+            paddingRight: insets.right,
             backgroundColor: '#060607',
             borderTopColor: '#1A1A1F',
             borderTopWidth: 1,

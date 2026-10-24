@@ -76,7 +76,10 @@ export const MiniPlayer = () => {
   return (
     <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
       <AnimatedViewComponent
-        style={[animatedStyle, { bottom: 64 + insets.bottom }]}
+        style={[
+          animatedStyle,
+          { bottom: 64 + insets.bottom, paddingLeft: 10 + insets.left, paddingRight: 10 + insets.right },
+        ]}
         className="absolute inset-x-0 h-[64px] bg-[#111114] flex-row items-center px-2.5 border-t border-ln2 z-50"
       >
         <View className="absolute -top-[1px] left-0 right-0 h-[2px] bg-ln2">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { KeyboardAvoidingView, ScrollView, StatusBar, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { cn } from '../../lib/cn';
 
 interface ScreenProps {
@@ -21,9 +22,12 @@ const KeyboardSafe = ({ children }: { children: React.ReactNode }) => (
 );
 
 export const Screen = ({ children, scrollable = true, className, contentContainerClassName }: ScreenProps) => {
+  // Sideways, the camera cutout is on the left or the right: keep content clear of it.
+  const { left, right } = useSafeAreaInsets();
+  const sides = { paddingLeft: left, paddingRight: right };
   if (scrollable) {
     return (
-      <View className="flex-1 bg-bg">
+      <View className="flex-1 bg-bg" style={sides}>
         {/* @ts-ignore */}
         <StatusBar barStyle="light-content" backgroundColor="#000000" />
         <KeyboardSafe>
@@ -40,7 +44,7 @@ export const Screen = ({ children, scrollable = true, className, contentContaine
   }
 
   return (
-    <View className="flex-1 bg-bg">
+    <View className="flex-1 bg-bg" style={sides}>
       {/* @ts-ignore */}
       <StatusBar barStyle="light-content" backgroundColor="#000000" />
       <KeyboardSafe>

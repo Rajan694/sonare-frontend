@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, ScrollView } from 'react-native';
+import { View, Pressable, ScrollView, useWindowDimensions } from 'react-native';
 import { Text } from './Text';
 import { Sheet } from './Sheet';
 import Icon, { type IconName } from './Icon';
@@ -42,6 +42,8 @@ export const OptionSheet = <T extends string | number>({
   footer,
 }: OptionSheetProps<T>) => {
   const accent = gold ? '#FFC24D' : '#00E28A';
+  // Sideways a phone is short: the list scrolls within the sheet.
+  const { height } = useWindowDimensions();
   return (
     <Sheet visible={visible} onClose={onClose}>
       <View className="px-5 pb-4 gap-3">
@@ -49,7 +51,7 @@ export const OptionSheet = <T extends string | number>({
           <Text className="text-h2 font-semibold text-t1">{title}</Text>
           {description && <Text className="text-bs text-t3">{description}</Text>}
         </View>
-        <ScrollView style={{ maxHeight: 380 }}>
+        <ScrollView style={{ maxHeight: Math.min(380, height * 0.6) }}>
           {options.map((o) => {
             const selected = o.value === value;
             return (
