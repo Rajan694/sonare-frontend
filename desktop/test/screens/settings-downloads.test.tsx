@@ -171,7 +171,7 @@ describe('settings', () => {
     const { user, location, w } = openSettings();
     await user.click(w.getByRole('button', { name: 'Downloads' }));
     expect(location()).toBe('/settings?section=downloads');
-    expect(w.getByRole('button', { name: 'Download format' })).toHaveTextContent('Opus (.webm)');
+    expect(w.getByRole('button', { name: 'Download format' })).toHaveTextContent('Opus (.opus)');
     expect(w.queryByText('Listening as a guest')).not.toBeInTheDocument();
   });
 

@@ -60,7 +60,7 @@ const DOWNLOAD_QUALITIES: Record<DownloadFormat, { id: AudioQuality; label: stri
 };
 
 const DOWNLOAD_FORMATS: { id: DownloadFormat; label: string }[] = [
-  { id: 'opus', label: 'Opus (.webm)' },
+  { id: 'opus', label: 'Opus (.opus)' },
   { id: 'm4a', label: 'AAC (.m4a)' },
 ];
 

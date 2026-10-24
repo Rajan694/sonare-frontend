@@ -628,7 +628,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | :----------- | :--------------------------------------------------------------------------------------------------- |
 | `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                                  |
 | `WEB-DL-002` | uses the quality and format from settings                                                            |
-| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm"         |
+| `WEB-DL-003` | fetches the file in 2 MB ranges; bytes that are not WebM Opus are saved as they are, as "Title.webm" |
 | `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                                   |
 | `WEB-DL-005` | with no size from the server, a short final range ends the download                                  |
 | `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes                           |
@@ -653,6 +653,38 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DL-025` | a download becomes a playable track with its metadata                                                |
 | `WEB-DL-026` | newly queued downloads wait for short AI titles when available, using short names in items and files |
 | `WEB-DL-027` | download enqueue falls back to original titles without waiting when AI is off, offline, or failing   |
+| `WEB-DL-028` | a finished WebM Opus download is saved as a tagged .opus with its cover                              |
+| `WEB-DL-029` | tags finished AAC download with metadata and cover in .m4a                                           |
+
+## `test/unit/oggOpus.test.ts`
+
+| ID            | Use case                                                                              |
+| :------------ | :------------------------------------------------------------------------------------ |
+| `WEB-OGG-001` | Ogg's CRC32 gives the reference check value                                           |
+| `WEB-OGG-002` | the FLAC picture block is a big-endian front cover with type, size and data           |
+| `WEB-OGG-003` | OpusTags holds the vendor and only the comments that are present                      |
+| `WEB-OGG-004` | a header packet spans pages with correct lacing, including lengths that divide by 255 |
+| `WEB-OGG-005` | the audio packets come out unchanged, on valid pages with growing granules            |
+| `WEB-OGG-006` | the tags survive a comment header that spans pages                                    |
+| `WEB-OGG-007` | anything that is not Opus in WebM gives null, so the file is kept as downloaded       |
+
+## `test/unit/mp4Cover.test.ts`
+
+| ID            | Use case                                                                                 |
+| :------------ | :--------------------------------------------------------------------------------------- |
+| `WEB-MP4-001` | injects metadata and cover art into MP4 moov atom                                        |
+| `WEB-MP4-002` | replaces existing udta/meta tags cleanly                                                 |
+| `WEB-MP4-003` | adjusts stco offsets when moov precedes mdat                                             |
+| `WEB-MP4-004` | returns null when moov atom is absent                                                    |
+| `WEB-MP4-005` | a fragmented file: an explicit base-data-offset and mfra moof offsets move with the data |
+| `WEB-MP4-006` | a PNG cover is written as covr data type 14, a JPEG as 13                                |
+
+## `test/unit/coverArt.test.ts`
+
+| ID              | Use case                                                      |
+| :-------------- | :------------------------------------------------------------ |
+| `WEB-COVER-001` | reads a JPEG size from its start-of-frame, past other markers |
+| `WEB-COVER-002` | reads a PNG size from IHDR and gives null for other images    |
 
 ## `test/unit/dsp.test.ts`
 
