@@ -29,6 +29,12 @@ interface SongRowProps {
   extraAction?: TrackMenuAction;
   /** Drawn at the right end of the row, after the duration and the more button. */
   trailing?: React.ReactNode;
+  /** Multi-select mode: whether this track is selected. */
+  selected?: boolean;
+  /** Multi-select mode toggle handler. When present, tap and long press toggle selection. */
+  onToggleSelect?: () => void;
+  /** When true, display play count ("N plays") in subtitle (for Most played). */
+  showPlayCount?: boolean;
 }
 
 export const SongRow = ({
@@ -41,6 +47,9 @@ export const SongRow = ({
   className,
   extraAction,
   trailing,
+  selected = false,
+  onToggleSelect,
+  showPlayCount = false,
 }: SongRowProps) => {
   const favourite = useLibraryStore((s) => !!s.favouriteIds[track.id]);
   // Only the active row cares, so the others never re-render on play/pause.
@@ -50,7 +59,11 @@ export const SongRow = ({
   const local = track.source === 'local' || onPhone;
   const accent = local ? '#FFC24D' : '#00E28A';
 
-  const subtitle = track.album ? `${track.artist} · ${track.album}` : track.artist;
+  const inSelectionMode = onToggleSelect !== undefined;
+  const baseSubtitle = track.album ? `${track.artist} · ${track.album}` : track.artist;
+  const playsText =
+    track.playCount !== undefined ? `${track.playCount} ${track.playCount === 1 ? 'play' : 'plays'}` : null;
+  const subtitle = showPlayCount && playsText ? `${baseSubtitle} · ${playsText}` : baseSubtitle;
 
   return (
     <Animated.View
@@ -61,18 +74,32 @@ export const SongRow = ({
       layout={Layout.springify().damping(20).reduceMotion(ReduceMotion.System)}
     >
       <Pressable
-        onPress={onPress}
-        onLongPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
-        accessibilityRole="button"
+        onPress={inSelectionMode ? onToggleSelect : onPress}
+        onLongPress={inSelectionMode ? onToggleSelect : () => useTrackMenuStore.getState().open(track, { extraAction })}
+        accessibilityRole={inSelectionMode ? 'checkbox' : 'button'}
+        accessibilityState={inSelectionMode ? { checked: !!selected } : undefined}
         accessibilityLabel={`${track.title} by ${track.artist}`}
-        accessibilityHint="Long press for more options"
+        accessibilityHint={inSelectionMode ? undefined : 'Long press for more options'}
         className={cn(
           'flex-row items-center px-2.5 py-2 rounded-md',
-          isActive ? 'bg-s2 border border-ln2' : 'bg-transparent',
+          selected ? 'bg-s2 border border-ln' : isActive ? 'bg-s2 border border-ln2' : 'bg-transparent',
           className,
         )}
       >
-        {showIndex && index !== undefined && (
+        {inSelectionMode && (
+          <View className="mr-3 items-center justify-center">
+            <View
+              className={cn(
+                'w-5 h-5 rounded-full border items-center justify-center',
+                selected ? 'bg-acc border-acc' : 'border-t3 bg-transparent',
+              )}
+            >
+              {selected && <Icon name="check" size={12} color="#000000" />}
+            </View>
+          </View>
+        )}
+
+        {showIndex && index !== undefined && !inSelectionMode && (
           <View className="w-[22px] mr-2 items-center justify-center">
             {isActive ? (
               <EqualizerBars isPlaying={playing} color={accent} />
@@ -108,12 +135,14 @@ export const SongRow = ({
           <Text className="text-t3 text-mono-s font-mono mr-1">{formatDuration(track.durationMs)}</Text>
         ) : null}
 
-        <IconButton
-          icon={<Icon name="more" size={16} color="#7E7E8C" />}
-          size={32}
-          onPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
-          accessibilityLabel={`More options for ${track.title}`}
-        />
+        {!inSelectionMode && (
+          <IconButton
+            icon={<Icon name="more" size={16} color="#7E7E8C" />}
+            size={32}
+            onPress={() => useTrackMenuStore.getState().open(track, { extraAction })}
+            accessibilityLabel={`More options for ${track.title}`}
+          />
+        )}
 
         {trailing}
       </Pressable>

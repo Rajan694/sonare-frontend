@@ -46,7 +46,7 @@ export const ModeSwitchScreen = () => {
     setMode(localMode);
     navigation.goBack();
     // The offline player can also play the music folders, with the permission.
-    if (offline) offerMusicAccess('offline');
+    if (offline) offerMusicAccess();
   };
 
   return (

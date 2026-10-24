@@ -1,5 +1,4 @@
 import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { BrandMark } from '../components/ui/BrandMark';
 import { CONTACT_EMAIL, SiteFooter } from '../components/landing/SiteFooter';
@@ -55,21 +54,17 @@ const Privacy = () => {
     <div className="min-h-[100dvh] overflow-x-clip bg-bg font-sans text-t1">
       <header className="sticky top-0 z-30 border-b border-ln/60 bg-bg/70 backdrop-blur-xl">
         <nav aria-label="Main" className="mx-auto flex h-16 max-w-[1180px] items-center gap-6 px-4 sm:px-6">
-          <Link
-            to="/"
-            className="focus-visible:focusring flex items-center gap-2.5 rounded-sm"
-            aria-label="Sonare home"
-          >
+          <a href="/" className="focus-visible:focusring flex items-center gap-2.5 rounded-sm" aria-label="Sonare home">
             <BrandMark size={30} />
             <span className="text-[19px] font-bold tracking-[-0.01em]">Sonare</span>
-          </Link>
-          <Link
-            to="/"
+          </a>
+          <a
+            href="/"
             className="focus-visible:focusring ml-auto inline-flex items-center gap-1.5 rounded-full bg-s3 px-4 py-2 text-label-l font-semibold text-t1 transition-colors hover:bg-s4"
           >
             <ArrowLeft size={16} aria-hidden="true" />
             Back to Sonare
-          </Link>
+          </a>
         </nav>
       </header>
 
@@ -169,6 +164,10 @@ const Privacy = () => {
           <p>
             Sonare doesn&apos;t use cookies. The apps and the website keep your sign-in, settings, queue and downloads
             in local storage on your device. Signing out removes the sign-in.
+          </p>
+          <p>
+            The app also stores a random install id (not linked to you, no personal data) so Sonare can count how many
+            devices use it. It is never shared with third parties.
           </p>
         </Section>
 

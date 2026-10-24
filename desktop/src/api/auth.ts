@@ -1,6 +1,7 @@
 import { serverFetch } from './serverFetch';
 import type { User } from '../types';
 import { CLIENT } from '../lib/caps';
+import { getInstallId } from '../lib/installId';
 import { API_BASE } from './server';
 
 // Signed out is guest mode: catalog and playback work, saving needs an account (accountGate.ts).
@@ -125,9 +126,14 @@ const sendJson = async <T>(
   body: unknown,
   accessToken?: string | null,
 ): Promise<T> => {
+  const headers: Record<string, string> = {
+    ...JSON_HEADERS,
+    'X-Sonare-Install': getInstallId(),
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+  };
   const res = await serverFetch(`${API_BASE}${path}`, {
     method,
-    headers: accessToken ? { ...JSON_HEADERS, Authorization: `Bearer ${accessToken}` } : JSON_HEADERS,
+    headers,
     body: JSON.stringify(body),
   });
   const json = await res.json().catch(() => null);
@@ -218,7 +224,7 @@ export const deleteAccount = async (password: string): Promise<void> => {
 const refreshCurrentUser = async (): Promise<void> => {
   if (!currentAccessToken) return;
   const res = await serverFetch(`${API_BASE}/me`, {
-    headers: { ...JSON_HEADERS, Authorization: `Bearer ${currentAccessToken}` },
+    headers: { ...JSON_HEADERS, 'X-Sonare-Install': getInstallId(), Authorization: `Bearer ${currentAccessToken}` },
   }).catch(() => null);
   if (res?.ok) setCurrentUser(await res.json());
 };
@@ -252,6 +258,7 @@ export const signOut = async (): Promise<void> => {
         method: 'POST',
         headers: {
           ...JSON_HEADERS,
+          'X-Sonare-Install': getInstallId(),
           Authorization: `Bearer ${currentAccessToken}`,
         },
         // The server revokes by refresh token; without it the session stays usable.
@@ -315,7 +322,7 @@ export const refreshAccessToken = async (): Promise<string | null> => {
     try {
       const res = await serverFetch(`${API_BASE}/auth/refresh`, {
         method: 'POST',
-        headers: JSON_HEADERS,
+        headers: { ...JSON_HEADERS, 'X-Sonare-Install': getInstallId() },
         body: JSON.stringify({ refreshToken: currentRefreshToken }),
       });
 

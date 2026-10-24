@@ -21,6 +21,7 @@ import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
 import { useTrackMenuStore } from '../src/store/trackMenu';
+import { useLocalMusicStore } from '../src/store/localMusic';
 import { alice, makeDownload, makePlaylist, makeTrack, nav } from '../test-utils';
 
 jest.mock('@react-navigation/native', () => require('../test-utils').navigationMock());
@@ -304,14 +305,14 @@ describe('song menu', () => {
     const { getByLabelText } = open();
     fireEvent.press(getByLabelText('Add to playlist'));
     await act(async () => fireEvent.press(getByLabelText('Add to Gym')));
-    expect(add).toHaveBeenCalledWith('sonare:gym', song);
+    expect(add).toHaveBeenCalledWith('sonare:gym', [song]);
     expect(useTrackMenuStore.getState().track).toBeNull();
 
     act(() => useTrackMenuStore.getState().open(song, { view: 'playlists' }));
     fireEvent.changeText(getByLabelText('New playlist name'), '  Late ');
     await act(async () => fireEvent.press(getByLabelText('Create playlist')));
     expect(create).toHaveBeenCalledWith('Late');
-    expect(add).toHaveBeenLastCalledWith('sonare:new', song);
+    expect(add).toHaveBeenLastCalledWith('sonare:new', [song]);
   });
 
   it('MOB-COMP-040 a playlist that cannot be updated shows why and stays open', async () => {
@@ -453,5 +454,44 @@ describe('download buttons', () => {
     useModeStore.setState({ mode: 'offline' });
     rerender(<DownloadAllButton tracks={tracks} />);
     expect(toJSON()).toBeNull();
+  });
+
+  it('MOB-COMP-047 downloading from the track menu, TrackDownloadButton, or DownloadAllButton does not prompt for music permission', () => {
+    useLocalMusicStore.setState({ permission: 'denied' });
+    const alert = jest.spyOn(Alert, 'alert');
+
+    // 1. Track menu download
+    const dl1 = downloadsWith({});
+    const menuUtils = render(<TrackMenuHost />);
+    act(() => useTrackMenuStore.getState().open(song));
+    fireEvent.press(menuUtils.getByLabelText('Download'));
+    expect(dl1.enqueue).toHaveBeenCalledWith([song]);
+    expect(alert).not.toHaveBeenCalled();
+
+    // 2. TrackDownloadButton
+    const dl2 = downloadsWith({});
+    const btnUtils = render(<TrackDownloadButton track={song} />);
+    fireEvent.press(btnUtils.getByLabelText('Download'));
+    expect(dl2.enqueue).toHaveBeenCalledWith([song]);
+    expect(alert).not.toHaveBeenCalled();
+
+    // 3. DownloadAllButton
+    alert.mockClear();
+    const dl3 = downloadsWith({});
+    const tracks = [song, later];
+    const allUtils = render(<DownloadAllButton tracks={tracks} />);
+    fireEvent.press(allUtils.getByLabelText('Download all'));
+    expect(dl3.enqueue).toHaveBeenCalledWith([song, later]);
+    // Added to downloads alert shown with OK, but no music-permission alert
+    expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert).toHaveBeenCalledWith(
+      'Added to downloads',
+      '2 songs will be saved to Music/Sonare.',
+      expect.any(Array),
+    );
+    // Pressing OK also does not trigger any music-permission prompt
+    const okBtn = (Alert.alert as jest.Mock).mock.calls[0][2]?.[0];
+    okBtn?.onPress?.();
+    expect(alert).toHaveBeenCalledTimes(1);
   });
 });

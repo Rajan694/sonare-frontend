@@ -287,6 +287,14 @@ describe('api client: expired access tokens', () => {
     expect(localStorage.getItem('sonare_refresh_token')).toBe('refresh-1');
   });
 
+  it('WEB-API-021 queries not-played-lately with limit parameter', async () => {
+    const rec = recordRequests();
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([]))));
+    await api.getNotPlayedLately(20);
+    rec.stop();
+    expect(rec.paths()).toEqual(['GET /me/not-played-lately?limit=20']);
+  });
+
   it('WEB-API-018 does not try to refresh a guest request that gets 401', async () => {
     let refreshes = 0;
     server.use(
@@ -298,6 +306,35 @@ describe('api client: expired access tokens', () => {
     );
     await expect(api.getSettings()).rejects.toMatchObject({ status: 401 });
     expect(refreshes).toBe(0);
+  });
+
+  it('WEB-API-022 queries /me/saved-playlists to fetch saved YouTube playlists', async () => {
+    let requested = false;
+    server.use(
+      http.get(`${API}/me/saved-playlists`, () => {
+        requested = true;
+        return HttpResponse.json(
+          page([{ id: 'yt:PL123', name: 'Saved', owner: 'Owner', trackCount: 5, addedAt: 12345 }]),
+        );
+      }),
+    );
+    const res = await api.getSavedPlaylists();
+    expect(requested).toBe(true);
+    expect(res.items[0].id).toBe('yt:PL123');
+    expect(res.items[0].owner).toBe('Owner');
+  });
+
+  it('WEB-API-023 clearHistory sends DELETE to /me/history', async () => {
+    let method: string | undefined;
+    server.use(
+      http.delete(`${API}/me/history`, ({ request }) => {
+        method = request.method;
+        return HttpResponse.json({ ok: true, removed: 7 });
+      }),
+    );
+    const res = await api.clearHistory();
+    expect(method).toBe('DELETE');
+    expect(res.removed).toBe(7);
   });
 });
 

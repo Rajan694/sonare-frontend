@@ -15,6 +15,8 @@ import { useAuthStore } from '../data/auth';
 import { useLibraryStore } from '../store/library';
 import { navigationRef, takePendingAction } from '../data/accountGate';
 import { TrackMenuHost } from '../components/music/TrackMenuHost';
+import { CollectionMenuHost } from '../components/music/CollectionMenuHost';
+import { SnackbarHost } from '../components/ui/SnackbarHost';
 import { useModeStore } from '../store/mode';
 import { View, ActivityIndicator, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -168,6 +170,8 @@ export const RootNavigator = () => {
         <Stack.Screen name="SignIn" component={SignInScreen} />
       </Stack.Navigator>
       <TrackMenuHost />
+      <CollectionMenuHost />
+      <SnackbarHost />
       <PlayerSheetsHost />
     </NavigationContainer>
   );

@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import Button from '../ui/Button';
 import { Field } from '../ui/Field';
 import { changePassword, deleteAccount, updateDisplayName } from '../../api/auth';
+import { api } from '../../api/api';
+import { dropPendingPlays } from '../../api/plays';
+import { updateSyncStatus } from '../../api/sync';
+import { clearRecentPlays } from '../../storage/recentPlays';
+import { notifyHistoryCleared } from '../../api/hooks';
+import { useAppDispatch } from '../../store';
+import { setYouMayLike } from '../../store/aiSlice';
 import { confirmDialog } from '../../store/dialogs';
 import { showToast } from '../../store/toasts';
 import type { User } from '../../types';
@@ -147,6 +154,60 @@ const PasswordCard = () => {
   );
 };
 
+const HistoryCard = ({ userId }: { userId: string }) => {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dispatch = useAppDispatch();
+
+  const clear = async () => {
+    setError(null);
+    const ok = await confirmDialog({
+      title: 'Clear play history?',
+      description:
+        'Recently played, Most played, play counts and suggestions start fresh on all your devices. Liked songs and playlists stay.',
+      confirmLabel: 'Clear',
+      danger: true,
+    });
+    if (!ok) return;
+
+    setBusy(true);
+    try {
+      await api.clearHistory();
+      clearRecentPlays();
+      dropPendingPlays(userId);
+      updateSyncStatus();
+      dispatch(setYouMayLike(null));
+      notifyHistoryCleared();
+      showToast({ title: 'Play history cleared', icon: 'trash' });
+    } catch (err) {
+      setError(messageOf(err, 'Could not clear play history'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card
+      title="Play history"
+      description="Clear recently played, most played and suggestions across all your devices. Liked songs and playlists stay."
+    >
+      <div className="flex flex-col gap-3">
+        <Status error={error} />
+        <Button
+          type="button"
+          variant="out"
+          icon="trash"
+          className="self-start text-red"
+          disabled={busy}
+          onClick={clear}
+        >
+          {busy ? 'Clearing…' : 'Clear play history'}
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
 const DeleteCard = () => {
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -200,11 +261,12 @@ const DeleteCard = () => {
   );
 };
 
-/** Settings > Account for a signed-in user: name, password, and deleting the account. */
+/** Settings > Account for a signed-in user: name, password, play history, and deleting the account. */
 export const AccountDetails = ({ user }: { user: User }) => (
   <>
     <NameCard user={user} />
     <PasswordCard />
+    <HistoryCard userId={user.id} />
     <DeleteCard />
   </>
 );

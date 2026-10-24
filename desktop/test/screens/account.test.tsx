@@ -6,6 +6,9 @@ import { clearSession, getAccessToken, getCurrentUser, getRefreshToken, setSessi
 import { renderWithProviders } from '../helpers/render';
 import { API, apiError, http, HttpResponse, useMockServer, server } from '../helpers/server';
 import { testUser } from '../helpers/fixtures';
+import { getRecentPlays, rememberRecentPlay } from '../../src/storage/recentPlays';
+import { pendingPlaysFor } from '../../src/api/plays';
+import { setYouMayLike } from '../../src/store/aiSlice';
 
 const toast = vi.hoisted(() => vi.fn());
 vi.mock('../../src/store/toasts', () => ({ showToast: toast, dismissToast: () => {}, useToasts: () => [] }));
@@ -101,5 +104,107 @@ describe('account details', () => {
     expect(sent).toEqual({ password: 'oldpass12' });
     expect(getAccessToken()).toBeNull();
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Account deleted' }));
+  });
+
+  it('WEB-ACCT-004 cancelling clear play history does nothing', async () => {
+    let deleted = false;
+    server.use(
+      http.delete(`${API}/me/history`, () => {
+        deleted = true;
+        return HttpResponse.json({ ok: true, removed: 5 });
+      }),
+    );
+    rememberRecentPlay({ id: 'yt:song1' });
+    const { user } = open();
+    await user.click(screen.getByRole('button', { name: 'Clear play history' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Clear play history?' });
+    expect(
+      within(dialog).getByText(
+        'Recently played, Most played, play counts and suggestions start fresh on all your devices. Liked songs and playlists stay.',
+      ),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument());
+    expect(deleted).toBe(false);
+    expect(getRecentPlays()).toHaveLength(1);
+    expect(toast).not.toHaveBeenCalled();
+  });
+
+  it('WEB-ACCT-005 confirming clear play history calls DELETE /me/history, clears local plays, drops pending plays, clears AI picks, notifies listeners and toasts', async () => {
+    let deletedAuth: string | null = null;
+    server.use(
+      http.delete(`${API}/me/history`, ({ request }) => {
+        deletedAuth = request.headers.get('authorization');
+        return HttpResponse.json({ ok: true, removed: 10 });
+      }),
+    );
+    rememberRecentPlay({ id: 'yt:song1' });
+    localStorage.setItem(
+      'sonare_pending_plays',
+      JSON.stringify([
+        {
+          trackRef: { kind: 'server', id: 'song1' },
+          at: Date.now(),
+          ms: 30000,
+          userId: testUser.id,
+        },
+      ]),
+    );
+    expect(pendingPlaysFor(testUser.id)).toHaveLength(1);
+
+    const historyClearedListener = vi.fn();
+    window.addEventListener('sonare:history-cleared', historyClearedListener);
+
+    try {
+      setSession('acc-1', 'ref-1', testUser);
+      const { user, store } = renderWithProviders(<AccountDetails user={testUser} />);
+      store.dispatch(
+        setYouMayLike({
+          userId: testUser.id,
+          generatedAt: Date.now(),
+          basedOn: ['Artist A'],
+          songs: [],
+        }),
+      );
+      expect(store.getState().ai.youMayLike).not.toBeNull();
+
+      await user.click(screen.getByRole('button', { name: 'Clear play history' }));
+      const dialog = await screen.findByRole('alertdialog', { name: 'Clear play history?' });
+      await user.click(within(dialog).getByRole('button', { name: 'Clear' }));
+
+      await waitFor(() => expect(deletedAuth).toBe('Bearer acc-1'));
+      expect(getRecentPlays()).toEqual([]);
+      expect(pendingPlaysFor(testUser.id)).toEqual([]);
+      expect(store.getState().ai.youMayLike).toBeNull();
+      expect(historyClearedListener).toHaveBeenCalled();
+      expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Play history cleared', icon: 'trash' }));
+    } finally {
+      window.removeEventListener('sonare:history-cleared', historyClearedListener);
+    }
+  });
+
+  it('WEB-ACCT-006 failure when clearing play history reports error and keeps local plays and pending plays', async () => {
+    server.use(http.delete(`${API}/me/history`, () => apiError(500, 'INTERNAL_ERROR', 'Database unavailable')));
+    rememberRecentPlay({ id: 'yt:keepme' });
+    localStorage.setItem(
+      'sonare_pending_plays',
+      JSON.stringify([
+        {
+          trackRef: { kind: 'server', id: 'keepme' },
+          at: Date.now(),
+          ms: 30000,
+          userId: testUser.id,
+        },
+      ]),
+    );
+
+    const { user } = open();
+    await user.click(screen.getByRole('button', { name: 'Clear play history' }));
+    const dialog = await screen.findByRole('alertdialog', { name: 'Clear play history?' });
+    await user.click(within(dialog).getByRole('button', { name: 'Clear' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Database unavailable');
+    expect(getRecentPlays()).toHaveLength(1);
+    expect(pendingPlaysFor(testUser.id)).toHaveLength(1);
   });
 });

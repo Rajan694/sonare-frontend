@@ -2,6 +2,9 @@ import React from 'react';
 import { Alert } from 'react-native';
 import { act, fireEvent, render } from '@testing-library/react-native';
 import { useAuthStore } from '../src/data/auth';
+import { api } from '../src/data/api';
+import { useAiStore } from '../src/store/ai';
+import * as sync from '../src/data/sync';
 import { AccountScreen } from '../src/screens/Account';
 import { alice, nav } from '../test-utils';
 
@@ -160,5 +163,55 @@ describe('Account screen', () => {
     await act(async () => pressAlertButton('Delete account'));
     expect(deleteAccount).toHaveBeenLastCalledWith('wrong');
     expect(nav.goBack).toHaveBeenCalled();
+  });
+
+  it('MOB-ACCT-005 canceling clear play history does nothing', async () => {
+    const clearSpy = jest.spyOn(api, 'clearHistory');
+    const { getByLabelText } = render(<AccountScreen />);
+
+    fireEvent.press(getByLabelText('Clear play history'));
+    expect(alert).toHaveBeenCalledWith(
+      'Clear play history?',
+      'Recently played, Most played, play counts and suggestions start fresh on all your devices. Liked songs and playlists stay.',
+      expect.any(Array),
+    );
+
+    pressAlertButton('Cancel');
+    expect(clearSpy).not.toHaveBeenCalled();
+  });
+
+  it('MOB-ACCT-006 confirming clear play history calls endpoint, drops pending plays, clears AI picks, and alerts', async () => {
+    const clearSpy = jest.spyOn(api, 'clearHistory').mockResolvedValue({ ok: true, removed: 5 });
+    const dropSpy = jest.spyOn(sync, 'dropPendingPlays').mockResolvedValue(undefined);
+    useAiStore.setState({
+      youMayLike: {
+        userId: 'u1',
+        generatedAt: Date.now(),
+        basedOn: ['Track 1'],
+        songs: [],
+      },
+    });
+
+    const { getByLabelText, findByText } = render(<AccountScreen />);
+    fireEvent.press(getByLabelText('Clear play history'));
+    await act(async () => pressAlertButton('Clear'));
+
+    expect(clearSpy).toHaveBeenCalled();
+    expect(dropSpy).toHaveBeenCalled();
+    expect(useAiStore.getState().youMayLike).toBeNull();
+    expect(await findByText('Play history cleared')).toBeTruthy();
+    expect(alert).toHaveBeenLastCalledWith('Play history cleared');
+  });
+
+  it('MOB-ACCT-007 clear play history failure shows error and keeps pending plays', async () => {
+    jest.spyOn(api, 'clearHistory').mockRejectedValue(new Error('Network error'));
+    const dropSpy = jest.spyOn(sync, 'dropPendingPlays').mockResolvedValue(undefined);
+    const { getByLabelText, findByText } = render(<AccountScreen />);
+
+    fireEvent.press(getByLabelText('Clear play history'));
+    await act(async () => pressAlertButton('Clear'));
+
+    expect(await findByText('Network error')).toBeTruthy();
+    expect(dropSpy).not.toHaveBeenCalled();
   });
 });

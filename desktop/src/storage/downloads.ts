@@ -21,6 +21,8 @@ import {
 } from './downloadTargets';
 import type { Track } from '../types';
 import { downloadName } from '../../../shared/downloads/fileNames';
+import { shortTitlesFor } from '../../../shared/ai/downloadTitles';
+import { store } from '../store';
 
 /**
  * Download manager (desktop and web).
@@ -95,6 +97,7 @@ let items: DownloadItem[] = [];
 let snapshot: DownloadsSnapshot = { ready: false, items: [], byId: new Map(), activeCount: 0 };
 const listeners = new Set<() => void>();
 const running = new Map<string, { abort: AbortController; done: Promise<void> }>();
+const titlesPending = new Set<string>();
 /** Songs finished since the queue was last empty, for the "all done" toast. */
 let finishedInBatch = 0;
 let loadPromise: Promise<void> | null = null;
@@ -211,7 +214,7 @@ const adoptFoundDownloads = async (notify = false) => {
 const pump = () => {
   for (const item of [...items].sort((a, b) => a.addedAt - b.addedAt)) {
     if (running.size >= MAX_PARALLEL) break;
-    if (item.status === 'queued' && !running.has(item.id)) start(item.id);
+    if (item.status === 'queued' && !running.has(item.id) && !titlesPending.has(item.id)) start(item.id);
   }
   if (running.size === 0 && finishedInBatch > 0 && !items.some((i) => i.status === 'queued')) {
     const n = finishedInBatch;
@@ -520,6 +523,34 @@ export const downloads = {
       items = [...items, ...fresh.map((t, i) => ({ ...newItem(t), addedAt: now + i }))];
       emit();
       persistSoon(true);
+
+      const aiAvailable = store.getState().ai.available;
+      const isOnline = typeof navigator === 'undefined' || navigator.onLine !== false;
+
+      if (aiAvailable && isOnline) {
+        for (const t of fresh) titlesPending.add(t.id);
+        void (async () => {
+          try {
+            const fixes = await shortTitlesFor(fresh, (items) => api.aiTitles(items, { wait: true }));
+            if (fixes.size > 0) {
+              for (const t of fresh) {
+                const fix = fixes.get(t.id) ?? fixes.get(t.id.replace(/^yt:/, ''));
+                if (fix) {
+                  const current = get(t.id);
+                  if (current && !running.has(t.id) && current.status !== 'done') {
+                    patch(t.id, { title: fix.title, artist: fix.artist });
+                  }
+                }
+              }
+            }
+          } catch {
+            // Keep original titles on unexpected error
+          } finally {
+            for (const t of fresh) titlesPending.delete(t.id);
+            pump();
+          }
+        })();
+      }
     }
     pump();
     return fresh.length;
@@ -564,6 +595,7 @@ export const downloads = {
     await load();
     let item = get(id);
     if (!item) return { fileDeleted: false };
+    titlesPending.delete(id);
     await stop(id);
     // It may have finished while it was being stopped: then there's a file to delete.
     item = get(id) ?? item;

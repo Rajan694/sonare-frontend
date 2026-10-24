@@ -33,6 +33,8 @@ import { playShuffled } from '../lib/playShuffled';
 import { confirmDeletePlaylist } from '../lib/confirmDeletePlaylist';
 import { DragHandle } from '../components/music/DragHandle';
 import { useRowDrag } from '../hooks/useRowDrag';
+import { requireAccount } from '../data/accountGate';
+import { useCollectionMenuStore, queueCollection } from '../store/collectionMenu';
 import type { Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 
@@ -288,13 +290,32 @@ export const PlaylistDetailScreen = () => {
                 <IconButton
                   icon={<Icon name="playlist" size={20} color="#9A9AA8" />}
                   size={44}
-                  onPress={() => {
-                    if (tracks.length > 0) {
-                      const queueState = usePlayerStore.getState();
-                      tracks.forEach((t) => queueState.addToQueue(t));
+                  onPress={async () => {
+                    if (tracks.length > 0 && info) {
+                      await queueCollection({ kind: 'playlist', item: info }, tracks, !own && pagedTracks.hasMore);
                     }
                   }}
                   accessibilityLabel="Add to queue"
+                />
+                <IconButton
+                  icon={<Icon name="plus" size={20} color="#9A9AA8" />}
+                  size={44}
+                  disabled={!tracks.length}
+                  onPress={() => {
+                    if (info && tracks.length > 0) {
+                      requireAccount('Create a free account to make playlists.', () => {
+                        const hasRemainingPages = !own && pagedTracks.hasMore;
+                        useCollectionMenuStore.getState().open(
+                          { kind: 'playlist', item: info },
+                          {
+                            view: 'playlists',
+                            tracks: hasRemainingPages ? undefined : tracks,
+                          },
+                        );
+                      });
+                    }
+                  }}
+                  accessibilityLabel="Add to playlist"
                 />
                 <DownloadAllButton tracks={tracks} />
               </View>

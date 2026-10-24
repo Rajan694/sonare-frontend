@@ -49,6 +49,16 @@ export const rememberRecentPlay = (track: { id: string }): void => {
   for (const l of listeners) l();
 };
 
+export const clearRecentPlays = (): void => {
+  plays = [];
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // Session memory cleared regardless
+  }
+  for (const l of listeners) l();
+};
+
 export const useRecentPlays = (): RecentPlay[] => {
   return useSyncExternalStore(
     (fn) => {

@@ -13,6 +13,7 @@ const SOURCE_NAMES: Record<ErrorSource, string> = {
   backend: 'Backend',
   web: 'Web',
   linux: 'Linux',
+  windows: 'Windows',
   mobile: 'Mobile',
 };
 const PAGE = 50;

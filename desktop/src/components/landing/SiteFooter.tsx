@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { Bug, Mail, ShieldCheck } from 'lucide-react';
 import { BrandMark } from '../ui/BrandMark';
 import { REPO_PAGE } from '../../lib/downloads';
@@ -54,10 +53,10 @@ export const SiteFooter = () => {
               <Bug size={18} aria-hidden="true" />
               Report a bug
             </a>
-            <Link className={linkClass} to="/privacy">
+            <a className={linkClass} href="/privacy">
               <ShieldCheck size={18} aria-hidden="true" />
               Privacy
-            </Link>
+            </a>
             <a className={linkClass} href={REPO_PAGE} target="_blank" rel="noreferrer">
               <GitHubMark />
               GitHub

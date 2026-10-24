@@ -73,10 +73,11 @@ describe('music on the phone', () => {
     expect(JSON.parse((await AsyncStorage.getItem('sonare.hiddenFolders'))!)).toEqual(['Music']);
   });
 
-  it('MOB-LOCAL-003 a download names its file with the song id, so it can be found again', () => {
-    const name = downloadName({ id: 'yt:dQw4w9WgXcQ', artist: 'Rick Astley', title: 'Never: Gonna/Give' });
-    expect(name).toBe('Rick Astley - Never_ Gonna_Give [dQw4w9WgXcQ]');
-    expect(idInFileName(`${name}.mka`)).toBe('yt:dQw4w9WgXcQ');
+  it('MOB-LOCAL-003 a download names its file with the safe title; older files with an id are recognised', () => {
+    const name = downloadName({ title: 'Never: Gonna/Give' });
+    expect(name).toBe('Never_ Gonna_Give');
+    expect(idInFileName('Rick Astley - Never_ Gonna_Give [dQw4w9WgXcQ].mka')).toBe('yt:dQw4w9WgXcQ');
+    expect(idInFileName(`${name}.mka`)).toBeNull();
     expect(idInFileName('Some other song.mp3')).toBeNull();
   });
 
@@ -131,5 +132,136 @@ describe('music on the phone', () => {
     const [track] = deviceTracks(useLocalMusicStore.getState());
     expect(deviceUriFor(track.id)).toBe('content://media/external/audio/media/42');
     expect(deviceUriFor('yt:abc')).toBeNull();
+  });
+
+  it('MOB-LOCAL-007 a title-only download in Music/Sonare matching a done download is not a phone song, but an unmatched one is', async () => {
+    permissions.check.mockResolvedValue(true);
+    useDownloadsStore.setState({
+      items: {
+        'yt:matching_1': {
+          id: 'yt:matching_1',
+          title: 'Matching Song',
+          artist: 'Artist One',
+          artistId: '',
+          album: null,
+          albumId: null,
+          durationMs: null,
+          status: 'done',
+          quality: 'high',
+          format: 'opus',
+          totalBytes: 1000,
+          receivedBytes: 1000,
+          uri: 'content://media/external/audio/media/10',
+          fileName: 'Matching Song.mka',
+          addedAt: 1,
+        },
+      },
+    });
+
+    native.scan.mockResolvedValue([
+      song({
+        mediaId: '10',
+        folder: 'Music/Sonare',
+        fileName: 'Matching Song.mka',
+        title: 'Matching Song',
+        uri: 'content://media/external/audio/media/10',
+      }),
+      song({
+        mediaId: '11',
+        folder: 'Music/Sonare',
+        fileName: 'Unmatched Song.mka',
+        title: 'Unmatched Song',
+        uri: 'content://media/external/audio/media/11',
+      }),
+    ]);
+
+    await useLocalMusicStore.getState().hydrate();
+
+    const titles = deviceTracks(useLocalMusicStore.getState()).map((t) => t.title);
+    expect(titles).toContain('Unmatched Song');
+    expect(titles).not.toContain('Matching Song');
+  });
+
+  it('MOB-LOCAL-008 an old [id] file is still adopted on scan, while title-only files without an id are not', async () => {
+    permissions.check.mockResolvedValue(true);
+    native.scan.mockResolvedValue([
+      song({
+        mediaId: '20',
+        folder: 'Music/Sonare',
+        fileName: 'Old Artist - Old Title [oldVideo123].opus',
+        title: 'Old Title',
+        artist: 'Old Artist',
+        uri: 'content://20',
+      }),
+      song({
+        mediaId: '21',
+        folder: 'Music/Sonare',
+        fileName: 'Just A Title.opus',
+        title: 'Just A Title',
+        artist: 'Some Artist',
+        uri: 'content://21',
+      }),
+    ]);
+
+    await useLocalMusicStore.getState().hydrate();
+
+    expect(useDownloadsStore.getState().items['yt:oldVideo123']).toMatchObject({
+      status: 'done',
+      title: 'Old Title',
+      artist: 'Old Artist',
+      uri: 'content://20',
+    });
+    // The title-only file has no id to adopt it under: only the old one became a download.
+    expect(Object.keys(useDownloadsStore.getState().items)).toEqual(['yt:oldVideo123']);
+  });
+
+  it('MOB-LOCAL-009 a file with the same name as a default download in another folder stays a phone song', async () => {
+    permissions.check.mockResolvedValue(true);
+    useDownloadsStore.setState({
+      items: {
+        'yt:dl_default': {
+          id: 'yt:dl_default',
+          title: 'Duplicate Name',
+          artist: 'Artist',
+          artistId: '',
+          album: null,
+          albumId: null,
+          durationMs: null,
+          status: 'done',
+          quality: 'high',
+          format: 'm4a',
+          totalBytes: 1000,
+          receivedBytes: 1000,
+          uri: 'content://media/external/audio/media/100',
+          fileName: 'Duplicate Name.m4a',
+          addedAt: 1,
+        },
+      },
+    });
+
+    native.scan.mockResolvedValue([
+      // Same fileName, but in Music/Other and different uri -> stays a phone song
+      song({
+        mediaId: '101',
+        folder: 'Music/Other',
+        fileName: 'Duplicate Name.m4a',
+        title: 'Duplicate Name (Other)',
+        uri: 'content://media/external/audio/media/101',
+      }),
+      // Same fileName in Music/Sonare -> recognized as own download, excluded
+      song({
+        mediaId: '100',
+        folder: 'Music/Sonare',
+        fileName: 'Duplicate Name.m4a',
+        title: 'Duplicate Name',
+        uri: 'content://media/external/audio/media/100',
+      }),
+    ]);
+
+    await useLocalMusicStore.getState().hydrate();
+
+    const tracks = deviceTracks(useLocalMusicStore.getState());
+    expect(tracks.map((t) => t.title)).toEqual(['Duplicate Name (Other)']);
+    expect(deviceUriFor(tracks[0].id)).toBe('content://media/external/audio/media/101');
   });
 });

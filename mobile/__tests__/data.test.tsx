@@ -782,7 +782,7 @@ describe('Data Layer', () => {
 
     it('MOB-DATA-025 libraryTracks, favourites, setFavourite, setFollowing manage library entities', async () => {
       mockApiResponse(200, { items: [], ok: true });
-      const lib = await api.libraryTracks('title');
+      const lib = await api.libraryTracks({ sort: 'title' });
       expect(lib.items).toEqual([]);
       const favs = await api.favourites();
       expect(favs.items).toEqual([]);
@@ -1303,6 +1303,113 @@ describe('Data Layer', () => {
         expect(colors).toHaveLength(3);
         colors.forEach((c) => expect(c).toMatch(/^#[0-9A-Fa-f]{6}$/));
       }
+    });
+  });
+
+  describe('installId.ts', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+      AsyncStorage.clear();
+      // Reset cached id between tests by re-importing with a fresh module registry.
+      jest.resetModules();
+    });
+
+    it('MOB-DATA-062 with nothing stored, temporary id from early request is saved once read resolves', async () => {
+      const { initInstallId, getInstallId } = require('../src/data/installId');
+      const initPromise = initInstallId();
+      // An early call before init resolves receives a temporary UUID
+      const earlyId = getInstallId();
+      expect(earlyId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
+      await initPromise;
+      // Stored value matches the temporary UUID handed out to the early request
+      expect(await AsyncStorage.getItem('sonare_install_id')).toBe(earlyId);
+      expect(getInstallId()).toBe(earlyId);
+    });
+
+    it('MOB-DATA-063 stored id is kept across simulated restart even if request happens before read resolves', async () => {
+      const storedId = 'existing-stored-uuid-9999';
+      await AsyncStorage.setItem('sonare_install_id', storedId);
+      (AsyncStorage.setItem as jest.Mock).mockClear();
+
+      const { initInstallId, getInstallId } = require('../src/data/installId');
+      const initPromise = initInstallId();
+      // Early request before read resolves gets a temporary in-memory ID
+      const earlyId = getInstallId();
+      expect(earlyId).not.toBe(storedId);
+
+      await initPromise;
+      // Once read resolves, the stored ID takes over
+      expect(getInstallId()).toBe(storedId);
+      // AsyncStorage.setItem was never called: stored id was never overwritten
+      expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+      expect(await AsyncStorage.getItem('sonare_install_id')).toBe(storedId);
+    });
+
+    it('MOB-DATA-064 X-Sonare-Install is sent on backend requests and absent on external ones', async () => {
+      const { initInstallId: init } = require('../src/data/installId');
+      await init();
+
+      const capturedHeaders: { url: string; headers: Record<string, string> }[] = [];
+      class SpyXHR {
+        status = 200;
+        responseText = '{}';
+        onload: (() => void) | null = null;
+        private url = '';
+        private hdrs: Record<string, string> = {};
+        open(_m: string, url: string) {
+          this.url = url;
+        }
+        setRequestHeader(k: string, v: string) {
+          this.hdrs[k] = v;
+        }
+        send() {
+          capturedHeaders.push({ url: this.url, headers: { ...this.hdrs } });
+          setTimeout(() => this.onload?.(), 0);
+        }
+      }
+      const original = global.XMLHttpRequest;
+      global.XMLHttpRequest = SpyXHR as any;
+
+      // Re-require http after resetting so it picks up the freshly-loaded installId.
+      const { httpRequest: req } = require('../src/data/http');
+      await req(`${apiOrigin()}/api/v1/test`);
+      await req('https://external.example.com/resource');
+
+      const backendCall = capturedHeaders.find((c) => c.url.includes(apiOrigin()));
+      const externalCall = capturedHeaders.find((c) => c.url.includes('external.example.com'));
+
+      expect(backendCall?.headers['X-Sonare-Install']).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      );
+      expect(backendCall?.headers['X-Sonare-Client']).toBe('mobile');
+      expect(externalCall?.headers['X-Sonare-Install']).toBeUndefined();
+
+      global.XMLHttpRequest = original;
+    });
+
+    it('MOB-DATA-065 nothing is written to storage before the read finishes', async () => {
+      let resolveGetItem!: (val: string | null) => void;
+      const getItemPromise = new Promise<string | null>((resolve) => {
+        resolveGetItem = resolve;
+      });
+      (AsyncStorage.getItem as jest.Mock).mockReturnValueOnce(getItemPromise);
+
+      const { initInstallId, getInstallId } = require('../src/data/installId');
+      const initPromise = initInstallId();
+
+      // Early call gets temporary id
+      const tempId = getInstallId();
+      expect(tempId).toBeDefined();
+
+      // Ensure that setItem has NOT been called while getItem is pending
+      expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+
+      // Now let getItem resolve with null (nothing stored)
+      resolveGetItem(null);
+      await initPromise;
+
+      // Now setItem was called with tempId
+      expect(AsyncStorage.setItem).toHaveBeenCalledWith('sonare_install_id', tempId);
     });
   });
 });

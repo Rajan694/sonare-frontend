@@ -1,6 +1,7 @@
 import { API_BASE } from '../api/auth';
 import { CLIENT } from './caps';
 import { APP_VERSION } from './buildInfo';
+import { getInstallId } from './installId';
 
 // Sends uncaught errors and unhandled rejections to the backend, where they show on the admin
 // page's Errors section. React 19 reports uncaught render errors through window.reportError,
@@ -43,7 +44,7 @@ export const reportError = (value: unknown, level: 'error' | 'warning' = 'error'
   if (window.NL_OS) context.os = String(window.NL_OS);
   void fetch(`${API_BASE}/client-errors`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Sonare-Client': CLIENT },
+    headers: { 'Content-Type': 'application/json', 'X-Sonare-Client': CLIENT, 'X-Sonare-Install': getInstallId() },
     body: JSON.stringify({
       source: CLIENT,
       level,

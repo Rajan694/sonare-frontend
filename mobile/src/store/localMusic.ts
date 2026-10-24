@@ -58,8 +58,46 @@ const hash = (s: string): string => {
 /** Stable while the file stays where it is (MediaStore's own id can change on a re-index). */
 const localId = (s: DeviceSong) => `local:${hash(`${s.folder}/${s.fileName}`)}`;
 
-/** A Sonare download, recognised by the id in its name. */
-const isOwnDownload = (s: DeviceSong) => s.folder === DOWNLOADS_FOLDER && idInFileName(s.fileName) !== null;
+interface OwnDownloadSets {
+  uris: Set<string>;
+  defaultFileNames: Set<string>;
+  treeFileNames: Set<string>;
+}
+
+const ownDownloadSets = (
+  downloads: Record<string, { uri?: string; fileName?: string; treeUri?: string }>,
+): OwnDownloadSets => {
+  const uris = new Set<string>();
+  const defaultFileNames = new Set<string>();
+  const treeFileNames = new Set<string>();
+  for (const d of Object.values(downloads)) {
+    if (d.uri) uris.add(d.uri);
+    if (d.fileName) {
+      if (d.treeUri) {
+        treeFileNames.add(d.fileName);
+      } else {
+        defaultFileNames.add(d.fileName);
+      }
+    }
+  }
+  return { uris, defaultFileNames, treeFileNames };
+};
+
+/** An older Sonare download with the id in its file name. */
+const isOldStyleDownload = (s: DeviceSong) => s.folder === DOWNLOADS_FOLDER && idInFileName(s.fileName) !== null;
+
+/**
+ * A Sonare download: recognised by an old-style id in its file name in DOWNLOADS_FOLDER,
+ * or matching an item in useDownloadsStore by uri anywhere, or by fileName when in
+ * DOWNLOADS_FOLDER or when saved to a chosen folder (treeUri set).
+ */
+const isOwnDownload = (s: DeviceSong, sets: OwnDownloadSets): boolean => {
+  if (isOldStyleDownload(s)) return true;
+  if (s.uri && sets.uris.has(s.uri)) return true;
+  if (s.folder === DOWNLOADS_FOLDER && s.fileName && sets.defaultFileNames.has(s.fileName)) return true;
+  if (s.fileName && sets.treeFileNames.has(s.fileName)) return true;
+  return false;
+};
 
 const toFound = (s: DeviceSong): FoundDownload => {
   // Without tags Android shows the file name as the title: take the parts back out of it.
@@ -121,7 +159,7 @@ export const useLocalMusicStore = create<LocalMusicStore>((set, get) => ({
     try {
       const songs = await SonareLibrary.scan();
       set({ songs, scannedAt: Date.now(), permission: 'granted' });
-      const found = songs.filter(isOwnDownload).map(toFound);
+      const found = songs.filter(isOldStyleDownload).map(toFound);
       if (found.length) useDownloadsStore.getState().adoptFound(found);
     } catch (e: any) {
       if (e?.code === 'E_PERMISSION') set({ permission: 'denied' });
@@ -168,11 +206,14 @@ export const musicFolders = (state: Pick<LocalMusicStore, 'songs' | 'hidden'>): 
  * The phone's songs in folders that aren't hidden, newest first. Sonare's own downloads are
  * left out: they show as downloads of their catalogue songs instead.
  */
-export const deviceTracks = (state: Pick<LocalMusicStore, 'songs' | 'hidden'>): Track[] =>
-  state.songs
-    .filter((s) => !state.hidden.includes(s.folder || 'Internal storage') && !isOwnDownload(s))
+export const deviceTracks = (state: Pick<LocalMusicStore, 'songs' | 'hidden'>): Track[] => {
+  const sets = ownDownloadSets(useDownloadsStore.getState().items);
+
+  return state.songs
+    .filter((s) => !state.hidden.includes(s.folder || 'Internal storage') && !isOwnDownload(s, sets))
     .sort((a, b) => b.modifiedAt - a.modifiedAt)
     .map(deviceTrack);
+};
 
 /** The content:// uri of a song on the phone (a `local:` id), for the player. */
 export const deviceUriFor = (trackId: string): string | null => {

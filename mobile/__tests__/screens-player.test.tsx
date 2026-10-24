@@ -273,6 +273,21 @@ describe('Queue', () => {
     const { getByText } = render(<QueueScreen />);
     expect(getByText('Queue is empty')).toBeTruthy();
   });
+
+  it('MOB-Q-009 10 or more upcoming songs all render in the queue list', () => {
+    const upcoming = Array.from({ length: 12 }, (_, i) =>
+      makeTrack({ id: `track-${i + 1}`, title: `Upcoming Song ${i + 1}` }),
+    );
+    usePlayerStore.setState({
+      currentTrack: song,
+      queue: [song, ...upcoming],
+      index: 0,
+    });
+    const { getByText } = render(<QueueScreen />);
+    upcoming.forEach((t) => {
+      expect(getByText(t.title)).toBeTruthy();
+    });
+  });
 });
 
 describe('Lyrics', () => {

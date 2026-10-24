@@ -30,6 +30,19 @@ describe('desktop capabilities', () => {
     });
     expect(CLIENT).toBe('linux');
   });
+
+  it('DSK-091 the Windows desktop window reports windows as its client', async () => {
+    vi.resetModules();
+    const prevOs = (window as any).NL_OS;
+    try {
+      (window as any).NL_OS = 'Windows';
+      const { CLIENT } = await import('../../src/lib/caps');
+      expect(CLIENT).toBe('windows');
+    } finally {
+      (window as any).NL_OS = prevOs;
+      vi.resetModules();
+    }
+  });
 });
 
 describe('scanning music folders', () => {

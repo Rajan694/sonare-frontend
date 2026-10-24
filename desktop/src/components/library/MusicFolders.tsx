@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { os } from '@neutralinojs/lib';
-import { useLocalLibrary, localLibrary } from '../storage/local';
-import { showToast } from '../store/toasts';
-import Button, { IconButton } from '../components/ui/Button';
-import Icon from '../components/ui/Icon';
-import { Switch } from '../components/ui/Switch';
-import { EmptyState } from '../components/ui/EmptyState';
-import { cn } from '../lib/cn';
-import { formatBytes } from '../lib/format';
+import { useLocalLibrary, localLibrary } from '../../storage/local';
+import { showToast } from '../../store/toasts';
+import Button, { IconButton } from '../ui/Button';
+import Icon from '../ui/Icon';
+import { Switch } from '../ui/Switch';
+import { EmptyState } from '../ui/EmptyState';
+import { cn } from '../../lib/cn';
+import { formatBytes } from '../../lib/format';
 
 const scannedAgo = (ts: number) => {
   if (!ts) return 'Not scanned yet';
@@ -18,7 +18,7 @@ const scannedAgo = (ts: number) => {
   return hours < 24 ? `${hours} h ago` : new Date(ts).toLocaleDateString();
 };
 
-const Folders = () => {
+export const MusicFolders = () => {
   const { folders, ready, scanning } = useLocalLibrary();
   const [busy, setBusy] = useState(false);
 
@@ -49,13 +49,11 @@ const Folders = () => {
   const totalTracks = folders.filter((f) => f.included).reduce((n, f) => n + f.trackCount, 0);
 
   return (
-    <div className="@container flex flex-col p-4 @[480px]:p-8 gap-6 overflow-y-auto h-full bg-bg">
+    <div className="@container flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col @[600px]:flex-row @[600px]:items-center justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <span className="phone-shell-hide text-display-s @[600px]:text-display-m text-t1 font-bold tracking-tight">
-            Music folders
-          </span>
+          <span className="text-title-l text-t1 font-bold">Music folders</span>
           <span className="text-body-m text-t2">
             {folders.length > 0
               ? `${totalTracks.toLocaleString()} songs across ${folders.length} folders · ${formatBytes(totalBytes)}`
@@ -239,4 +237,5 @@ const Folders = () => {
     </div>
   );
 };
-export default Folders;
+
+export default MusicFolders;

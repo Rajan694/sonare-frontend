@@ -30,6 +30,12 @@ interface SongRowProps {
   hideAlbum?: boolean;
   /** The PLAYS column, for lists of the user's own songs (Library, Most played); catalog songs have no count. */
   showPlays?: boolean;
+  /** Below 720px, shows "N plays" in the subtitle (Most played view). */
+  showPlaysSubtitle?: boolean;
+  /** Selection mode: whether this row is selected. */
+  selected?: boolean;
+  /** Selection mode: called when row selection is toggled (supports shift-click range). */
+  onToggleSelect?: (e: React.MouseEvent) => void;
 }
 
 // The wide layout's columns, with and without PLAYS. Whole class names, so Tailwind finds them.
@@ -85,6 +91,9 @@ const SongRow = ({
   added,
   hideAlbum,
   showPlays,
+  showPlaysSubtitle,
+  selected,
+  onToggleSelect,
 }: SongRowProps) => {
   const { favourite, toggle: toggleFavourite } = useFavourite(track);
   const { isPlaying } = usePlayerStore();
@@ -95,6 +104,8 @@ const SongRow = ({
   const progress = inFlight ? (downloadProgress(inFlight) ?? 0) : undefined;
   const isLocal = track.source === 'local' || downloads.has(track.id);
 
+  const inSelectionMode = onToggleSelect !== undefined;
+
   return (
     <motion.div
       className={cn(
@@ -102,18 +113,44 @@ const SongRow = ({
         'flex items-center gap-3 p-2 min-h-[60px]',
         '@[480px]:grid @[480px]:grid-cols-[30px_44px_minmax(0,1fr)_116px_58px_74px] @[480px]:gap-4 @[480px]:px-3 @[480px]:py-[7px] @[480px]:min-h-[54px]',
         showPlays ? WIDE_COLS_PLAYS : WIDE_COLS,
-        isActive ? 'srow-on' : 'hover:bg-s1',
+        selected ? 'bg-s2 shadow-[inset_0_0_0_1px_var(--color-ln2)]' : isActive ? 'srow-on' : 'hover:bg-s1',
       )}
       variants={staggerItem}
       transition={transition.normal}
       role="row"
-      aria-selected={isActive}
+      aria-selected={inSelectionMode ? selected : isActive}
+      onClick={(e) => {
+        if (inSelectionMode) {
+          onToggleSelect(e);
+        }
+      }}
       onContextMenu={onContextMenu ?? ((e) => openTrackMenu(track, e))}
-      onDoubleClick={onClick}
+      onDoubleClick={inSelectionMode ? undefined : onClick}
     >
-      {/* Index column: hidden on phone (< 480px) */}
-      <span className="hidden @[480px]:flex items-center justify-end text-mono-s text-t3">
-        {isActive ? <EqualizerBars playing={isPlaying} /> : <span>{index}</span>}
+      {/* Index column / Checkbox: hidden on phone (< 480px) unless selection mode */}
+      <span
+        className={cn(
+          'items-center justify-end text-mono-s text-t3',
+          inSelectionMode ? 'flex' : 'hidden @[480px]:flex',
+        )}
+      >
+        {inSelectionMode ? (
+          <input
+            type="checkbox"
+            className="cursor-pointer accent-acc w-4 h-4 rounded border-ln"
+            checked={!!selected}
+            aria-label={`Select ${track.title}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(e);
+            }}
+            onChange={() => {}}
+          />
+        ) : isActive ? (
+          <EqualizerBars playing={isPlaying} />
+        ) : (
+          <span>{index}</span>
+        )}
       </span>
 
       {/* Artwork: 48px on phone, 40px on >=480px */}
@@ -135,7 +172,7 @@ const SongRow = ({
               'text-title-m font-medium truncate text-left bg-transparent border-0 p-0 cursor-default hover:underline',
               isActive ? 'text-acc' : 'text-t1',
             )}
-            onClick={onClick}
+            onClick={inSelectionMode ? undefined : onClick}
             onDoubleClick={(e) => e.stopPropagation()}
             aria-label={`Play ${track.title}`}
           >
@@ -148,6 +185,14 @@ const SongRow = ({
         <span className="text-body-s text-t2 truncate">
           {track.artist}
           {track.album ? <span className="inline @[480px]:hidden text-t3"> · {track.album}</span> : null}
+          {showPlaysSubtitle && (
+            <span className="inline @[720px]:hidden text-t3">
+              {' · '}
+              <span>
+                {(track.playCount ?? 0).toLocaleString()} {(track.playCount ?? 0) === 1 ? 'play' : 'plays'}
+              </span>
+            </span>
+          )}
         </span>
       </div>
 

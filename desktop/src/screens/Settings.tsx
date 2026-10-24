@@ -1,14 +1,16 @@
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import Icon, { type IconName } from '../components/ui/Icon';
 import Button from '../components/ui/Button';
 import { Switch } from '../components/ui/Switch';
 import { Segmented } from '../components/ui/Segmented';
 import { Select } from '../components/ui/Select';
+import { cn } from '../lib/cn';
 import { LYRICS_SCRIPTS, updateDevicePrefs, useDevicePrefs } from '../storage/devicePrefs';
 import { CAPS } from '../lib/caps';
 import { useModeStore } from '../store/modeContext';
 import { useLocalLibrary } from '../storage/local';
+import MusicFolders from '../components/library/MusicFolders';
 import { showToast } from '../store/toasts';
 import { useSettings, updateSettings, type AudioQuality, type DownloadFormat } from '../storage/settings';
 import {
@@ -166,6 +168,14 @@ const Settings = () => {
       available: true,
     },
     {
+      id: 'connection',
+      label: 'Connection mode',
+      icon: 'smartphone',
+      title: 'Connection mode',
+      description: 'Controls what the whole app shows and where playback comes from.',
+      available: CAPS.offlineMode,
+    },
+    {
       id: 'playback',
       label: 'Playback',
       icon: 'play',
@@ -190,23 +200,6 @@ const Settings = () => {
       available: true,
     },
     {
-      id: 'library',
-      label: 'Library & scanning',
-      icon: 'folder',
-      title: 'Library & scanning',
-      description: 'Local folders and rescanning. Plays and favourites sync on their own.',
-      // Only local folders live here now that sync runs in the background.
-      available: CAPS.localLibrary,
-    },
-    {
-      id: 'connection',
-      label: 'Connection mode',
-      icon: 'smartphone',
-      title: 'Connection mode',
-      description: 'Controls what the whole app shows and where playback comes from.',
-      available: CAPS.offlineMode,
-    },
-    {
       id: 'about',
       label: 'About',
       icon: 'info',
@@ -222,6 +215,69 @@ const Settings = () => {
 
   const setSection = (id: string) => {
     setSearchParams({ section: id });
+  };
+
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
+  const chipRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const chipRowRef = useRef<HTMLDivElement | null>(null);
+
+  const sectionParam = searchParams.get('section');
+  const [activePhoneSection, setActivePhoneSection] = useState<string>(() => {
+    if (sectionParam && activeSections.some((s) => s.id === sectionParam)) {
+      return sectionParam;
+    }
+    return activeSections[0]?.id || 'account';
+  });
+
+  // After a jump (a chip, or ?section=) the chip picked stays highlighted until the user scrolls
+  // the list themselves: a section near the end can't reach the top, and the scroll-position rule
+  // below would highlight a later one.
+  const jumped = useRef(false);
+  const userScrolls = () => {
+    jumped.current = false;
+  };
+
+  // Only when ?section= changes (a link such as the /folders redirect): `activeSections` is a
+  // new array every render, and re-running on it would pull the page back on every scroll.
+  const sectionShown = !!sectionParam && activeSections.some((s) => s.id === sectionParam);
+  useEffect(() => {
+    if (!sectionParam || !sectionShown) return;
+    jumped.current = true;
+    setActivePhoneSection(sectionParam);
+    sectionRefs.current[sectionParam]?.scrollIntoView?.({ block: 'start' });
+  }, [sectionParam, sectionShown]);
+
+  useEffect(() => {
+    // 'nearest' on both axes: only the chip row scrolls, never the page under it.
+    chipRefs.current[activePhoneSection]?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' });
+  }, [activePhoneSection]);
+
+  // The highlighted chip is the last section whose header has reached the chip row. Scrolled to
+  // the very bottom it is the last section, whose header may never get that far up.
+  const handleScroll = () => {
+    const container = scrollContainerRef.current;
+    if (!container || jumped.current) return;
+    const threshold = (chipRowRef.current ?? container).getBoundingClientRect().bottom;
+    let currentId = activeSections[0]?.id;
+    for (const sec of activeSections) {
+      const top = sectionRefs.current[sec.id]?.getBoundingClientRect().top;
+      // + the sections' 12px scroll margin, so a section a chip just jumped to counts as reached.
+      if (top !== undefined && top <= threshold + 16) currentId = sec.id;
+    }
+    const atBottom =
+      container.scrollTop > 0 && container.scrollTop + container.clientHeight >= container.scrollHeight - 2;
+    if (atBottom) currentId = activeSections[activeSections.length - 1]?.id;
+    if (currentId) setActivePhoneSection(currentId);
+  };
+
+  const scrollToSection = (id: string) => {
+    jumped.current = true;
+    setActivePhoneSection(id);
+    const target = sectionRefs.current[id];
+    if (target) {
+      target.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   const handleSignOut = async () => {
@@ -313,7 +369,7 @@ const Settings = () => {
         </Row>
       </label>
       <label className="cursor-pointer">
-        <Row icon="radio" label="Autoplay" desc="When the queue ends, keep playing similar songs">
+        <Row icon="radio" label="Autoplay" desc="Keeps at least 10 songs lined up with similar ones">
           <Switch
             checked={devicePrefs.autoplaySimilar}
             onCheckedChange={(autoplaySimilar) => updateDevicePrefs({ autoplaySimilar })}
@@ -463,18 +519,6 @@ const Settings = () => {
     </div>
   );
 
-  const renderLibrary = () => (
-    <div className="flex flex-col gap-4">
-      <div className="surf flex flex-col divide-y divide-ln rounded-2xl overflow-hidden">
-        <Link to="/folders" className="no-underline block">
-          <Row icon="folder" label="Local music folders" desc="Manage scanned music folders on this device">
-            {chevron}
-          </Row>
-        </Link>
-      </div>
-    </div>
-  );
-
   const renderConnection = () => (
     <div className="flex flex-col gap-6">
       <div className="surf flex flex-col p-6 gap-5 rounded-2xl">
@@ -549,13 +593,7 @@ const Settings = () => {
         </label>
       </div>
 
-      {CAPS.localLibrary && (
-        <div className="flex items-center gap-3">
-          <Button variant="out" icon="folder" onClick={() => navigate('/folders')}>
-            Manage music folders
-          </Button>
-        </div>
-      )}
+      {CAPS.localLibrary && <MusicFolders />}
     </div>
   );
 
@@ -571,8 +609,6 @@ const Settings = () => {
         return renderDownloads();
       case 'audio':
         return renderAudio();
-      case 'library':
-        return renderLibrary();
       case 'connection':
         return renderConnection();
       case 'about':
@@ -584,47 +620,62 @@ const Settings = () => {
 
   return (
     <div className="@container flex flex-col h-full overflow-hidden bg-bg">
-      {/* Mobile / Small screen: M15 single scrolling list with overline headers */}
-      <div className="flex @[480px]:hidden flex-col p-4 gap-6 overflow-y-auto h-full pb-8">
-        <span className="phone-shell-hide text-title-l text-t1 font-semibold">Settings</span>
+      {/* Mobile / Small screen: M15 single scrolling list with overline headers, under a row of
+          chips that jump to each section. The chips sit outside the scrolling list, so nothing
+          scrolls behind them. */}
+      <div className="flex @[480px]:hidden flex-col h-full min-h-0">
+        <span className="phone-shell-hide text-title-l text-t1 font-semibold px-4 pt-4">Settings</span>
 
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Account</span>
-          {renderAccount()}
+        <div
+          ref={chipRowRef}
+          role="tablist"
+          aria-label="Settings sections"
+          className="flex-none flex items-center gap-2 overflow-x-auto no-scrollbar px-4 py-[10px] border-b border-ln"
+        >
+          {activeSections.map((sec) => {
+            const isSelected = activePhoneSection === sec.id;
+            return (
+              <button
+                key={sec.id}
+                ref={(el) => {
+                  chipRefs.current[sec.id] = el;
+                }}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                aria-current={isSelected ? 'true' : undefined}
+                onClick={() => scrollToSection(sec.id)}
+                className={cn('chip flex-none gap-1.5 whitespace-nowrap cursor-pointer', isSelected && 'chip-on')}
+              >
+                <Icon name={sec.icon} size={14} className="flex-none" />
+                <span>{sec.label}</span>
+              </button>
+            );
+          })}
         </div>
 
-        {CAPS.offlineMode && (
-          <div className="flex flex-col gap-2">
-            <span className="text-overline text-t3 pl-1">Connection mode</span>
-            {renderConnection()}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Playback</span>
-          {renderPlayback()}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Downloads</span>
-          {renderDownloads()}
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">Audio & effects</span>
-          {renderAudio()}
-        </div>
-
-        {CAPS.localLibrary && (
-          <div className="flex flex-col gap-2">
-            <span className="text-overline text-t3 pl-1">Library & scanning</span>
-            {renderLibrary()}
-          </div>
-        )}
-
-        <div className="flex flex-col gap-2">
-          <span className="text-overline text-t3 pl-1">About</span>
-          {renderAbout()}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          onWheel={userScrolls}
+          onTouchStart={userScrolls}
+          onPointerDown={userScrolls}
+          onKeyDown={userScrolls}
+          className="flex flex-col grow min-h-0 p-4 gap-6 overflow-y-auto pb-8"
+        >
+          {activeSections.map((sec) => (
+            <div
+              key={sec.id}
+              data-section={sec.id}
+              ref={(el) => {
+                sectionRefs.current[sec.id] = el;
+              }}
+              className="flex flex-col gap-2 scroll-mt-[12px]"
+            >
+              <span className="text-overline text-t3 pl-1">{sec.title}</span>
+              {renderSectionContent(sec.id)}
+            </div>
+          ))}
         </div>
       </div>
 

@@ -20,14 +20,18 @@ beforeEach(() => resetFs());
 describe('library (desktop window)', () => {
   it('DSK-051 folders open from the Songs view only; the sidebar picks the view, so there are no tabs', () => {
     const songs = renderWithProviders(<Library />, { route: '/library', mode: 'offline' });
-    expect(screen.getByRole('link', { name: 'Folders' })).toHaveAttribute('href', '/folders');
+    expect(screen.getByRole('link', { name: 'Folders' })).toHaveAttribute('href', '/settings?section=connection');
     expect(screen.queryByRole('button', { name: 'Albums' })).not.toBeInTheDocument();
     songs.unmount();
-    for (const view of ['albums', 'artists', 'genres']) {
+    for (const view of ['albums', 'artists', 'favourites', 'most-played']) {
       const other = renderWithProviders(<Library />, { route: `/library?view=${view}`, mode: 'offline' });
       expect(screen.queryByRole('link', { name: 'Folders' })).not.toBeInTheDocument();
       other.unmount();
     }
+    // ?view=genres falls back to Songs, so Folders is shown
+    const genres = renderWithProviders(<Library />, { route: '/library?view=genres', mode: 'offline' });
+    expect(screen.getByRole('link', { name: 'Folders' })).toBeInTheDocument();
+    genres.unmount();
   });
 
   it('DSK-052 an old ?view=folders link opens the Songs tab', () => {

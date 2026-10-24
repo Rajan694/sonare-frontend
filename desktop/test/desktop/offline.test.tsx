@@ -71,7 +71,7 @@ vi.mock('../../src/components/layout/AppShell', async () => {
 
 import App from '../../src/App';
 import ModeSwitch from '../../src/screens/ModeSwitch';
-import Folders from '../../src/screens/Folders';
+import MusicFolders from '../../src/components/library/MusicFolders';
 import Settings from '../../src/screens/Settings';
 import { localLibrary, getLocalSnapshot } from '../../src/storage/local';
 import { getSettings, updateSettings } from '../../src/storage/settings';
@@ -157,12 +157,12 @@ describe('switching to Offline Mode', () => {
     expect(location()).toBe('/home');
   });
 
-  it('DSK-031 settings on the desktop include the connection mode and the library sections', async () => {
+  it('DSK-031 settings on the desktop include connection mode and not library & scanning', async () => {
     const { user, container, location } = renderWithProviders(<Settings />, {
       route: '/settings?section=connection',
     });
     const wide = within(container.firstElementChild!.children[1] as HTMLElement);
-    expect(wide.getByRole('button', { name: 'Library & scanning' })).toBeInTheDocument();
+    expect(wide.queryByRole('button', { name: 'Library & scanning' })).not.toBeInTheDocument();
     expect(wide.getByText('Online · streaming from Sonare server')).toBeInTheDocument();
     await user.click(wide.getByRole('button', { name: 'Offline' }));
     expect(location()).toBe('/mode-switch');
@@ -277,10 +277,10 @@ describe('switching to Offline Mode', () => {
   });
 });
 
-describe('music folders screen', () => {
+describe('music folders', () => {
   it('DSK-032 with no folders it invites the user to add one, using the folder picker', async () => {
     writeFile('/home/me/Picked/x.flac', new Uint8Array(8));
-    const { user } = renderWithProviders(<Folders />);
+    const { user } = renderWithProviders(<MusicFolders />);
     expect(await screen.findByText('No music folders added')).toBeInTheDocument();
     await user.click(screen.getAllByRole('button', { name: 'Add folder' })[0]);
     await waitFor(() => expect(h.toast).toHaveBeenCalledWith(expect.objectContaining({ title: 'Added Picked' })));
@@ -290,7 +290,7 @@ describe('music folders screen', () => {
   it('DSK-033 lists folders; scanning reports what changed; open, exclude and remove work', async () => {
     writeFile(`${MUSIC}/a.mp3`, new Uint8Array(8));
     await localLibrary.addFolder(MUSIC);
-    const { user } = renderWithProviders(<Folders />);
+    const { user } = renderWithProviders(<MusicFolders />);
     expect(await screen.findByText('Music', { selector: 'span.text-body-m' })).toBeInTheDocument();
     writeFile(`${MUSIC}/b.mp3`, new Uint8Array(8));
     await user.click(screen.getByRole('button', { name: 'Scan now' }));
@@ -312,7 +312,7 @@ describe('music folders screen', () => {
     writeFile(`${MUSIC}/a.mp3`, new Uint8Array(8));
     await localLibrary.addFolder(MUSIC);
     const spy = vi.spyOn(localLibrary, 'rescan').mockRejectedValueOnce(new Error('Disk unplugged'));
-    const { user } = renderWithProviders(<Folders />);
+    const { user } = renderWithProviders(<MusicFolders />);
     await user.click(await screen.findByRole('button', { name: 'Scan now' }));
     await waitFor(() =>
       expect(h.toast).toHaveBeenCalledWith(
@@ -334,8 +334,21 @@ describe('music folders screen', () => {
       album: null,
       durationMs: null,
     });
-    renderWithProviders(<Folders />, { player: makePlayer() });
+    renderWithProviders(<MusicFolders />, { player: makePlayer() });
     expect(await screen.findByRole('button', { name: 'Rescan Sonare downloads' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Remove Sonare downloads' })).not.toBeInTheDocument();
+  });
+
+  it('DSK-092 settings Connection mode renders music folders and add folder in desktop window', () => {
+    const { container } = renderWithProviders(<Settings />, { route: '/settings?section=connection' });
+    const wide = within(container.firstElementChild!.children[1] as HTMLElement);
+    expect(wide.getByText('Music folders')).toBeInTheDocument();
+    expect(wide.getAllByRole('button', { name: 'Add folder' })[0]).toBeInTheDocument();
+    expect(wide.queryByRole('button', { name: 'Library & scanning' })).not.toBeInTheDocument();
+
+    const phone = within(container.firstElementChild!.children[0] as HTMLElement);
+    const tabs = phone.getAllByRole('tab').map((t) => t.textContent);
+    expect(tabs).toEqual(['Account', 'Connection mode', 'Playback', 'Downloads', 'Audio & effects', 'About']);
+    expect(phone.getByRole('tab', { name: 'Connection mode' })).toHaveAttribute('aria-selected', 'true');
   });
 });

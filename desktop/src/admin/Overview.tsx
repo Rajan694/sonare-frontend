@@ -8,7 +8,6 @@ import { ColumnChart } from './components/ColumnChart';
 import { Notice } from './components/Notice';
 import { PageHeader } from './components/PageHeader';
 import { Panel } from './components/Panel';
-import { ShareBars } from './components/ShareBars';
 import { StatTile } from './components/StatTile';
 import { StatusLine } from './components/StatusLine';
 import { AiUsagePanel } from './AiUsagePanel';
@@ -22,9 +21,10 @@ const RANGES = [
 const CLIENT_NAMES: Record<string, string> = {
   web: 'Web',
   linux: 'Linux app',
+  windows: 'Windows app',
   mobile: 'Mobile app',
-  // <audio> and <img> requests can't carry the X-Sonare-Client header.
-  other: 'Audio, artwork and untagged',
+  other: 'Audio, artwork and other',
+  unknown: 'Unknown',
 };
 
 const Overview = () => {
@@ -36,7 +36,7 @@ const Overview = () => {
 
   return (
     <>
-      <PageHeader title="Overview" subtitle="Usage across every app, from the backend's request log.">
+      <PageHeader title="Overview" subtitle="Usage across every app, from daily activity and API telemetry.">
         <Segmented options={RANGES} value={days} onChange={setDays} />
         <button type="button" className="chip" onClick={reload} aria-label="Refresh">
           <RefreshCw size={14} className={loading ? 'animate-spin' : undefined} aria-hidden /> Refresh
@@ -68,23 +68,38 @@ const Overview = () => {
             </div>
           </Panel>
 
-          <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 mb-4">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 mb-4">
+            <StatTile
+              label="DAU (today)"
+              value={fmtCompact((data.active?.dau?.users ?? 0) + (data.active?.dau?.guests ?? 0))}
+              note={`${fmtInt(data.active?.dau?.users ?? 0)} users · ${fmtInt(data.active?.dau?.guests ?? 0)} guests`}
+            />
+            <StatTile
+              label="WAU (7 days)"
+              value={fmtCompact((data.active?.wau?.users ?? 0) + (data.active?.wau?.guests ?? 0))}
+              note={`${fmtInt(data.active?.wau?.users ?? 0)} users · ${fmtInt(data.active?.wau?.guests ?? 0)} guests`}
+            />
+            <StatTile
+              label="MAU (30 days)"
+              value={fmtCompact((data.active?.mau?.users ?? 0) + (data.active?.mau?.guests ?? 0))}
+              note={`${fmtInt(data.active?.mau?.users ?? 0)} users · ${fmtInt(data.active?.mau?.guests ?? 0)} guests`}
+            />
+            <StatTile
+              label={`Active (${data.days}d)`}
+              value={fmtCompact(data.totals.activeUsers + (data.totals.activeGuests ?? 0))}
+              note={`${fmtInt(data.totals.activeUsers)} users · ${fmtInt(data.totals.activeGuests ?? 0)} guests`}
+            />
             <StatTile
               label="Accounts"
               value={fmtCompact(data.totals.users)}
               note={`${fmtInt(data.totals.newUsers)} new in ${data.days} days`}
             />
             <StatTile
-              label="Active accounts"
-              value={fmtCompact(data.totals.activeUsers)}
-              note="signed in and used the API"
-            />
-            <StatTile
               label="Plays"
               value={fmtCompact(data.totals.plays)}
               note={`${data.totals.listeningHours} hours listened`}
             />
-            <StatTile label="API requests" value={fmtCompact(data.totals.requests)} note="guests included" />
+            <StatTile label="API requests" value={fmtCompact(data.totals.requests)} note="total calls" />
             <StatTile
               label="Playlists"
               value={fmtCompact(data.totals.playlists)}
@@ -105,10 +120,12 @@ const Overview = () => {
               empty="No requests logged yet"
             />
             <ColumnChart
-              title="Active accounts per day"
-              subtitle="Signed-in accounts that used the API"
-              points={daily((d) => d.activeUsers)}
-              empty="No signed-in activity yet"
+              title="Active users per day"
+              subtitle="Signed-in users and guests"
+              points={daily((d) => d.users ?? d.activeUsers)}
+              secondaryPoints={daily((d) => d.guests ?? 0)}
+              seriesNames={['Users', 'Guests']}
+              empty="No active users in this range"
             />
             <ColumnChart
               title="Plays per day"
@@ -119,25 +136,76 @@ const Overview = () => {
             <ColumnChart title="Sign-ups per day" points={daily((d) => d.signups)} empty="No sign-ups in this range" />
           </div>
 
-          <Panel
-            className="mb-6"
-            title="Requests by app"
-            subtitle={`Last ${data.days} days. Request logs keep the newest 2.1 million requests (about 250 MB).`}
-          >
-            {data.clients.length ? (
-              <ShareBars
-                format={fmtCompact}
-                rows={data.clients.map((c) => ({
-                  key: c.client,
-                  label: CLIENT_NAMES[c.client] ?? c.client,
-                  value: c.requests,
-                  detail: `${fmtInt(c.users)} account${c.users === 1 ? '' : 's'}`,
-                }))}
-              />
-            ) : (
-              <p className="text-body-s text-t3">No requests logged yet.</p>
-            )}
-          </Panel>
+          <div className="grid gap-4 lg:grid-cols-2 mb-6">
+            <Panel title="Active users by app" subtitle={`Last ${data.days} days.`}>
+              {data.clients.length ? (
+                <div className="overflow-x-auto -mx-5 px-5">
+                  <table className="w-full text-body-s">
+                    <thead>
+                      <tr className="border-b border-ln2 text-label-m text-t3">
+                        <th scope="col" className="py-2 text-left font-medium">
+                          App
+                        </th>
+                        <th scope="col" className="py-2 text-right font-medium">
+                          Users
+                        </th>
+                        <th scope="col" className="py-2 text-right font-medium">
+                          Guests
+                        </th>
+                        <th scope="col" className="py-2 text-right font-medium">
+                          Total active
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.clients.map((c) => {
+                        const total = c.users + c.guests;
+                        return (
+                          <tr key={c.client} className="border-b border-ln last:border-0">
+                            <td className="py-2 text-t1 font-medium">{CLIENT_NAMES[c.client] ?? c.client}</td>
+                            <td className="py-2 text-right text-t2 tabular-nums">{fmtInt(c.users)}</td>
+                            <td className="py-2 text-right text-t2 tabular-nums">{fmtInt(c.guests)}</td>
+                            <td className="py-2 text-right text-t1 tabular-nums font-medium">{fmtInt(total)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-body-s text-t3">No active users logged yet.</p>
+              )}
+            </Panel>
+
+            <Panel title="New users by app" subtitle={`Last ${data.days} days.`}>
+              {data.signupsByClient && data.signupsByClient.length > 0 ? (
+                <div className="overflow-x-auto -mx-5 px-5">
+                  <table className="w-full text-body-s">
+                    <thead>
+                      <tr className="border-b border-ln2 text-label-m text-t3">
+                        <th scope="col" className="py-2 text-left font-medium">
+                          App
+                        </th>
+                        <th scope="col" className="py-2 text-right font-medium">
+                          New accounts
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.signupsByClient.map((s) => (
+                        <tr key={s.client} className="border-b border-ln last:border-0">
+                          <td className="py-2 text-t1 font-medium">{CLIENT_NAMES[s.client] ?? s.client}</td>
+                          <td className="py-2 text-right text-t1 tabular-nums font-medium">{fmtInt(s.count)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-body-s text-t3">No new users in this range.</p>
+              )}
+            </Panel>
+          </div>
 
           <AiUsagePanel days={data.days} />
         </div>

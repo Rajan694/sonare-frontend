@@ -13,6 +13,7 @@ import { PlaylistDetailScreen } from '../screens/PlaylistDetail';
 import { SettingsScreen } from '../screens/Settings';
 import { FoldersScreen } from '../screens/Folders';
 import { DownloadsScreen } from '../screens/Downloads';
+import { TrackListScreen } from '../screens/TrackList';
 import { EqualizerScreen } from '../screens/Equalizer';
 import { AccountScreen } from '../screens/Account';
 import { MiniPlayer } from '../components/music/MiniPlayer';
@@ -39,6 +40,7 @@ const tabStack = (rootName: string, Root: React.ComponentType<any>) => {
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="Folders" component={FoldersScreen} />
         <Stack.Screen name="Downloads" component={DownloadsScreen} />
+        <Stack.Screen name="TrackList" component={TrackListScreen} />
         <Stack.Screen name="Equalizer" component={EqualizerScreen} />
         <Stack.Screen name="Account" component={AccountScreen} />
       </Stack.Navigator>

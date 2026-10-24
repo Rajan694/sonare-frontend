@@ -1,21 +1,27 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
+  notifyHistoryCleared,
   notifyPlaylistsChanged,
   useAsync,
   useAuth,
   useDebounce,
   useFavourites,
+  useLibrarySongs,
   useLibraryTracks,
   useLyrics,
+  useMostPlayed,
   useMyPlaylists,
+  useRecentlyPlayed,
+  useSavedPlaylists,
+  useNotPlayedLately,
   usePlaylist,
   useSearch,
 } from '../../src/api/hooks';
 import { setFavourite } from '../../src/api/favourites';
 import { clearSession, setSession } from '../../src/api/auth';
 import { API, apiError, http, HttpResponse, recordRequests, server, useMockServer } from '../helpers/server';
-import { makePlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
+import { makePlaylist, makeSavedPlaylist, makeTrack, page, testUser } from '../helpers/fixtures';
 
 useMockServer();
 
@@ -175,6 +181,20 @@ describe('account data', () => {
     await waitFor(() => expect(result.current.data?.items[0].name).toBe('v2'));
   });
 
+  it('WEB-HOOK-021 useSavedPlaylists refetches when playlists change anywhere in the app', async () => {
+    setSession('a', 'r', testUser);
+    let calls = 0;
+    server.use(
+      http.get(`${API}/me/saved-playlists`, () =>
+        HttpResponse.json(page([makeSavedPlaylist({ name: `saved-v${++calls}` })])),
+      ),
+    );
+    const { result } = renderHook(() => useSavedPlaylists());
+    await waitFor(() => expect(result.current.data?.items[0].name).toBe('saved-v1'));
+    act(() => notifyPlaylistsChanged());
+    await waitFor(() => expect(result.current.data?.items[0].name).toBe('saved-v2'));
+  });
+
   it('WEB-HOOK-015 the favourites list refetches after a heart is saved elsewhere', async () => {
     setSession('a', 'r', testUser);
     let favs = [makeTrack({ id: 'yt:f1' })];
@@ -214,5 +234,104 @@ describe('account data', () => {
     await waitFor(() => expect(result.current.error?.message).toBe('No lyrics for this song'));
     // The backend may never have seen a song found in-app: it looks the lyrics up by these.
     expect(Object.fromEntries(asked!)).toMatchObject({ title: 'Song A', artist: 'Band B', durationMs: '201000' });
+  });
+
+  it('WEB-HOOK-018 useLibrarySongs: loadAll continues from loaded cursor without refetching first page', async () => {
+    setSession('a', 'r', testUser);
+    const track1 = makeTrack({ id: 'yt:t1', title: 'Song 1' });
+    const track2 = makeTrack({ id: 'yt:t2', title: 'Song 2' });
+    server.use(
+      http.get(`${API}/me/library/tracks`, ({ request }) => {
+        const url = new URL(request.url);
+        const cursor = url.searchParams.get('cursor');
+        if (cursor === 'c1') {
+          return HttpResponse.json(page([track2]));
+        }
+        return HttpResponse.json(page([track1], 'c1'));
+      }),
+    );
+    const { result } = renderHook(() => useLibrarySongs({ filter: 'all', sort: null }));
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+    expect(result.current.hasMore).toBe(true);
+    expect(result.current.nextCursor).toBe('c1');
+
+    const rec = recordRequests();
+    let all: any[] = [];
+    await act(async () => {
+      all = await result.current.loadAll();
+    });
+
+    expect(all).toEqual([track1, track2]);
+    // Verifying it did NOT make a request for the first page again (no cursor)
+    const paths = rec.paths();
+    expect(paths).toContain('GET /me/library/tracks?filter=all&sort=addedAt&limit=100&cursor=c1');
+    const firstPageFetches = paths.filter((p) => p.startsWith('GET /me/library/tracks') && !p.includes('cursor='));
+    expect(firstPageFetches).toHaveLength(0);
+    rec.stop();
+  });
+
+  it('WEB-HOOK-019 useLibrarySongs: enabled=false prevents fetching', async () => {
+    setSession('a', 'r', testUser);
+    const rec = recordRequests();
+    const { result } = renderHook(() => useLibrarySongs({ filter: 'all', sort: null, enabled: false }));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(result.current.loading).toBe(false);
+    expect(result.current.items).toHaveLength(0);
+    expect(rec.paths().filter((p) => p.startsWith('GET /me/library/tracks'))).toHaveLength(0);
+    rec.stop();
+  });
+
+  it('WEB-HOOK-020 useNotPlayedLately: fetches when signed in and enabled, skips for guests or disabled', async () => {
+    const unplayed = makeTrack({ id: 'yt:old', title: 'Old Favourite' });
+    server.use(http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([unplayed]))));
+
+    // 1. Guest: does not fetch
+    const guestRec = recordRequests();
+    const { result: guestResult } = renderHook(() => useNotPlayedLately(20));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(guestResult.current.data).toBeNull();
+    expect(guestRec.paths().filter((p) => p.startsWith('GET /me/not-played-lately'))).toHaveLength(0);
+    guestRec.stop();
+
+    // 2. Signed in: fetches
+    setSession('a', 'r', testUser);
+    const authedRec = recordRequests();
+    const { result: authedResult } = renderHook(() => useNotPlayedLately(20));
+    await waitFor(() => expect(authedResult.current.data?.items).toEqual([unplayed]));
+    expect(authedRec.paths()).toContain('GET /me/not-played-lately?limit=20');
+    authedRec.stop();
+
+    // 3. Disabled: does not fetch even when signed in
+    const disabledRec = recordRequests();
+    const { result: disabledResult } = renderHook(() => useNotPlayedLately(20, false));
+    await new Promise((r) => setTimeout(r, 30));
+    expect(disabledResult.current.loading).toBe(false);
+    expect(disabledRec.paths().filter((p) => p.startsWith('GET /me/not-played-lately'))).toHaveLength(0);
+    disabledRec.stop();
+  });
+
+  it('WEB-HOOK-022 useRecentlyPlayed and useMostPlayed refetch when history is cleared', async () => {
+    setSession('a', 'r', testUser);
+    let recentCalls = 0;
+    let mostCalls = 0;
+    server.use(
+      http.get(`${API}/me/recently-played`, () => {
+        return HttpResponse.json(page([makeTrack({ id: `yt:rec${++recentCalls}` })]));
+      }),
+      http.get(`${API}/me/most-played`, () => {
+        return HttpResponse.json(page([makeTrack({ id: `yt:most${++mostCalls}` })]));
+      }),
+    );
+
+    const { result: recentRes } = renderHook(() => useRecentlyPlayed());
+    const { result: mostRes } = renderHook(() => useMostPlayed());
+
+    await waitFor(() => expect(recentRes.current.data?.items[0].id).toBe('yt:rec1'));
+    await waitFor(() => expect(mostRes.current.data?.items[0].id).toBe('yt:most1'));
+
+    act(() => notifyHistoryCleared());
+
+    await waitFor(() => expect(recentRes.current.data?.items[0].id).toBe('yt:rec2'));
+    await waitFor(() => expect(mostRes.current.data?.items[0].id).toBe('yt:most2'));
   });
 });

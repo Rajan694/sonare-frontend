@@ -70,7 +70,7 @@ interface PlayerStore {
   retry: () => void;
   seekTo: (ms: number) => void;
   playNextInQueue: (track: Track) => void;
-  addToQueue: (track: Track) => void;
+  addToQueue: (track: Track | Track[]) => void;
   toggleShuffle: () => void;
   cycleRepeat: () => void;
   playNext: () => void;
@@ -193,8 +193,10 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   addToQueue: (track) => {
-    if (!get().currentTrack) return get().playTrack(track);
-    set(append(get(), [track]));
+    const tracks = Array.isArray(track) ? track : [track];
+    if (tracks.length === 0) return;
+    if (!get().currentTrack) return get().playTrack(tracks[0], tracks);
+    set(append(get(), tracks));
   },
 
   // Shuffling reorders the queue itself: the playing song first, the rest at random. Turning

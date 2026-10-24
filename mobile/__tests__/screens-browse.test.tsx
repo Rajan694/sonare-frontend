@@ -91,13 +91,16 @@ describe('Home', () => {
   it('MOB-HOME-003 a guest is invited to sign in and no account data is requested', async () => {
     const recentSpy = stub('recentlyPlayed', async () => page([]));
     const favSpy = stub('favourites', async () => page([]));
-    const { getByText } = render(<HomeScreen />);
+    const notPlayedSpy = stub('notPlayedLately', async () => page([]));
+    const { getByText, queryByText } = render(<HomeScreen />);
     expect(getByText('Welcome to Sonare')).toBeTruthy();
     expect(getByText("You're listening as a guest")).toBeTruthy();
+    expect(queryByText("Haven't played in a while")).toBeNull();
     fireEvent.press(getByText('Sign in'));
     expect(nav.navigate).toHaveBeenCalledWith('SignIn', { mode: 'signin' });
     expect(recentSpy).not.toHaveBeenCalled();
     expect(favSpy).not.toHaveBeenCalled();
+    expect(notPlayedSpy).not.toHaveBeenCalled();
   });
 
   it('MOB-HOME-004 trending plays within the chart; when the music service is down it says so and retries', async () => {
@@ -159,6 +162,73 @@ describe('Home', () => {
     fireEvent.press(getByLabelText('Music folders'));
     expect(nav.navigate).toHaveBeenCalledWith('Folders');
     expect(trending).not.toHaveBeenCalled();
+  });
+
+  it('MOB-HOME-007 shows "Haven\'t played in a while" shelf and plays with the shelf queued', async () => {
+    signIn();
+    const older1 = makeTrack({ id: 'yt:old1', title: 'Old Song One', artist: 'Artist One', source: 'server' });
+    const older2 = makeTrack({ id: 'yt:old2', title: 'Old Song Two', artist: 'Artist Two', source: 'server' });
+    const localSong = makeTrack({ id: 'local:xyz', title: 'Local Song', source: 'local' });
+
+    stub('recentlyPlayed', async () => page([]));
+    stub('favourites', async () => page([]));
+    const notPlayedSpy = stub('notPlayedLately', async () => page([older1, localSong, older2]));
+
+    const playTrack = jest.spyOn(usePlayerStore.getState(), 'playTrack');
+    const { findByText, getByText, queryByText, getByLabelText } = render(<HomeScreen />);
+
+    expect(await findByText("Haven't played in a while")).toBeTruthy();
+    expect(notPlayedSpy).toHaveBeenCalledWith(20);
+    expect(getByText('Old Song One')).toBeTruthy();
+    expect(getByText('Old Song Two')).toBeTruthy();
+    // Non-server songs are filtered out
+    expect(queryByText('Local Song')).toBeNull();
+
+    // Tapping plays with shelf as queue
+    fireEvent.press(getByLabelText('Play Old Song One'));
+    expect(playTrack).toHaveBeenCalledWith(older1, [older1, older2], {
+      kind: 'Home',
+      name: "Haven't played in a while",
+    });
+  });
+
+  it('MOB-HOME-008 "Haven\'t played in a while" shelf is hidden when empty, guest, offline, or on error', async () => {
+    signIn();
+    const older = makeTrack({ id: 'yt:old1', title: 'Old Song One', source: 'server' });
+    stub('recentlyPlayed', async () => page([]));
+    stub('favourites', async () => page([]));
+
+    // 1. Error state -> shelf hidden
+    stub('notPlayedLately', async () => {
+      throw new Error('API failure');
+    });
+
+    const { queryByText, unmount } = render(<HomeScreen />);
+    expect(queryByText("Haven't played in a while")).toBeNull();
+    unmount();
+
+    // 2. Empty state -> shelf hidden
+    stub('notPlayedLately', async () => page([]));
+    const emptyRender = render(<HomeScreen />);
+    expect(emptyRender.queryByText("Haven't played in a while")).toBeNull();
+    emptyRender.unmount();
+
+    // 3. Offline -> shelf hidden, api not called
+    const notPlayedSpy = stub('notPlayedLately', async () => page([older]));
+    notPlayedSpy.mockClear();
+    useModeStore.setState({ mode: 'offline' });
+    const offlineRender = render(<HomeScreen />);
+    expect(offlineRender.queryByText("Haven't played in a while")).toBeNull();
+    expect(notPlayedSpy).not.toHaveBeenCalled();
+    offlineRender.unmount();
+
+    // 4. Guest -> shelf hidden, api not called
+    useModeStore.setState({ mode: 'online' });
+    guest();
+    const guestRender = render(<HomeScreen />);
+    expect(guestRender.queryByText("Haven't played in a while")).toBeNull();
+    expect(notPlayedSpy).not.toHaveBeenCalled();
+    guestRender.unmount();
   });
 });
 
@@ -434,6 +504,63 @@ describe('Search', () => {
     expect(useRecentSearchesStore.getState().searches).toEqual([]);
     expect(queryByLabelText('Search for kendrick')).toBeNull();
   });
+
+  it('MOB-SEARCH-014 pasting a YouTube song link shows one song row, plays on tap, and skips normal search', async () => {
+    const song = makeTrack({ id: 'yt:dQw4w9WgXcQ', title: 'Never Gonna Give You Up', artist: 'Rick Astley' });
+    const trackSpy = stub('track', async () => song);
+    const searchSpy = stub('search', async () => page([]));
+
+    const { getByLabelText, findByText, queryByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+
+    expect(await findByText('Never Gonna Give You Up')).toBeTruthy();
+    expect(queryByText('Songs')).toBeNull();
+    expect(queryByText('Playlists')).toBeNull();
+    expect(trackSpy).toHaveBeenCalledWith('yt:dQw4w9WgXcQ');
+    expect(searchSpy).not.toHaveBeenCalled();
+
+    fireEvent.press(getByLabelText('Never Gonna Give You Up by Rick Astley'));
+    expect(usePlayerStore.getState().currentTrack?.id).toBe('yt:dQw4w9WgXcQ');
+  });
+
+  it('MOB-SEARCH-015 pasting a YouTube playlist link shows owner and song count and navigates to Playlist', async () => {
+    const pl = {
+      ...makePlaylist({ id: 'yt:PL12345', name: 'Chill Vibes', trackCount: 42 }),
+      owner: 'Lofi Girl',
+    };
+    const playlistSpy = stub('playlist', async () => pl as any);
+    const searchSpy = stub('search', async () => page([]));
+
+    const { getByLabelText, getByText, findByText, queryByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'https://www.youtube.com/playlist?list=PL12345');
+
+    expect(await findByText('Chill Vibes')).toBeTruthy();
+    expect(getByText('Lofi Girl · 42 songs')).toBeTruthy();
+    expect(queryByText('Playlists')).toBeNull();
+    expect(playlistSpy).toHaveBeenCalledWith('yt:PL12345');
+    expect(searchSpy).not.toHaveBeenCalled();
+
+    fireEvent.press(getByLabelText('Playlist Chill Vibes'));
+    expect(nav.navigate).toHaveBeenCalledWith('Playlist', { id: 'yt:PL12345' });
+  });
+
+  it('MOB-SEARCH-016 pasting an invalid YouTube link shows error; plain text still searches', async () => {
+    const trackSpy = stub('track', async () => {
+      throw new Error('Not found');
+    });
+    const searchSpy = stub('search', async () => page([]));
+
+    const { getByLabelText, findByText } = render(<SearchScreen />);
+    fireEvent.changeText(getByLabelText('Search all music'), 'https://www.youtube.com/watch?v=unknown1234');
+
+    expect(await findByText("Couldn't open this link")).toBeTruthy();
+    expect(trackSpy).toHaveBeenCalledWith('yt:unknown1234');
+    expect(searchSpy).not.toHaveBeenCalled();
+
+    // Plain text resumes normal search
+    fireEvent.changeText(getByLabelText('Search all music'), 'daft punk');
+    await waitFor(() => expect(searchSpy).toHaveBeenCalledWith('daft punk', 'all', undefined));
+  });
 });
 
 describe('Library', () => {
@@ -471,9 +598,12 @@ describe('Library', () => {
     fireEvent.press(await findByLabelText('Most played'));
     fireEvent.press(await findByLabelText('Sort: Most played'));
     expect(getByLabelText('Most played').props.accessibilityState).toEqual({ selected: true });
-    fireEvent.press(getByLabelText('A-Z'));
-    expect(await findByLabelText('Sort: A-Z')).toBeTruthy();
-    await waitFor(() => expect(lib.mock.calls.map((c) => c[0])).toEqual(['addedAt', 'playCount', 'title']));
+    fireEvent.press(getByLabelText('Title'));
+    expect(await findByLabelText('Sort: Title')).toBeTruthy();
+    // Each sort change sends the new sort value in the object param.
+    await waitFor(() =>
+      expect(lib.mock.calls.map((c) => (c[0] as any).sort)).toEqual(['addedAt', 'playCount', 'title']),
+    );
   });
 
   it('MOB-LIB-S-004 "only on this phone" keeps just the downloaded songs', async () => {
@@ -491,13 +621,15 @@ describe('Library', () => {
     expect(getByLabelText(`Mine 1 by ${mine[0].artist}`)).toBeTruthy();
   });
 
-  it('MOB-LIB-S-005 there is no Folders tab (Settings has music folders); Downloads opens downloads', async () => {
+  it('MOB-LIB-S-005 there is no Folders tab (Settings has music folders); Downloads tab switches to downloads view', async () => {
     signIn();
     stub('libraryTracks', async () => page([]));
-    const { queryByText, getByLabelText } = render(<LibraryScreen />);
+    const { queryByText, getByText } = render(<LibraryScreen />);
     expect(queryByText('Folders')).toBeNull();
-    fireEvent.press(getByLabelText('Downloads'));
-    expect(nav.navigate).toHaveBeenCalledWith('Downloads');
+    expect(queryByText(/^Saving to /)).toBeNull();
+    fireEvent.press(getByText('Downloads'));
+    // The downloads list itself shows in the tab: its header says where songs are saved.
+    expect(getByText(/^Saving to /)).toBeTruthy();
   });
 });
 
@@ -581,6 +713,31 @@ describe('Playlists', () => {
     expect(getByText('No playlists on this phone. Go online to load your playlists.')).toBeTruthy();
     expect(queryByLabelText('Gym')).toBeNull();
   });
+
+  it('MOB-PLS-006 renders "Saved from YouTube" section and navigates to playlist on press', async () => {
+    signIn();
+    const myPl = makePlaylist({ id: 'sonare:mine', name: 'My Own Playlist', kind: 'online' });
+    useLibraryStore.setState({ playlists: [myPl] });
+    jest.spyOn(useLibraryStore.getState(), 'reloadPlaylists').mockResolvedValue();
+
+    const savedYt = {
+      id: 'yt:PLxyz123',
+      name: 'Ambient Chill',
+      owner: 'Chill Channel',
+      trackCount: 42,
+      addedAt: Date.now(),
+    };
+    const savedSpy = stub('savedPlaylists', async () => page([savedYt]));
+
+    const { findByText, getByText, getByLabelText } = render(<PlaylistsScreen />);
+    expect(await findByText('Saved from YouTube')).toBeTruthy();
+    expect(savedSpy).toHaveBeenCalled();
+    expect(getByText('Ambient Chill')).toBeTruthy();
+    expect(getByText('Chill Channel · 42 songs')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('Ambient Chill'));
+    expect(nav.navigate).toHaveBeenCalledWith('Playlist', { id: 'yt:PLxyz123' });
+  });
 });
 
 describe('Playlist, album and artist pages', () => {
@@ -633,21 +790,25 @@ describe('Playlist, album and artist pages', () => {
     await waitFor(() => expect(nav.goBack).toHaveBeenCalled());
   });
 
-  it('MOB-PL-004 the favourite button on a playlist saves it', async () => {
+  it('MOB-PL-004 the favourite button on a playlist saves it using saved-playlists state', async () => {
     signIn();
     route.params = { id: 'yt:PL1' };
     stub('playlist', async () => makePlaylist({ id: 'yt:PL1', name: 'Hits', kind: 'online' }));
     stub('playlistTracks', async () => page(songs));
-    const anyCall = jest.fn();
-    for (const k of Object.keys(api) as (keyof typeof api)[])
-      if (!['playlist', 'playlistTracks'].includes(k)) jest.spyOn(api, k).mockImplementation(anyCall as never);
+    const savedSpy = stub('savedPlaylists', async () => page([]));
+    const albumsSpy = stub('libraryAlbums', async () => page([]));
+    const setAlbumFavSpy = stub('setAlbumFavourite', async () => ({ ok: true }));
+
     const { findByLabelText } = render(<PlaylistDetailScreen />);
     fireEvent.press(await findByLabelText('Favourite playlist'));
-    expect(anyCall).toHaveBeenCalled();
-    // Saved the same way as an album: the library lists it with the saved albums.
-    // Saved like an album, with what the app knows about it.
+
+    // Reads savedPlaylists() for playlist ids (not libraryAlbums)
+    expect(savedSpy).toHaveBeenCalled();
+    expect(albumsSpy).not.toHaveBeenCalled();
+
+    // Saves like an album with playlist metadata
     await waitFor(() =>
-      expect(api.setAlbumFavourite).toHaveBeenCalledWith(
+      expect(setAlbumFavSpy).toHaveBeenCalledWith(
         'yt:PL1',
         true,
         expect.objectContaining({ title: expect.any(String) }),
@@ -706,6 +867,35 @@ describe('Playlist, album and artist pages', () => {
     fireEvent.press(getByText('Save'));
     expect(await findByText('That name is taken')).toBeTruthy();
     expect(getByLabelText('Playlist name').props.value).toBe('Taken');
+  });
+
+  it('MOB-PL-008 Unsave on a saved playlist uses savedPlaylists and removes it', async () => {
+    signIn();
+    route.params = { id: 'yt:PL_saved' };
+    stub('playlist', async () => makePlaylist({ id: 'yt:PL_saved', name: 'Hits', kind: 'online' }));
+    stub('playlistTracks', async () => page(songs));
+    const savedSpy = stub('savedPlaylists', async () =>
+      page([
+        {
+          id: 'yt:PL_saved',
+          name: 'Hits',
+          owner: 'Channel',
+          trackCount: 2,
+          addedAt: Date.now(),
+        },
+      ]),
+    );
+    const albumsSpy = stub('libraryAlbums', async () => page([]));
+    const setAlbumFavSpy = stub('setAlbumFavourite', async () => ({ ok: true }));
+
+    const { findByLabelText } = render(<PlaylistDetailScreen />);
+    const favButton = await findByLabelText('Favourite playlist');
+
+    expect(savedSpy).toHaveBeenCalled();
+    expect(albumsSpy).not.toHaveBeenCalled();
+
+    fireEvent.press(favButton);
+    await waitFor(() => expect(setAlbumFavSpy).toHaveBeenCalledWith('yt:PL_saved', false, expect.anything()));
   });
 
   it('MOB-ALB-001 an album shows its artist link and year, and shuffle plays it all', async () => {

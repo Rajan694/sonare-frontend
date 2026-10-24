@@ -22,6 +22,8 @@ import { usePagedList } from '../hooks/usePagedList';
 import type { Track } from '../data/types';
 import { songCount } from '../lib/format';
 import { playShuffled } from '../lib/playShuffled';
+import { requireAccount } from '../data/accountGate';
+import { useCollectionMenuStore, queueCollection } from '../store/collectionMenu';
 import Icon from '../components/ui/Icon';
 
 export const AlbumScreen = () => {
@@ -138,13 +140,31 @@ export const AlbumScreen = () => {
                 <IconButton
                   icon={<Icon name="playlist" size={20} color="#9A9AA8" />}
                   size={44}
-                  onPress={() => {
-                    if (tracks.length > 0) {
-                      const queueState = usePlayerStore.getState();
-                      tracks.forEach((t) => queueState.addToQueue(t));
+                  onPress={async () => {
+                    if (tracks.length > 0 && info) {
+                      await queueCollection({ kind: 'album', item: info }, tracks, tracksQuery.hasMore);
                     }
                   }}
                   accessibilityLabel="Add to queue"
+                />
+                <IconButton
+                  icon={<Icon name="plus" size={20} color="#9A9AA8" />}
+                  size={44}
+                  disabled={!tracks.length}
+                  onPress={() => {
+                    if (info && tracks.length > 0) {
+                      requireAccount('Create a free account to make playlists.', () => {
+                        useCollectionMenuStore.getState().open(
+                          { kind: 'album', item: info },
+                          {
+                            view: 'playlists',
+                            tracks: tracksQuery.hasMore ? undefined : tracks,
+                          },
+                        );
+                      });
+                    }
+                  }}
+                  accessibilityLabel="Add to playlist"
                 />
                 <DownloadAllButton tracks={tracks} />
               </View>

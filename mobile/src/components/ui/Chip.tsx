@@ -30,6 +30,7 @@ export const Chip = ({
         onPress,
         accessibilityRole: 'button',
         accessibilityLabel: label,
+        accessibilityState: { selected: active },
       })}
       className={cn(
         'flex-row items-center rounded-full border flex-none',

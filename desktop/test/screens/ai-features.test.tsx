@@ -31,6 +31,7 @@ useMockServer(
   http.get(`${API}/trending`, () => HttpResponse.json(page([]))),
   http.get(`${API}/genres`, () => HttpResponse.json([])),
   http.get(`${API}/me/recently-played`, () => HttpResponse.json(page([]))),
+  http.get(`${API}/me/not-played-lately`, () => HttpResponse.json(page([]))),
   http.get(`${API}/me/most-played`, () => HttpResponse.json(page([]))),
   http.get(`${API}/me/favourites/ids`, () => HttpResponse.json({ ids: [] })),
   http.get(`${API}/me/playlists`, () => HttpResponse.json(page([]))),

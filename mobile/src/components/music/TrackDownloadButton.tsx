@@ -7,7 +7,6 @@ import { downloadProgress, useDownloadsStore } from '../../store/downloads';
 import { useModeStore } from '../../store/mode';
 import { confirmRemoveDownloads } from '../../lib/confirmRemoveDownloads';
 import type { Track } from '../../data/types';
-import { offerMusicAccess } from '../../lib/musicAccess';
 
 const GOLD = '#FFC24D';
 
@@ -89,7 +88,6 @@ export const TrackDownloadButton = ({ track }: { track: Track }) => {
       size={44}
       onPress={() => {
         useDownloadsStore.getState().enqueue([track]);
-        offerMusicAccess('download');
       }}
       accessibilityLabel="Download"
     />

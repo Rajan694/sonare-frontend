@@ -1,7 +1,9 @@
 /**
- * Download file names, the same in both apps: `Artist - Title [videoId].ext`. The id in the name
- * lets an app that lost its downloads list (a reinstall, cleared data) find the files in its
- * download folder again and link them back to their songs (audit I14).
+ * Download file names, the same in both apps: just the song's title, `Title.ext` (a taken name
+ * gets a free variant such as `Title (1).ext` where the file is saved). Until 2026-10-23 the name
+ * was `Artist - Title [videoId].ext`; the id let an app that lost its downloads list (a reinstall,
+ * cleared data) link the files back to their songs (audit I14). Files named that way still relink;
+ * newer ones show up as ordinary songs on the device instead.
  */
 
 /** Characters no file system allows, folded runs of spaces, at most 120 characters. */
@@ -17,21 +19,18 @@ export const safeName = (s: string): string => {
   );
 };
 
-/** The name without its extension: `Artist - Title [videoId]`. */
-export const downloadName = (item: { id: string; artist: string; title: string }): string => {
-  const base = safeName(`${item.artist} - ${item.title}`);
-  return `${base} [${item.id.replace(/^yt:/, '')}]`;
-};
+/** The name without its extension: the title. */
+export const downloadName = (item: { title: string }): string => safeName(item.title);
 
-/** The YouTube id a download's file name ends with, as `downloadName` writes it; null for other files. */
+/** The YouTube id an older download's file name ends with (`… [videoId].ext`); null for other files. */
 export const idInFileName = (fileName: string): string | null => {
   const m = /\[([A-Za-z0-9_-]{11})\]\.[a-z0-9]+$/i.exec(fileName);
   return m ? `yt:${m[1]}` : null;
 };
 
 /**
- * Artist, title and id back out of a name `downloadName` wrote, for a file whose tags say
- * nothing (the system then shows the file name as its title). Null for other files.
+ * Artist, title and id back out of an older download's name (`Artist - Title [videoId]`), for a
+ * file whose tags say nothing (the system then shows the file name as its title). Null for other files.
  */
 export const parseDownloadName = (fileName: string): { id: string; artist: string | null; title: string } | null => {
   const m = /^(.*?)\s*\[([A-Za-z0-9_-]{11})\](?:\.[a-z0-9]+)?$/i.exec(fileName);
