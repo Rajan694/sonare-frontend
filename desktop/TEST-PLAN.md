@@ -1073,6 +1073,16 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
 | `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
 
+## `test/unit/sharedCatalog/artColor.test.ts`
+
+| ID              | Use case                                                                 |
+| :-------------- | :----------------------------------------------------------------------- |
+| `ART-COLOR-001` | a mostly grey cover with a red logo glows red                            |
+| `ART-COLOR-002` | a black-and-white cover gives null so the fixed colours stay             |
+| `ART-COLOR-003` | clamps a very dark or very light colour to one that reads on the dark UI |
+| `ART-COLOR-004` | averages hues across 0°, and ignores transparent pixels                  |
+| `ART-COLOR-005` | decodes the base64 RGBA Android sends                                    |
+
 ## `test/unit/sharedCatalog/sharedAi.test.ts`
 
 | ID           | Use case                                                                                                      |

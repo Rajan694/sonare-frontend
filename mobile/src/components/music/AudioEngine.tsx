@@ -369,7 +369,7 @@ const startAudio = () => {
   SonarePlayer.onRemote((e) => {
     const player = usePlayerStore.getState();
     if (e.command === 'next') player.playNext();
-    else player.playPrevious();
+    else if (e.command === 'previous') player.playPrevious();
   });
 
   SonarePlayer.onStreamRefused(swapRefusedStream);

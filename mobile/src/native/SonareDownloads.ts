@@ -19,6 +19,11 @@ export interface StartOptions {
   title?: string;
   artist?: string;
   album?: string;
+  /**
+   * The cover, embedded in the saved file with the title, artist and album: Opus is saved as
+   * Ogg (.opus) and AAC gets an MP4 cover atom. Absent, or any failure, saves the file as downloaded.
+   */
+  artworkUrl?: string;
   /** A folder from pickFolder(); absent = Music/Sonare. */
   treeUri?: string;
 }
