@@ -21,7 +21,7 @@ import {
 } from './downloadTargets';
 import { webmToOggOpus } from './oggOpus';
 import { addMp4Tags } from './mp4Cover';
-import { fetchCover } from './coverArt';
+import { fetchCover, type Cover } from './coverArt';
 import type { Track } from '../types';
 import { downloadName } from '../../../shared/downloads/fileNames';
 import { shortTitlesFor } from '../../../shared/ai/downloadTitles';
@@ -256,7 +256,10 @@ const isAac = (mimeType: string) => /mp4|m4a|aac/i.test(mimeType);
  * both with the title, artist, album and cover. Returns the name and type to save it under; on
  * any failure the file stays exactly as downloaded (.webm / .m4a).
  */
-const tagFile = async (item: DownloadItem, part: PartFile): Promise<{ ext: string; mimeType: string }> => {
+const tagFile = async (
+  item: DownloadItem,
+  part: PartFile,
+): Promise<{ ext: string; mimeType: string; cover?: Cover }> => {
   const aac = isAac(item.mimeType ?? '');
   const original = aac
     ? { ext: 'm4a', mimeType: item.mimeType ?? 'audio/mp4' }
@@ -268,7 +271,7 @@ const tagFile = async (item: DownloadItem, part: PartFile): Promise<{ ext: strin
     const tagged = aac ? addMp4Tags(bytes, tags) : webmToOggOpus(bytes, tags);
     if (!tagged) return original;
     await part.replace(tagged);
-    return aac ? original : { ext: 'opus', mimeType: 'audio/ogg' };
+    return { ...(aac ? original : { ext: 'opus', mimeType: 'audio/ogg' }), cover };
   } catch (e) {
     console.warn('[downloads] saved without tags:', e instanceof Error ? e.message : e);
     return original;
@@ -444,7 +447,7 @@ const run = async (id: string, signal: AbortSignal): Promise<void> => {
     }
 
     const item = get(id)!;
-    const { ext, mimeType } = await tagFile(item, part);
+    const { ext, mimeType, cover } = await tagFile(item, part);
     const fileName = `${downloadName(item)}.${ext}`;
     const saved = await part.finish(fileName, mimeType);
     if (item.target === 'native') {
@@ -459,6 +462,7 @@ const run = async (id: string, signal: AbortSignal): Promise<void> => {
         codec: item.codec,
         bitrateKbps: item.bitrateKbps,
         thumbnail: item.thumbnail,
+        cover,
       });
     }
     finishedInBatch++;

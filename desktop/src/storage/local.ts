@@ -55,6 +55,7 @@ interface LocalEntry {
   /** Set for files Sonare downloaded: the server track they are a copy of. */
   serverId?: string;
   thumbnail?: string;
+  coverArt?: string;
 }
 
 export interface LocalLyrics {
@@ -157,17 +158,23 @@ const toTrack = (e: LocalEntry): Track => {
     playCount: 0,
     favourite: false,
     addedAt: e.addedAt,
-    thumbnail: e.thumbnail,
+    thumbnail: e.coverArt ?? e.thumbnail,
   };
 };
+
+/** Index entries by their own id and, for downloads, by the server track's id (the newest copy). */
+let entryByTrack = new Map<string, LocalEntry>();
 
 const rebuild = (patch: Partial<LocalSnapshot> = {}) => {
   const included = new Set(index.folders.filter((f) => f.included).map((f) => f.id));
   const seen = new Set<string>();
   const tracks: Track[] = [];
   const downloads = new Map<string, string>();
+  entryByTrack = new Map();
   for (const e of [...index.entries].sort((a, b) => b.addedAt - a.addedAt)) {
     if (e.serverId) downloads.set(e.serverId, e.id);
+    if (e.serverId && !entryByTrack.has(e.serverId)) entryByTrack.set(e.serverId, e);
+    entryByTrack.set(e.id, e);
     if (!included.has(e.folderId) || seen.has(e.id)) continue;
     seen.add(e.id);
     tracks.push(toTrack(e));
@@ -260,6 +267,18 @@ const saveCoverArt = async (picture: { mime: string; data: Uint8Array }): Promis
   }
 };
 
+const extractCoverArt = async (path: string, size: number): Promise<string | undefined> => {
+  try {
+    const tags = await readTags(path, size, rangeReader(path, size));
+    if (tags.picture) {
+      return await saveCoverArt(tags.picture);
+    }
+  } catch {
+    // Ignore unreadable tags
+  }
+  return undefined;
+};
+
 const artUrls = new Map<string, Promise<string | undefined>>();
 
 /**
@@ -296,8 +315,14 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
   const tags = await readTags(path, stats.size, rangeReader(path, stats.size));
   const fromName = tagsFromFileName(path);
   let thumbnail = previous?.thumbnail;
+  let coverArt = previous?.coverArt;
   if (tags.picture) {
-    thumbnail = (await saveCoverArt(tags.picture)) ?? thumbnail;
+    const saved = await saveCoverArt(tags.picture);
+    if (previous?.serverId || fromFileName) {
+      coverArt = saved ?? coverArt;
+    } else {
+      thumbnail = saved ?? thumbnail;
+    }
   }
   return {
     id: `local:${hash(path)}`,
@@ -316,6 +341,7 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
     addedAt: previous?.addedAt ?? stats.createdAt ?? Date.now(),
     serverId: previous?.serverId ?? fromFileName ?? undefined,
     thumbnail,
+    coverArt,
   };
 };
 
@@ -398,6 +424,8 @@ export interface DownloadedFile {
   codec?: string;
   bitrateKbps?: number;
   thumbnail?: string;
+  /** The cover embedded in the saved file, saved beside the library's other covers. */
+  cover?: { mime: string; data: Uint8Array };
 }
 
 export interface LocalFileData {
@@ -409,6 +437,47 @@ export interface LocalFileData {
 }
 
 let activeObjectUrl: string | null = null;
+
+const lazyCoverChecked = new Set<string>();
+
+/** Whether a track plays without a network here: a local file, or a song with a finished download. */
+export const isAvailableOffline = (trackId: string): boolean => {
+  return !!localLibrary.localIdFor(trackId);
+};
+
+/**
+ * Returns the file:// cover art for a downloaded track if one is available.
+ * For older entries where coverArt was not yet stored, lazily fills it in the background
+ * once per file per session without blocking the render.
+ */
+export const getDownloadCover = (trackId: string): string | undefined => {
+  if (!CAPS.localLibrary) return undefined;
+  if (!loadPromise) void load();
+  const entry = entryByTrack.get(trackId);
+  if (!entry) return undefined;
+  if (entry.coverArt) return entry.coverArt;
+  if (entry.serverId) fillCoverArt(entry);
+  return undefined;
+};
+
+/** Reads a download's embedded cover in the background, once per file per session, and stores it. */
+const fillCoverArt = (entry: LocalEntry) => {
+  if (lazyCoverChecked.has(entry.id)) return;
+  lazyCoverChecked.add(entry.id);
+  void (async () => {
+    try {
+      const stats = await filesystem.getStats(entry.path);
+      const art = await extractCoverArt(entry.path, stats.size);
+      if (art) {
+        index = { ...index, entries: index.entries.map((e) => (e.id === entry.id ? { ...e, coverArt: art } : e)) };
+        rebuild();
+        void persist();
+      }
+    } catch {
+      // Tag read failed or no picture
+    }
+  })();
+};
 
 export const localLibrary = {
   async listFolders(): Promise<Folder[]> {
@@ -594,6 +663,7 @@ export const localLibrary = {
       addedAt: Date.now(),
       serverId: file.serverId,
       thumbnail: file.thumbnail,
+      coverArt: file.cover && (await saveCoverArt(file.cover)),
     };
     // One local copy per server track: a re-download replaces the old entry.
     index = {

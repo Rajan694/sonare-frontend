@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { cn } from '../../lib/cn';
 import { API_BASE } from '../../api/auth';
 import { isInAppYoutubeAllowed } from '../../youtube/inApp';
-import { localArtUrl } from '../../storage/local';
+import { getDownloadCover, localArtUrl } from '../../storage/local';
 import { sizedImageUrl, trackThumbUrl } from '../../../../shared/catalog/images';
 
 type ArtVariant = 'a1' | 'a2' | 'a3' | 'a4' | 'a5' | 'a6' | 'a7' | 'a8' | 'a9' | 'a10' | 'a11' | 'a12';
@@ -26,8 +26,14 @@ const radiusClass = {
   circ: 'art-circ',
 };
 
-/** Artwork for a track: its own thumbnail, else the server's — local files have none. */
+/** Artwork for a track: a download's own embedded cover, else its catalogue artwork. */
 export const trackArtwork = (
+  track: { id: string; source: string; thumbnail?: string },
+  size?: 64 | 140 | 300 | 640,
+): string | undefined => getDownloadCover(track.id) ?? catalogArtwork(track, size);
+
+/** Artwork from the catalogue: its own thumbnail, else the server's — local files have none. */
+export const catalogArtwork = (
   track: { id: string; source: string; thumbnail?: string },
   size?: 64 | 140 | 300 | 640,
 ): string | undefined => {

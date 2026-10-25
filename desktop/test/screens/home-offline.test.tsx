@@ -32,6 +32,7 @@ vi.mock('../../src/storage/local', async () => {
       scanning: null,
     }),
     resolveLocalRefs: (tracks: unknown) => tracks,
+    getDownloadCover: () => undefined,
   };
 });
 

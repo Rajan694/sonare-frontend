@@ -8,7 +8,7 @@ import { api } from '../../api/api';
 import { requireAccount } from '../../api/accountGate';
 import { nextQueuePlaylistName } from '../../../../shared/player/playlistNames';
 import { notifyPlaylistsChanged } from '../../api/hooks';
-import { localLibrary, playsFrom, useLocalLibrary } from '../../storage/local';
+import { isAvailableOffline, playsFrom, useLocalLibrary } from '../../storage/local';
 import { IconButton } from '../ui/Button';
 import Icon from '../ui/Icon';
 import { SourceGlyph } from '../ui/SourceGlyph';
@@ -16,6 +16,8 @@ import Artwork, { trackArtwork } from '../music/Artwork';
 import { cn } from '../../lib/cn';
 import { formatDuration } from '../../lib/format';
 import { useVirtualRows } from '../../lib/useVirtualRows';
+
+export const PLAYED_COUNT = 2;
 
 interface QueuePanelProps {
   onClose: () => void;
@@ -51,7 +53,8 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
 
   const rows = state.queue
     .map((track, index) => ({ track, index }))
-    .filter((r) => !isOffline || !!localLibrary.localIdFor(r.track.id));
+    .filter((r) => !isOffline || isAvailableOffline(r.track.id));
+  const played = rows.filter((r) => r.index < state.index).slice(-PLAYED_COUNT);
   const upcoming = rows.filter((r) => r.index > state.index);
   const serverCount = rows.filter((r) => r.track.source === 'server').length;
 
@@ -141,6 +144,32 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
             {!isOffline ? ` · ${serverCount} from server` : ''}
           </span>
         </div>
+
+        {/* Previously Played */}
+        {played.length > 0 && (
+          <div className="flex flex-col gap-1.5 flex-none">
+            <span className="text-overline text-t3">Played</span>
+            <div className="flex flex-col gap-0.5">
+              {played.map(({ track, index }) => (
+                <div
+                  key={`${track.id}-${index}`}
+                  className="srow p-1.5 sm:px-2 gap-2 rounded-md hover:bg-s2 transition-colors cursor-pointer opacity-60 hover:opacity-100"
+                  onClick={() => playAt(index)}
+                >
+                  <Artwork src={trackArtwork(track, 64)} alt={track.title} variant="a2" size={36} radius="sm" />
+                  <div className="flex flex-col grow gap-0.5 min-w-0">
+                    <span className="flex items-center gap-1.5 min-w-0">
+                      <span className="text-label-l text-t1 truncate">{track.title}</span>
+                      <SourceGlyph source={playsFrom(track, local)} />
+                    </span>
+                    <span className="text-label-s text-t3 truncate">{track.artist}</span>
+                  </div>
+                  <span className="text-mono-s text-t3 flex-none">{formatDuration(track.durationMs)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Now Playing Card */}
         {currentTrack && (

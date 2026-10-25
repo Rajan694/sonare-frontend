@@ -73,7 +73,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-016` | creating a playlist names it, opens it, and reports a failure                      |
 | `WEB-LAYOUT-017` | collapses to an icon rail with tooltips, and counts running downloads              |
 | `WEB-LAYOUT-018` | shows how many plays are waiting to sync                                           |
-| `WEB-LAYOUT-019` | summarises the queue, shows the current song and only what comes next              |
+| `WEB-LAYOUT-019` | summarises the queue, shows the current song, played songs and what comes next     |
 | `WEB-LAYOUT-020` | clicking an upcoming song plays it; its X removes it without playing               |
 | `WEB-LAYOUT-021` | dragging a row onto another moves it                                               |
 | `WEB-LAYOUT-022` | Clear drops upcoming songs; with none left it says so                              |
@@ -328,7 +328,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | :--------------- | :------------------------------------------------------------------------------------- |
 | `WEB-NP-001`     | with nothing playing it points back to Home                                            |
 | `WEB-NP-002`     | shows the song, its album, artist link, stream quality and time left                   |
-| `WEB-NP-003`     | lists the next four songs, and clicking one plays it                                   |
+| `WEB-NP-003`     | lists the next songs up to the limit, and clicking one plays it                        |
 | `WEB-NP-004`     | transport, shuffle, repeat and seek go to the player                                   |
 | `WEB-NP-005`     | a playback error is shown with a retry                                                 |
 | `WEB-NP-006`     | leaving goes home on a direct visit                                                    |
@@ -987,6 +987,27 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SELECT-003` | works from the keyboard: arrows open and move, Enter picks, Escape closes back to the trigger |
 | `WEB-SELECT-004` | Space in the list picks instead of reaching the player shortcuts; a click outside closes it   |
 | `WEB-SELECT-005` | a custom trigger and options with details and icons                                           |
+
+## `test/components/queue-history.test.tsx`
+
+| ID           | Use case                                                           |
+| ------------ | ------------------------------------------------------------------ |
+| `WEB-QH-001` | up next shows 10 of a 15-entry queue and the right ones            |
+| `WEB-QH-002` | up next shows 3 when only 3 follow                                 |
+| `WEB-QH-003` | panel shows exactly the 2 before the current one in order          |
+| `WEB-QH-004` | panel shows 1 when current is index 1, and none at index 0         |
+| `WEB-QH-005` | clicking a played row calls playAt with its queue index            |
+| `WEB-QH-006` | offline mode leaves out entries without a local copy in both lists |
+
+## `test/desktop/download-artwork.test.ts`
+
+| ID              | Use case                                                                            |
+| --------------- | ----------------------------------------------------------------------------------- |
+| `WEB-DLART-001` | a download handed its cover saves it as a file:// cover beside the server thumbnail |
+| `WEB-DLART-002` | one without keeps the server thumbnail                                              |
+| `WEB-DLART-003` | trackArtwork prefers the download's cover over the thumbnail                        |
+| `WEB-DLART-004` | an old entry without the field gets filled on first use, read once                  |
+| `WEB-DLART-005` | an old entry without embedded art is checked once and keeps the thumbnail           |
 
 ## `test/desktop/library.test.tsx`
 

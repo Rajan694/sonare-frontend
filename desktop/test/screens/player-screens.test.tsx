@@ -89,11 +89,11 @@ describe('now playing', () => {
     expect(screen.getByText('-2:30')).toBeInTheDocument();
   });
 
-  it('WEB-NP-003 lists the next four songs, and clicking one plays it', async () => {
+  it('WEB-NP-003 lists the next songs up to the limit, and clicking one plays it', async () => {
     const { user, p } = open();
     expect(screen.getByText('UP NEXT')).toBeInTheDocument();
     expect(screen.getByText('Up 3')).toBeInTheDocument();
-    expect(screen.queryByText('Up 4')).not.toBeInTheDocument();
+    expect(screen.getByText('Up 4')).toBeInTheDocument();
     await user.click(screen.getByText('Up 1'));
     expect(p.playTrack).toHaveBeenCalledWith(upNext[1]);
     expect(screen.getByRole('link', { name: 'Open queue' })).toHaveAttribute('href', '/queue');

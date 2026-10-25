@@ -1,5 +1,5 @@
 import { jpegImageUrl } from '../../../shared/catalog/images';
-import { resolveArtworkUrl, trackArtwork } from '../components/music/Artwork';
+import { catalogArtwork, resolveArtworkUrl } from '../components/music/Artwork';
 
 /** A cover to embed in a downloaded file (oggOpus.ts, mp4Cover.ts). */
 export interface Cover {
@@ -48,7 +48,7 @@ export const imageInfo = (b: Uint8Array): Omit<Cover, 'data'> | null => {
  * in 10 s or isn't a JPEG or PNG: the file is then tagged without one.
  */
 export const fetchCover = async (track: { id: string; source: string; thumbnail?: string }): Promise<Cover | null> => {
-  const url = resolveArtworkUrl(trackArtwork(track, 640), 640);
+  const url = resolveArtworkUrl(catalogArtwork(track, 640), 640);
   if (!url) return null;
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), 10_000);
