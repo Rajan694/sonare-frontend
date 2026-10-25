@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
@@ -114,8 +113,8 @@ const NowPlaying = () => {
     : { transition: 'background-color 600ms ease' };
 
   return (
-    <div className="@container relative w-full h-full min-h-full overflow-y-auto @3xl:overflow-hidden bg-bg text-t1 flex flex-col justify-between select-none">
-      {/* Ambient glowing background, held in view while a long Up next list scrolls */}
+    <div className="@container relative w-full h-full min-h-full overflow-hidden bg-bg text-t1 flex flex-col justify-between select-none">
+      {/* Ambient glowing background */}
       <div className="sticky top-0 h-0 flex-none" aria-hidden>
         <div className="ambient h-dvh pointer-events-none">
           <i
@@ -175,7 +174,7 @@ const NowPlaying = () => {
       </header>
 
       {/* Main content body */}
-      <div className="relative z-10 flex-1 flex flex-col @3xl:flex-row @3xl:items-center justify-center px-6 @3xl:px-14 py-4 @3xl:py-6 gap-8 @3xl:gap-14 max-w-[1280px] mx-auto w-full">
+      <div className="relative z-10 flex-1 min-h-0 flex flex-col @3xl:flex-row @3xl:items-center justify-center px-6 @3xl:px-14 py-4 @3xl:py-6 gap-8 @3xl:gap-14 max-w-[1280px] mx-auto w-full">
         {/* Artwork Column */}
         <div className="flex flex-col items-center justify-center flex-none w-full @3xl:w-auto">
           <motion.div layoutId="now-playing-artwork" className="relative flex items-center justify-center">
@@ -194,7 +193,7 @@ const NowPlaying = () => {
         </div>
 
         {/* Right Info/Controls/Queue Column */}
-        <div className="flex flex-col gap-5 @3xl:gap-5 min-w-0 flex-1 w-full max-w-[620px] mx-auto @3xl:mx-0">
+        <div className="flex flex-col gap-5 @3xl:gap-5 min-w-0 min-h-0 @3xl:max-h-full flex-1 w-full max-w-[620px] mx-auto @3xl:mx-0">
           {/* Track Details */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-start justify-between gap-3">
@@ -357,7 +356,7 @@ const NowPlaying = () => {
 
           {/* UP NEXT Section (hidden on mobile single column if small, or displayed nicely) */}
           {upcomingQueue.length > 0 && (
-            <div className="flex flex-col gap-2.5 mt-2 pt-2 border-t border-ln/60">
+            <div className="flex flex-col gap-2.5 mt-2 pt-2 border-t border-ln/60 min-h-0">
               <div className="flex items-center justify-between">
                 <span className="text-overline text-t3 uppercase font-semibold tracking-wider">UP NEXT</span>
                 <Link to="/queue" className="text-label-s text-t2 hover:text-t1 transition-colors">
@@ -365,7 +364,7 @@ const NowPlaying = () => {
                 </Link>
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 min-h-0 overflow-y-auto pr-1">
                 {upcomingQueue.map((track, i) => (
                   <div
                     key={track.id || i}
