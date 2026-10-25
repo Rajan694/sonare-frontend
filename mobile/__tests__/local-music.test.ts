@@ -1,6 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeModules, PermissionsAndroid } from 'react-native';
-import { deviceTracks, deviceUriFor, musicFolders, useLocalMusicStore } from '../src/store/localMusic';
+import {
+  deviceTracks,
+  deviceUriFor,
+  mediaIdFor,
+  musicFolders,
+  tracksInFolder,
+  useLocalMusicStore,
+} from '../src/store/localMusic';
 import { downloadName, idInFileName, useDownloadsStore } from '../src/store/downloads';
 import type { DeviceSong } from '../src/native/SonareLibrary';
 
@@ -263,5 +270,78 @@ describe('music on the phone', () => {
     const tracks = deviceTracks(useLocalMusicStore.getState());
     expect(tracks.map((t) => t.title)).toEqual(['Duplicate Name (Other)']);
     expect(deviceUriFor(tracks[0].id)).toBe('content://media/external/audio/media/101');
+  });
+
+  it('MOB-LOCAL-010 a folder lists only its own songs, with Sonare downloads as their catalogue songs', () => {
+    const downloads = {
+      'yt:dl': {
+        id: 'yt:dl',
+        title: 'Downloaded Song',
+        artist: 'Server Artist',
+        artistId: '',
+        album: null,
+        albumId: null,
+        durationMs: null,
+        status: 'done' as const,
+        quality: 'high' as const,
+        format: 'opus' as const,
+        totalBytes: 2000,
+        receivedBytes: 2000,
+        uri: 'content://media/external/audio/media/301',
+        fileName: 'Downloaded Song.opus',
+        addedAt: 1,
+      },
+    };
+    const songs = [
+      song({
+        mediaId: '300',
+        folder: 'Music',
+        fileName: 'a.mp3',
+        title: 'Phone Song',
+        uri: 'content://media/external/audio/media/300',
+      }),
+      song({
+        mediaId: '301',
+        folder: 'Music',
+        fileName: 'Downloaded Song.opus',
+        title: 'Downloaded Song',
+        uri: 'content://media/external/audio/media/301',
+      }),
+      song({
+        mediaId: '302',
+        folder: 'SomeMusic',
+        fileName: 'b.mp3',
+        title: 'Other Folder',
+        uri: 'content://media/external/audio/media/302',
+      }),
+      song({
+        mediaId: '303',
+        folder: 'Download/Music',
+        fileName: 'c.mp3',
+        title: 'Nested',
+        uri: 'content://media/external/audio/media/303',
+      }),
+    ];
+    const tracks = tracksInFolder('Music', songs, downloads);
+    expect(tracks.map((t) => t.title)).toEqual(['Phone Song', 'Downloaded Song']);
+    expect(tracks[1].id).toBe('yt:dl');
+    expect(tracks[1].artist).toBe('Server Artist');
+  });
+
+  it('MOB-LOCAL-011 mediaIdFor returns MediaStore row ID for local tracks only', async () => {
+    permissions.check.mockResolvedValue(true);
+    native.scan.mockResolvedValue([
+      song({
+        mediaId: '999',
+        folder: 'Music',
+        fileName: 'Test Track.mp3',
+        title: 'Test Track',
+        uri: 'content://media/external/audio/media/999',
+      }),
+    ]);
+    await useLocalMusicStore.getState().hydrate();
+    const [localTrack] = deviceTracks(useLocalMusicStore.getState());
+    expect(mediaIdFor(localTrack.id)).toBe('999');
+    expect(mediaIdFor('yt:server_track')).toBeNull();
   });
 });

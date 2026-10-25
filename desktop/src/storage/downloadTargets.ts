@@ -45,6 +45,10 @@ export interface PartFile {
   /** Make appended bytes durable; the web folder target only commits them on close. */
   flush(): Promise<void>;
   discard(): Promise<void>;
+  /** Reads the entire partial file. */
+  read(): Promise<Uint8Array>;
+  /** Completely replaces the contents of the partial file. */
+  replace(bytes: Uint8Array): Promise<void>;
   /**
    * Move the part into place as `fileName` (or a free variant of it). Returns the saved
    * name/path; `copyKept` when the browser target kept a copy for "Save again".
@@ -305,6 +309,13 @@ const nativeTarget = (dir: string, id: string): DownloadTarget => {
         async discard() {
           await filesystem.remove(part).catch(() => {});
         },
+        async read() {
+          const buf = await filesystem.readBinaryFile(part);
+          return new Uint8Array(buf);
+        },
+        async replace(bytes) {
+          await filesystem.writeBinaryFile(part, bytes.slice().buffer);
+        },
         async finish(fileName) {
           const [base, ext] = splitName(fileName);
           let path = `${dir}/${fileName}`;
@@ -383,6 +394,19 @@ const folderTarget = (id: string): DownloadTarget => {
           writer = null;
           await dir.removeEntry(partName(id)).catch(() => {});
         },
+        async read() {
+          await close();
+          const f = await handle.getFile();
+          return new Uint8Array(await f.arrayBuffer());
+        },
+        async replace(bytes) {
+          await close();
+          const w = await handle.createWritable();
+          await w.write(bytes.slice());
+          await w.close();
+          committed = bytes.length;
+          written = 0;
+        },
         async finish(fileName) {
           await close();
           const [base, ext] = splitName(fileName);
@@ -459,6 +483,14 @@ const browserTarget = (id: string): DownloadTarget => {
         async discard() {
           parts = [];
           await idb('parts', 'readwrite', (s) => s.delete(id)).catch(() => {});
+        },
+        async read() {
+          const blob = new Blob(parts);
+          return new Uint8Array(await blob.arrayBuffer());
+        },
+        async replace(bytes) {
+          parts = [new Blob([bytes.slice()])];
+          await idb('parts', 'readwrite', (s) => s.put(parts, id));
         },
         async finish(fileName, mimeType) {
           const blob = new Blob(parts, { type: mimeType });

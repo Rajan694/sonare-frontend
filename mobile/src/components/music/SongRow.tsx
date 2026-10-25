@@ -3,7 +3,6 @@ import { View, Pressable } from 'react-native';
 import { Text } from '../ui/Text';
 import { cn } from '../../lib/cn';
 import { Track } from '../../data/types';
-import { artworkUrl } from '../../data/config';
 import { Artwork } from './Artwork';
 import { SourceGlyph } from './SourceGlyph';
 import { EqualizerBars } from './EqualizerBars';
@@ -15,6 +14,7 @@ import { useLibraryStore } from '../../store/library';
 import { useTrackMenuStore, type TrackMenuAction } from '../../store/trackMenu';
 import { usePlayerStore } from '../../store/player';
 import { useDownloadsStore } from '../../store/downloads';
+import { useTrackArtwork } from '../../store/deviceArt';
 
 interface SongRowProps {
   track: Track;
@@ -58,6 +58,7 @@ export const SongRow = ({
   const onPhone = useDownloadsStore((s) => s.items[track.id]?.status === 'done' && !s.items[track.id]?.missing);
   const local = track.source === 'local' || onPhone;
   const accent = local ? '#FFC24D' : '#00E28A';
+  const artUri = useTrackArtwork(track, 64);
 
   const inSelectionMode = onToggleSelect !== undefined;
   const baseSubtitle = track.album ? `${track.artist} · ${track.album}` : track.artist;
@@ -111,7 +112,7 @@ export const SongRow = ({
 
         {showArtwork && (
           <View className="mr-3">
-            <Artwork uri={artworkUrl(track, 64)} size={44} className="rounded-sm" />
+            <Artwork uri={artUri} size={44} className="rounded-sm" />
           </View>
         )}
 

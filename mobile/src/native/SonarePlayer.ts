@@ -61,10 +61,22 @@ export interface AudioEffects {
 }
 
 export interface Transitions {
-  /** 0 turns crossfading off. */
+  /** 0 turns crossfading off; at most 12000. */
   crossfadeMs: number;
   gapless: boolean;
 }
+
+/** What 1, 2 or 3 quick presses of a headset's button do (SonarePlaybackService counts them). */
+export type HeadsetAction = 'playPause' | 'next' | 'previous' | 'like' | 'none';
+
+export interface HeadsetActions {
+  single: HeadsetAction;
+  double: HeadsetAction;
+  triple: HeadsetAction;
+}
+
+/** Remote commands JS carries out: next / previous move the queue, like hearts the current song. */
+export type RemoteCommand = 'next' | 'previous' | 'like';
 
 interface NativeSonarePlayer {
   load(options: LoadOptions): Promise<void>;
@@ -78,6 +90,10 @@ interface NativeSonarePlayer {
   clearStreamCache(): Promise<number>;
   setTransitions(options: Transitions): void;
   setSpeed(speed: number): void;
+  setPitch(semitones: number): void;
+  setFades(enabled: boolean): void;
+  setHeadsetActions(actions: HeadsetActions): void;
+  setLiked(liked: boolean): void;
   setAudioEffects(options: AudioEffects): void;
   setSpatialAudio(options: SpatialParams): void;
 }
@@ -114,16 +130,27 @@ export const SonarePlayer = {
   /** The track after the current one; the player starts it by itself (gapless or crossfade). */
   setNext: (options: LoadOptions | null) => native?.setNext(options),
   setTransitions: (options: Transitions) => native?.setTransitions(options),
-  /** Pitch is preserved. */
+  /** 0.5..2; pitch is preserved. */
   setSpeed: (speed: number) => native?.setSpeed(speed),
+  /** -6..6 semitones, independent of the speed; 0 is the recording's own pitch. */
+  setPitch: (semitones: number) => native?.setPitch?.(semitones),
+  /** Short (~300 ms) volume fades on play, pause and moving to another song. */
+  setFades: (enabled: boolean) => native?.setFades?.(enabled),
+  /** The actions for 1, 2 and 3 quick presses of a headset's play button. */
+  setHeadsetActions: (actions: HeadsetActions) => native?.setHeadsetActions?.(actions),
+  /** Whether the current song is liked: the home-screen widget's heart shows it. */
+  setLiked: (liked: boolean) => native?.setLiked?.(liked),
   setAudioEffects: (options: AudioEffects) => native?.setAudioEffects(options),
   setSpatialAudio: (options: SpatialParams) => native?.setSpatialAudio(options),
 
   onState: (handler: (e: PlayerStateEvent) => void) => on('state', handler),
   onProgress: (handler: (e: ProgressEvent) => void) => on('progress', handler),
   onError: (handler: (e: PlayerErrorEvent) => void) => on('error', handler),
-  /** Next / previous pressed on the lock screen, notification or a headset. */
-  onRemote: (handler: (e: { command: 'next' | 'previous' }) => void) => on('remote', handler),
+  /**
+   * Next / previous pressed on the lock screen, notification, a headset or the widget; like
+   * from a headset press or the widget's heart.
+   */
+  onRemote: (handler: (e: { command: RemoteCommand }) => void) => on('remote', handler),
   /** The player moved on to the next track by itself; sent before the state change it causes. */
   onAdvance: (handler: (e: { mediaId: string }) => void) => on('advance', handler),
   /** The server refused a stream url (403) while loading; the player retries for a while. */

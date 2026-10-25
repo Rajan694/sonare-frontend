@@ -12,6 +12,8 @@
     <!-- Music folders: reading songs on the phone. Downloads do not need this permission. -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Notification: Android 13+ foreground download / playback notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
       android:name=".MainApplication"
@@ -47,5 +49,34 @@
         android:name=".downloads.SonareDownloadService"
         android:exported="false"
         android:foregroundServiceType="dataSync" />
+
+      <!-- Home-screen widgets -->
+      <receiver
+        android:name=".widget.SonareWidgetSmall"
+        android:label="@string/widget_small_name"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        </intent-filter>
+        <meta-data
+          android:name="android.appwidget.provider"
+          android:resource="@xml/sonare_widget_small_info" />
+      </receiver>
+
+      <receiver
+        android:name=".widget.SonareWidgetReceiver"
+        android:exported="false" />
+
+      <receiver
+        android:name=".widget.SonareWidgetLarge"
+        android:label="@string/widget_large_name"
+        android:exported="true">
+        <intent-filter>
+          <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+        </intent-filter>
+        <meta-data
+          android:name="android.appwidget.provider"
+          android:resource="@xml/sonare_widget_large_info" />
+      </receiver>
     </application>
 </manifest>

@@ -11,6 +11,10 @@ const mockSonarePlayerNative = {
   clearStreamCache: jest.fn().mockResolvedValue(0),
   setTransitions: jest.fn(),
   setSpeed: jest.fn(),
+  setPitch: jest.fn(),
+  setFades: jest.fn(),
+  setHeadsetActions: jest.fn(),
+  setLiked: jest.fn(),
   setAudioEffects: jest.fn(),
   setSpatialAudio: jest.fn(),
 };
@@ -236,6 +240,7 @@ jest.mock('react-native', () => {
       PERMISSIONS: {
         READ_MEDIA_AUDIO: 'android.permission.READ_MEDIA_AUDIO',
         READ_EXTERNAL_STORAGE: 'android.permission.READ_EXTERNAL_STORAGE',
+        POST_NOTIFICATIONS: 'android.permission.POST_NOTIFICATIONS',
       },
       RESULTS: { GRANTED: 'granted', DENIED: 'denied', NEVER_ASK_AGAIN: 'never_ask_again' },
       check: jest.fn().mockResolvedValue(false),
@@ -252,7 +257,11 @@ jest.mock('react-native', () => {
       SonarePlayer: mockSonarePlayerNative,
       SonareDownloads: mockSonareDownloadsNative,
       SonareUpdates: mockSonareUpdatesNative,
-      SonareLibrary: { scan: jest.fn().mockResolvedValue([]) },
+      SonareLibrary: {
+        scan: jest.fn().mockResolvedValue([]),
+        artworkFor: jest.fn().mockResolvedValue({}),
+        artworkPixels: jest.fn().mockResolvedValue(null),
+      },
       SonareBuild: { dev: false, version: '1.0.1' },
       PlatformConstants: {
         getConstants: () => ({ isTesting: true }),

@@ -36,7 +36,7 @@ export const absoluteUrl = (path?: string | null): string | undefined => {
   return `${origin}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
-type ArtSize = 64 | 140 | 300 | 640;
+export type ArtSize = 64 | 140 | 300 | 640;
 
 /** Absolute artwork url for anything with a `thumbnail`, at the nearest server size. */
 export const artworkUrl = (item?: { thumbnail?: string } | null, size: ArtSize = 140): string | undefined => {

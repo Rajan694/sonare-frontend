@@ -55,6 +55,7 @@ interface LocalEntry {
   /** Set for files Sonare downloaded: the server track they are a copy of. */
   serverId?: string;
   thumbnail?: string;
+  coverArt?: string;
 }
 
 export interface LocalLyrics {
@@ -157,17 +158,23 @@ const toTrack = (e: LocalEntry): Track => {
     playCount: 0,
     favourite: false,
     addedAt: e.addedAt,
-    thumbnail: e.thumbnail,
+    thumbnail: e.coverArt ?? e.thumbnail,
   };
 };
+
+/** Index entries by their own id and, for downloads, by the server track's id (the newest copy). */
+let entryByTrack = new Map<string, LocalEntry>();
 
 const rebuild = (patch: Partial<LocalSnapshot> = {}) => {
   const included = new Set(index.folders.filter((f) => f.included).map((f) => f.id));
   const seen = new Set<string>();
   const tracks: Track[] = [];
   const downloads = new Map<string, string>();
+  entryByTrack = new Map();
   for (const e of [...index.entries].sort((a, b) => b.addedAt - a.addedAt)) {
     if (e.serverId) downloads.set(e.serverId, e.id);
+    if (e.serverId && !entryByTrack.has(e.serverId)) entryByTrack.set(e.serverId, e);
+    entryByTrack.set(e.id, e);
     if (!included.has(e.folderId) || seen.has(e.id)) continue;
     seen.add(e.id);
     tracks.push(toTrack(e));
@@ -212,6 +219,88 @@ const rangeReader = (path: string, fileSize: number) => {
   };
 };
 
+let artDirPromise: Promise<string> | null = null;
+
+const getArtDir = (): Promise<string> => {
+  artDirPromise ??= (async () => {
+    const base = `${(await os.getPath('data')).replace(/[/\\]+$/, '')}/sonare`;
+    for (const dir of [base, `${base}/art`]) {
+      await filesystem.createDirectory(dir).catch(() => {});
+    }
+    return `${base}/art`;
+  })();
+  return artDirPromise;
+};
+
+const hashPicture = async (data: Uint8Array): Promise<string> => {
+  const digest = await crypto.subtle.digest('SHA-256', data as unknown as BufferSource);
+  return Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+};
+
+const saveCoverArt = async (picture: { mime: string; data: Uint8Array }): Promise<string | undefined> => {
+  try {
+    const artDir = await getArtDir();
+    const hash = await hashPicture(picture.data);
+    const ext =
+      picture.mime === 'image/png'
+        ? 'png'
+        : picture.mime === 'image/webp'
+          ? 'webp'
+          : picture.mime === 'image/gif'
+            ? 'gif'
+            : 'jpg';
+    const filePath = `${artDir}/${hash}.${ext}`;
+    try {
+      await filesystem.getStats(filePath);
+    } catch {
+      const buffer = picture.data.buffer.slice(
+        picture.data.byteOffset,
+        picture.data.byteOffset + picture.data.byteLength,
+      ) as ArrayBuffer;
+      await filesystem.writeBinaryFile(filePath, buffer);
+    }
+    return filePath.startsWith('/') ? `file://${filePath}` : `file:///${filePath.replace(/\\/g, '/')}`;
+  } catch {
+    return undefined;
+  }
+};
+
+const extractCoverArt = async (path: string, size: number): Promise<string | undefined> => {
+  try {
+    const tags = await readTags(path, size, rangeReader(path, size));
+    if (tags.picture) {
+      return await saveCoverArt(tags.picture);
+    }
+  } catch {
+    // Ignore unreadable tags
+  }
+  return undefined;
+};
+
+const artUrls = new Map<string, Promise<string | undefined>>();
+
+/**
+ * A cover a folder scan saved (a `file://` thumbnail) as a blob URL the window can show: the page
+ * can't load file:// urls itself. Read once per cover and kept for the session (covers are shared
+ * by a whole album, so there are few of them).
+ */
+export const localArtUrl = (fileUrl: string): Promise<string | undefined> => {
+  let url = artUrls.get(fileUrl);
+  if (!url) {
+    // file:///home/… on Linux, file:///C:/… on Windows.
+    const path = fileUrl.replace(/^file:\/\//, '').replace(/^\/([A-Za-z]:)/, '$1');
+    const mime = path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    url = filesystem
+      .readBinaryFile(path)
+      .then((data) => URL.createObjectURL(new Blob([data], { type: mime })))
+      .catch(() => undefined);
+    artUrls.set(fileUrl, url);
+  }
+  return url;
+};
+
 const indexFile = async (path: string, folderId: string, previous?: LocalEntry): Promise<LocalEntry | null> => {
   const stats = await filesystem.getStats(path);
   // A file Sonare downloaded is named `Artist - Title [videoId].ext`; the id in the name
@@ -225,6 +314,16 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
   }
   const tags = await readTags(path, stats.size, rangeReader(path, stats.size));
   const fromName = tagsFromFileName(path);
+  let thumbnail = previous?.thumbnail;
+  let coverArt = previous?.coverArt;
+  if (tags.picture) {
+    const saved = await saveCoverArt(tags.picture);
+    if (previous?.serverId || fromFileName) {
+      coverArt = saved ?? coverArt;
+    } else {
+      thumbnail = saved ?? thumbnail;
+    }
+  }
   return {
     id: `local:${hash(path)}`,
     path,
@@ -241,7 +340,8 @@ const indexFile = async (path: string, folderId: string, previous?: LocalEntry):
     bitrateKbps: tags.bitrateKbps,
     addedAt: previous?.addedAt ?? stats.createdAt ?? Date.now(),
     serverId: previous?.serverId ?? fromFileName ?? undefined,
-    thumbnail: previous?.thumbnail,
+    thumbnail,
+    coverArt,
   };
 };
 
@@ -324,6 +424,8 @@ export interface DownloadedFile {
   codec?: string;
   bitrateKbps?: number;
   thumbnail?: string;
+  /** The cover embedded in the saved file, saved beside the library's other covers. */
+  cover?: { mime: string; data: Uint8Array };
 }
 
 export interface LocalFileData {
@@ -335,6 +437,47 @@ export interface LocalFileData {
 }
 
 let activeObjectUrl: string | null = null;
+
+const lazyCoverChecked = new Set<string>();
+
+/** Whether a track plays without a network here: a local file, or a song with a finished download. */
+export const isAvailableOffline = (trackId: string): boolean => {
+  return !!localLibrary.localIdFor(trackId);
+};
+
+/**
+ * Returns the file:// cover art for a downloaded track if one is available.
+ * For older entries where coverArt was not yet stored, lazily fills it in the background
+ * once per file per session without blocking the render.
+ */
+export const getDownloadCover = (trackId: string): string | undefined => {
+  if (!CAPS.localLibrary) return undefined;
+  if (!loadPromise) void load();
+  const entry = entryByTrack.get(trackId);
+  if (!entry) return undefined;
+  if (entry.coverArt) return entry.coverArt;
+  if (entry.serverId) fillCoverArt(entry);
+  return undefined;
+};
+
+/** Reads a download's embedded cover in the background, once per file per session, and stores it. */
+const fillCoverArt = (entry: LocalEntry) => {
+  if (lazyCoverChecked.has(entry.id)) return;
+  lazyCoverChecked.add(entry.id);
+  void (async () => {
+    try {
+      const stats = await filesystem.getStats(entry.path);
+      const art = await extractCoverArt(entry.path, stats.size);
+      if (art) {
+        index = { ...index, entries: index.entries.map((e) => (e.id === entry.id ? { ...e, coverArt: art } : e)) };
+        rebuild();
+        void persist();
+      }
+    } catch {
+      // Tag read failed or no picture
+    }
+  })();
+};
 
 export const localLibrary = {
   async listFolders(): Promise<Folder[]> {
@@ -520,6 +663,7 @@ export const localLibrary = {
       addedAt: Date.now(),
       serverId: file.serverId,
       thumbnail: file.thumbnail,
+      coverArt: file.cover && (await saveCoverArt(file.cover)),
     };
     // One local copy per server track: a re-download replaces the old entry.
     index = {

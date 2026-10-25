@@ -41,6 +41,12 @@ const h = vi.hoisted(() => {
       discard: async () => {
         parts.delete(id);
       },
+      read: async () => {
+        return join(parts.get(id) ?? []);
+      },
+      replace: async (b: Uint8Array) => {
+        parts.set(id, [b.slice()]);
+      },
       finish: async (name: string, mime: string) => {
         const bytes = join(parts.get(id) ?? []);
         files.set(id, { name, mime, bytes });
@@ -207,7 +213,7 @@ describe('queueing downloads', () => {
 });
 
 describe('downloading', () => {
-  it('WEB-DL-003 fetches the file in 2 MB ranges and saves the exact bytes as "Title.webm"', async () => {
+  it('WEB-DL-003 fetches the file in 2 MB ranges; bytes that are not WebM Opus are saved as they are, as "Title.webm"', async () => {
     const bytes = audioBytes(5 * MB);
     streamInfo({ contentLength: bytes.length });
     const ranges = relay(bytes);
@@ -217,6 +223,7 @@ describe('downloading', () => {
     expect(ranges).toEqual([`bytes=0-${2 * MB - 1}`, `bytes=${2 * MB}-${4 * MB - 1}`, `bytes=${4 * MB}-${6 * MB - 1}`]);
     const file = h.files.get('yt:big')!;
     expect(file.name).toBe('Reckoner.webm');
+    expect(file.mime).toBe('audio/webm');
     expect(sameBytes(file.bytes, bytes)).toBe(true);
     expect(item(dl, 'yt:big')).toMatchObject({
       receivedBytes: bytes.length,
@@ -234,6 +241,89 @@ describe('downloading', () => {
     await dl.downloads.enqueue([song({ id: 'yt:n', artist: 'AC/DC', title: 'What?  Is: "This"' })]);
     await waitForStatus(dl, 'yt:n', 'done');
     expect(h.files.get('yt:n')!.name).toBe('What_ Is_ _This_.m4a');
+  });
+
+  it('WEB-DL-028 a finished WebM Opus download is saved as a tagged .opus with its cover', async () => {
+    const { webmOpus } = await import('../helpers/audioFixtures');
+    const bytes = webmOpus(5);
+    streamInfo({ mimeType: 'audio/webm', codec: 'opus', contentLength: bytes.length });
+    relay(bytes);
+
+    // A JPEG whose start-of-frame says 32 x 16.
+    const jpeg = Uint8Array.from([
+      0xff, 0xd8, 0xff, 0xc0, 0, 17, 8, 0, 16, 0, 32, 3, 1, 0x22, 0, 2, 0x11, 1, 0xff, 0xd9,
+    ]);
+    server.use(http.get('http://api.sonare.test/cover.jpg', () => new HttpResponse(jpeg)));
+
+    const dl = await fresh();
+    await dl.downloads.enqueue([
+      song({
+        id: 'yt:tagged-opus',
+        title: 'Tagged Opus Track',
+        artist: 'Opus Artist',
+        album: 'Opus Album',
+        thumbnail: 'http://api.sonare.test/cover.jpg',
+      }),
+    ]);
+    await waitForStatus(dl, 'yt:tagged-opus', 'done');
+
+    const file = h.files.get('yt:tagged-opus')!;
+    expect(file.name).toBe('Tagged Opus Track.opus');
+    expect(file.mime).toBe('audio/ogg');
+    expect(file.bytes.subarray(0, 4)).toEqual(new Uint8Array([0x4f, 0x67, 0x67, 0x53])); // OggS
+    const { readTags } = await import('../../src/storage/tags');
+    const tags = await readTags(file.name, file.bytes.length, async (pos, size) =>
+      file.bytes.subarray(pos, pos + size),
+    );
+    expect(tags).toMatchObject({ title: 'Tagged Opus Track', artist: 'Opus Artist', album: 'Opus Album' });
+    // The cover went in as a FLAC picture block: front cover, image/jpeg, 32 x 16, then the bytes.
+    const text = new TextDecoder('latin1').decode(file.bytes);
+    // Each comment is its byte length (little-endian), then the text.
+    const at = text.indexOf('METADATA_BLOCK_PICTURE=');
+    const length = new DataView(file.bytes.buffer, file.bytes.byteOffset).getUint32(at - 4, true);
+    const b64 = text.slice(at + 'METADATA_BLOCK_PICTURE='.length, at + length);
+    const block = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+    const view = new DataView(block.buffer);
+    expect([view.getUint32(0), view.getUint32(22), view.getUint32(26)]).toEqual([3, 32, 16]);
+    expect(Array.from(block.subarray(42))).toEqual(Array.from(jpeg));
+  });
+
+  it('WEB-DL-029 tags finished AAC download with metadata and cover in .m4a', async () => {
+    const { mp4 } = await import('../helpers/audioFixtures');
+    const bytes = mp4(44100, 44100 * 2, {});
+    streamInfo({ mimeType: 'audio/mp4', codec: 'mp4a.40.2', contentLength: bytes.length });
+    relay(bytes);
+
+    server.use(
+      http.get('http://api.sonare.test/cover.jpg', () => {
+        return new HttpResponse(new Uint8Array([0xff, 0xd8, 0xff, 0xe0]), {
+          headers: { 'content-type': 'image/jpeg' },
+        });
+      }),
+    );
+
+    const dl = await fresh();
+    await dl.downloads.enqueue([
+      song({
+        id: 'yt:tagged-m4a',
+        title: 'Tagged M4A Track',
+        artist: 'M4A Artist',
+        album: 'M4A Album',
+        thumbnail: 'http://api.sonare.test/cover.jpg',
+      }),
+    ]);
+    await waitForStatus(dl, 'yt:tagged-m4a', 'done');
+
+    const file = h.files.get('yt:tagged-m4a')!;
+    expect(file.name).toBe('Tagged M4A Track.m4a');
+    expect(file.mime).toBe('audio/mp4');
+
+    const { readTags } = await import('../../src/storage/tags');
+    const reader = async (pos: number, size: number) => file.bytes.subarray(pos, pos + size);
+    const tags = await readTags(file.name, file.bytes.length, reader);
+    expect(tags.title).toBe('Tagged M4A Track');
+    expect(tags.artist).toBe('M4A Artist');
+    expect(tags.album).toBe('M4A Album');
   });
 
   it('WEB-DL-005 with no size from the server, a short final range ends the download', async () => {

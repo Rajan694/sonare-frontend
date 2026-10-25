@@ -65,7 +65,7 @@ const Home = () => {
     .filter((t): t is Track => !!t);
 
   const recentTracks = isOnline ? serverRecent : deviceRecent;
-  const mostPlayed = mostPlayedData?.items ?? [];
+  const mostPlayed = resolveLocalRefs(mostPlayedData?.items ?? [], local);
 
   const trendingFailed = isOnline && !!trendingError && trendingTracks.length === 0;
   // Signed in, online, the request failed and there is nothing from an earlier load to show.

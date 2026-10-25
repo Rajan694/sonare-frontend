@@ -20,7 +20,8 @@ import { api } from '../data/api';
 import { requireAccount } from '../data/accountGate';
 import { AnimatedView } from '../lib/motion';
 import { formatDuration, songCount } from '../lib/format';
-import { artworkUrl } from '../data/config';
+import { useTrackArtwork } from '../store/deviceArt';
+import { useArtColor } from '../hooks/useArtColor';
 import { cn } from '../lib/cn';
 import { nextQueuePlaylistName } from '../../../shared/player/playlistNames';
 import type { Track } from '../data/types';
@@ -47,6 +48,9 @@ export const QueueScreen = () => {
   const [saved, setSaved] = useState<string | null>(null);
   // A drag on a row turns the list's own scrolling off, so the drag can't scroll it.
   const [dragging, setDragging] = useState(false);
+
+  const artUri = useTrackArtwork(currentTrack, 140);
+  const artColor = useArtColor(artUri);
 
   const saveAsPlaylist = () =>
     requireAccount('Create a free account to save your queue as a playlist.', async () => {
@@ -84,6 +88,8 @@ export const QueueScreen = () => {
   }
 
   const isGold = mode === 'offline' || currentTrack.source === 'local';
+  const playedStart = Math.max(0, currentIndex - PLAYED_COUNT);
+  const playedQueue = queue.slice(playedStart, currentIndex);
   const upcomingQueue = queue.slice(currentIndex + 1);
   const serverCount = queue.filter((t) => t.source === 'server').length;
 
@@ -103,7 +109,7 @@ export const QueueScreen = () => {
 
   return (
     <Screen scrollable={false} className="bg-bg">
-      <Ambient uri={artworkUrl(currentTrack, 64)} />
+      <Ambient uri={artUri} color={artColor} />
       <Header
         title={<Text className="text-ll font-semibold text-t1">Queue</Text>}
         left={
@@ -172,10 +178,26 @@ export const QueueScreen = () => {
               </View>
             </View>
 
+            {/* Previously played: the entries just before the current one (up to PLAYED_COUNT) */}
+            {playedQueue.length > 0 && (
+              <View className="mb-4">
+                <Text className="text-t3 text-ov uppercase mb-2">Played</Text>
+                <View className="gap-0.5">
+                  {playedQueue.map((track, i) => (
+                    <PlayedRow
+                      key={`${track.id}-${playedStart + i}`}
+                      track={track}
+                      onPress={() => playAt(playedStart + i)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
+
             {/* Now playing (design M12): the current song with its progress and a pause button */}
             <Text className="text-t3 text-ov uppercase mb-2">Now playing</Text>
             <View className="-mx-2 flex-row items-center gap-3 p-2 bg-s2 border border-ln2 rounded-md mb-6">
-              <Artwork uri={artworkUrl(currentTrack, 140)} size={48} className="rounded-sm" />
+              <Artwork uri={artUri} size={48} className="rounded-sm" />
               <View className="flex-1 gap-1.5 min-w-0">
                 <View className="flex-row items-center gap-1.5 min-w-0">
                   <Text className={cn('text-tm shrink', isGold ? 'text-gold' : 'text-acc')} numberOfLines={1}>
@@ -267,6 +289,7 @@ export const QueueScreen = () => {
 };
 
 const ROW_HEIGHT = 60;
+const PLAYED_COUNT = 2;
 
 /** A queued song: tap to play it, × to drop it, drag the handle to move it up or down. */
 const QueueRow = ({
@@ -284,6 +307,7 @@ const QueueRow = ({
   onDraggingChange: (dragging: boolean) => void;
 }) => {
   const { gesture, style, dragging } = useRowDrag(ROW_HEIGHT, onMove);
+  const rowArtUri = useTrackArtwork(track, 140);
 
   useEffect(() => onDraggingChange(dragging), [dragging, onDraggingChange]);
 
@@ -296,7 +320,7 @@ const QueueRow = ({
         className={cn('flex-row items-center gap-3 px-2 rounded-md', dragging && 'bg-s2 border border-ln2')}
         style={{ height: ROW_HEIGHT }}
       >
-        <Artwork uri={artworkUrl(track, 140)} size={44} className="rounded-sm" />
+        <Artwork uri={rowArtUri} size={44} className="rounded-sm" />
         <View className="flex-1 gap-0.5 min-w-0">
           <View className="flex-row items-center gap-1.5 min-w-0">
             <Text className="text-tm text-t1 shrink" numberOfLines={1}>
@@ -317,5 +341,33 @@ const QueueRow = ({
         <DragHandle gesture={gesture} accessibilityLabel={`Reorder ${track.title}`} onMove={onMove} />
       </Pressable>
     </Animated.View>
+  );
+};
+
+/** A previously played queue entry: dimmed, tap to play again, no drag handle or remove. */
+const PlayedRow = ({ track, onPress }: { track: Track; onPress: () => void }) => {
+  const rowArtUri = useTrackArtwork(track, 140);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${track.title} by ${track.artist}`}
+      className="flex-row items-center gap-3 px-2 rounded-md opacity-60"
+      style={{ height: ROW_HEIGHT }}
+    >
+      <Artwork uri={rowArtUri} size={44} className="rounded-sm" />
+      <View className="flex-1 gap-0.5 min-w-0">
+        <View className="flex-row items-center gap-1.5 min-w-0">
+          <Text className="text-tm text-t1 shrink" numberOfLines={1}>
+            {track.title}
+          </Text>
+          <SourceGlyph source={track.source} />
+        </View>
+        <Text className="text-bs text-t2" numberOfLines={1}>
+          {track.album ? `${track.artist} · ${track.album}` : track.artist}
+        </Text>
+      </View>
+    </Pressable>
   );
 };

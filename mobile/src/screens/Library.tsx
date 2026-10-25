@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, FlatList, RefreshControl, Pressable, ScrollView, useWindowDimensions } from 'react-native';
+import { View, FlatList, RefreshControl, Pressable, ScrollView } from 'react-native';
+import { useGrid } from '../hooks/useGrid';
 import { Text } from '../components/ui/Text';
 import { Screen } from '../components/layout/Screen';
 import { Header } from '../components/layout/Header';
@@ -75,8 +76,9 @@ const groupByArtist = (tracks: Track[]): OfflineArtist[] => {
 };
 
 export const LibraryScreen = () => {
-  const { width: screenWidth } = useWindowDimensions();
-  const cell = (columns: number, gap: number) => ({ width: (screenWidth - 24 - gap * (columns - 1)) / columns });
+  const grid = useGrid(150, 12);
+  const artistGrid = useGrid(96, 8);
+
   const navigation = useNavigation<any>();
   const setMode = useModeStore((state) => state.setMode);
   const mode = useModeStore((state) => state.mode);
@@ -206,16 +208,16 @@ export const LibraryScreen = () => {
                 <StateView empty="No music on this phone yet. Songs you download show up here." />
               ) : (
                 <FlatList
-                  key="offline-albums"
+                  key={`offline-albums-${grid.columns}`}
                   data={offlineAlbums}
                   keyExtractor={(a) => a.id}
-                  numColumns={2}
+                  numColumns={grid.columns}
                   columnWrapperStyle={{ gap: 12 }}
                   renderItem={({ item }) => (
                     <Pressable
                       onPress={() => playTrack(item.tracks[0], item.tracks, { kind: 'Library', name: item.title })}
                       className="p-1 mb-3"
-                      style={cell(2, 12)}
+                      style={grid.cell}
                       accessibilityRole="button"
                       accessibilityLabel={`${item.title} by ${item.artist}`}
                     >
@@ -235,16 +237,16 @@ export const LibraryScreen = () => {
               <StateView empty="No music on this phone yet. Songs you download show up here." />
             ) : (
               <FlatList
-                key="offline-artists"
+                key={`offline-artists-${artistGrid.columns}`}
                 data={offlineArtists}
                 keyExtractor={(a) => a.id}
-                numColumns={3}
+                numColumns={artistGrid.columns}
                 columnWrapperStyle={{ gap: 8 }}
                 renderItem={({ item }) => (
                   <Pressable
                     onPress={() => playTrack(item.tracks[0], item.tracks, { kind: 'Library', name: item.name })}
                     className="items-center gap-1.5 mb-4"
-                    style={cell(3, 8)}
+                    style={artistGrid.cell}
                     accessibilityRole="button"
                     accessibilityLabel={item.name}
                   >
@@ -262,16 +264,16 @@ export const LibraryScreen = () => {
             )
           ) : activeTab === 'albums' ? (
             <FlatList
-              key="albums"
+              key={`albums-${grid.columns}`}
               data={albums.data?.items ?? []}
               keyExtractor={(a) => a.id}
-              numColumns={2}
+              numColumns={grid.columns}
               columnWrapperStyle={{ gap: 12 }}
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => navigation.navigate('Album', { id: item.id })}
                   className="p-1 mb-3"
-                  style={cell(2, 12)}
+                  style={grid.cell}
                   accessibilityRole="button"
                   accessibilityLabel={`${item.title} by ${item.artist}`}
                 >
@@ -304,16 +306,16 @@ export const LibraryScreen = () => {
             />
           ) : (
             <FlatList
-              key="artists"
+              key={`artists-${artistGrid.columns}`}
               data={artists.data?.items ?? []}
               keyExtractor={(a) => a.id}
-              numColumns={3}
+              numColumns={artistGrid.columns}
               columnWrapperStyle={{ gap: 8 }}
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => navigation.navigate('Artist', { id: item.id })}
                   className="items-center gap-1.5 mb-4"
-                  style={cell(3, 8)}
+                  style={artistGrid.cell}
                   accessibilityRole="button"
                   accessibilityLabel={item.name}
                 >

@@ -1,4 +1,5 @@
 import type { RangeReader } from '../../src/storage/tags';
+import { headerPages, oggPage } from '../../src/storage/oggOpus';
 
 /** Byte builders for real audio container layouts (ID3v2 + MPEG, FLAC, Ogg Opus, MP4). */
 export const latin1 = (s: string) => Uint8Array.from(s, (c) => c.charCodeAt(0));
@@ -42,6 +43,48 @@ export const id3Frame = (id: string, text: string, enc: 0 | 1 | 3 = 3) => {
   return cat(latin1(id), be32(body.length), [0, 0], body);
 };
 
+export const id3PicFrame = (mime: string, picType: number, picData: Uint8Array, enc: 0 | 1 | 3 = 0, desc = '') => {
+  let descBytes: Uint8Array;
+  let term: number[];
+  if (enc === 1) {
+    const u16 = new Uint8Array(desc.length * 2);
+    for (let i = 0; i < desc.length; i++) {
+      u16[i * 2] = desc.charCodeAt(i) & 255;
+      u16[i * 2 + 1] = desc.charCodeAt(i) >> 8;
+    }
+    descBytes = cat([0xff, 0xfe], u16);
+    term = [0, 0];
+  } else {
+    descBytes = enc === 0 ? latin1(desc) : utf8(desc);
+    term = [0];
+  }
+  const body = cat([enc], latin1(mime), [0], [picType], descBytes, term, picData);
+  return cat(latin1('APIC'), be32(body.length), [0, 0], body);
+};
+
+export const id3v22PicFrame = (format: string, picType: number, picData: Uint8Array, desc = '') => {
+  const body = cat([0], latin1(format.slice(0, 3)), [picType], latin1(desc), [0], picData);
+  return cat(latin1('PIC'), [(body.length >> 16) & 255, (body.length >> 8) & 255, body.length & 255], body);
+};
+
+export const flacPictureBlock = (picType: number, mime: string, picData: Uint8Array, desc = '') => {
+  const mimeBytes = latin1(mime);
+  const descBytes = utf8(desc);
+  return cat(
+    be32(picType),
+    be32(mimeBytes.length),
+    mimeBytes,
+    be32(descBytes.length),
+    descBytes,
+    be32(0),
+    be32(0),
+    be32(0),
+    be32(0),
+    be32(picData.length),
+    picData,
+  );
+};
+
 export const id3Tag = (...frames: Uint8Array[]) => {
   const body = cat(...frames);
   return cat(latin1('ID3'), [3, 0, 0], synchsafe(body.length), body);
@@ -61,7 +104,7 @@ export const vorbisComments = (entries: string[]) => {
   return cat(le32(vendor.length), vendor, le32(entries.length), list);
 };
 
-export const flac = (sampleRate: number, totalSamples: number, comments: string[]) => {
+export const flac = (sampleRate: number, totalSamples: number, comments: string[], picBlock?: Uint8Array) => {
   const si = new Uint8Array(34);
   si[10] = (sampleRate >> 12) & 255;
   si[11] = (sampleRate >> 4) & 255;
@@ -69,34 +112,49 @@ export const flac = (sampleRate: number, totalSamples: number, comments: string[
   si[13] = 0x70 | Math.floor(totalSamples / 2 ** 32);
   si.set(be32(totalSamples >>> 0), 14);
   const vc = vorbisComments(comments);
-  return cat(
-    latin1('fLaC'),
-    [0x00, 0, 0, 34],
-    si,
-    [0x84, (vc.length >> 16) & 255, (vc.length >> 8) & 255, vc.length & 255],
-    vc,
-  );
+  const blocks: Uint8Array[] = [cat([0x00, 0, 0, 34], si)];
+  if (picBlock) {
+    blocks.push(cat([0x04, (vc.length >> 16) & 255, (vc.length >> 8) & 255, vc.length & 255], vc));
+    blocks.push(
+      cat([0x86, (picBlock.length >> 16) & 255, (picBlock.length >> 8) & 255, picBlock.length & 255], picBlock),
+    );
+  } else {
+    blocks.push(cat([0x84, (vc.length >> 16) & 255, (vc.length >> 8) & 255, vc.length & 255], vc));
+  }
+  return cat(latin1('fLaC'), ...blocks);
 };
 
-export const oggOpus = (granule: number, comments: string[]) => {
-  const g = [...le32(granule % 2 ** 32), ...le32(Math.floor(granule / 2 ** 32))];
-  return cat(
-    latin1('OggS'),
-    new Array(22).fill(0),
-    latin1('OpusTags'),
-    vorbisComments(comments),
-    latin1('OggS'),
-    [0, 4],
-    g,
-    new Array(12).fill(0),
+/** A real Ogg stream: each header packet on its own page(s), then one audio page at `granule`. */
+export const oggStream = (headers: Uint8Array[], granule: number) => {
+  const serial = 1;
+  const pages: Uint8Array[] = [];
+  headers.forEach((h, i) => pages.push(...headerPages(h, serial, pages.length, i === 0 ? 0x02 : 0)));
+  const audio = Uint8Array.from([0xf8, 0xff, 0xfe]);
+  pages.push(
+    oggPage({ serial, sequence: pages.length, granule: BigInt(granule), flags: 0x04, lacing: [3], body: audio }),
   );
+  return cat(...pages);
 };
+
+export const oggOpus = (granule: number, comments: string[]) =>
+  oggStream(
+    [
+      cat(latin1('OpusHead'), [1, 2, 0x38, 0x01], le32(48_000), [0, 0, 0]),
+      cat(latin1('OpusTags'), vorbisComments(comments)),
+    ],
+    granule,
+  );
 
 export const atom = (type: string, ...body: Uint8Array[]) => {
   const b = cat(...body);
   return cat(be32(b.length + 8), latin1(type), b);
 };
-export const mp4 = (timescale: number, duration: number, meta: Record<string, string>) => {
+export const mp4 = (
+  timescale: number,
+  duration: number,
+  meta: Record<string, string>,
+  covr?: { data: Uint8Array; isPng?: boolean },
+) => {
   const mvhd = atom(
     'mvhd',
     Uint8Array.from([0, 0, 0, 0, ...be32(0), ...be32(0), ...be32(timescale), ...be32(duration)]),
@@ -104,6 +162,10 @@ export const mp4 = (timescale: number, duration: number, meta: Record<string, st
   const items = Object.entries(meta).map(([k, v]) =>
     atom(k, atom('data', Uint8Array.from([0, 0, 0, 1, 0, 0, 0, 0]), utf8(v))),
   );
+  if (covr) {
+    const flag = covr.isPng ? 14 : 13;
+    items.push(atom('covr', atom('data', Uint8Array.from([0, 0, 0, flag, 0, 0, 0, 0]), covr.data)));
+  }
   const udta = atom('udta', atom('meta', Uint8Array.from([0, 0, 0, 0]), atom('ilst', ...items)));
   // moov after mdat, as many encoders write it.
   return cat(

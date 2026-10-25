@@ -157,14 +157,18 @@ const demuxMp3 = (b: Uint8Array): DemuxedAudio | null => {
 // ---------- Opus ----------
 
 /** Length of an Opus packet in seconds, from its TOC byte (RFC 6716 §3.1). */
-const opusPacketSeconds = (p: Uint8Array): number => {
+export const opusPacketSamples = (p: Uint8Array): number => {
   if (p.length === 0) return 0;
   const config = p[0] >> 3;
   const frameMs =
     config < 12 ? [10, 20, 40, 60][config & 3] : config < 16 ? [10, 20][config & 1] : [2.5, 5, 10, 20][config & 3];
   const code = p[0] & 3;
   const frames = code === 0 ? 1 : code === 3 ? (p.length > 1 ? p[1] & 0x3f : 0) : 2;
-  return (frames * frameMs) / 1000;
+  return frames * frameMs * 48; // 48 samples per ms at 48 kHz
+};
+
+export const opusPacketSeconds = (p: Uint8Array): number => {
+  return opusPacketSamples(p) / 48000;
 };
 
 const opusHeadInfo = (head: Uint8Array): { channels: number } | null => {
@@ -267,7 +271,7 @@ const vint = (b: Uint8Array, i: number, id: boolean): { value: number; length: n
  * left out instead of read short, so every packet returned is whole, and the same bytes always
  * give the same packets (a longer prefix only adds packets at the end).
  */
-const demuxWebm = (b: Uint8Array, partial = false): WebmResult => {
+export const demuxWebm = (b: Uint8Array, partial = false): WebmResult => {
   const packets = new Packets();
   let head: Uint8Array | null = null;
   let opusTrack = -1;

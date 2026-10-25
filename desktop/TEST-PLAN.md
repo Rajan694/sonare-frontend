@@ -49,6 +49,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-QUEUE-028` | the last song asks once for similar songs, adds the new ones, and they play next                     |
 | `WEB-QUEUE-029` | nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device |
 | `WEB-QUEUE-030` | an answer that arrives after another song was picked is dropped                                      |
+| `WEB-QUEUE-031` | the "Added to queue" toast counts only songs that really went in, and says when none did             |
 
 ## `test/components/layout.test.tsx`
 
@@ -72,7 +73,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-016` | creating a playlist names it, opens it, and reports a failure                      |
 | `WEB-LAYOUT-017` | collapses to an icon rail with tooltips, and counts running downloads              |
 | `WEB-LAYOUT-018` | shows how many plays are waiting to sync                                           |
-| `WEB-LAYOUT-019` | summarises the queue, shows the current song and only what comes next              |
+| `WEB-LAYOUT-019` | summarises the queue, shows the current song, played songs and what comes next     |
 | `WEB-LAYOUT-020` | clicking an upcoming song plays it; its X removes it without playing               |
 | `WEB-LAYOUT-021` | dragging a row onto another moves it                                               |
 | `WEB-LAYOUT-022` | Clear drops upcoming songs; with none left it says so                              |
@@ -162,34 +163,38 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/local.test.ts`
 
-| ID        | Use case                                                                                     |
-| :-------- | :------------------------------------------------------------------------------------------- |
-| `DSK-001` | the Linux window has the local library, offline mode and native downloads, but no admin page |
-| `DSK-002` | adding a folder indexes its audio files recursively and ignores other files                  |
-| `DSK-003` | tags inside the file win over the file name, and site stamps are cleaned                     |
-| `DSK-004` | the same folder is not added twice                                                           |
-| `DSK-005` | without a path it asks with the folder picker (starting in Music); cancelling adds nothing   |
-| `DSK-006` | a rescan reports added and removed songs and does not re-read unchanged files                |
-| `DSK-007` | a file that cannot be read is skipped without failing the folder                             |
-| `DSK-008` | a folder that disappeared scans as empty                                                     |
-| `DSK-009` | excluding a folder hides its songs; including it brings them back                            |
-| `DSK-010` | removing a folder forgets its songs and their lyric timing, but leaves the files             |
-| `DSK-011` | the library is kept in Neutralino storage and restored at the next launch                    |
-| `DSK-012` | a corrupt stored library starts empty instead of crashing                                    |
-| `DSK-013` | "open folder" shows the file's folder in the file manager                                    |
-| `DSK-014` | reads a file's bytes with its type; an unknown id is an error                                |
-| `DSK-015` | the player's real duration is remembered for files the scan could not measure                |
-| `DSK-016` | server lists swap in this device's copy of a local song and drop ones it lacks               |
-| `DSK-017` | reads a sidecar .lrc next to the file, synced or plain                                       |
-| `DSK-018` | the timing fix the user sets applies to the sidecar lyrics                                   |
-| `DSK-019` | a finished download joins the library under "Sonare downloads" and replaces the stream       |
-| `DSK-020` | downloading the same song again keeps one copy; forgetting it unlinks the stream             |
-| `DSK-021` | rescanning downloads drops files deleted outside Sonare                                      |
-| `DSK-022` | downloads indexed by an older version are listed for the download manager to import          |
-| `DSK-023` | downloads go to ~/Music/Sonare until the user picks another folder, which is remembered      |
-| `DSK-024` | cancelling the folder picker keeps the current folder                                        |
-| `DSK-025` | a download is written to a hidden part file, then moved to a free name                       |
-| `DSK-091` | the Windows desktop window reports windows as its client                                     |
+| ID        | Use case                                                                                                      |
+| :-------- | :------------------------------------------------------------------------------------------------------------ |
+| `DSK-001` | the Linux window has the local library, offline mode and native downloads, but no admin page                  |
+| `DSK-002` | adding a folder indexes its audio files recursively and ignores other files                                   |
+| `DSK-003` | tags inside the file win over the file name, and site stamps are cleaned                                      |
+| `DSK-004` | the same folder is not added twice                                                                            |
+| `DSK-005` | without a path it asks with the folder picker (starting in Music); cancelling adds nothing                    |
+| `DSK-006` | a rescan reports added and removed songs and does not re-read unchanged files                                 |
+| `DSK-007` | a file that cannot be read is skipped without failing the folder                                              |
+| `DSK-008` | a folder that disappeared scans as empty                                                                      |
+| `DSK-009` | excluding a folder hides its songs; including it brings them back                                             |
+| `DSK-010` | removing a folder forgets its songs and their lyric timing, but leaves the files                              |
+| `DSK-011` | the library is kept in Neutralino storage and restored at the next launch                                     |
+| `DSK-012` | a corrupt stored library starts empty instead of crashing                                                     |
+| `DSK-013` | "open folder" shows the file's folder in the file manager                                                     |
+| `DSK-014` | reads a file's bytes with its type; an unknown id is an error                                                 |
+| `DSK-015` | the player's real duration is remembered for files the scan could not measure                                 |
+| `DSK-016` | server lists swap in this device's copy of a local song and drop ones it lacks                                |
+| `DSK-017` | reads a sidecar .lrc next to the file, synced or plain                                                        |
+| `DSK-018` | the timing fix the user sets applies to the sidecar lyrics                                                    |
+| `DSK-019` | a finished download joins the library under "Sonare downloads" and replaces the stream                        |
+| `DSK-020` | downloading the same song again keeps one copy; forgetting it unlinks the stream                              |
+| `DSK-021` | rescanning downloads drops files deleted outside Sonare                                                       |
+| `DSK-022` | downloads indexed by an older version are listed for the download manager to import                           |
+| `DSK-023` | downloads go to ~/Music/Sonare until the user picks another folder, which is remembered                       |
+| `DSK-024` | cancelling the folder picker keeps the current folder                                                         |
+| `DSK-025` | a download is written to a hidden part file, then moved to a free name                                        |
+| `DSK-091` | the Windows desktop window reports windows as its client                                                      |
+| `DSK-097` | embedded album art is extracted, cached by SHA-256 in app data, and deduplicated across tracks                |
+| `DSK-098` | rescanning retains existing cached artwork without re-reading files, and tracks without art keep placeholders |
+| `DSK-099` | local track with cached file:// artwork is preserved in MPRIS and resolveArtworkUrl                           |
+| `DSK-100` | a local cover shows through a blob URL read once from disk, and a missing one shows nothing                   |
 
 ## `test/desktop/offline.test.tsx`
 
@@ -213,18 +218,22 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/desktop/player.test.ts`
 
-| ID        | Use case                                                                        |
-| :-------- | :------------------------------------------------------------------------------ |
-| `DSK-036` | a short file is decoded and played through Web Audio, leaving the element empty |
-| `DSK-037` | pause, play, seek and volume act on the decoded track                           |
-| `DSK-038` | the end of a decoded track tells the queue to move on                           |
-| `DSK-039` | a file too long to decode whole is streamed; a stream failure is reported       |
-| `DSK-040` | a format neither path can read plays through the audio element from a blob url  |
-| `DSK-041` | choosing another song stops and releases the previous decoded one               |
-| `DSK-042` | a downloaded song plays from disk, never from the server                        |
-| `DSK-043` | a blocked start asks the user to press play                                     |
-| `DSK-076` | the next song fades in over the last 6 seconds while this one fades out         |
-| `DSK-077` | songs of one album join without a crossfade while gapless is on                 |
+| ID        | Use case                                                                               |
+| :-------- | :------------------------------------------------------------------------------------- |
+| `DSK-036` | a short file is decoded and played through Web Audio, leaving the element empty        |
+| `DSK-037` | pause, play, seek and volume act on the decoded track                                  |
+| `DSK-038` | the end of a decoded track tells the queue to move on                                  |
+| `DSK-039` | a file too long to decode whole is streamed; a stream failure is reported              |
+| `DSK-040` | a format neither path can read plays through the audio element from a blob url         |
+| `DSK-041` | choosing another song stops and releases the previous decoded one                      |
+| `DSK-042` | a downloaded song plays from disk, never from the server                               |
+| `DSK-043` | a blocked start asks the user to press play                                            |
+| `DSK-076` | the next song fades in over the last 6 seconds while this one fades out                |
+| `DSK-077` | songs of one album join without a crossfade while gapless is on                        |
+| `DSK-093` | crossfade starts at custom crossfadeMs before the end                                  |
+| `DSK-094` | fades on play and pause ramp volume and cancel cleanly on rapid toggle                 |
+| `DSK-095` | skipping to another song while playing fades out the old one before new starts         |
+| `DSK-096` | a seek during the pause fade still pauses, and a skip during the skip fade still loads |
 
 ## `test/screens/home-search.test.tsx`
 
@@ -319,7 +328,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | :--------------- | :------------------------------------------------------------------------------------- |
 | `WEB-NP-001`     | with nothing playing it points back to Home                                            |
 | `WEB-NP-002`     | shows the song, its album, artist link, stream quality and time left                   |
-| `WEB-NP-003`     | lists the next four songs, and clicking one plays it                                   |
+| `WEB-NP-003`     | lists the next songs up to the limit, and clicking one plays it                        |
 | `WEB-NP-004`     | transport, shuffle, repeat and seek go to the player                                   |
 | `WEB-NP-005`     | a playback error is shown with a retry                                                 |
 | `WEB-NP-006`     | leaving goes home on a direct visit                                                    |
@@ -350,6 +359,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-014`     | leaving the Audio screen ends Compare, and Reset position keeps the sliders            |
 | `WEB-EQ-015`     | without Web Audio the section says so and spatial audio cannot be switched on          |
 | `WEB-EQ-016`     | in offline mode the spatial preset cards use the gold accent                           |
+| `WEB-EQ-017`     | crossfade length slider and fade-on-play-pause switch control dsp state                |
 | `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                               |
 | `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in                  |
 | `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                           |
@@ -623,7 +633,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | :----------- | :--------------------------------------------------------------------------------------------------- |
 | `WEB-DL-001` | queues server songs once, skips local files, and remembers the list                                  |
 | `WEB-DL-002` | uses the quality and format from settings                                                            |
-| `WEB-DL-003` | fetches the file in 2 MB ranges and saves the exact bytes as "Artist - Title [videoId].webm"         |
+| `WEB-DL-003` | fetches the file in 2 MB ranges; bytes that are not WebM Opus are saved as they are, as "Title.webm" |
 | `WEB-DL-004` | names AAC downloads .m4a and strips characters file systems reject                                   |
 | `WEB-DL-005` | with no size from the server, a short final range ends the download                                  |
 | `WEB-DL-006` | runs at most two downloads at a time and starts the next when one finishes                           |
@@ -648,6 +658,38 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DL-025` | a download becomes a playable track with its metadata                                                |
 | `WEB-DL-026` | newly queued downloads wait for short AI titles when available, using short names in items and files |
 | `WEB-DL-027` | download enqueue falls back to original titles without waiting when AI is off, offline, or failing   |
+| `WEB-DL-028` | a finished WebM Opus download is saved as a tagged .opus with its cover                              |
+| `WEB-DL-029` | tags finished AAC download with metadata and cover in .m4a                                           |
+
+## `test/unit/oggOpus.test.ts`
+
+| ID            | Use case                                                                              |
+| :------------ | :------------------------------------------------------------------------------------ |
+| `WEB-OGG-001` | Ogg's CRC32 gives the reference check value                                           |
+| `WEB-OGG-002` | the FLAC picture block is a big-endian front cover with type, size and data           |
+| `WEB-OGG-003` | OpusTags holds the vendor and only the comments that are present                      |
+| `WEB-OGG-004` | a header packet spans pages with correct lacing, including lengths that divide by 255 |
+| `WEB-OGG-005` | the audio packets come out unchanged, on valid pages with growing granules            |
+| `WEB-OGG-006` | the tags survive a comment header that spans pages                                    |
+| `WEB-OGG-007` | anything that is not Opus in WebM gives null, so the file is kept as downloaded       |
+
+## `test/unit/mp4Cover.test.ts`
+
+| ID            | Use case                                                                                 |
+| :------------ | :--------------------------------------------------------------------------------------- |
+| `WEB-MP4-001` | injects metadata and cover art into MP4 moov atom                                        |
+| `WEB-MP4-002` | replaces existing udta/meta tags cleanly                                                 |
+| `WEB-MP4-003` | adjusts stco offsets when moov precedes mdat                                             |
+| `WEB-MP4-004` | returns null when moov atom is absent                                                    |
+| `WEB-MP4-005` | a fragmented file: an explicit base-data-offset and mfra moof offsets move with the data |
+| `WEB-MP4-006` | a PNG cover is written as covr data type 14, a JPEG as 13                                |
+
+## `test/unit/coverArt.test.ts`
+
+| ID              | Use case                                                      |
+| :-------------- | :------------------------------------------------------------ |
+| `WEB-COVER-001` | reads a JPEG size from its start-of-frame, past other markers |
+| `WEB-COVER-002` | reads a PNG size from IHDR and gives null for other images    |
 
 ## `test/unit/dsp.test.ts`
 
@@ -683,6 +725,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-028` | the renderer probe accepts a real HRTF response and rejects equal-power or silent ones             |
 | `WEB-DSP-029` | without Web Audio, spatial audio reports that it is unsupported                                    |
 | `WEB-DSP-030` | the renderer probe keeps its source playing well past the impulse, so WebKitGTK renders it         |
+| `WEB-DSP-031` | clamps crossfadeMs to 1000..12000 in steps of 500 on load and set                                  |
 
 ## `test/unit/spatial.test.ts`
 
@@ -710,6 +753,14 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SPATIAL-013` | energy decay curve gives RT60 within ±20%               |
 | `WEB-SPATIAL-014` | early reflection taps land at the right sample offsets  |
 | `WEB-SPATIAL-015` | impulse response lengths follow Cafe < Concert < Hall   |
+
+## `test/unit/useArtColor.test.tsx`
+
+| ID             | Use case                                                                         |
+| :------------- | :------------------------------------------------------------------------------- |
+| `WEB-GLOW-001` | a red cover gives a red glow, sampled once per cover                             |
+| `WEB-GLOW-002` | no cover, a cover that fails to load and a grey cover all keep the fixed colours |
+| `WEB-GLOW-003` | Now Playing paints its two main glows in the cover colour                        |
 
 ## `test/unit/waveform.test.tsx`
 
@@ -890,30 +941,35 @@ request a test did not mock (`test/helpers/server.ts`).
 
 ## `test/unit/tags.test.ts`
 
-| ID            | Use case                                                                           |
-| :------------ | :--------------------------------------------------------------------------------- |
-| `WEB-TAG-001` | reads "Artist - Title" and uses the parent folder as the album                     |
-| `WEB-TAG-002` | removes download-site stamps, NULs and extra spaces                                |
-| `WEB-TAG-015` | strips ".info" download-site stamps completely                                     |
-| `WEB-TAG-003` | reads title, artist, album, year and genre from ID3v2.3 frames                     |
-| `WEB-TAG-004` | uses TLEN for the duration when present                                            |
-| `WEB-TAG-005` | works out a CBR duration from the bitrate and file size                            |
-| `WEB-TAG-006` | prefers the Xing frame count for VBR files                                         |
-| `WEB-TAG-007` | reads only the tag and the first frame, not the whole file                         |
-| `WEB-TAG-016` | ID3v2.4: synchsafe frame sizes, UTF-16BE text and TDRC dates                       |
-| `WEB-TAG-017` | ID3v2.2: three-letter frames with 3-byte sizes                                     |
-| `WEB-TAG-018` | an extended ID3 header is skipped before the frames                                |
-| `WEB-TAG-019` | MPEG-2 (22.05 kHz) files get a duration from their bitrate                         |
-| `WEB-TAG-020` | Ogg Vorbis: tags from the comment header, duration at the stream's own sample rate |
-| `WEB-TAG-021` | MP4 with a 64-bit atom size and a version-1 mvhd                                   |
-| `WEB-TAG-008` | FLAC: duration from STREAMINFO and tags from Vorbis comments                       |
-| `WEB-TAG-009` | Ogg Opus: tags from OpusTags and duration from the last granule at 48 kHz          |
-| `WEB-TAG-010` | MP4/M4A: finds moov after mdat, reads mvhd duration and ilst tags                  |
-| `WEB-TAG-011` | recognises the container by its bytes, not the extension                           |
-| `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                           |
-| `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing              |
-| `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                            |
-| `WEB-TAG-022` | a Sonare download without tags names its artist and title, not its id              |
+| ID            | Use case                                                                                |
+| :------------ | :-------------------------------------------------------------------------------------- |
+| `WEB-TAG-001` | reads "Artist - Title" and uses the parent folder as the album                          |
+| `WEB-TAG-002` | removes download-site stamps, NULs and extra spaces                                     |
+| `WEB-TAG-015` | strips ".info" download-site stamps completely                                          |
+| `WEB-TAG-003` | reads title, artist, album, year and genre from ID3v2.3 frames                          |
+| `WEB-TAG-004` | uses TLEN for the duration when present                                                 |
+| `WEB-TAG-005` | works out a CBR duration from the bitrate and file size                                 |
+| `WEB-TAG-006` | prefers the Xing frame count for VBR files                                              |
+| `WEB-TAG-007` | reads only the tag and the first frame, not the whole file                              |
+| `WEB-TAG-016` | ID3v2.4: synchsafe frame sizes, UTF-16BE text and TDRC dates                            |
+| `WEB-TAG-017` | ID3v2.2: three-letter frames with 3-byte sizes                                          |
+| `WEB-TAG-018` | an extended ID3 header is skipped before the frames                                     |
+| `WEB-TAG-019` | MPEG-2 (22.05 kHz) files get a duration from their bitrate                              |
+| `WEB-TAG-020` | Ogg Vorbis: tags from the comment header, duration at the stream's own sample rate      |
+| `WEB-TAG-021` | MP4 with a 64-bit atom size and a version-1 mvhd                                        |
+| `WEB-TAG-008` | FLAC: duration from STREAMINFO and tags from Vorbis comments                            |
+| `WEB-TAG-009` | Ogg Opus: tags from OpusTags and duration from the last granule at 48 kHz               |
+| `WEB-TAG-010` | MP4/M4A: finds moov after mdat, reads mvhd duration and ilst tags                       |
+| `WEB-TAG-011` | recognises the container by its bytes, not the extension                                |
+| `WEB-TAG-012` | WAV and WebM get a codec only; unknown files get nothing                                |
+| `WEB-TAG-013` | a reader that fails mid-way falls back to no tags instead of throwing                   |
+| `WEB-TAG-014` | a truncated ID3 tag keeps whatever frames were complete                                 |
+| `WEB-TAG-022` | a Sonare download without tags names its artist and title, not its id                   |
+| `WEB-TAG-023` | ID3v2.3/2.4 APIC: extracts cover image and prefers front cover (type 3)                 |
+| `WEB-TAG-024` | ID3v2.2 PIC: extracts picture data and format                                           |
+| `WEB-TAG-025` | FLAC: extracts picture from PICTURE block                                               |
+| `WEB-TAG-026` | Ogg Vorbis/Opus: extracts picture from METADATA_BLOCK_PICTURE, also when it spans pages |
+| `WEB-TAG-027` | MP4: extracts covr image from ilst data atom                                            |
 
 ## `test/components/dialogs-select.test.tsx`
 
@@ -931,6 +987,27 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SELECT-003` | works from the keyboard: arrows open and move, Enter picks, Escape closes back to the trigger |
 | `WEB-SELECT-004` | Space in the list picks instead of reaching the player shortcuts; a click outside closes it   |
 | `WEB-SELECT-005` | a custom trigger and options with details and icons                                           |
+
+## `test/components/queue-history.test.tsx`
+
+| ID           | Use case                                                           |
+| ------------ | ------------------------------------------------------------------ |
+| `WEB-QH-001` | up next shows 10 of a 15-entry queue and the right ones            |
+| `WEB-QH-002` | up next shows 3 when only 3 follow                                 |
+| `WEB-QH-003` | panel shows exactly the 2 before the current one in order          |
+| `WEB-QH-004` | panel shows 1 when current is index 1, and none at index 0         |
+| `WEB-QH-005` | clicking a played row calls playAt with its queue index            |
+| `WEB-QH-006` | offline mode leaves out entries without a local copy in both lists |
+
+## `test/desktop/download-artwork.test.ts`
+
+| ID              | Use case                                                                            |
+| --------------- | ----------------------------------------------------------------------------------- |
+| `WEB-DLART-001` | a download handed its cover saves it as a file:// cover beside the server thumbnail |
+| `WEB-DLART-002` | one without keeps the server thumbnail                                              |
+| `WEB-DLART-003` | trackArtwork prefers the download's cover over the thumbnail                        |
+| `WEB-DLART-004` | an old entry without the field gets filled on first use, read once                  |
+| `WEB-DLART-005` | an old entry without embedded art is checked once and keeps the thumbnail           |
 
 ## `test/desktop/library.test.tsx`
 
@@ -1072,6 +1149,16 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-078` | after a session switch, later calls (search) go through the new session                                           |
 | `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
 | `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
+
+## `test/unit/sharedCatalog/artColor.test.ts`
+
+| ID              | Use case                                                                 |
+| :-------------- | :----------------------------------------------------------------------- |
+| `ART-COLOR-001` | a mostly grey cover with a red logo glows red                            |
+| `ART-COLOR-002` | a black-and-white cover gives null so the fixed colours stay             |
+| `ART-COLOR-003` | clamps a very dark or very light colour to one that reads on the dark UI |
+| `ART-COLOR-004` | averages hues across 0°, and ignores transparent pixels                  |
+| `ART-COLOR-005` | decodes the base64 RGBA Android sends                                    |
 
 ## `test/unit/sharedCatalog/sharedAi.test.ts`
 

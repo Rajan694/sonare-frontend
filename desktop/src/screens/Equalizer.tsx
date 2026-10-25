@@ -26,6 +26,9 @@ const formatDb = (db: number) => {
   return `${db > 0 ? '+' : ''}${db % 1 === 0 ? db : db.toFixed(1)}`;
 };
 
+/** Crossfade length in half seconds: "6 s", "6.5 s". */
+const formatSeconds = (ms: number) => `${ms % 1000 ? (ms / 1000).toFixed(1) : ms / 1000} s`;
+
 const Equalizer = () => {
   const { mode } = useModeStore();
   const isOffline = mode === 'offline';
@@ -166,7 +169,7 @@ const Equalizer = () => {
               </span>
               <span className="flex flex-col grow min-w-0 pr-2">
                 <span className="text-body-m font-medium text-t1 truncate">Crossfade</span>
-                <span className="text-body-s text-t3 truncate">6 seconds between tracks</span>
+                <span className="text-body-s text-t3 truncate">{formatSeconds(dsp.crossfadeMs)} between tracks</span>
               </span>
               <Switch
                 variant={variant}
@@ -175,6 +178,25 @@ const Equalizer = () => {
                 aria-label="Toggle crossfade"
               />
             </label>
+
+            {dsp.crossfade && (
+              <div className="flex flex-col gap-2 p-4 bg-surf-sub/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-label-m font-medium text-t2">Crossfade length</span>
+                  <span className="text-mono-s text-t1">{formatSeconds(dsp.crossfadeMs)}</span>
+                </div>
+                <Slider
+                  min={1000}
+                  max={12000}
+                  step={500}
+                  value={dsp.crossfadeMs}
+                  variant={variant}
+                  ariaLabel="Crossfade length"
+                  onChange={(crossfadeMs) => setDsp({ crossfadeMs })}
+                  className="w-full"
+                />
+              </div>
+            )}
 
             <label className="lrow cursor-pointer flex items-center justify-between p-4">
               <span className="icobox">
@@ -191,6 +213,22 @@ const Equalizer = () => {
                 checked={settings.gapless}
                 onCheckedChange={(gapless) => updateSettings({ gapless })}
                 aria-label="Toggle gapless playback"
+              />
+            </label>
+
+            <label className="lrow cursor-pointer flex items-center justify-between p-4">
+              <span className="icobox">
+                <Icon name="sliders" size={16} />
+              </span>
+              <span className="flex flex-col grow min-w-0 pr-2">
+                <span className="text-body-m font-medium text-t1 truncate">Fade on play & pause</span>
+                <span className="text-body-s text-t3 truncate">Gentle volume ramps on play, pause and skip</span>
+              </span>
+              <Switch
+                variant={variant}
+                checked={dsp.fades}
+                onCheckedChange={(fades) => setDsp({ fades })}
+                aria-label="Toggle fade on play & pause"
               />
             </label>
 

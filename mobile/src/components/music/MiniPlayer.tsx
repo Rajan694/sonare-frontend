@@ -8,7 +8,7 @@ import { usePlayerStore } from '../../store/player';
 import { useLibraryStore } from '../../store/library';
 import { Artwork } from './Artwork';
 import { SourceGlyph } from './SourceGlyph';
-import { artworkUrl } from '../../data/config';
+import { useTrackArtwork } from '../../store/deviceArt';
 import { IconButton } from '../ui/IconButton';
 import Icon from '../ui/Icon';
 import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
@@ -28,6 +28,7 @@ export const MiniPlayer = () => {
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
   const error = usePlayerStore((state) => state.error);
   const playNext = usePlayerStore((state) => state.playNext);
+  const artUri = useTrackArtwork(currentTrack, 140);
   const favourite = useLibraryStore((s) => (currentTrack ? !!s.favouriteIds[currentTrack.id] : false));
   const toggleFavourite = useLibraryStore((s) => s.toggleFavourite);
   // A finished download plays from the phone.
@@ -75,7 +76,10 @@ export const MiniPlayer = () => {
   return (
     <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
       <AnimatedViewComponent
-        style={[animatedStyle, { bottom: 64 + insets.bottom }]}
+        style={[
+          animatedStyle,
+          { bottom: 64 + insets.bottom, paddingLeft: 10 + insets.left, paddingRight: 10 + insets.right },
+        ]}
         className="absolute inset-x-0 h-[64px] bg-[#111114] flex-row items-center px-2.5 border-t border-ln2 z-50"
       >
         <View className="absolute -top-[1px] left-0 right-0 h-[2px] bg-ln2">
@@ -89,7 +93,7 @@ export const MiniPlayer = () => {
           className="flex-row items-center gap-3 flex-1 min-w-0 mr-1"
         >
           <Artwork
-            uri={artworkUrl(currentTrack, 140)}
+            uri={artUri}
             size={44}
             rings
             className="rounded-sm"

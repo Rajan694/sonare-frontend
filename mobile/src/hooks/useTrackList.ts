@@ -6,17 +6,18 @@ import { useAuthStore } from '../data/auth';
 import { useModeStore } from '../store/mode';
 import { useLibraryStore } from '../store/library';
 import { useDownloadsStore } from '../store/downloads';
-import { usePhoneTracks } from '../store/localMusic';
+import { tracksInFolder, useLocalMusicStore, usePhoneTracks } from '../store/localMusic';
 import { usePlayerStore } from '../store/player';
 import { playShuffled } from '../lib/playShuffled';
 import { showSnackbar, songsSubtitle } from '../store/snackbar';
 import { songCount } from '../lib/format';
 import type { Track } from '../data/types';
 
-export type TrackListKind = 'all' | 'liked' | 'mostPlayed';
+export type TrackListKind = 'all' | 'liked' | 'mostPlayed' | 'folder';
 
 export interface UseTrackListOptions {
   kind: TrackListKind;
+  folder?: string;
   enabled?: boolean;
 }
 
@@ -24,15 +25,17 @@ const FROM: Record<TrackListKind, { kind: string; name: string }> = {
   all: { kind: 'Library', name: 'Your songs' },
   liked: { kind: 'Library', name: 'Liked songs' },
   mostPlayed: { kind: 'Library', name: 'Most played' },
+  folder: { kind: 'Folder', name: 'Folder' },
 };
 
-export const useTrackList = ({ kind, enabled = true }: UseTrackListOptions) => {
+export const useTrackList = ({ kind, folder, enabled = true }: UseTrackListOptions) => {
   const mode = useModeStore((state) => state.mode);
   const online = mode === 'online';
   const userId = useAuthStore((state) => state.user?.id);
   const playTrack = usePlayerStore((state) => state.playTrack);
   const favouriteIds = useLibraryStore((state) => state.favouriteIds);
   const downloads = useDownloadsStore((state) => state.items);
+  const phoneSongs = useLocalMusicStore((state) => state.songs);
   const isDownloaded = useCallback((id: string) => downloads[id]?.status === 'done', [downloads]);
 
   const [sort, setSort] = useState<LibrarySort>('addedAt');
@@ -62,7 +65,7 @@ export const useTrackList = ({ kind, enabled = true }: UseTrackListOptions) => {
 
   // Paged query for 'all' (Songs tab) or 'liked'
   const pagedQuery = usePagedTracks(kind === 'liked' ? 'liked' : 'all', sort, [userId], {
-    enabled: online && !!userId && kind !== 'mostPlayed' && enabled,
+    enabled: online && !!userId && kind !== 'mostPlayed' && kind !== 'folder' && !folder && enabled,
     refetchOnFocus: true,
   });
 
@@ -116,27 +119,33 @@ export const useTrackList = ({ kind, enabled = true }: UseTrackListOptions) => {
   }, [kind, pagedQuery?.items, mostPlayed.data, favouriteIds]);
 
   const displayTracks: Track[] = useMemo(() => {
+    if (kind === 'folder' || folder) {
+      return folder ? tracksInFolder(folder, phoneSongs, downloads) : [];
+    }
     if (!online) {
       if (kind === 'all') return phoneTracks;
       if (kind === 'liked') return phoneTracks.filter((t) => favouriteIds[t.id]);
       return serverTracks.filter((t) => isDownloaded(t.id));
     }
     return onPhoneOnly ? serverTracks.filter((t) => isDownloaded(t.id)) : serverTracks;
-  }, [online, kind, phoneTracks, favouriteIds, serverTracks, onPhoneOnly, isDownloaded]);
+  }, [online, kind, folder, phoneSongs, downloads, phoneTracks, favouriteIds, serverTracks, onPhoneOnly, isDownloaded]);
 
-  const from = FROM[kind];
+  const from = kind === 'folder' ? { kind: 'Folder', name: folder ?? 'Folder' } : FROM[kind];
 
-  const emptyText = !online
-    ? kind === 'all'
-      ? 'No music on this phone yet. Songs you download show up here.'
-      : kind === 'liked'
-        ? 'None of your liked songs are downloaded to this phone.'
-        : 'None of your most played songs are downloaded to this phone.'
-    : kind === 'liked'
-      ? 'Songs you like show up here. Tap the heart on any song.'
-      : kind === 'mostPlayed'
-        ? 'Songs you play most show up here once you have listened for a while.'
-        : 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".';
+  const emptyText =
+    kind === 'folder'
+      ? 'No songs in this folder.'
+      : !online
+        ? kind === 'all'
+          ? 'No music on this phone yet. Songs you download show up here.'
+          : kind === 'liked'
+            ? 'None of your liked songs are downloaded to this phone.'
+            : 'None of your most played songs are downloaded to this phone.'
+        : kind === 'liked'
+          ? 'Songs you like show up here. Tap the heart on any song.'
+          : kind === 'mostPlayed'
+            ? 'Songs you play most show up here once you have listened for a while.'
+            : 'Songs you favourite show up here. Long-press any song and choose "Add to favourites".';
 
   const onPlayAll = async () => {
     let tracks = displayTracks;

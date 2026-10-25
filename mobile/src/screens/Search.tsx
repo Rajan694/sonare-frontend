@@ -17,7 +17,8 @@ import { LoadMore } from '../components/ui/LoadMore';
 import { useModeStore } from '../store/mode';
 import { usePlayerStore } from '../store/player';
 import { useLibraryStore } from '../store/library';
-import { usePhoneTracks } from '../store/localMusic';
+import { DOWNLOADS_FOLDER, musicFolders, useLocalMusicStore, usePhoneTracks } from '../store/localMusic';
+import { useOfflinePlaylistsStore } from '../store/offlinePlaylists';
 import { useRecentSearchesStore } from '../store/recentSearches';
 import { useCollectionMenuStore } from '../store/collectionMenu';
 import { api } from '../data/api';
@@ -27,7 +28,13 @@ import { usePagedList } from '../hooks/usePagedList';
 import type { Album, Playlist, SearchItem, Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 import { DEFAULT_GENRES, GenreCard, genreQuery, type Genre } from '../components/music/GenreCard';
-import { groupLocalByAlbum, groupLocalByArtist, searchLocalTracks } from '../lib/localSearch';
+import {
+  foldForSearch,
+  groupLocalByAlbum,
+  groupLocalByArtist,
+  matchesLocalQuery,
+  searchLocalTracks,
+} from '../lib/localSearch';
 import { AiSearchPicks } from '../components/ai/AiSearchPicks';
 import { parseYouTubeLink } from '../../../shared/catalog/ids';
 
@@ -335,6 +342,36 @@ export const SearchScreen = () => {
   const localMatches = useMemo(() => (online ? [] : searchLocalTracks(deviceTracks, q)), [online, deviceTracks, q]);
   const localAlbumGroups = useMemo(() => groupLocalByAlbum(localMatches), [localMatches]);
   const localArtistGroups = useMemo(() => groupLocalByArtist(localMatches), [localMatches]);
+
+  const savedPlaylists = useOfflinePlaylistsStore((state) => state.playlists);
+  const localPlaylists = useMemo(() => {
+    if (online || !q.trim()) return [];
+    const query = foldForSearch(q);
+    return savedPlaylists.filter(
+      (pl) => foldForSearch(pl.name).includes(query) || (pl.owner && foldForSearch(pl.owner).includes(query)),
+    );
+  }, [online, savedPlaylists, q]);
+
+  const phoneSongs = useLocalMusicStore((state) => state.songs);
+  const hiddenFolders = useLocalMusicStore((state) => state.hidden);
+  const allFolders = useMemo(
+    () => musicFolders({ songs: phoneSongs, hidden: hiddenFolders }),
+    [phoneSongs, hiddenFolders],
+  );
+  const matchingFolders = useMemo(() => {
+    if (online || !q.trim()) return [];
+    const query = foldForSearch(q);
+    return allFolders.filter((f) => {
+      const displayName = f.path === DOWNLOADS_FOLDER ? 'Sonare downloads' : f.name;
+      if (foldForSearch(displayName).includes(query) || foldForSearch(f.path).includes(query)) return true;
+      return phoneSongs.some(
+        (s) =>
+          (s.folder || 'Internal storage') === f.path &&
+          matchesLocalQuery({ title: s.title, artist: s.artist ?? '', album: s.album }, q),
+      );
+    });
+  }, [online, allFolders, phoneSongs, q]);
+
   const playLocal = (track: Track, queue: Track[]) => playTrack(track, queue, { kind: 'Search', name: q });
 
   return (
@@ -816,6 +853,48 @@ export const SearchScreen = () => {
               ) : (
                 <StateView empty="Search for songs, albums, artists on this device." />
               )
+            ) : filter === 'playlists' ? (
+              localPlaylists.length === 0 ? (
+                <StateView empty={`Nothing on this phone matches "${q}"`} />
+              ) : (
+                <View className="-mx-2.5 gap-0.5">
+                  {localPlaylists.map((pl) => (
+                    <ResultRow
+                      key={pl.id}
+                      uri={artworkUrl(pl, 64)}
+                      title={pl.name}
+                      subtitle={playlistSubtitle(pl)}
+                      accessibilityLabel={`Playlist ${pl.name}`}
+                      onPress={() => navigation.navigate('Playlist', { id: pl.id })}
+                    />
+                  ))}
+                </View>
+              )
+            ) : filter === 'folders' ? (
+              matchingFolders.length === 0 ? (
+                <StateView empty={`Nothing on this phone matches "${q}"`} />
+              ) : (
+                <View className="-mx-2.5 gap-0.5">
+                  {matchingFolders.map((folder) => {
+                    const folderName = folder.path === DOWNLOADS_FOLDER ? 'Sonare downloads' : folder.name;
+                    return (
+                      <ResultRow
+                        key={folder.path}
+                        title={folderName}
+                        subtitle={`${folder.songCount} ${folder.songCount === 1 ? 'song' : 'songs'}`}
+                        accessibilityLabel={`Folder ${folderName}`}
+                        onPress={() =>
+                          navigation.navigate('TrackList', {
+                            kind: 'folder',
+                            folder: folder.path,
+                            title: folderName,
+                          })
+                        }
+                      />
+                    );
+                  })}
+                </View>
+              )
             ) : localMatches.length === 0 ? (
               <StateView empty={`Nothing on this phone matches "${q}"`} />
             ) : filter === 'albums' ? (
@@ -845,8 +924,6 @@ export const SearchScreen = () => {
                   />
                 ))}
               </View>
-            ) : filter === 'playlists' || filter === 'folders' ? (
-              <StateView empty={`Nothing on this phone matches "${q}"`} />
             ) : (
               <View className="-mx-2.5 gap-0.5">
                 {localMatches.map((track, index) => (

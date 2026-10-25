@@ -19,6 +19,9 @@ import {
   type PartFile,
   type TargetKind,
 } from './downloadTargets';
+import { webmToOggOpus } from './oggOpus';
+import { addMp4Tags } from './mp4Cover';
+import { fetchCover, type Cover } from './coverArt';
 import type { Track } from '../types';
 import { downloadName } from '../../../shared/downloads/fileNames';
 import { shortTitlesFor } from '../../../shared/ai/downloadTitles';
@@ -246,8 +249,33 @@ const knownSize = (n: number | undefined): number => {
   return n && n > 0 ? n : 0;
 };
 
-const extensionFor = (mimeType: string): string => {
-  return /mp4|m4a|aac/i.test(mimeType) ? 'm4a' : 'webm';
+const isAac = (mimeType: string) => /mp4|m4a|aac/i.test(mimeType);
+
+/**
+ * Tags the finished file: Opus in WebM is repacked as Ogg Opus (.opus) and AAC gets MP4 tags,
+ * both with the title, artist, album and cover. Returns the name and type to save it under; on
+ * any failure the file stays exactly as downloaded (.webm / .m4a).
+ */
+const tagFile = async (
+  item: DownloadItem,
+  part: PartFile,
+): Promise<{ ext: string; mimeType: string; cover?: Cover }> => {
+  const aac = isAac(item.mimeType ?? '');
+  const original = aac
+    ? { ext: 'm4a', mimeType: item.mimeType ?? 'audio/mp4' }
+    : { ext: 'webm', mimeType: 'audio/webm' };
+  try {
+    const cover = (await fetchCover({ id: item.id, source: 'server', thumbnail: item.thumbnail })) ?? undefined;
+    const tags = { title: item.title, artist: item.artist ?? undefined, album: item.album ?? undefined, cover };
+    const bytes = await part.read();
+    const tagged = aac ? addMp4Tags(bytes, tags) : webmToOggOpus(bytes, tags);
+    if (!tagged) return original;
+    await part.replace(tagged);
+    return { ...(aac ? original : { ext: 'opus', mimeType: 'audio/ogg' }), cover };
+  } catch (e) {
+    console.warn('[downloads] saved without tags:', e instanceof Error ? e.message : e);
+    return original;
+  }
 };
 
 const sleep = (ms: number, signal: AbortSignal) => {
@@ -419,8 +447,9 @@ const run = async (id: string, signal: AbortSignal): Promise<void> => {
     }
 
     const item = get(id)!;
-    const fileName = `${downloadName(item)}.${extensionFor(item.mimeType ?? '')}`;
-    const saved = await part.finish(fileName, item.mimeType ?? 'audio/webm');
+    const { ext, mimeType, cover } = await tagFile(item, part);
+    const fileName = `${downloadName(item)}.${ext}`;
+    const saved = await part.finish(fileName, mimeType);
     if (item.target === 'native') {
       await localLibrary.addDownload({
         serverId: item.id,
@@ -433,6 +462,7 @@ const run = async (id: string, signal: AbortSignal): Promise<void> => {
         codec: item.codec,
         bitrateKbps: item.bitrateKbps,
         thumbnail: item.thumbnail,
+        cover,
       });
     }
     finishedInBatch++;

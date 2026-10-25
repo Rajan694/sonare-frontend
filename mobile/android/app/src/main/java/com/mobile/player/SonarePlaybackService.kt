@@ -1,11 +1,21 @@
 package com.mobile.player
 
 import android.app.PendingIntent
+import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.view.KeyEvent
 import androidx.annotation.OptIn
+import androidx.core.content.ContextCompat
 import androidx.media3.common.ForwardingPlayer
+import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.common.util.BitmapLoader
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DataSourceBitmapLoader
 import androidx.media3.datasource.DefaultDataSource
@@ -16,6 +26,9 @@ import androidx.media3.session.CacheBitmapLoader
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import com.mobile.MainActivity
+import com.mobile.widget.SonareWidgetUpdater
+import com.mobile.widget.WidgetState
+import com.mobile.widget.WidgetStorage
 
 /**
  * Hosts the [PlaybackEngine] inside a media session. Media3 turns that into background
@@ -29,9 +42,34 @@ import com.mobile.MainActivity
 class SonarePlaybackService : MediaSessionService() {
   private var session: MediaSession? = null
   private var engine: PlaybackEngine? = null
+  private var bitmapLoader: BitmapLoader? = null
+  private var observedPlayer: Player? = null
+  private var currentArtworkBitmap: Bitmap? = null
+  private var currentArtworkUri: Uri? = null
+
+  private val widgetPlayerListener =
+    object : Player.Listener {
+      // The heart follows JS (setLiked), which knows the new song's liked state.
+      override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+        updateWidgets()
+      }
+
+      override fun onIsPlayingChanged(isPlaying: Boolean) {
+        updateWidgets()
+      }
+
+      override fun onPlaybackStateChanged(playbackState: Int) {
+        updateWidgets()
+      }
+
+      override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+        updateWidgets()
+      }
+    }
 
   override fun onCreate() {
     super.onCreate()
+    instance = this
     // Artwork urls on our API redirect from http to https (i.ytimg.com); allow that hop.
     val http = DefaultHttpDataSource.Factory().setAllowCrossProtocolRedirects(true)
     // googlevideo sends a request without a Range header at ~35 KB/s; any Range gets full speed.
@@ -75,21 +113,121 @@ class SonarePlaybackService : MediaSessionService() {
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
       )
 
+    val callback = HeadsetSessionCallback(engine)
+
+    val cachedBitmapLoader =
+      CacheBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkSource))
+    this.bitmapLoader = cachedBitmapLoader
+
     session =
       MediaSession.Builder(this, QueueForwardingPlayer(engine.active, engine))
         .setSessionActivity(openApp)
+        .setCallback(callback)
         // Cached: without it every notification and session update downloads the artwork again
         // (the default loader is wrapped the same way; a custom one isn't).
-        .setBitmapLoader(
-          CacheBitmapLoader(DataSourceBitmapLoader(DataSourceBitmapLoader.DEFAULT_EXECUTOR_SERVICE.get(), artworkSource)),
-        )
+        .setBitmapLoader(cachedBitmapLoader)
         .build()
+
+    observedPlayer = engine.active
+    observedPlayer?.addListener(widgetPlayerListener)
+
     // A crossfade hands playback to the other player; the session (notification, lock
     // screen, the app's controller) follows it.
-    engine.onActiveChanged = { player -> session?.player = QueueForwardingPlayer(player, engine) }
+    engine.onActiveChanged = { player ->
+      session?.player = QueueForwardingPlayer(player, engine)
+      observedPlayer?.removeListener(widgetPlayerListener)
+      player.addListener(widgetPlayerListener)
+      observedPlayer = player
+      updateWidgets()
+    }
+
+    updateWidgets()
   }
 
   override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession? = session
+
+  /** A widget button ([SonareWidgetReceiver]); play/pause goes the forwarding player's way, so fades apply. */
+  fun handleWidgetAction(action: String) {
+    val eng = engine ?: return
+    if (eng.active.mediaItemCount == 0) return
+
+    when (action) {
+      SonareWidgetUpdater.ACTION_PLAY_PAUSE -> {
+        eng.finishFade()
+        if (eng.active.playWhenReady) eng.pause() else eng.play()
+      }
+      SonareWidgetUpdater.ACTION_NEXT -> RemoteCommands.send("next")
+      SonareWidgetUpdater.ACTION_PREVIOUS -> RemoteCommands.send("previous")
+      SonareWidgetUpdater.ACTION_LIKE -> RemoteCommands.send("like")
+    }
+  }
+
+  fun updateWidgets() {
+    val player = engine?.active
+    val item = player?.currentMediaItem
+    val metadata = item?.mediaMetadata
+    val isPlaying = player?.isPlaying ?: false
+    val hasTrack = item != null && player.playbackState != Player.STATE_IDLE && player.playbackState != Player.STATE_ENDED
+    val title = metadata?.title?.toString()
+    val artist = metadata?.artist?.toString()
+    val artworkUri = metadata?.artworkUri
+
+    if (!hasTrack) {
+      currentArtworkBitmap = null
+      currentArtworkUri = null
+      val state =
+        WidgetState(
+          title = null,
+          artist = null,
+          artworkBitmap = null,
+          isPlaying = false,
+          liked = false,
+          hasTrack = false,
+        )
+      currentWidgetState = state
+      SonareWidgetUpdater.updateAll(this, state)
+      WidgetStorage.saveState(this, state)
+      return
+    }
+
+    val existingBitmap = if (artworkUri != null && artworkUri == currentArtworkUri) currentArtworkBitmap else null
+
+    val state =
+      WidgetState(
+        title = title,
+        artist = artist,
+        artworkBitmap = existingBitmap,
+        isPlaying = isPlaying,
+        liked = isLiked,
+        hasTrack = true,
+      )
+    currentWidgetState = state
+    SonareWidgetUpdater.updateAll(this, state)
+    WidgetStorage.saveState(this, state)
+
+    if (artworkUri != null && artworkUri != currentArtworkUri) {
+      currentArtworkUri = artworkUri
+      val future = bitmapLoader?.loadBitmap(artworkUri)
+      if (future != null) {
+        future.addListener(
+          {
+            try {
+              val raw = future.get()
+              if (raw != null && currentArtworkUri == artworkUri) {
+                val scaled = WidgetStorage.scaleArtwork(raw, 300)
+                currentArtworkBitmap = scaled
+                val updatedState = currentWidgetState?.copy(artworkBitmap = scaled) ?: state.copy(artworkBitmap = scaled)
+                currentWidgetState = updatedState
+                SonareWidgetUpdater.updateAll(this, updatedState)
+                WidgetStorage.saveState(this, updatedState)
+              }
+            } catch (_: Exception) {}
+          },
+          ContextCompat.getMainExecutor(this),
+        )
+      }
+    }
+  }
 
   override fun onTaskRemoved(rootIntent: Intent?) {
     // Swiping the app away keeps music going; with nothing playing, shut down instead.
@@ -98,12 +236,115 @@ class SonarePlaybackService : MediaSessionService() {
   }
 
   override fun onDestroy() {
+    observedPlayer?.removeListener(widgetPlayerListener)
+    observedPlayer = null
+    bitmapLoader = null
+
+    // Gone first, so the widgets are drawn with buttons that open the app.
+    instance = null
+    val lastState = currentWidgetState?.copy(isPlaying = false) ?: WidgetStorage.loadState(this).copy(isPlaying = false)
+    currentWidgetState = lastState
+    WidgetStorage.saveState(this, lastState)
+    SonareWidgetUpdater.updateAll(this, lastState)
+
     session?.release()
     session = null
     engine?.release()
     engine = null
     PlaybackEngine.instance = null
     super.onDestroy()
+  }
+
+  companion object {
+    /** Stored actions for headset button presses, set from JS; survives service restarts. */
+    @Volatile var headsetActions: HeadsetActions = HeadsetActions.DEFAULT
+
+    @Volatile var isLiked: Boolean = false
+    @Volatile var instance: SonarePlaybackService? = null
+    @Volatile var currentWidgetState: WidgetState? = null
+
+    fun setLiked(context: Context, liked: Boolean) {
+      isLiked = liked
+      val service = instance
+      if (service != null) {
+        Handler(Looper.getMainLooper()).post { service.updateWidgets() }
+      } else {
+        val saved = WidgetStorage.loadState(context)
+        val updated = saved.copy(liked = liked)
+        currentWidgetState = updated
+        WidgetStorage.saveState(context, updated)
+        SonareWidgetUpdater.updateAll(context, updated)
+      }
+    }
+  }
+}
+
+/**
+ * Handles media button events for headset hook and play/pause buttons.
+ *
+ * Counts rapid presses within 400 ms. When the window expires with no further presses,
+ * runs the action assigned to 1, 2, or 3 presses (e.g. play/pause, next, previous, like).
+ * Other buttons or long presses fall back to Media3 defaults.
+ */
+@OptIn(UnstableApi::class)
+private class HeadsetSessionCallback(private val engine: PlaybackEngine) : MediaSession.Callback {
+  private val handler = Handler(Looper.getMainLooper())
+  private val detector = HeadsetButtonDetector(400L)
+
+  private val commitTask = Runnable {
+    val count = detector.takeCount()
+    if (count <= 0) return@Runnable
+    val action = SonarePlaybackService.headsetActions.actionForCount(count)
+    executeAction(action)
+  }
+
+  override fun onMediaButtonEvent(
+    session: MediaSession,
+    controllerInfo: MediaSession.ControllerInfo,
+    intent: Intent,
+  ): Boolean {
+    val keyEvent =
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT, KeyEvent::class.java)
+      } else {
+        @Suppress("DEPRECATION")
+        intent.getParcelableExtra(Intent.EXTRA_KEY_EVENT) as? KeyEvent
+      } ?: return super.onMediaButtonEvent(session, controllerInfo, intent)
+
+    val keyCode = keyEvent.keyCode
+    val isHeadsetButton = keyCode == KeyEvent.KEYCODE_HEADSETHOOK || keyCode == KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+
+    if (!isHeadsetButton) {
+      return super.onMediaButtonEvent(session, controllerInfo, intent)
+    }
+
+    // Long presses have repeatCount > 0 or are left to the system; only count initial down.
+    if (keyEvent.action != KeyEvent.ACTION_DOWN || keyEvent.repeatCount != 0) {
+      return super.onMediaButtonEvent(session, controllerInfo, intent)
+    }
+
+    handler.removeCallbacks(commitTask)
+    detector.recordPress(SystemClock.uptimeMillis())
+    handler.postDelayed(commitTask, 400L)
+    return true
+  }
+
+  private fun executeAction(action: HeadsetAction) {
+    when (action) {
+      HeadsetAction.PLAY_PAUSE -> {
+        // Forwarding player path: finish fade then toggle play/pause so volume ramps apply.
+        engine.finishFade()
+        if (engine.active.playWhenReady) {
+          engine.pause()
+        } else {
+          engine.play()
+        }
+      }
+      HeadsetAction.NEXT -> RemoteCommands.send("next")
+      HeadsetAction.PREVIOUS -> RemoteCommands.send("previous")
+      HeadsetAction.LIKE -> RemoteCommands.send("like")
+      HeadsetAction.NONE -> { /* do nothing */ }
+    }
   }
 }
 
@@ -130,17 +371,17 @@ private class QueueForwardingPlayer(player: Player, private val engine: Playback
   // Any command from the user ends a crossfade at once rather than fighting it.
   override fun play() {
     engine.finishFade()
-    super.play()
+    engine.play()
   }
 
   override fun pause() {
     engine.finishFade()
-    super.pause()
+    engine.pause()
   }
 
   override fun setPlayWhenReady(playWhenReady: Boolean) {
     engine.finishFade()
-    super.setPlayWhenReady(playWhenReady)
+    engine.setPlayWhenReady(playWhenReady)
   }
 
   override fun seekTo(positionMs: Long) {

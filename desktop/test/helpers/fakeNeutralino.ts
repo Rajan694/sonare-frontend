@@ -186,6 +186,7 @@ export const lib = {
   },
   os: {
     getPath: vi.fn(async (name: string) => {
+      if (name === 'data') return '/home/me/.local/share';
       if (name === 'music') return '/home/me/Music';
       if (name === 'temp') return '/tmp';
       if (name === 'cache') return '/home/me/.cache';

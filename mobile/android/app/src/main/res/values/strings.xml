@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Sonare</string>
+    <string name="widget_small_name">Sonare (Small)</string>
+    <string name="widget_large_name">Sonare (Large)</string>
 </resources>

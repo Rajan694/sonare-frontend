@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, waitFor } from '@testing-library/react';
+import { act, render, renderHook, waitFor } from '@testing-library/react';
 import type { PlayerStore } from '../../src/store/playerContext';
 import type { PlaybackStatus } from '../../src/audio/player';
 import { makeTrack } from '../helpers/fixtures';
@@ -71,6 +71,7 @@ import * as plays from '../../src/api/plays';
 import * as sync from '../../src/api/sync';
 import { api } from '../../src/api/api';
 import { updateDevicePrefs } from '../../src/storage/devicePrefs';
+import { useToasts } from '../../src/store/toasts';
 
 const store = () => h.store.current!;
 const ids = () => store().state.queue.map((t) => t.id);
@@ -311,6 +312,17 @@ describe('editing the queue', () => {
     run(() => store().enqueue([c, d, a]));
     expect(ids()).toEqual(['yt:a', 'yt:b', 'yt:c', 'yt:d']);
     expect(current()).toBe('yt:b');
+  });
+
+  it('WEB-QUEUE-031 the "Added to queue" toast counts only songs that really went in, and says when none did', () => {
+    const toasts = renderHook(() => useToasts());
+    const last = () => toasts.result.current.at(-1);
+    run(() => store().enqueue([c, d, a]));
+    expect(last()).toMatchObject({ title: 'Added to queue', description: d.title });
+    run(() => store().enqueue([a, b]));
+    expect(last()).toMatchObject({ title: 'Already in queue', description: '2 songs' });
+    run(() => store().enqueue([makeTrack({ id: 'yt:e' }), makeTrack({ id: 'yt:f' }), a]));
+    expect(last()).toMatchObject({ title: 'Added to queue', description: '2 songs' });
   });
 
   it('WEB-QUEUE-018 removing a song before the current one keeps the same song playing', () => {

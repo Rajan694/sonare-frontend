@@ -14,6 +14,7 @@ import { useTrackMenuStore } from '../store/trackMenu';
 import { useLyricsAvailabilityStore } from '../store/lyricsAvailability';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 import { artworkUrl } from '../data/config';
+import type { Track } from '../data/types';
 import { requireAccount } from '../data/accountGate';
 import { useNavigation } from '@react-navigation/native';
 import { formatDuration } from '../lib/format';
@@ -27,8 +28,14 @@ import { TrackDownloadButton } from '../components/music/TrackDownloadButton';
 import { useDownloadsStore } from '../store/downloads';
 import { useWaveform } from '../store/waveforms';
 import { openInCurrentTab } from '../navigation/openInCurrentTab';
+import { useTrackArtwork } from '../store/deviceArt';
+import { useArtColor } from '../hooks/useArtColor';
 
+// How many queue entries after the current one appear below Now Playing.
+const UP_NEXT_COUNT = 10;
 const SWIPE_THRESHOLD = 50;
+/** Cover sizes (the design's) that fit a phone's height sideways, largest first. */
+const LANDSCAPE_ART_SIZES = [240, 200, 160, 132, 124] as const;
 
 export const NowPlayingScreen = () => {
   const mode = useModeStore((state) => state.mode);
@@ -72,12 +79,20 @@ export const NowPlayingScreen = () => {
   }, [currentTrack, lyricsScript]);
 
   // The next few queue entries after the one playing; tapping one jumps to it.
-  const upNext = index >= 0 ? queue.slice(index + 1, index + 5) : [];
+  const upNext = index >= 0 ? queue.slice(index + 1, index + 1 + UP_NEXT_COUNT) : [];
 
   const navigation = useNavigation<any>();
   // The extra utility buttons need room on shorter phones.
   const { width, height } = useWindowDimensions();
-  const artSize = width - 44 >= 314 && height >= 780 ? 314 : width - 44 >= 240 && height >= 640 ? 240 : 200;
+  // A phone turned sideways: the cover on the left, everything else beside it.
+  const landscape = width > height;
+  const artSize = landscape
+    ? (LANDSCAPE_ART_SIZES.find((size) => size <= Math.min(height - 140, Math.round(width * 0.4))) ?? 124)
+    : width - 44 >= 314 && height >= 780
+      ? 314
+      : width - 44 >= 240 && height >= 640
+        ? 240
+        : 200;
 
   const translateX = useSharedValue(0);
 
@@ -111,6 +126,9 @@ export const NowPlayingScreen = () => {
 
   const AnimatedViewComponent = Animated.View as any;
 
+  const artUri = useTrackArtwork(currentTrack, 640);
+  const artColor = useArtColor(artUri);
+
   if (!currentTrack) {
     return (
       <Screen>
@@ -135,9 +153,243 @@ export const NowPlayingScreen = () => {
   // Where the queue came from; a song's own album when it was started from elsewhere.
   const eyebrow = playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
 
+  // Large artwork matching M09 (~306px); swipe it to skip.
+  const artwork = (
+    <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
+      <AnimatedViewComponent style={artworkStyle} className={landscape ? undefined : 'self-center mt-3 mb-[26px]'}>
+        <View className="relative">
+          <Artwork
+            uri={artUri}
+            fallbackUri={currentTrack.source === 'local' ? undefined : artworkUrl(currentTrack, 300)}
+            size={artSize}
+            rings
+            className="rounded-xl shadow-e4"
+            sharedTransitionTag={`artwork-${currentTrack.id}`}
+          />
+        </View>
+      </AnimatedViewComponent>
+    </PanGestureHandler>
+  );
+  const details = (
+    <>
+      <View className="gap-2.5">
+        {/* Title and Heart */}
+        <View className="flex-row items-center justify-between gap-3">
+          <View className="flex-1 gap-1 min-w-0">
+            <Text className="text-h1 font-semibold text-t1 truncate" numberOfLines={1}>
+              {currentTrack.title}
+            </Text>
+            <Text
+              className="text-tm text-t2 font-medium truncate"
+              numberOfLines={1}
+              onPress={() => {
+                const aid = currentTrack.artistId;
+                if (!aid || String(aid).startsWith('local:')) return;
+                navigation.goBack();
+                openInCurrentTab('Artist', { id: aid });
+              }}
+              accessibilityRole={
+                currentTrack.artistId && !String(currentTrack.artistId).startsWith('local:') ? 'link' : undefined
+              }
+            >
+              {currentTrack.artist}
+            </Text>
+          </View>
+          <IconButton
+            icon={
+              <Icon
+                name={favourite ? 'heart-filled' : 'heart'}
+                size={23}
+                color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
+              />
+            }
+            size={44}
+            onPress={() =>
+              requireAccount('Create a free account to save songs you love.', () =>
+                useLibraryStore
+                  .getState()
+                  .toggleFavourite(currentTrack)
+                  .catch(() => {}),
+              )
+            }
+            accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
+          />
+          <IconButton
+            icon={<Icon name="plus" size={23} color="#9A9AA8" />}
+            size={44}
+            onPress={() =>
+              requireAccount('Create a free account to make playlists.', () =>
+                useTrackMenuStore.getState().open(currentTrack, { view: 'playlists' }),
+              )
+            }
+            accessibilityLabel="Add to playlist"
+          />
+          <TrackDownloadButton track={currentTrack} />
+        </View>
+
+        {/* Badges line: Source pill + Codec */}
+        <View className="flex-row items-center gap-2">
+          <View
+            className={cn(
+              'flex-row items-center gap-1.5 h-6 px-[9px] rounded-full',
+              onDevice ? 'bg-goldbg' : 'bg-accbg',
+            )}
+          >
+            <Icon name={onDevice ? 'smartphone' : 'cloud'} size={13} color={onDevice ? '#FFC24D' : '#00E28A'} />
+            <Text className={cn('text-ls', onDevice ? 'text-gold' : 'text-acc')}>
+              {onDevice ? 'ON THIS DEVICE' : 'STREAMING'}
+            </Text>
+          </View>
+          {currentTrack.codec && (
+            <Text className="text-mono-s font-mono text-t3">
+              {[
+                currentTrack.codec,
+                currentTrack.bitrateKbps ? `${currentTrack.bitrateKbps} kbps` : null,
+                currentTrack.bitDepth ? `${currentTrack.bitDepth}-bit` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </Text>
+          )}
+          {error && (
+            <View className="flex-row items-center gap-2 ml-2 flex-1 min-w-0">
+              <Text className="text-red text-bs flex-1 truncate">{error}</Text>
+              <Button
+                variant="outline"
+                size="sm"
+                onPress={() => usePlayerStore.getState().retry()}
+                accessibilityLabel="Retry"
+              >
+                Retry
+              </Button>
+            </View>
+          )}
+        </View>
+
+        {/* Waveform Seek Rail */}
+        <View className="gap-1 mt-1">
+          <View className="w-full h-[34px] justify-center">
+            <Waveform
+              trackId={currentTrack.id}
+              progress={progress}
+              mode={isGold ? 'offline' : 'online'}
+              peaks={wave?.peaks}
+              real={wave?.real}
+              onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
+            />
+          </View>
+
+          <View className="flex-row justify-between">
+            <Text className="text-mono-s font-mono text-t2">{formatDuration(positionMs)}</Text>
+            <Text className="text-mono-s font-mono text-t3">
+              {durationMs ? `-${formatDuration(remainingMs)}` : formatDuration(currentTrack.durationMs || 0)}
+            </Text>
+          </View>
+        </View>
+
+        {/* Transport Controls */}
+        <View className="flex-row items-center justify-between mt-1 px-1">
+          <IconButton
+            icon={<Icon name="shuffle" size={21} color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
+            size={44}
+            onPress={toggleShuffle}
+            accessibilityLabel="Toggle shuffle"
+          />
+
+          <IconButton
+            icon={<Icon name="skip-back" size={26} color="#FFFFFF" />}
+            size={44}
+            onPress={playPrevious}
+            accessibilityLabel="Previous track"
+          />
+
+          <Pressable
+            onPress={() => setIsPlaying(!isPlaying)}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+            className={cn(
+              'w-16 h-16 rounded-full items-center justify-center',
+              isGold ? 'bg-gold shadow-glow-gold' : 'bg-acc shadow-glow-acc',
+            )}
+          >
+            {buffering && isPlaying ? (
+              <ActivityIndicator color="#000000" />
+            ) : (
+              <Icon name={isPlaying ? 'pause' : 'play'} size={27} color="#000000" />
+            )}
+          </Pressable>
+
+          <IconButton
+            icon={<Icon name="skip-forward" size={26} color="#FFFFFF" />}
+            size={44}
+            onPress={playNext}
+            accessibilityLabel="Next track"
+          />
+
+          <IconButton
+            icon={
+              <Icon
+                name={repeat === 'one' ? 'repeat-one' : 'repeat'}
+                size={21}
+                color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
+              />
+            }
+            size={44}
+            onPress={cycleRepeat}
+            accessibilityLabel={repeat === 'off' ? 'Repeat off' : repeat === 'all' ? 'Repeat all' : 'Repeat one'}
+          />
+        </View>
+
+        {/* Bottom Utility Row */}
+        <View className="flex-row items-center justify-between mt-2">
+          <IconButton
+            icon={<Icon name="lyrics" size={21} color={lyricsUnavailable ? '#5A5A66' : '#9A9AA8'} />}
+            size={44}
+            onPress={() => navigation.navigate('Lyrics')}
+            accessibilityLabel={lyricsUnavailable ? 'Lyrics not available' : 'Lyrics'}
+            disabled={lyricsUnavailable}
+          />
+          <IconButton
+            icon={<Icon name="equalizer" size={21} color="#9A9AA8" />}
+            size={44}
+            onPress={() => navigation.navigate('Equalizer')}
+            accessibilityLabel="Equalizer"
+          />
+          <IconButton
+            icon={<Icon name="queue" size={21} color="#9A9AA8" />}
+            size={44}
+            onPress={() => navigation.navigate('Queue')}
+            accessibilityLabel="Queue"
+          />
+        </View>
+      </View>
+
+      {/* Up next: the queue entries after this one; hidden when nothing comes next. */}
+      {upNext.length > 0 && (
+        <View className="gap-1 mt-4 pt-3 border-t border-ln">
+          <View className="flex-row items-center justify-between">
+            <Text className="text-ov font-semibold text-t3 uppercase">Up next</Text>
+            <Pressable
+              onPress={() => navigation.navigate('Queue')}
+              accessibilityRole="button"
+              accessibilityLabel="Open queue"
+            >
+              <Text className="text-t2 text-ll">Open queue</Text>
+            </Pressable>
+          </View>
+          <View className="gap-0.5 mt-1">
+            {upNext.map((track, i) => (
+              <UpNextRow key={`${track.id}:${i}`} track={track} onPress={() => playAt(index + 1 + i)} />
+            ))}
+          </View>
+        </View>
+      )}
+    </>
+  );
+
   return (
     <Screen scrollable={false} className="bg-bg">
-      <Ambient uri={artworkUrl(currentTrack, 64)} />
+      <Ambient uri={artUri} color={artColor} />
       <Header
         left={
           <IconButton
@@ -166,256 +418,50 @@ export const NowPlayingScreen = () => {
           />
         }
       />
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 4, paddingBottom: 22 }}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Large Artwork matching M09 (~306px) */}
-        <PanGestureHandler onGestureEvent={handleGestureEvent as any} onEnded={handleGestureEnd as any}>
-          <AnimatedViewComponent style={artworkStyle} className="self-center mt-3 mb-[26px]">
-            <View className="relative">
-              <Artwork
-                uri={artworkUrl(currentTrack, 640)}
-                fallbackUri={artworkUrl(currentTrack, 300)}
-                size={artSize}
-                rings
-                className="rounded-xl shadow-e4"
-                sharedTransitionTag={`artwork-${currentTrack.id}`}
-              />
-            </View>
-          </AnimatedViewComponent>
-        </PanGestureHandler>
-
-        <View className="gap-2.5">
-          {/* Title and Heart */}
-          <View className="flex-row items-center justify-between gap-3">
-            <View className="flex-1 gap-1 min-w-0">
-              <Text className="text-h1 font-semibold text-t1 truncate" numberOfLines={1}>
-                {currentTrack.title}
-              </Text>
-              <Text
-                className="text-tm text-t2 font-medium truncate"
-                numberOfLines={1}
-                onPress={() => {
-                  const aid = currentTrack.artistId;
-                  if (!aid || String(aid).startsWith('local:')) return;
-                  navigation.goBack();
-                  openInCurrentTab('Artist', { id: aid });
-                }}
-                accessibilityRole={
-                  currentTrack.artistId && !String(currentTrack.artistId).startsWith('local:') ? 'link' : undefined
-                }
-              >
-                {currentTrack.artist}
-              </Text>
-            </View>
-            <IconButton
-              icon={
-                <Icon
-                  name={favourite ? 'heart-filled' : 'heart'}
-                  size={23}
-                  color={favourite ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
-                />
-              }
-              size={44}
-              onPress={() =>
-                requireAccount('Create a free account to save songs you love.', () =>
-                  useLibraryStore
-                    .getState()
-                    .toggleFavourite(currentTrack)
-                    .catch(() => {}),
-                )
-              }
-              accessibilityLabel={favourite ? 'Remove from favourites' : 'Add to favourites'}
-            />
-            <IconButton
-              icon={<Icon name="plus" size={23} color="#9A9AA8" />}
-              size={44}
-              onPress={() =>
-                requireAccount('Create a free account to make playlists.', () =>
-                  useTrackMenuStore.getState().open(currentTrack, { view: 'playlists' }),
-                )
-              }
-              accessibilityLabel="Add to playlist"
-            />
-            <TrackDownloadButton track={currentTrack} />
-          </View>
-
-          {/* Badges line: Source pill + Codec */}
-          <View className="flex-row items-center gap-2">
-            <View
-              className={cn(
-                'flex-row items-center gap-1.5 h-6 px-[9px] rounded-full',
-                onDevice ? 'bg-goldbg' : 'bg-accbg',
-              )}
-            >
-              <Icon name={onDevice ? 'smartphone' : 'cloud'} size={13} color={onDevice ? '#FFC24D' : '#00E28A'} />
-              <Text className={cn('text-ls', onDevice ? 'text-gold' : 'text-acc')}>
-                {onDevice ? 'ON THIS DEVICE' : 'STREAMING'}
-              </Text>
-            </View>
-            {currentTrack.codec && (
-              <Text className="text-mono-s font-mono text-t3">
-                {[
-                  currentTrack.codec,
-                  currentTrack.bitrateKbps ? `${currentTrack.bitrateKbps} kbps` : null,
-                  currentTrack.bitDepth ? `${currentTrack.bitDepth}-bit` : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-              </Text>
-            )}
-            {error && (
-              <View className="flex-row items-center gap-2 ml-2 flex-1 min-w-0">
-                <Text className="text-red text-bs flex-1 truncate">{error}</Text>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onPress={() => usePlayerStore.getState().retry()}
-                  accessibilityLabel="Retry"
-                >
-                  Retry
-                </Button>
-              </View>
-            )}
-          </View>
-
-          {/* Waveform Seek Rail */}
-          <View className="gap-1 mt-1">
-            <View className="w-full h-[34px] justify-center">
-              <Waveform
-                trackId={currentTrack.id}
-                progress={progress}
-                mode={isGold ? 'offline' : 'online'}
-                peaks={wave?.peaks}
-                real={wave?.real}
-                onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
-              />
-            </View>
-
-            <View className="flex-row justify-between">
-              <Text className="text-mono-s font-mono text-t2">{formatDuration(positionMs)}</Text>
-              <Text className="text-mono-s font-mono text-t3">
-                {durationMs ? `-${formatDuration(remainingMs)}` : formatDuration(currentTrack.durationMs || 0)}
-              </Text>
-            </View>
-          </View>
-
-          {/* Transport Controls */}
-          <View className="flex-row items-center justify-between mt-1 px-1">
-            <IconButton
-              icon={<Icon name="shuffle" size={21} color={shuffle ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'} />}
-              size={44}
-              onPress={toggleShuffle}
-              accessibilityLabel="Toggle shuffle"
-            />
-
-            <IconButton
-              icon={<Icon name="skip-back" size={26} color="#FFFFFF" />}
-              size={44}
-              onPress={playPrevious}
-              accessibilityLabel="Previous track"
-            />
-
-            <Pressable
-              onPress={() => setIsPlaying(!isPlaying)}
-              accessibilityRole="button"
-              accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
-              className={cn(
-                'w-16 h-16 rounded-full items-center justify-center',
-                isGold ? 'bg-gold shadow-glow-gold' : 'bg-acc shadow-glow-acc',
-              )}
-            >
-              {buffering && isPlaying ? (
-                <ActivityIndicator color="#000000" />
-              ) : (
-                <Icon name={isPlaying ? 'pause' : 'play'} size={27} color="#000000" />
-              )}
-            </Pressable>
-
-            <IconButton
-              icon={<Icon name="skip-forward" size={26} color="#FFFFFF" />}
-              size={44}
-              onPress={playNext}
-              accessibilityLabel="Next track"
-            />
-
-            <IconButton
-              icon={
-                <Icon
-                  name={repeat === 'one' ? 'repeat-one' : 'repeat'}
-                  size={21}
-                  color={repeat !== 'off' ? (isGold ? '#FFC24D' : '#00E28A') : '#9A9AA8'}
-                />
-              }
-              size={44}
-              onPress={cycleRepeat}
-              accessibilityLabel={repeat === 'off' ? 'Repeat off' : repeat === 'all' ? 'Repeat all' : 'Repeat one'}
-            />
-          </View>
-
-          {/* Bottom Utility Row */}
-          <View className="flex-row items-center justify-between mt-2">
-            <IconButton
-              icon={<Icon name="lyrics" size={21} color={lyricsUnavailable ? '#5A5A66' : '#9A9AA8'} />}
-              size={44}
-              onPress={() => navigation.navigate('Lyrics')}
-              accessibilityLabel={lyricsUnavailable ? 'Lyrics not available' : 'Lyrics'}
-              disabled={lyricsUnavailable}
-            />
-            <IconButton
-              icon={<Icon name="equalizer" size={21} color="#9A9AA8" />}
-              size={44}
-              onPress={() => navigation.navigate('Equalizer')}
-              accessibilityLabel="Equalizer"
-            />
-            <IconButton
-              icon={<Icon name="queue" size={21} color="#9A9AA8" />}
-              size={44}
-              onPress={() => navigation.navigate('Queue')}
-              accessibilityLabel="Queue"
-            />
-          </View>
+      {landscape ? (
+        <View className="flex-1 flex-row items-center gap-6 px-[22px]">
+          {artwork}
+          <ScrollView
+            className="flex-1 self-stretch"
+            contentContainerStyle={{ paddingTop: 4, paddingBottom: 22 }}
+            showsVerticalScrollIndicator={false}
+          >
+            {details}
+          </ScrollView>
         </View>
-
-        {/* Up next: the queue entries after this one; hidden when nothing comes next. */}
-        {upNext.length > 0 && (
-          <View className="gap-1 mt-4 pt-3 border-t border-ln">
-            <View className="flex-row items-center justify-between">
-              <Text className="text-ov font-semibold text-t3 uppercase">Up next</Text>
-              <Pressable
-                onPress={() => navigation.navigate('Queue')}
-                accessibilityRole="button"
-                accessibilityLabel="Open queue"
-              >
-                <Text className="text-t2 text-ll">Open queue</Text>
-              </Pressable>
-            </View>
-            <View className="gap-0.5 mt-1">
-              {upNext.map((track, i) => (
-                <Pressable
-                  key={`${track.id}:${i}`}
-                  onPress={() => playAt(index + 1 + i)}
-                  className="flex-row items-center gap-3 py-1.5 rounded-md active:bg-s2"
-                  accessibilityRole="button"
-                  accessibilityLabel={`Play ${track.title} by ${track.artist}`}
-                >
-                  <Artwork uri={artworkUrl(track, 64)} size={40} className="rounded-sm" />
-                  <View className="flex-1 min-w-0 gap-0.5">
-                    <Text numberOfLines={1} className="text-tm font-medium text-t1">
-                      {track.title}
-                    </Text>
-                    <Text numberOfLines={1} className="text-t2 text-bs">
-                      {track.artist}
-                    </Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-      </ScrollView>
+      ) : (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ paddingHorizontal: 22, paddingTop: 4, paddingBottom: 22 }}
+          showsVerticalScrollIndicator={false}
+        >
+          {artwork}
+          {details}
+        </ScrollView>
+      )}
     </Screen>
+  );
+};
+
+/** A compact queue row shown under Now Playing; uses useTrackArtwork for local/download covers. */
+const UpNextRow = ({ track, onPress }: { track: Track; onPress: () => void }) => {
+  const artUri = useTrackArtwork(track, 64);
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3 py-1.5 rounded-md active:bg-s2"
+      accessibilityRole="button"
+      accessibilityLabel={`Play ${track.title} by ${track.artist}`}
+    >
+      <Artwork uri={artUri} size={40} className="rounded-sm" />
+      <View className="flex-1 min-w-0 gap-0.5">
+        <Text numberOfLines={1} className="text-tm font-medium text-t1">
+          {track.title}
+        </Text>
+        <Text numberOfLines={1} className="text-t2 text-bs">
+          {track.artist}
+        </Text>
+      </View>
+    </Pressable>
   );
 };

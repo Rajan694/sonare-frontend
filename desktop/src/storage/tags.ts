@@ -16,6 +16,7 @@ export interface AudioTags {
   durationMs?: number;
   codec?: string;
   bitrateKbps?: number;
+  picture?: { mime: string; data: Uint8Array };
 }
 
 /** Read `size` bytes at `pos`; may return fewer at end of file. */
@@ -48,6 +49,78 @@ const u32 = (b: Uint8Array, at: number): number => {
 
 const synchsafe = (b: Uint8Array, at: number): number => {
   return (b[at] << 21) | (b[at + 1] << 14) | (b[at + 2] << 7) | b[at + 3];
+};
+
+const deunsync = (b: Uint8Array): Uint8Array => {
+  let needs = false;
+  for (let i = 0; i + 1 < b.length; i++) {
+    if (b[i] === 0xff && b[i + 1] === 0x00) {
+      needs = true;
+      break;
+    }
+  }
+  if (!needs) return b;
+  const out = new Uint8Array(b.length);
+  let j = 0;
+  for (let i = 0; i < b.length; i++) {
+    out[j++] = b[i];
+    if (b[i] === 0xff && i + 1 < b.length && b[i + 1] === 0x00) {
+      i++;
+    }
+  }
+  return out.subarray(0, j);
+};
+
+const parseId3Picture = (
+  data: Uint8Array,
+  version: number,
+): { mime: string; type: number; data: Uint8Array } | null => {
+  if (data.length < (version === 2 ? 6 : 5)) return null;
+  const enc = data[0];
+  let p = 1;
+  let mime = '';
+  if (version === 2) {
+    const fmt = ascii(data, 1, 3).toUpperCase();
+    p = 4;
+    mime = fmt === 'PNG' ? 'image/png' : 'image/jpeg';
+  } else {
+    const nullIdx = data.indexOf(0, p);
+    if (nullIdx < 0) return null;
+    mime = ascii(data, p, nullIdx - p).toLowerCase();
+    p = nullIdx + 1;
+  }
+  if (p >= data.length) return null;
+  const picType = data[p++];
+  if (enc === 1 || enc === 2) {
+    while (p + 1 < data.length) {
+      if (data[p] === 0 && data[p + 1] === 0) {
+        p += 2;
+        break;
+      }
+      p += 2;
+    }
+  } else {
+    while (p < data.length) {
+      if (data[p++] === 0) break;
+    }
+  }
+  if (p >= data.length) return null;
+  const picData = data.slice(p);
+  if (picData.length === 0) return null;
+  if (!mime || mime === 'image/' || mime === 'image/jpg') {
+    if (
+      picData.length >= 8 &&
+      picData[0] === 0x89 &&
+      picData[1] === 0x50 &&
+      picData[2] === 0x4e &&
+      picData[3] === 0x47
+    ) {
+      mime = 'image/png';
+    } else {
+      mime = 'image/jpeg';
+    }
+  }
+  return { mime, type: picType, data: picData };
 };
 
 // ---------- ID3v2 / MP3 ----------
@@ -93,11 +166,15 @@ const readId3 = async (read: RangeReader, fileSize: number): Promise<AudioTags> 
     const version = head[3];
     const tagSize = synchsafe(head, 6);
     audioStart = 10 + tagSize;
-    const body = await read(10, Math.min(tagSize, 512 * 1024));
+    let body = await read(10, Math.min(tagSize, 8 * 1024 * 1024));
+    if (head[5] & 0x80) {
+      body = deunsync(body);
+    }
     let p = 0;
     if (head[5] & 0x40) p += version === 4 ? synchsafe(body, 0) : u32(body, 0) + 4;
     const idLen = version === 2 ? 3 : 4;
     const hdrLen = version === 2 ? 6 : 10;
+    let hasFrontCover = false;
     while (p + hdrLen <= body.length) {
       const id = ascii(body, p, idLen);
       if (!/^[A-Z0-9]+$/.test(id)) break;
@@ -108,14 +185,35 @@ const readId3 = async (read: RangeReader, fileSize: number): Promise<AudioTags> 
             ? synchsafe(body, p + 4)
             : u32(body, p + 4);
       if (size <= 0) break;
+      if (p + hdrLen + size > body.length) break;
+      let frameData = body.subarray(p + hdrLen, p + hdrLen + size);
+      if (version === 4) {
+        const formatFlags = body[p + 9];
+        if (formatFlags & 0x01) {
+          frameData = frameData.subarray(4);
+        }
+        if (formatFlags & 0x02) {
+          frameData = deunsync(frameData);
+        }
+      }
       const field = ID3_FIELDS[id];
       if (field) {
-        const value = decodeId3Text(body.subarray(p + hdrLen, p + hdrLen + size));
+        const value = decodeId3Text(frameData);
         if (value) {
           if (field === 'year') tags.year = parseInt(value, 10) || undefined;
           else if (field === 'durationMs') tags.durationMs = parseInt(value, 10) || undefined;
           else if (field === 'genre') tags.genre = value.replace(/^\(\d+\)/, '') || value;
           else (tags as Record<string, unknown>)[field] = value;
+        }
+      } else if (id === 'APIC' || id === 'PIC') {
+        const pic = parseId3Picture(frameData, version);
+        if (pic) {
+          if (pic.type === 3) {
+            tags.picture = { mime: pic.mime, data: pic.data };
+            hasFrontCover = true;
+          } else if (!tags.picture && !hasFrontCover) {
+            tags.picture = { mime: pic.mime, data: pic.data };
+          }
         }
       }
       p += hdrLen + size;
@@ -173,6 +271,53 @@ const VORBIS_FIELDS: Record<string, keyof AudioTags> = {
   GENRE: 'genre',
 };
 
+const parseFlacPictureBlock = (b: Uint8Array): { mime: string; type: number; data: Uint8Array } | null => {
+  if (b.length < 32) return null;
+  const picType = u32(b, 0);
+  const mimeLen = u32(b, 4);
+  if (8 + mimeLen + 4 > b.length) return null;
+  const mime = ascii(b, 8, mimeLen).toLowerCase();
+  let p = 8 + mimeLen;
+  const descLen = u32(b, p);
+  p += 4 + descLen;
+  // skip width (4), height (4), color depth (4), indexed colors (4) = 16 bytes
+  p += 16;
+  if (p + 4 > b.length) return null;
+  const dataLen = u32(b, p);
+  p += 4;
+  if (p + dataLen > b.length) return null;
+  const picData = b.slice(p, p + dataLen);
+  let resolvedMime = mime;
+  if (!resolvedMime || resolvedMime === 'image/' || resolvedMime === 'image/jpg') {
+    if (
+      picData.length >= 8 &&
+      picData[0] === 0x89 &&
+      picData[1] === 0x50 &&
+      picData[2] === 0x4e &&
+      picData[3] === 0x47
+    ) {
+      resolvedMime = 'image/png';
+    } else {
+      resolvedMime = 'image/jpeg';
+    }
+  }
+  return { mime: resolvedMime, type: picType, data: picData };
+};
+
+const parseBase64 = (s: string): Uint8Array | null => {
+  try {
+    const cleanStr = s.replace(/[^A-Za-z0-9+/=]/g, '');
+    const binary = atob(cleanStr);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  } catch {
+    return null;
+  }
+};
+
 const parseVorbisComments = (b: Uint8Array, at: number, tags: AudioTags) => {
   const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
   if (at + 4 > b.length) return;
@@ -180,13 +325,31 @@ const parseVorbisComments = (b: Uint8Array, at: number, tags: AudioTags) => {
   if (p + 4 > b.length) return;
   const count = dv.getUint32(p, true);
   p += 4;
+  let hasFrontCover = false;
   for (let i = 0; i < count && p + 4 <= b.length; i++) {
     const len = dv.getUint32(p, true);
     p += 4;
     const entry = utf8.decode(b.subarray(p, p + len));
     p += len;
     const eq = entry.indexOf('=');
-    const field = VORBIS_FIELDS[entry.slice(0, eq).toUpperCase()];
+    const name = entry.slice(0, eq).toUpperCase();
+    if (name === 'METADATA_BLOCK_PICTURE') {
+      const b64 = entry.slice(eq + 1).trim();
+      const raw = parseBase64(b64);
+      if (raw) {
+        const pic = parseFlacPictureBlock(raw);
+        if (pic) {
+          if (pic.type === 3) {
+            tags.picture = { mime: pic.mime, data: pic.data };
+            hasFrontCover = true;
+          } else if (!tags.picture && !hasFrontCover) {
+            tags.picture = { mime: pic.mime, data: pic.data };
+          }
+        }
+      }
+      continue;
+    }
+    const field = VORBIS_FIELDS[name];
     const value = clean(entry.slice(eq + 1));
     if (!field || !value || tags[field] !== undefined) continue;
     if (field === 'year') tags.year = parseInt(value, 10) || undefined;
@@ -197,6 +360,7 @@ const parseVorbisComments = (b: Uint8Array, at: number, tags: AudioTags) => {
 const readFlac = async (read: RangeReader): Promise<AudioTags> => {
   const tags: AudioTags = { codec: 'FLAC' };
   let pos = 4;
+  let hasFrontCover = false;
   for (let guard = 0; guard < 64; guard++) {
     const h = await read(pos, 4);
     if (h.length < 4) break;
@@ -210,6 +374,18 @@ const readFlac = async (read: RangeReader): Promise<AudioTags> => {
       if (sampleRate) tags.durationMs = Math.round((totalSamples / sampleRate) * 1000);
     } else if (type === 4) {
       parseVorbisComments(await read(pos + 4, len), 0, tags);
+      if (tags.picture) hasFrontCover = true;
+    } else if (type === 6) {
+      const block = await read(pos + 4, len);
+      const pic = parseFlacPictureBlock(block);
+      if (pic) {
+        if (pic.type === 3) {
+          tags.picture = { mime: pic.mime, data: pic.data };
+          hasFrontCover = true;
+        } else if (!tags.picture && !hasFrontCover) {
+          tags.picture = { mime: pic.mime, data: pic.data };
+        }
+      }
     }
     pos += 4 + len;
     if (last) break;
@@ -217,14 +393,57 @@ const readFlac = async (read: RangeReader): Promise<AudioTags> => {
   return tags;
 };
 
+/** Header packets bigger than this (a huge embedded cover) aren't read. */
+const MAX_OGG_HEADER_BYTES = 16 * 1024 * 1024;
+
+/**
+ * The first `count` packets of an Ogg stream (the codec's headers), put back together from their
+ * pages: a comment header with a cover usually spans several, with page headers in between.
+ * Reads only the header pages, one at a time.
+ */
+const oggHeaderPackets = async (read: RangeReader, fileSize: number, count: number): Promise<Uint8Array[]> => {
+  const packets: Uint8Array[] = [];
+  let parts: Uint8Array[] = [];
+  let partBytes = 0;
+  let pos = 0;
+  while (packets.length < count && pos + 27 <= fileSize) {
+    const head = await read(pos, 27 + 255);
+    if (head.length < 27 || ascii(head, 0, 4) !== 'OggS') break;
+    const segments = head[26];
+    const lacing = head.subarray(27, 27 + segments);
+    const bodySize = lacing.reduce((n, v) => n + v, 0);
+    const body = await read(pos + 27 + segments, bodySize);
+    let at = 0;
+    for (const value of lacing) {
+      parts.push(body.subarray(at, at + value));
+      partBytes += value;
+      at += value;
+      // A lacing value under 255 ends the packet.
+      if (value < 255) {
+        const packet = new Uint8Array(partBytes);
+        let o = 0;
+        for (const part of parts) {
+          packet.set(part, o);
+          o += part.length;
+        }
+        packets.push(packet);
+        parts = [];
+        partBytes = 0;
+        if (packets.length === count) break;
+      }
+    }
+    if (partBytes > MAX_OGG_HEADER_BYTES) break;
+    pos += 27 + segments + bodySize;
+  }
+  return packets;
+};
+
 const readOgg = async (read: RangeReader, fileSize: number): Promise<AudioTags> => {
-  const b = await read(0, 64 * 1024);
-  const text = latin1.decode(b);
-  const opus = text.indexOf('OpusTags');
-  const vorbis = text.indexOf('\x03vorbis');
-  const tags: AudioTags = { codec: opus >= 0 ? 'Opus' : 'Vorbis' };
-  if (opus >= 0) parseVorbisComments(b, opus + 8, tags);
-  else if (vorbis >= 0) parseVorbisComments(b, vorbis + 7, tags);
+  const [idHeader, comments] = await oggHeaderPackets(read, fileSize, 2);
+  const opus = !!idHeader && ascii(idHeader, 0, 8) === 'OpusHead';
+  const tags: AudioTags = { codec: opus ? 'Opus' : 'Vorbis' };
+  if (comments && ascii(comments, 0, 8) === 'OpusTags') parseVorbisComments(comments, 8, tags);
+  else if (comments && ascii(comments, 0, 7) === '\x03vorbis') parseVorbisComments(comments, 7, tags);
 
   // Duration: the granule position of the last page, over the sample rate (48 kHz for Opus).
   const tailSize = Math.min(fileSize, 64 * 1024);
@@ -236,9 +455,8 @@ const readOgg = async (read: RangeReader, fileSize: number): Promise<AudioTags> 
       new DataView(t.buffer, t.byteOffset, 8).getUint32(0, true) +
       new DataView(t.buffer, t.byteOffset, 8).getUint32(4, true) * 2 ** 32;
     let rate = 48000;
-    if (opus < 0 && vorbis >= 0) {
-      const idHeader = text.indexOf('\x01vorbis');
-      if (idHeader >= 0) rate = new DataView(b.buffer, b.byteOffset).getUint32(idHeader + 12, true);
+    if (!opus && idHeader && ascii(idHeader, 0, 7) === '\x01vorbis' && idHeader.length >= 16) {
+      rate = new DataView(idHeader.buffer, idHeader.byteOffset).getUint32(12, true);
     }
     if (granule > 0 && rate > 0) tags.durationMs = Math.round((granule / rate) * 1000);
   }
@@ -306,6 +524,26 @@ const readMp4 = async (read: RangeReader, fileSize: number): Promise<AudioTags> 
         walkAtoms(m, b2 + 4, e2, (t3, b3, e3) => {
           if (t3 !== 'ilst') return;
           walkAtoms(m, b3, e3, (item, b4, e4) => {
+            if (item === 'covr') {
+              walkAtoms(m, b4, e4, (t5, b5, e5) => {
+                if (t5 !== 'data' || tags.picture) return;
+                const flag = u32(m, b5) & 0xff;
+                const picData = m.slice(b5 + 8, e5);
+                if (picData.length === 0) return;
+                let mime = flag === 14 ? 'image/png' : 'image/jpeg';
+                if (
+                  picData.length >= 8 &&
+                  picData[0] === 0x89 &&
+                  picData[1] === 0x50 &&
+                  picData[2] === 0x4e &&
+                  picData[3] === 0x47
+                ) {
+                  mime = 'image/png';
+                }
+                tags.picture = { mime, data: picData };
+              });
+              return;
+            }
             const field = MP4_FIELDS[item];
             if (!field) return;
             walkAtoms(m, b4, e4, (t5, b5, e5) => {

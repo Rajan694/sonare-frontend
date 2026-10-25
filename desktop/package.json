@@ -1,7 +1,7 @@
 {
   "name": "sonare-desktop",
   "private": true,
-  "version": "1.3.3",
+  "version": "1.3.4",
   "type": "module",
   "description": "Sonare desktop/web screens - React + TypeScript on NeutralinoJS",
   "scripts": {

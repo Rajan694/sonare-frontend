@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dialog, files, opened, resetFs, store, unreadable, writeFile } from '../helpers/fakeNeutralino';
-import { flac, id3Frame, id3Tag, mp3Frame, cat } from '../helpers/audioFixtures';
+import { flac, flacPictureBlock, id3Frame, id3PicFrame, id3Tag, mp3Frame, cat } from '../helpers/audioFixtures';
 import { makeTrack } from '../helpers/fixtures';
 
 vi.mock('@neutralinojs/lib', async () => (await import('../helpers/fakeNeutralino')).lib);
@@ -407,5 +407,134 @@ describe('native download folder', () => {
     expect(files.has(`${dir}/.sonare-yt_a_b.part`)).toBe(false);
     await target.removeFile(`${dir}/Song (2).webm`);
     await expect(target.removeFile(`${dir}/Song (2).webm`)).rejects.toBeInstanceOf(t.FileMissingError);
+  });
+});
+
+describe('local album artwork', () => {
+  it('DSK-097 embedded album art is extracted, cached by SHA-256 in app data, and deduplicated across tracks', async () => {
+    const fakeCoverBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 100, 101, 102, 103]);
+    const mp3WithArt = cat(
+      id3Tag(id3Frame('TIT2', 'MP3 Song'), id3PicFrame('image/jpeg', 3, fakeCoverBytes)),
+      mp3Frame(),
+    );
+    const flacWithArt = flac(
+      44_100,
+      44_100 * 10,
+      ['TITLE=FLAC Song'],
+      flacPictureBlock(3, 'image/jpeg', fakeCoverBytes),
+    );
+    writeFile(`${MUSIC}/mp3_art.mp3`, mp3WithArt);
+    writeFile(`${MUSIC}/flac_art.flac`, flacWithArt);
+
+    const { localLibrary, getLocalSnapshot } = await launch();
+    await localLibrary.addFolder(MUSIC);
+
+    const tracks = getLocalSnapshot().tracks;
+    expect(tracks).toHaveLength(2);
+
+    const mp3Track = tracks.find((t) => t.title === 'MP3 Song');
+    const flacTrack = tracks.find((t) => t.title === 'FLAC Song');
+
+    expect(mp3Track?.thumbnail).toBeDefined();
+    expect(flacTrack?.thumbnail).toBeDefined();
+    expect(mp3Track?.thumbnail).toBe(flacTrack?.thumbnail);
+    expect(mp3Track?.thumbnail).toMatch(/^file:\/\/\/home\/me\/\.local\/share\/sonare\/art\/[0-9a-f]{64}\.jpg$/);
+
+    const artFiles = [...files.keys()].filter((p) => p.startsWith('/home/me/.local/share/sonare/art/'));
+    expect(artFiles).toHaveLength(1);
+    expect(files.get(artFiles[0])?.bytes).toEqual(fakeCoverBytes);
+  });
+
+  it('DSK-098 rescanning retains existing cached artwork without re-reading files, and tracks without art keep placeholders', async () => {
+    const fakeCoverBytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 200, 201]);
+    const mp3WithArt = cat(
+      id3Tag(id3Frame('TIT2', 'Song With Art'), id3PicFrame('image/jpeg', 3, fakeCoverBytes)),
+      mp3Frame(),
+    );
+    const mp3NoArt = cat(id3Tag(id3Frame('TIT2', 'Song No Art')), mp3Frame());
+
+    writeFile(`${MUSIC}/with_art.mp3`, mp3WithArt);
+    writeFile(`${MUSIC}/no_art.mp3`, mp3NoArt);
+
+    const { localLibrary, getLocalSnapshot, neu } = await launch();
+    await localLibrary.addFolder(MUSIC);
+
+    const snap1 = getLocalSnapshot();
+    const withArt = snap1.tracks.find((t) => t.title === 'Song With Art');
+    const noArt = snap1.tracks.find((t) => t.title === 'Song No Art');
+
+    expect(withArt?.thumbnail).toMatch(/^file:\/\//);
+    expect(noArt?.thumbnail).toBeUndefined();
+
+    vi.mocked(neu.filesystem.readBinaryFile).mockClear();
+    await localLibrary.rescan();
+
+    const snap2 = getLocalSnapshot();
+    const withArtRescanned = snap2.tracks.find((t) => t.title === 'Song With Art');
+    const noArtRescanned = snap2.tracks.find((t) => t.title === 'Song No Art');
+
+    expect(withArtRescanned?.thumbnail).toBe(withArt?.thumbnail);
+    expect(noArtRescanned?.thumbnail).toBeUndefined();
+    expect(vi.mocked(neu.filesystem.readBinaryFile)).not.toHaveBeenCalled();
+  });
+
+  it('DSK-099 local track with cached file:// artwork is preserved in MPRIS and resolveArtworkUrl', async () => {
+    const { resolveArtworkUrl, trackArtwork } = await import('../../src/components/music/Artwork');
+    const { commands } = await import('../helpers/fakeNeutralino');
+    commands.answer = () => new Promise(() => {});
+    const mprisModule = await import('../../src/audio/mpris');
+    const { neu } = await launch();
+
+    const fileArtUrl = 'file:///home/me/.local/share/sonare/art/abc123def456.jpg';
+    const localTrackWithArt = {
+      id: 'local:test1',
+      title: 'Local Art Song',
+      artist: 'Local Artist',
+      album: 'Local Album',
+      source: 'local' as const,
+      thumbnail: fileArtUrl,
+      durationMs: 120_000,
+    };
+
+    expect(trackArtwork(localTrackWithArt)).toBe(fileArtUrl);
+    expect(resolveArtworkUrl(fileArtUrl)).toBe(fileArtUrl);
+
+    mprisModule.bindMpris({
+      play: vi.fn(),
+      pause: vi.fn(),
+      next: vi.fn(),
+      previous: vi.fn(),
+      seekTo: vi.fn(),
+    });
+    // Wait for async start() in mpris
+    await Promise.resolve();
+    await new Promise((r) => setTimeout(r, 10));
+
+    mprisModule.showInMpris(localTrackWithArt as any, true);
+
+    const calls = vi.mocked(neu.os.updateSpawnedProcess).mock.calls;
+    const stdInCalls = calls.filter((c) => c[1] === 'stdIn').map((c) => JSON.parse(c[2] as string));
+    const stateMsg = stdInCalls.find((m) => m.type === 'state' && m.track?.id === 'local:test1');
+    expect(stateMsg?.track?.artUrl).toBe(fileArtUrl);
+  });
+
+  it('DSK-100 a local cover shows through a blob URL read once from disk, and a missing one shows nothing', async () => {
+    const { localArtUrl } = await import('../../src/storage/local');
+    writeFile('/home/me/.local/share/sonare/art/cover1.jpg', Uint8Array.from([0xff, 0xd8, 0xff, 0xd9]));
+    const made: Blob[] = [];
+    const create = vi.spyOn(URL, 'createObjectURL').mockImplementation((b) => {
+      made.push(b as Blob);
+      return `blob:cover-${made.length}`;
+    });
+    try {
+      const url = 'file:///home/me/.local/share/sonare/art/cover1.jpg';
+      expect(await localArtUrl(url)).toBe('blob:cover-1');
+      expect(await localArtUrl(url)).toBe('blob:cover-1');
+      expect(made).toHaveLength(1);
+      expect(made[0].type).toBe('image/jpeg');
+      expect(await localArtUrl('file:///home/me/.local/share/sonare/art/gone.jpg')).toBeUndefined();
+    } finally {
+      create.mockRestore();
+    }
   });
 });

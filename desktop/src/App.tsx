@@ -416,8 +416,7 @@ const App = () => {
     skipToPrevious();
   };
 
-  // A song already queued is added again rather than moved: moving it could take the playing
-  // entry away or skip what was lined up.
+  // A song already queued moves up to play next (insertNext); the playing song stays where it is.
   const playNext = (track: Track) => {
     setPlayerState((prev) => {
       const next = queueOps.insertNext(prev, [track]);
@@ -427,15 +426,26 @@ const App = () => {
   };
 
   const enqueue = (tracks: Track[]) => {
+    // append skips songs already queued: count only the ones that really go in.
+    const prevState = playerStateRef.current;
+    const added = queueOps.append(prevState, tracks).queue.slice(prevState.queue.length);
     setPlayerState((prev) => {
       const next = queueOps.append(prev, tracks);
       return prev.queue.length ? next : { ...next, playId: prev.playId + 1 };
     });
-    showToast({
-      title: 'Added to queue',
-      description: tracks.length === 1 ? tracks[0].title : `${tracks.length} songs`,
-      icon: 'list',
-    });
+    showToast(
+      added.length === 0
+        ? {
+            title: 'Already in queue',
+            description: tracks.length === 1 ? tracks[0].title : `${tracks.length} songs`,
+            icon: 'list',
+          }
+        : {
+            title: 'Added to queue',
+            description: added.length === 1 ? added[0].title : `${added.length} songs`,
+            icon: 'list',
+          },
+    );
   };
 
   const removeFromQueue = (i: number) => {

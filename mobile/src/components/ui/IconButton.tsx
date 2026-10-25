@@ -39,6 +39,7 @@ export const IconButton = ({
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled }}
       className={cn(
         'items-center justify-center rounded-full',
         variant === 'active' && 'bg-s3',

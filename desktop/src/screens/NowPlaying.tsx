@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useModeStore } from '../store/modeContext';
@@ -7,6 +6,7 @@ import { usePlaybackPosition } from '../store/playbackPosition';
 import { useWaveform } from '../audio/waveform';
 import { useFavourite } from '../api/favourites';
 import Artwork, { trackArtwork } from '../components/music/Artwork';
+import { useArtColor } from '../lib/useArtColor';
 import Waveform from '../components/music/Waveform';
 import TrackDownloadButton from '../components/music/TrackDownloadButton';
 import LyricsButton from '../components/music/LyricsButton';
@@ -19,7 +19,9 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { formatDuration } from '../lib/format';
 import { cn } from '../lib/cn';
 import * as player from '../audio/player';
-import { playsFrom, useLocalLibrary } from '../storage/local';
+import { isAvailableOffline, playsFrom, useLocalLibrary } from '../storage/local';
+
+export const UP_NEXT_COUNT = 10;
 
 const NowPlaying = () => {
   const navigate = useNavigate();
@@ -50,6 +52,7 @@ const NowPlaying = () => {
 
   const { peaks, real: realPeaks } = useWaveform(currentTrack);
   const { favourite, toggle: toggleFavourite } = useFavourite(currentTrack);
+  const artColor = useArtColor(currentTrack ? trackArtwork(currentTrack, 640) : null);
 
   if (!currentTrack) {
     return (
@@ -72,9 +75,12 @@ const NowPlaying = () => {
   const positionRatio = positionMs / durationMs;
   const remainingMs = Math.max(0, durationMs - positionMs);
 
-  // Next 4 upcoming tracks from queue
+  // Next upcoming tracks from queue (up to UP_NEXT_COUNT, skipping tracks without local copy when offline)
   const currentIndex = state.index >= 0 ? state.index : 0;
-  const upcomingQueue = state.queue.slice(currentIndex + 1, currentIndex + 5);
+  const upcomingQueue = state.queue
+    .slice(currentIndex + 1)
+    .filter((t) => !isOffline || isAvailableOffline(t.id))
+    .slice(0, UP_NEXT_COUNT);
 
   // Where the queue came from (an album, a playlist, a search …); else the song's album.
   const from = state.playingFrom ?? (currentTrack.album ? { kind: 'Album', name: currentTrack.album } : null);
@@ -101,28 +107,35 @@ const NowPlaying = () => {
     }
   }
 
+  // The two main glows take the cover's colour when it has one; the fixed colours otherwise.
+  const glow = artColor
+    ? { backgroundColor: artColor, transition: 'background-color 600ms ease' }
+    : { transition: 'background-color 600ms ease' };
+
   return (
-    <div className="@container relative w-full h-full min-h-full overflow-y-auto @3xl:overflow-hidden bg-bg text-t1 flex flex-col justify-between select-none">
+    <div className="@container relative w-full h-full min-h-full overflow-hidden bg-bg text-t1 flex flex-col justify-between select-none">
       {/* Ambient glowing background */}
-      <div className="ambient pointer-events-none" aria-hidden>
-        <i
-          className={cn(
-            isOffline ? 'bg-gold' : 'bg-[#2A5AA8]',
-            'w-[400px] h-[400px] @3xl:w-[700px] @3xl:h-[700px] -top-[120px] @3xl:-top-[200px] -left-[100px] @3xl:-left-[180px]',
-          )}
-          style={{ opacity: isOffline ? 0.18 : 0.45 }}
-        />
-        <i
-          className={cn(
-            isOffline ? 'bg-[#A86B25]' : 'bg-[#0F7A5E]',
-            'w-[350px] h-[350px] @3xl:w-[560px] @3xl:h-[560px] top-[100px] @3xl:top-[140px] -right-[100px] @3xl:-right-[140px]',
-          )}
-          style={{ opacity: isOffline ? 0.2 : 0.4 }}
-        />
-        <i
-          className="bg-[#6B3FA0] w-[300px] h-[300px] @3xl:w-[460px] @3xl:h-[460px] bottom-[10px] @3xl:top-[440px] left-[50px] @3xl:left-[480px]"
-          style={{ opacity: 0.25 }}
-        />
+      <div className="sticky top-0 h-0 flex-none" aria-hidden>
+        <div className="ambient h-dvh pointer-events-none">
+          <i
+            className={cn(
+              isOffline ? 'bg-gold' : 'bg-[#2A5AA8]',
+              'w-[400px] h-[400px] @3xl:w-[700px] @3xl:h-[700px] -top-[120px] @3xl:-top-[200px] -left-[100px] @3xl:-left-[180px]',
+            )}
+            style={{ opacity: isOffline ? 0.18 : 0.45, ...glow }}
+          />
+          <i
+            className={cn(
+              isOffline ? 'bg-[#A86B25]' : 'bg-[#0F7A5E]',
+              'w-[350px] h-[350px] @3xl:w-[560px] @3xl:h-[560px] top-[100px] @3xl:top-[140px] -right-[100px] @3xl:-right-[140px]',
+            )}
+            style={{ opacity: isOffline ? 0.2 : 0.4, ...glow }}
+          />
+          <i
+            className="bg-[#6B3FA0] w-[300px] h-[300px] @3xl:w-[460px] @3xl:h-[460px] bottom-[10px] @3xl:top-[440px] left-[50px] @3xl:left-[480px]"
+            style={{ opacity: 0.25 }}
+          />
+        </div>
       </div>
 
       {/* Top bar */}
@@ -161,7 +174,7 @@ const NowPlaying = () => {
       </header>
 
       {/* Main content body */}
-      <div className="relative z-10 flex-1 flex flex-col @3xl:flex-row @3xl:items-center justify-center px-6 @3xl:px-14 py-4 @3xl:py-6 gap-8 @3xl:gap-14 max-w-[1280px] mx-auto w-full">
+      <div className="relative z-10 flex-1 min-h-0 flex flex-col @3xl:flex-row @3xl:items-center justify-center px-6 @3xl:px-14 py-4 @3xl:py-6 gap-8 @3xl:gap-14 max-w-[1280px] mx-auto w-full">
         {/* Artwork Column */}
         <div className="flex flex-col items-center justify-center flex-none w-full @3xl:w-auto">
           <motion.div layoutId="now-playing-artwork" className="relative flex items-center justify-center">
@@ -180,7 +193,7 @@ const NowPlaying = () => {
         </div>
 
         {/* Right Info/Controls/Queue Column */}
-        <div className="flex flex-col gap-5 @3xl:gap-5 min-w-0 flex-1 w-full max-w-[620px] mx-auto @3xl:mx-0">
+        <div className="flex flex-col gap-5 @3xl:gap-5 min-w-0 min-h-0 @3xl:max-h-full flex-1 w-full max-w-[620px] mx-auto @3xl:mx-0">
           {/* Track Details */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-start justify-between gap-3">
@@ -343,7 +356,7 @@ const NowPlaying = () => {
 
           {/* UP NEXT Section (hidden on mobile single column if small, or displayed nicely) */}
           {upcomingQueue.length > 0 && (
-            <div className="flex flex-col gap-2.5 mt-2 pt-2 border-t border-ln/60">
+            <div className="flex flex-col gap-2.5 mt-2 pt-2 border-t border-ln/60 min-h-0">
               <div className="flex items-center justify-between">
                 <span className="text-overline text-t3 uppercase font-semibold tracking-wider">UP NEXT</span>
                 <Link to="/queue" className="text-label-s text-t2 hover:text-t1 transition-colors">
@@ -351,7 +364,7 @@ const NowPlaying = () => {
                 </Link>
               </div>
 
-              <div className="flex flex-col gap-1">
+              <div className="flex flex-col gap-1 min-h-0 overflow-y-auto pr-1">
                 {upcomingQueue.map((track, i) => (
                   <div
                     key={track.id || i}

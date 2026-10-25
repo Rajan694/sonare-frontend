@@ -17,7 +17,8 @@ import { usePlayerStore } from '../store/player';
 import { Chip } from '../components/ui/Chip';
 import { Switch } from '../components/ui/Switch';
 import { api } from '../data/api';
-import { artworkUrl } from '../data/config';
+import { useTrackArtwork } from '../store/deviceArt';
+import { useArtColor } from '../hooks/useArtColor';
 import { useAsync } from '../data/hooks';
 import Icon from '../components/ui/Icon';
 import { cn } from '../lib/cn';
@@ -56,6 +57,8 @@ export const LyricsScreen = () => {
   const lyricsAutoScroll = useDevicePrefsStore((state) => state.lyricsAutoScroll);
   const setLyricsAutoScroll = useDevicePrefsStore((state) => state.setLyricsAutoScroll);
   const wave = useWaveform(currentTrack, 76);
+  const artUri = useTrackArtwork(currentTrack, 140);
+  const artColor = useArtColor(artUri);
   const lyrics = useAsync(
     () => api.lyrics(currentTrack!.id, lyricsScript, currentTrack!),
     [currentTrack?.id, lyricsScript],
@@ -140,7 +143,7 @@ export const LyricsScreen = () => {
 
   return (
     <Screen scrollable={false} className="bg-bg">
-      <Ambient uri={artworkUrl(currentTrack, 64)} />
+      <Ambient uri={artUri} color={artColor} />
       <Header
         title={<Text className="text-ll font-semibold text-t1">Lyrics</Text>}
         left={
@@ -154,7 +157,7 @@ export const LyricsScreen = () => {
 
       <View className="px-5 pt-2 pb-3">
         <View className="flex-row items-center gap-3">
-          <Artwork uri={artworkUrl(currentTrack, 140)} size={52} rings className="rounded-sm" />
+          <Artwork uri={artUri} size={52} rings className="rounded-sm" />
           <View className="flex-1 min-w-0">
             <Text className="text-t1 text-tm font-medium truncate" numberOfLines={1}>
               {currentTrack.title}
@@ -164,7 +167,7 @@ export const LyricsScreen = () => {
             </Text>
           </View>
           {data?.synced ? (
-            <Badge label=".lrc" variant="local" icon={<Icon name="lyrics" size={10} color="#FFC24D" />} />
+            <Badge label="Synced" variant="local" icon={<Icon name="lyrics" size={10} color="#FFC24D" />} />
           ) : data?.provider ? (
             <Badge label={data.provider} variant="neutral" />
           ) : null}

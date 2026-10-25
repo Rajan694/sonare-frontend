@@ -1,5 +1,6 @@
 import React from 'react';
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, View, useWindowDimensions } from 'react-native';
+import { useGrid } from '../../hooks/useGrid';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Text } from '../ui/Text';
 import { Button } from '../ui/Button';
@@ -36,14 +37,16 @@ interface TrackListViewProps {
 }
 
 export const TrackListView = ({ state }: TrackListViewProps) => {
-  const { width: screenWidth } = useWindowDimensions();
-  const cell = (columns: number, gap: number) => ({ width: (screenWidth - 24 - gap * (columns - 1)) / columns });
+  const grid = useGrid(150, 12);
+  const { width, height } = useWindowDimensions();
+  const landscape = width > height;
   const insets = useSafeAreaInsets();
   const playTrack = usePlayerStore((s) => s.playTrack);
   const currentTrack = usePlayerStore((s) => s.currentTrack);
 
-  return (
-    <View className="flex-1">
+  // Sideways there is little height: the toolbar scrolls away with the songs instead of staying put.
+  const toolbar = (
+    <>
       {/* Sort chip and view toggle controls */}
       <View className="flex-row items-center justify-between px-5 py-3">
         {state.kind !== 'mostPlayed' ? (
@@ -122,20 +125,27 @@ export const TrackListView = ({ state }: TrackListViewProps) => {
           <Text className="text-bs text-t3 flex-1 text-right font-normal">{state.countText}</Text>
         </View>
       )}
+    </>
+  );
+
+  return (
+    <View className="flex-1">
+      {!landscape && toolbar}
 
       {/* Track list */}
       <FlatList
-        key={`${state.kind}-${state.selectionMode ? 'select' : state.viewMode}`}
+        key={`${state.kind}-${state.selectionMode ? 'select' : state.viewMode}-${grid.columns}`}
+        ListHeaderComponent={landscape ? toolbar : undefined}
         data={state.displayTracks}
         keyExtractor={(item) => item.id}
-        numColumns={state.selectionMode ? 1 : state.viewMode === 'grid' ? 2 : 1}
+        numColumns={state.selectionMode ? 1 : state.viewMode === 'grid' ? grid.columns : 1}
         columnWrapperStyle={!state.selectionMode && state.viewMode === 'grid' ? { gap: 12 } : undefined}
         renderItem={({ item, index }) =>
           !state.selectionMode && state.viewMode === 'grid' ? (
             <Pressable
               onPress={() => playTrack(item, state.displayTracks, state.from)}
               className="p-1 mb-3"
-              style={cell(2, 12)}
+              style={grid.cell}
               accessibilityRole="button"
               accessibilityLabel={`Play ${item.title} by ${item.artist}`}
             >

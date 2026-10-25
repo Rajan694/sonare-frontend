@@ -10,6 +10,7 @@ import { useModeStore } from '../src/store/mode';
 import { usePlayerStore } from '../src/store/player';
 import { useDownloadsStore } from '../src/store/downloads';
 import { useLibraryStore } from '../src/store/library';
+import { useLocalMusicStore } from '../src/store/localMusic';
 import { alice, makeDownload, makePlaylist, makeTrack, nav, page, route } from '../test-utils';
 
 jest.mock('@react-navigation/native', () => require('../test-utils').navigationMock());
@@ -26,6 +27,7 @@ beforeEach(() => {
   usePlayerStore.setState({ currentTrack: null, queue: [], isPlaying: false, shuffle: false });
   useDownloadsStore.setState({ items: {} });
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
+  useLocalMusicStore.setState({ songs: [], hidden: [] });
   jest.spyOn(api, 'libraryTracks').mockResolvedValue(page([]) as never);
 });
 
@@ -130,6 +132,43 @@ describe('Phase M5 — Library tabs, TrackList screen, Playlists pinned rows', (
       route.params = { kind: 'liked' };
       const { getByText } = render(<TrackListScreen />);
       expect(getByText('Your liked songs live in your account')).toBeTruthy();
+    });
+
+    it('MOB-TRKL-010 renders folder tracks from phone songs when kind is folder', async () => {
+      useLocalMusicStore.setState({
+        songs: [
+          {
+            mediaId: '10',
+            uri: 'content://10',
+            title: 'Folder Track A',
+            artist: 'Folder Artist',
+            album: null,
+            durationMs: 150000,
+            folder: 'Audiobooks',
+            fileName: 'a.mp3',
+            size: 2000,
+            modifiedAt: 10,
+          },
+          {
+            mediaId: '11',
+            uri: 'content://11',
+            title: 'Other Track',
+            artist: 'Other Artist',
+            album: null,
+            durationMs: 150000,
+            folder: 'Music',
+            fileName: 'b.mp3',
+            size: 2000,
+            modifiedAt: 10,
+          },
+        ],
+      });
+
+      route.params = { kind: 'folder', folder: 'Audiobooks', title: 'Audiobooks' };
+      const { findByText, queryByText } = render(<TrackListScreen />);
+      expect(await findByText('Audiobooks')).toBeTruthy();
+      expect(await findByText('Folder Track A')).toBeTruthy();
+      expect(queryByText('Other Track')).toBeNull();
     });
   });
 

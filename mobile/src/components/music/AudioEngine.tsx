@@ -3,12 +3,16 @@ import { AppState } from 'react-native';
 import { api } from '../../data/api';
 import { absoluteUrl, artworkUrl } from '../../data/config';
 import { useAuthStore } from '../../data/auth';
+import { requireAccount } from '../../data/accountGate';
 import { queuePlay } from '../../data/sync';
 import { API_QUALITY, useSettingsStore } from '../../data/settings';
 import type { StreamInfo, Track } from '../../data/types';
 import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
-import { CROSSFADE_MS, currentGains, useAudioStore } from '../../store/audio';
+import { currentGains, useAudioStore } from '../../store/audio';
 import { usePlayerStore } from '../../store/player';
+import { useLibraryStore } from '../../store/library';
+import { useDevicePrefsStore } from '../../store/devicePrefs';
+import { showSnackbar } from '../../store/snackbar';
 import { localUriFor } from '../../store/downloads';
 import { deviceUriFor } from '../../store/localMusic';
 import { refreshInAppSession } from '../../youtube/inApp';
@@ -175,7 +179,8 @@ const prepareNext = async () => {
   prefetchNext();
   const next = usePlayerStore.getState().upcomingTrack();
   const wanted =
-    (useSettingsStore.getState().gapless || useAudioStore.getState().crossfade) &&
+    (useSettingsStore.getState().gapless ||
+      (useAudioStore.getState().crossfade && useAudioStore.getState().crossfadeMs > 0)) &&
     (next?.source === 'server' || (!!next && !!onPhone(next.id))) &&
     loadedId !== null &&
     loadedId === current()?.id;
@@ -207,7 +212,12 @@ const pushAudioSettings = () => {
     normalization: settings.normalization,
   });
   SonarePlayer.setSpeed(audio.speed);
-  SonarePlayer.setTransitions({ crossfadeMs: audio.crossfade ? CROSSFADE_MS : 0, gapless: settings.gapless });
+  SonarePlayer.setPitch(audio.pitch);
+  SonarePlayer.setFades(audio.fades);
+  SonarePlayer.setTransitions({
+    crossfadeMs: audio.crossfade ? audio.crossfadeMs : 0,
+    gapless: settings.gapless,
+  });
 };
 
 /** Sends the spatial audio settings to the native player. */
@@ -226,6 +236,28 @@ const pushSpatialSettings = () => {
     },
   );
   SonarePlayer.setSpatialAudio(params);
+};
+
+/** Sends the headset button preferences to the native player. */
+const pushHeadsetSettings = () => {
+  SonarePlayer.setHeadsetActions(useDevicePrefsStore.getState().headsetActions);
+};
+
+let lastLikedTrackId: string | null = null;
+let lastLikedPlayId: number | null = null;
+let lastLiked: boolean | null = null;
+
+/** Synchronises the current song's favourite state to the native player / widget heart. */
+const pushLikedState = () => {
+  const { currentTrack, playId } = usePlayerStore.getState();
+  const trackId = currentTrack?.id ?? null;
+  const liked = currentTrack ? Boolean(useLibraryStore.getState().favouriteIds[currentTrack.id]) : false;
+  if (trackId !== lastLikedTrackId || playId !== lastLikedPlayId || liked !== lastLiked) {
+    lastLikedTrackId = trackId;
+    lastLikedPlayId = playId;
+    lastLiked = liked;
+    SonarePlayer.setLiked(liked);
+  }
 };
 
 /** The native player already plays `id` (it moved on by itself): take it over without reloading. */
@@ -369,7 +401,25 @@ const startAudio = () => {
   SonarePlayer.onRemote((e) => {
     const player = usePlayerStore.getState();
     if (e.command === 'next') player.playNext();
-    else player.playPrevious();
+    else if (e.command === 'previous') player.playPrevious();
+    else if (e.command === 'like') {
+      const track = player.currentTrack;
+      if (!track) return;
+      requireAccount('Create a free account to save songs you love.', () => {
+        const willLike = !useLibraryStore.getState().favouriteIds[track.id];
+        useLibraryStore
+          .getState()
+          .toggleFavourite(track)
+          .catch(() => {});
+        if (AppState.currentState === 'active') {
+          showSnackbar({
+            title: willLike ? 'Added to Liked Songs' : 'Removed from Liked Songs',
+            subtitle: track.title,
+            icon: willLike ? 'heart-filled' : 'heart',
+          });
+        }
+      });
+    }
   });
 
   SonarePlayer.onStreamRefused(swapRefusedStream);
@@ -400,7 +450,7 @@ const startAudio = () => {
   useAudioStore.getState().hydrate();
   useAudioStore.subscribe((state, prev) => {
     pushAudioSettings();
-    if (state.crossfade !== prev.crossfade) prepareNext();
+    if (state.crossfade !== prev.crossfade || state.crossfadeMs !== prev.crossfadeMs) prepareNext();
   });
   pushSpatialSettings();
   useSpatialStore.getState().hydrate();
@@ -417,9 +467,22 @@ const startAudio = () => {
     }
     if (state.gapless !== prev.gapless) prepareNext();
   });
+  pushHeadsetSettings();
+  useDevicePrefsStore.subscribe((state, prev) => {
+    if (state.headsetActions !== prev.headsetActions) {
+      pushHeadsetSettings();
+    }
+  });
+  pushLikedState();
+  useLibraryStore.subscribe((state, prev) => {
+    if (state.favouriteIds !== prev.favouriteIds) {
+      pushLikedState();
+    }
+  });
 
   // Store -> native.
   usePlayerStore.subscribe((state, prev) => {
+    pushLikedState();
     // Another queue entry is current (the same song again counts: it can be in the queue twice).
     if (state.playId !== prev.playId) {
       reloads = null;

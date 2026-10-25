@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Pressable, Dimensions, StyleSheet, Modal, KeyboardAvoidingView } from 'react-native';
+import { View, Pressable, StyleSheet, Modal, KeyboardAvoidingView, useWindowDimensions } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, runOnJS } from 'react-native-reanimated';
 import { springs } from '../../lib/motion';
 import { GestureHandlerRootView, PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-gesture-handler';
@@ -10,10 +10,11 @@ interface SheetProps {
   children: React.ReactNode;
 }
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SPRING_CONFIG = springs.sheet;
 
 export const Sheet = ({ visible, onClose, children }: SheetProps) => {
+  // The window's height now, not at start-up: the phone may have turned sideways since.
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
 
@@ -32,7 +33,7 @@ export const Sheet = ({ visible, onClose, children }: SheetProps) => {
       });
       opacity.value = withTiming(0, { duration: 250 });
     }
-  }, [visible, translateY, opacity]);
+  }, [visible, translateY, opacity, SCREEN_HEIGHT]);
 
   const onGestureEvent = (event: PanGestureHandlerGestureEvent) => {
     if (event.nativeEvent.translationY > 0) {
@@ -86,7 +87,10 @@ export const Sheet = ({ visible, onClose, children }: SheetProps) => {
               edge-to-edge, so the window doesn't resize for it). */}
           <KeyboardAvoidingView behavior="padding">
             <PanGestureHandler onGestureEvent={onGestureEvent as any} onEnded={onGestureEnd as any}>
-              <SheetComponent style={sheetStyle} className="bg-s1 rounded-t-3xl pt-2 pb-8 border-t border-ln mt-24">
+              <SheetComponent
+                style={[sheetStyle, { maxHeight: SCREEN_HEIGHT * 0.9 }]}
+                className="bg-s1 rounded-t-3xl pt-2 pb-8 border-t border-ln mt-24"
+              >
                 <View className="w-12 h-1 bg-ln3 rounded-full self-center mb-6" />
                 {children}
               </SheetComponent>

@@ -3,7 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { SonareLibrary, type DeviceSong } from '../native/SonareLibrary';
 import { hasMusicPermission, requestMusicPermission, type MusicPermission } from '../lib/musicPermission';
-import { downloadedTracks, idInFileName, useDownloadsStore, type FoundDownload } from './downloads';
+import {
+  downloadedTracks,
+  downloadTrack,
+  idInFileName,
+  useDownloadsStore,
+  type DownloadItem,
+  type FoundDownload,
+} from './downloads';
 import type { Track } from '../data/types';
 import { parseDownloadName } from '../../../shared/downloads/fileNames';
 
@@ -57,6 +64,10 @@ const hash = (s: string): string => {
 
 /** Stable while the file stays where it is (MediaStore's own id can change on a re-index). */
 const localId = (s: DeviceSong) => `local:${hash(`${s.folder}/${s.fileName}`)}`;
+
+/** The device song that is a download's file: by its content uri, else by its file name. */
+const deviceSongForDownload = (songs: DeviceSong[], d: { uri?: string; fileName?: string }) =>
+  (d.uri && songs.find((s) => s.uri === d.uri)) || (d.fileName && songs.find((s) => s.fileName === d.fileName)) || null;
 
 interface OwnDownloadSets {
   uris: Set<string>;
@@ -220,6 +231,45 @@ export const deviceUriFor = (trackId: string): string | null => {
   if (!trackId.startsWith('local:')) return null;
   const song = useLocalMusicStore.getState().songs.find((s) => localId(s) === trackId);
   return song?.uri ?? null;
+};
+
+/** The MediaStore row id of a song on the phone (local or downloaded), for cover art. */
+export const mediaIdFor = (trackId: string): string | null => {
+  const songs = useLocalMusicStore.getState().songs;
+  if (trackId.startsWith('local:')) {
+    const song = songs.find((s) => localId(s) === trackId);
+    return song?.mediaId ?? null;
+  }
+  const item = useDownloadsStore.getState().items[trackId];
+  if (item && item.status === 'done' && !item.missing) {
+    return deviceSongForDownload(songs, item)?.mediaId ?? null;
+  }
+  return null;
+};
+
+/**
+ * The songs in one music folder (a path from musicFolders), as the offline search's folder results
+ * open them. Sonare's own downloads there show as their catalogue songs, like everywhere else.
+ */
+export const tracksInFolder = (
+  folder: string,
+  songs: DeviceSong[],
+  downloads: Record<string, DownloadItem>,
+): Track[] => {
+  const byUri = new Map<string, DownloadItem>();
+  const byName = new Map<string, DownloadItem>();
+  for (const d of Object.values(downloads)) {
+    if (d.status !== 'done' || d.missing) continue;
+    if (d.uri) byUri.set(d.uri, d);
+    if (d.fileName) byName.set(d.fileName, d);
+  }
+  return songs
+    .filter((s) => (s.folder || 'Internal storage') === folder)
+    .map((s) => {
+      // The same uri-then-file-name match as deviceSongForDownload, through maps for a whole folder.
+      const own = (s.uri && byUri.get(s.uri)) || (s.fileName && byName.get(s.fileName));
+      return own ? downloadTrack(own) : deviceTrack(s);
+    });
 };
 
 /** Everything that plays without a network: downloads (newest first), then the music folders' songs. */

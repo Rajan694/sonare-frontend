@@ -426,14 +426,15 @@ describe('queue panel', () => {
     return { ...utils, p, onClose };
   };
 
-  it('WEB-LAYOUT-019 summarises the queue, shows the current song and only what comes next', () => {
+  it('WEB-LAYOUT-019 summarises the queue, shows the current song, played songs and what comes next', () => {
     panel();
     expect(screen.getByText('4 songs · 4 from server')).toBeInTheDocument();
     expect(screen.getByText('ONLINE QUEUE')).toBeInTheDocument();
     expect(screen.getByText('-3:10')).toBeInTheDocument();
     expect(screen.getByText('Next One')).toBeInTheDocument();
     expect(screen.getByText('Last One')).toBeInTheDocument();
-    expect(screen.queryByText('Before')).not.toBeInTheDocument();
+    expect(screen.getByText('Played')).toBeInTheDocument();
+    expect(screen.getByText('Before')).toBeInTheDocument();
   });
 
   it('WEB-LAYOUT-040 upcoming list keeps a minimum usable height and content scrolls', () => {
