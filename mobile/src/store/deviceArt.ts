@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
 import { SonareLibrary } from '../native/SonareLibrary';
-import { mediaIdFor } from './localMusic';
+import { mediaIdFor, useLocalMusicStore } from './localMusic';
+import { useDownloadsStore } from './downloads';
 import { artworkUrl, type ArtSize } from '../data/config';
 import type { Track } from '../data/types';
 
@@ -83,13 +84,18 @@ export const useDeviceArtStore = create<DeviceArtStore>((set, get) => ({
 }));
 
 /**
- * Returns the cover art URI (file://...) for a phone song (`source === 'local'`).
+ * Returns the cover art URI (file://...) for a phone song (local or downloaded).
  * Queries the device art store with debounced batching and memoizes the result.
  */
 export const useDeviceArt = (track?: Track | null): string | undefined => {
-  const isLocal = track?.source === 'local';
   const trackId = track?.id;
-  const mediaId = isLocal && trackId ? mediaIdFor(trackId) : null;
+
+  // Re-render when the device songs list or downloads change
+  useLocalMusicStore((s) => s.songs);
+  useDownloadsStore((s) => (trackId ? s.items[trackId] : undefined));
+
+  const mediaId = trackId ? mediaIdFor(trackId) : null;
+
   const isCached = useDeviceArtStore((s) => (mediaId ? mediaId in s.cache : false));
   const uri = useDeviceArtStore((s) => (mediaId ? s.cache[mediaId] : undefined));
 

@@ -88,6 +88,8 @@ export const QueueScreen = () => {
   }
 
   const isGold = mode === 'offline' || currentTrack.source === 'local';
+  const playedStart = Math.max(0, currentIndex - PLAYED_COUNT);
+  const playedQueue = queue.slice(playedStart, currentIndex);
   const upcomingQueue = queue.slice(currentIndex + 1);
   const serverCount = queue.filter((t) => t.source === 'server').length;
 
@@ -175,6 +177,22 @@ export const QueueScreen = () => {
                 />
               </View>
             </View>
+
+            {/* Previously played: the entries just before the current one (up to PLAYED_COUNT) */}
+            {playedQueue.length > 0 && (
+              <View className="mb-4">
+                <Text className="text-t3 text-ov uppercase mb-2">Played</Text>
+                <View className="gap-0.5">
+                  {playedQueue.map((track, i) => (
+                    <PlayedRow
+                      key={`${track.id}-${playedStart + i}`}
+                      track={track}
+                      onPress={() => playAt(playedStart + i)}
+                    />
+                  ))}
+                </View>
+              </View>
+            )}
 
             {/* Now playing (design M12): the current song with its progress and a pause button */}
             <Text className="text-t3 text-ov uppercase mb-2">Now playing</Text>
@@ -271,6 +289,7 @@ export const QueueScreen = () => {
 };
 
 const ROW_HEIGHT = 60;
+const PLAYED_COUNT = 2;
 
 /** A queued song: tap to play it, × to drop it, drag the handle to move it up or down. */
 const QueueRow = ({
@@ -322,5 +341,33 @@ const QueueRow = ({
         <DragHandle gesture={gesture} accessibilityLabel={`Reorder ${track.title}`} onMove={onMove} />
       </Pressable>
     </Animated.View>
+  );
+};
+
+/** A previously played queue entry: dimmed, tap to play again, no drag handle or remove. */
+const PlayedRow = ({ track, onPress }: { track: Track; onPress: () => void }) => {
+  const rowArtUri = useTrackArtwork(track, 140);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${track.title} by ${track.artist}`}
+      className="flex-row items-center gap-3 px-2 rounded-md opacity-60"
+      style={{ height: ROW_HEIGHT }}
+    >
+      <Artwork uri={rowArtUri} size={44} className="rounded-sm" />
+      <View className="flex-1 gap-0.5 min-w-0">
+        <View className="flex-row items-center gap-1.5 min-w-0">
+          <Text className="text-tm text-t1 shrink" numberOfLines={1}>
+            {track.title}
+          </Text>
+          <SourceGlyph source={track.source} />
+        </View>
+        <Text className="text-bs text-t2" numberOfLines={1}>
+          {track.album ? `${track.artist} · ${track.album}` : track.artist}
+        </Text>
+      </View>
+    </Pressable>
   );
 };

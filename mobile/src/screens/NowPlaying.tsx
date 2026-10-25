@@ -14,6 +14,7 @@ import { useTrackMenuStore } from '../store/trackMenu';
 import { useLyricsAvailabilityStore } from '../store/lyricsAvailability';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 import { artworkUrl } from '../data/config';
+import type { Track } from '../data/types';
 import { requireAccount } from '../data/accountGate';
 import { useNavigation } from '@react-navigation/native';
 import { formatDuration } from '../lib/format';
@@ -30,6 +31,8 @@ import { openInCurrentTab } from '../navigation/openInCurrentTab';
 import { useTrackArtwork } from '../store/deviceArt';
 import { useArtColor } from '../hooks/useArtColor';
 
+// How many queue entries after the current one appear below Now Playing.
+const UP_NEXT_COUNT = 10;
 const SWIPE_THRESHOLD = 50;
 /** Cover sizes (the design's) that fit a phone's height sideways, largest first. */
 const LANDSCAPE_ART_SIZES = [240, 200, 160, 132, 124] as const;
@@ -76,7 +79,7 @@ export const NowPlayingScreen = () => {
   }, [currentTrack, lyricsScript]);
 
   // The next few queue entries after the one playing; tapping one jumps to it.
-  const upNext = index >= 0 ? queue.slice(index + 1, index + 5) : [];
+  const upNext = index >= 0 ? queue.slice(index + 1, index + 1 + UP_NEXT_COUNT) : [];
 
   const navigation = useNavigation<any>();
   // The extra utility buttons need room on shorter phones.
@@ -376,23 +379,7 @@ export const NowPlayingScreen = () => {
           </View>
           <View className="gap-0.5 mt-1">
             {upNext.map((track, i) => (
-              <Pressable
-                key={`${track.id}:${i}`}
-                onPress={() => playAt(index + 1 + i)}
-                className="flex-row items-center gap-3 py-1.5 rounded-md active:bg-s2"
-                accessibilityRole="button"
-                accessibilityLabel={`Play ${track.title} by ${track.artist}`}
-              >
-                <Artwork uri={artworkUrl(track, 64)} size={40} className="rounded-sm" />
-                <View className="flex-1 min-w-0 gap-0.5">
-                  <Text numberOfLines={1} className="text-tm font-medium text-t1">
-                    {track.title}
-                  </Text>
-                  <Text numberOfLines={1} className="text-t2 text-bs">
-                    {track.artist}
-                  </Text>
-                </View>
-              </Pressable>
+              <UpNextRow key={`${track.id}:${i}`} track={track} onPress={() => playAt(index + 1 + i)} />
             ))}
           </View>
         </View>
@@ -453,5 +440,28 @@ export const NowPlayingScreen = () => {
         </ScrollView>
       )}
     </Screen>
+  );
+};
+
+/** A compact queue row shown under Now Playing; uses useTrackArtwork for local/download covers. */
+const UpNextRow = ({ track, onPress }: { track: Track; onPress: () => void }) => {
+  const artUri = useTrackArtwork(track, 64);
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-3 py-1.5 rounded-md active:bg-s2"
+      accessibilityRole="button"
+      accessibilityLabel={`Play ${track.title} by ${track.artist}`}
+    >
+      <Artwork uri={artUri} size={40} className="rounded-sm" />
+      <View className="flex-1 min-w-0 gap-0.5">
+        <Text numberOfLines={1} className="text-tm font-medium text-t1">
+          {track.title}
+        </Text>
+        <Text numberOfLines={1} className="text-t2 text-bs">
+          {track.artist}
+        </Text>
+      </View>
+    </Pressable>
   );
 };

@@ -65,6 +65,10 @@ const hash = (s: string): string => {
 /** Stable while the file stays where it is (MediaStore's own id can change on a re-index). */
 const localId = (s: DeviceSong) => `local:${hash(`${s.folder}/${s.fileName}`)}`;
 
+/** The device song that is a download's file: by its content uri, else by its file name. */
+const deviceSongForDownload = (songs: DeviceSong[], d: { uri?: string; fileName?: string }) =>
+  (d.uri && songs.find((s) => s.uri === d.uri)) || (d.fileName && songs.find((s) => s.fileName === d.fileName)) || null;
+
 interface OwnDownloadSets {
   uris: Set<string>;
   defaultFileNames: Set<string>;
@@ -229,11 +233,18 @@ export const deviceUriFor = (trackId: string): string | null => {
   return song?.uri ?? null;
 };
 
-/** The MediaStore row id of a song on the phone (a `local:` id), for cover art. */
+/** The MediaStore row id of a song on the phone (local or downloaded), for cover art. */
 export const mediaIdFor = (trackId: string): string | null => {
-  if (!trackId.startsWith('local:')) return null;
-  const song = useLocalMusicStore.getState().songs.find((s) => localId(s) === trackId);
-  return song?.mediaId ?? null;
+  const songs = useLocalMusicStore.getState().songs;
+  if (trackId.startsWith('local:')) {
+    const song = songs.find((s) => localId(s) === trackId);
+    return song?.mediaId ?? null;
+  }
+  const item = useDownloadsStore.getState().items[trackId];
+  if (item && item.status === 'done' && !item.missing) {
+    return deviceSongForDownload(songs, item)?.mediaId ?? null;
+  }
+  return null;
 };
 
 /**
@@ -255,6 +266,7 @@ export const tracksInFolder = (
   return songs
     .filter((s) => (s.folder || 'Internal storage') === folder)
     .map((s) => {
+      // The same uri-then-file-name match as deviceSongForDownload, through maps for a whole folder.
       const own = (s.uri && byUri.get(s.uri)) || (s.fileName && byName.get(s.fileName));
       return own ? downloadTrack(own) : deviceTrack(s);
     });

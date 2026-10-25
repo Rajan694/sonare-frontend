@@ -762,3 +762,26 @@ navigation mock live in `test-utils/`.
 | :------------- | :------------------------------------------------------------------------------ |
 | `MOB-LAND-004` | Now Playing puts a smaller cover beside the controls when the phone is sideways |
 | `MOB-LAND-005` | a sheet is never taller than 90% of the window, also after turning the phone    |
+
+## `__tests__/queue-history.test.tsx`
+
+| ID           | Use case                                                         |
+| :----------- | :--------------------------------------------------------------- |
+| `MOB-QH-001` | up next shows 10 of a 15-entry queue and the right ones          |
+| `MOB-QH-002` | up next shows 3 when only 3 follow                               |
+| `MOB-QH-003` | Queue screen shows exactly the 2 before the current one in order |
+| `MOB-QH-004` | Queue screen shows 1 played song at index 1 and none at index 0  |
+| `MOB-QH-005` | tapping a played row plays that queue index                      |
+| `MOB-QH-006` | up-next rows use device cover for a local: song                  |
+
+## `__tests__/download-art.test.tsx`
+
+| ID              | Use case                                                                         |
+| :-------------- | :------------------------------------------------------------------------------- |
+| `MOB-DLART-001` | a done download matched by uri gets its device cover                             |
+| `MOB-DLART-002` | matched by file name when the uri differs                                        |
+| `MOB-DLART-003` | a missing or unfinished download keeps the network url                           |
+| `MOB-DLART-004` | a matched file with no embedded cover (artworkFor -> null) keeps the network url |
+| `MOB-DLART-005` | tracksInFolder still matches downloads correctly                                 |
+| `MOB-DLART-006` | useDeviceArt re-renders when device songs or download status change              |
+| `MOB-DLART-007` | the song with the download's own uri wins over another with the same file name   |
