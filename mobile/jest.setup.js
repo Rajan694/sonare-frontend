@@ -15,6 +15,8 @@ const mockSonarePlayerNative = {
   setFades: jest.fn(),
   setHeadsetActions: jest.fn(),
   setLiked: jest.fn(),
+  mediaVolume: jest.fn().mockResolvedValue(8),
+  raiseVolume: jest.fn(),
   setAudioEffects: jest.fn(),
   setSpatialAudio: jest.fn(),
 };

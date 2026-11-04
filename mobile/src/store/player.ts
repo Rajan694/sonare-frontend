@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { Track } from '../data/types';
 import {
   append,
+  dropsQueue,
   insertNext,
   positionOf,
   shuffledFrom,
@@ -9,6 +10,7 @@ import {
   stepIndex,
   upcomingIndex,
 } from '../../../shared/player/queue';
+import { showSnackbar } from './snackbar';
 
 /** Where the queue came from, for Now Playing's "Playing from …" eyebrow. */
 export interface PlayingFrom {
@@ -52,8 +54,14 @@ interface PlayerStore {
   /** Where the next load starts (a restored queue resumes mid-track); the engine clears it. */
   startAtMs: number | null;
 
-  /** Start `track`, with `queue` (defaults to just the track) as what plays after it. */
-  playTrack: (track: Track, queue?: Track[], from?: PlayingFrom) => void;
+  /**
+   * Start `track`, with `queue` (defaults to just the track) as what plays after it; `shuffle`
+   * turns shuffle on or off for it (left as it is by default). Replacing a queue that still had
+   * songs lined up offers Undo (undoReplace).
+   */
+  playTrack: (track: Track, queue?: Track[], from?: PlayingFrom, shuffle?: boolean) => void;
+  /** Bring back the queue the last playTrack replaced, at the song and position it was on. */
+  undoReplace: () => void;
   /** Put back a saved queue, paused where it was left. */
   restore: (saved: RestoredPlayer) => void;
   setCurrentTrack: (track: Track | null) => void;
@@ -86,6 +94,22 @@ interface PlayerStore {
 /** Fisher–Yates: every order equally likely. */
 export const shuffleTracks = shuffleItems;
 
+/** The queue playTrack last replaced, for Undo. */
+interface Replaced {
+  queue: Track[];
+  index: number;
+  positionMs: number;
+  playingFrom: PlayingFrom | null;
+  shuffle: boolean;
+  isPlaying: boolean;
+  /** The playId of the new queue: once anything else plays, Undo is gone. */
+  playId: number;
+}
+let replaced: Replaced | null = null;
+
+/** The snackbar offering Undo belongs to the queue playing now (other snackbars mustn't push it away). */
+export const canUndoReplace = (): boolean => replaced !== null && replaced.playId === usePlayerStore.getState().playId;
+
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
   currentTrack: null,
   queue: [],
@@ -102,15 +126,37 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   playingFrom: null,
   startAtMs: null,
 
-  playTrack: (track, queue, from) => {
+  playTrack: (track, queue, from, shuffleIt) => {
     let list = queue?.length ? queue : [track];
     let at = positionOf(list, track);
     if (at < 0) {
       list = [track, ...list];
       at = 0;
     }
-    const shuffle = get().shuffle;
+    const before = get();
+    const shuffle = shuffleIt ?? before.shuffle;
+    // Starting another list drops the songs that were still lined up: offer them back.
+    replaced = dropsQueue(before, list)
+      ? {
+          queue: before.queue,
+          index: before.index,
+          positionMs: before.positionMs,
+          playingFrom: before.playingFrom,
+          shuffle: before.shuffle,
+          isPlaying: before.isPlaying,
+          playId: before.playId + 1,
+        }
+      : null;
+    if (replaced) {
+      showSnackbar({
+        title: from?.name ? `Playing ${from.name}` : `Playing ${track.title}`,
+        subtitle: 'Your queue was replaced',
+        icon: 'queue',
+        action: { label: 'Undo', onPress: () => get().undoReplace() },
+      });
+    }
     set({
+      shuffle,
       playingFrom: from ?? null,
       startAtMs: null,
       currentTrack: track,
@@ -123,6 +169,30 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       error: null,
       // Restarts the track if it was already the current one.
       seekRequest: { ms: 0, nonce: Date.now() },
+    });
+  },
+
+  undoReplace: () => {
+    const back = replaced;
+    replaced = null;
+    // Only straight after the switch: once another song started, the old queue is history.
+    if (!back || get().playId !== back.playId) return;
+    const track = back.queue[back.index];
+    if (!track) return;
+    set({
+      queue: back.queue,
+      index: back.index,
+      currentTrack: track,
+      playingFrom: back.playingFrom,
+      shuffle: back.shuffle,
+      playId: back.playId + 1,
+      isPlaying: back.isPlaying,
+      positionMs: back.positionMs,
+      durationMs: track.durationMs ?? 0,
+      // Set even at 0, so a long track isn't "resumed" from an older point instead.
+      startAtMs: back.positionMs,
+      error: null,
+      seekRequest: null,
     });
   },
 

@@ -24,6 +24,7 @@ import { useTrackArtwork } from '../store/deviceArt';
 import { useArtColor } from '../hooks/useArtColor';
 import { cn } from '../lib/cn';
 import { nextQueuePlaylistName } from '../../../shared/player/playlistNames';
+import { roughDuration, upcomingMs } from '../../../shared/player/queueTime';
 import type { Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 
@@ -91,6 +92,7 @@ export const QueueScreen = () => {
   const playedStart = Math.max(0, currentIndex - PLAYED_COUNT);
   const playedQueue = queue.slice(playedStart, currentIndex);
   const upcomingQueue = queue.slice(currentIndex + 1);
+  const upcomingTime = upcomingMs(queue, currentIndex);
   const serverCount = queue.filter((t) => t.source === 'server').length;
 
   const accent = isGold ? '#FFC24D' : '#00E28A';
@@ -229,9 +231,17 @@ export const QueueScreen = () => {
               />
             </View>
 
-            {/* Next in queue */}
+            {/* Next in queue, and how long it runs */}
             <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-t3 text-ov uppercase">Next in queue</Text>
+              <View className="flex-row items-baseline gap-2 shrink">
+                <Text className="text-t3 text-ov uppercase">Next in queue</Text>
+                {upcomingQueue.length > 0 && (
+                  <Text className="text-t3 text-bs shrink" numberOfLines={1}>
+                    {songCount(upcomingQueue.length)}
+                    {upcomingTime > 0 ? ` · ${roughDuration(upcomingTime)}` : ''}
+                  </Text>
+                )}
+              </View>
               {upcomingQueue.length > 0 && (
                 <Pressable onPress={() => setQueue([currentTrack], 0)} accessibilityRole="button" hitSlop={8}>
                   <Text className={cn('text-ll', isGold ? 'text-gold' : 'text-acc')}>Clear queue</Text>

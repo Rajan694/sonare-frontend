@@ -62,6 +62,17 @@ export const startQueue = <T extends Item, S extends QueueState<T>>(state: S, li
   return state.shuffle ? { ...state, queue: shuffledFrom(queue, at), index: 0 } : { ...state, queue, index: at };
 };
 
+/**
+ * Starting `list` throws away the queue being listened to: songs were still lined up after the
+ * playing one, and the new list doesn't hold that song (another song from the same list keeps
+ * the same queue). The apps then offer Undo.
+ */
+export const dropsQueue = <T extends Item>(state: QueueState<T>, list: readonly T[]): boolean => {
+  const playing = state.queue[state.index];
+  if (!playing || state.index >= state.queue.length - 1) return false;
+  return !list.some((t) => t.id === playing.id);
+};
+
 /** Switching shuffle on reorders the queue around the playing entry; off keeps the order. */
 export const toggleShuffle = <T, S extends QueueState<T>>(state: S): S => {
   if (state.shuffle || !state.queue[state.index]) return { ...state, shuffle: !state.shuffle };

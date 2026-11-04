@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Toast } from './Toast';
 import Icon from './Icon';
-import { useSnackbarStore } from '../../store/snackbar';
+import { hideSnackbar, useSnackbarStore } from '../../store/snackbar';
 import { usePlayerStore } from '../../store/player';
 import { useModeStore } from '../../store/mode';
 import { navigationRef } from '../../data/accountGate';
@@ -50,6 +50,17 @@ export const SnackbarHost = () => {
       mode={mode}
       bottom={bottom}
       accessibilityLiveRegion="polite"
+      action={
+        item.action
+          ? {
+              label: item.action.label,
+              onPress: () => {
+                hideSnackbar();
+                item.action!.onPress();
+              },
+            }
+          : undefined
+      }
     />
   );
 };

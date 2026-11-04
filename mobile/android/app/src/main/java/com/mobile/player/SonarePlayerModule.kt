@@ -1,6 +1,8 @@
 package com.mobile.player
 
 import android.content.ComponentName
+import android.content.Context
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
@@ -292,6 +294,24 @@ class SonarePlayerModule(private val context: ReactApplicationContext) : ReactCo
   @ReactMethod
   fun setLiked(liked: Boolean) {
     SonarePlaybackService.setLiked(context, liked)
+  }
+
+  /** The phone's media volume (0 = silent), so the app can say why nothing is heard. */
+  @ReactMethod
+  fun mediaVolume(promise: Promise) {
+    val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    promise.resolve(audio.getStreamVolume(AudioManager.STREAM_MUSIC))
+  }
+
+  /** "Turn up": media volume to a third, with the system volume panel shown to fine-tune it. */
+  @ReactMethod
+  fun raiseVolume() {
+    val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+    val target = maxOf(1, max / 3)
+    if (audio.getStreamVolume(AudioManager.STREAM_MUSIC) < target) {
+      audio.setStreamVolume(AudioManager.STREAM_MUSIC, target, AudioManager.FLAG_SHOW_UI)
+    }
   }
 
   /** `{ enabled, gains: number[8], bassBoost, virtualizer, normalization }` for the audio processor. */
