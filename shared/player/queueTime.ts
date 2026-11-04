@@ -2,9 +2,12 @@
 
 type Timed = { durationMs?: number | null };
 
-/** How long the entries after `index` run; songs of unknown length count as nothing. */
-export const upcomingMs = (queue: readonly Timed[], index: number): number =>
-  queue.slice(index + 1).reduce((sum, t) => sum + (t.durationMs && t.durationMs > 0 ? t.durationMs : 0), 0);
+/** How long `tracks` run together; songs of unknown length count as nothing. */
+export const listMs = (tracks: readonly Timed[]): number =>
+  tracks.reduce((sum, t) => sum + (t.durationMs && t.durationMs > 0 ? t.durationMs : 0), 0);
+
+/** How long the entries after `index` run. */
+export const upcomingMs = (queue: readonly Timed[], index: number): number => listMs(queue.slice(index + 1));
 
 /** "12 min", "1 h 5 min", "2 h": a length to take in at a glance. */
 export const roughDuration = (ms: number): string => {

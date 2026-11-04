@@ -701,19 +701,19 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/listening.test.tsx`
 
-| ID               | Use case                                                                                                     |
-| :--------------- | :----------------------------------------------------------------------------------------------------------- |
-| `MOB-LISTEN-001` | remembers where long tracks were left, forgets them near either end, keeps 100                               |
-| `MOB-LISTEN-002` | a new list drops the queue only when songs were lined up and it lacks the playing one; run times read simply |
-| `MOB-LISTEN-003` | a snackbar with a button stays 5 s and the button runs once, closing it                                      |
-| `MOB-LISTEN-004` | offers Undo, which brings back the old queue at its song and position                                        |
-| `MOB-LISTEN-005` | no Undo for another song of the same list; Undo is gone once another song plays                              |
-| `MOB-LISTEN-006` | a shuffled play leaves the old queue in its order, and Undo turns shuffle back off                           |
-| `MOB-LISTEN-007` | a katha played again starts from where it was left and says so; Start over goes to 0:00                      |
-| `MOB-LISTEN-008` | ordinary songs start from 0, and a finished katha starts over                                                |
-| `MOB-LISTEN-009` | a next track with a resume point is not handed over for gapless; it loads from its point                     |
-| `MOB-LISTEN-010` | Play with the media volume at 0 says why nothing is heard; Turn up raises it; not again for 20 s             |
-| `MOB-LISTEN-011` | the queue screen says how many songs come next and how long they run                                         |
+| ID               | Use case                                                                                                         |
+| :--------------- | :--------------------------------------------------------------------------------------------------------------- |
+| `MOB-LISTEN-001` | remembers where long tracks were left, forgets them near either end, keeps 100                                   |
+| `MOB-LISTEN-002` | a new list drops the queue when lined-up songs would go, unless it is the same list again; run times read simply |
+| `MOB-LISTEN-003` | a snackbar with a button stays 5 s and the button runs once, closing it                                          |
+| `MOB-LISTEN-004` | offers Undo, which brings back the old queue at its song and position                                            |
+| `MOB-LISTEN-005` | no Undo for another song of the same list; Undo is gone once another song plays                                  |
+| `MOB-LISTEN-006` | a shuffled play leaves the old queue in its order, and Undo turns shuffle back off                               |
+| `MOB-LISTEN-007` | a katha played again starts from where it was left and says so; Start over goes to 0:00                          |
+| `MOB-LISTEN-008` | ordinary songs start from 0, and a finished katha starts over                                                    |
+| `MOB-LISTEN-009` | a next track with a resume point is not handed over for gapless; it loads from its point                         |
+| `MOB-LISTEN-010` | Play with the media volume at 0 says why nothing is heard; Turn up raises it; not again for 20 s                 |
+| `MOB-LISTEN-011` | the queue screen says how many songs come next and how long they run                                             |
 
 ## `__tests__/track-list.test.tsx`
 

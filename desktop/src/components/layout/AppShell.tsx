@@ -100,6 +100,15 @@ const AppShell = () => {
           icon={t.icon}
           variant={t.variant}
           onClose={() => dismissToast(t.id)}
+          action={
+            t.action && {
+              label: t.action.label,
+              onClick: () => {
+                dismissToast(t.id);
+                t.action!.onClick();
+              },
+            }
+          }
         />
       ))}
     </div>

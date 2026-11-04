@@ -136,7 +136,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     const before = get();
     const shuffle = shuffleIt ?? before.shuffle;
     // Starting another list drops the songs that were still lined up: offer them back.
-    replaced = dropsQueue(before, list)
+    replaced = dropsQueue(before, list, before.playingFrom, from ?? null)
       ? {
           queue: before.queue,
           index: before.index,

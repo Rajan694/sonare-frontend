@@ -51,6 +51,7 @@ vi.mock('../../src/audio/player', () => ({
   seek: vi.fn(),
   setVolume: vi.fn(),
   toggleMute: vi.fn(),
+  getVolume: vi.fn(() => h.status.volume),
 }));
 vi.mock('../../src/api/plays', () => ({ resetPlay: vi.fn(), maybeRecordPlay: vi.fn() }));
 vi.mock('../../src/api/sync', () => ({ setSyncOnline: vi.fn(), startBackgroundSync: vi.fn() }));
@@ -71,7 +72,8 @@ import * as plays from '../../src/api/plays';
 import * as sync from '../../src/api/sync';
 import { api } from '../../src/api/api';
 import { updateDevicePrefs } from '../../src/storage/devicePrefs';
-import { useToasts } from '../../src/store/toasts';
+import { dismissToast, useToasts, type ToastItem } from '../../src/store/toasts';
+import { noteResume, reloadResumePoints } from '../../src/storage/resumePoints';
 
 const store = () => h.store.current!;
 const ids = () => store().state.queue.map((t) => t.id);
@@ -430,5 +432,94 @@ describe('when the queue runs out', () => {
     run(() => store().playTrack(a));
     await act(async () => answer([e, f]));
     expect(ids()).toEqual(['yt:a', 'yt:b']);
+  });
+});
+
+describe('what the app does by itself, and the way back', () => {
+  const katha = makeTrack({ id: 'yt:katha', title: 'Katha', durationMs: 3_600_000 });
+  let toasts: { result: { current: ToastItem[] } };
+  const lastToast = () => toasts.result.current.at(-1);
+
+  beforeEach(() => {
+    localStorage.removeItem('sonare_resume_points');
+    reloadResumePoints();
+    toasts = renderHook(() => useToasts());
+    act(() => toasts.result.current.forEach((t) => dismissToast(t.id)));
+  });
+
+  afterEach(() => {
+    h.status.volume = 1;
+  });
+
+  it('WEB-QUEUE-032 starting another list offers Undo, which brings the old queue back at its song and position', () => {
+    run(() => store().playTrack(a, [a, b], { kind: 'Album', name: 'First' }));
+    playback({ trackId: 'yt:a', playing: true, positionMs: 42_000, durationMs: 200_000 });
+    run(() => store().playTrack(c, [c, d], { kind: 'Album', name: 'Second' }));
+    const toast = lastToast()!;
+    expect(toast).toMatchObject({ title: 'Playing Second', description: 'Your queue was replaced' });
+    expect(toast.action?.label).toBe('Undo');
+
+    run(() => toast.action!.onClick());
+    expect(ids()).toEqual(['yt:a', 'yt:b']);
+    expect(current()).toBe('yt:a');
+    expect(store().state.playingFrom).toEqual({ kind: 'Album', name: 'First' });
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:a', true, 42_000);
+  });
+
+  it('WEB-QUEUE-033 no Undo for another song of the same list, and none once another song has started', () => {
+    run(() => store().playTrack(a, [a, b, c]));
+    run(() => store().playTrack(b, [a, b, c]));
+    expect(toasts.result.current.some((t) => t.action)).toBe(false);
+
+    run(() => store().playTrack(d, [d, a]));
+    const undo = lastToast()!.action!.onClick;
+    run(() => store().next());
+    run(() => undo());
+    expect(current()).toBe('yt:a');
+    expect(ids()).toEqual(['yt:d', 'yt:a']);
+  });
+
+  it('WEB-QUEUE-034 a long track played again starts where it was left and says so; Start over goes back to 0:00', () => {
+    run(() => store().playTrack(katha, [katha, a]));
+    playback({ trackId: 'yt:katha', playing: true, positionMs: 2_052_000, durationMs: 3_600_000 });
+    run(() => store().next());
+    run(() => store().playTrack(katha, [katha, a]));
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:katha', true, 2_052_000);
+    const toast = lastToast()!;
+    expect(toast).toMatchObject({ title: 'Resuming from 34:12', description: 'Where you left off last time' });
+
+    run(() => toast.action!.onClick());
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:katha', true, 0);
+    // Started over: the next play starts from the beginning too.
+    run(() => store().next());
+    run(() => store().playTrack(katha, [katha, a]));
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:katha', true);
+  });
+
+  it('WEB-QUEUE-035 ordinary songs always start from 0, and a long next song is not prepared for a gapless start', () => {
+    run(() => store().playTrack(a, [a, b]));
+    playback({ trackId: 'yt:a', playing: true, positionMs: 100_000, durationMs: 200_000 });
+    run(() => store().next());
+    run(() => store().playTrack(a, [a, b]));
+    expect(player.playTrackId).toHaveBeenLastCalledWith('yt:a', true);
+
+    noteResume('yt:katha', 600_000, 3_600_000);
+    run(() => store().playTrack(b, [b, katha]));
+    expect(vi.mocked(player.setNext).mock.calls.at(-1)?.[0]).toBeNull();
+  });
+
+  it('WEB-QUEUE-036 starting playback with Sonare muted says so; Unmute turns it back up; not again for a while', () => {
+    playback({ volume: 0 });
+    run(() => store().playTrack(a, [a]));
+    playback({ trackId: 'yt:a', playing: true });
+    const toast = lastToast()!;
+    expect(toast).toMatchObject({ title: 'Sonare is muted' });
+    run(() => toast.action!.onClick());
+    expect(player.toggleMute).toHaveBeenCalledTimes(1);
+
+    act(() => dismissToast(toast.id));
+    playback({ playing: false });
+    playback({ playing: true });
+    expect(toasts.result.current).toHaveLength(0);
   });
 });

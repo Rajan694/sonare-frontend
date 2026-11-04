@@ -91,11 +91,18 @@ describe('shared listening helpers', () => {
     expect(readResumePoints([1, 2])).toEqual({});
   });
 
-  it('MOB-LISTEN-002 a new list drops the queue only when songs were lined up and it lacks the playing one', () => {
+  it('MOB-LISTEN-002 a new list drops the queue when lined-up songs would go, unless it is the same list again', () => {
     const state = { queue: albumA, index: 0, shuffle: false, repeat: 'off' as const };
+    const album = { kind: 'Album', name: 'A' };
     expect(dropsQueue(state, albumB)).toBe(true);
     expect(dropsQueue(state, albumA)).toBe(false); // another song from the same list
     expect(dropsQueue({ ...state, index: 2 }, albumB)).toBe(false); // nothing left after the playing song
+    // A shelf that also holds the playing song still drops the rest of the queue.
+    expect(dropsQueue(state, [albumA[0], ...albumB])).toBe(true);
+    // The same album again, after Autoplay added songs to it, is not a new list.
+    const grown = { ...state, queue: [...albumA, ...albumB] };
+    expect(dropsQueue(grown, albumA, album, album)).toBe(false);
+    expect(dropsQueue(grown, albumA, album, { kind: 'Album', name: 'B' })).toBe(true);
     expect(upcomingMs([katha, song, { durationMs: null }], 0)).toBe(200_000);
     expect(roughDuration(20_000)).toBe('under a minute');
     expect(roughDuration(12 * 60_000)).toBe('12 min');

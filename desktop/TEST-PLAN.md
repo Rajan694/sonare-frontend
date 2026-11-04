@@ -50,6 +50,11 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-QUEUE-029` | nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device |
 | `WEB-QUEUE-030` | an answer that arrives after another song was picked is dropped                                      |
 | `WEB-QUEUE-031` | the "Added to queue" toast counts only songs that really went in, and says when none did             |
+| `WEB-QUEUE-032` | starting another list offers Undo, which brings the old queue back at its song and position          |
+| `WEB-QUEUE-033` | no Undo for another song of the same list, and none once another song has started                    |
+| `WEB-QUEUE-034` | a long track played again starts where it was left and says so; Start over goes back to 0:00         |
+| `WEB-QUEUE-035` | ordinary songs always start from 0, and a long next song is not prepared for a gapless start         |
+| `WEB-QUEUE-036` | starting playback with Sonare muted says so; Unmute turns it back up; not again for a while          |
 
 ## `test/components/layout.test.tsx`
 
@@ -96,6 +101,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
 | `WEB-LAYOUT-040` | upcoming list keeps a minimum usable height and content scrolls                    |
 | `WEB-LAYOUT-041` | lists saved YouTube playlists after user playlists with cloud badge and owner      |
+| `WEB-LAYOUT-042` | a toast with a button runs it once and closes                                      |
 
 ## `test/components/music.test.tsx`
 
@@ -998,6 +1004,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-QH-004` | panel shows 1 when current is index 1, and none at index 0         |
 | `WEB-QH-005` | clicking a played row calls playAt with its queue index            |
 | `WEB-QH-006` | offline mode leaves out entries without a local copy in both lists |
+| `WEB-QH-007` | the panel says how many songs come next and how long they run      |
 
 ## `test/desktop/download-artwork.test.ts`
 
