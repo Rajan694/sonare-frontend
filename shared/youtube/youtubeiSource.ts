@@ -214,6 +214,27 @@ function songToStreamItem(item: YTMusicItem): StreamItem | null {
   };
 }
 
+/** Build a StreamItem for a song in YouTube Music's "Up next" panel (a PlaylistPanelVideo). */
+function upNextToStreamItem(item: any): StreamItem | null {
+  const id = item?.video_id;
+  const title = extractText(item?.title);
+  if (!id || !title) return null;
+  const artist = item.artists?.[0];
+  return {
+    type: 'stream',
+    url: `/watch?v=${id}`,
+    title,
+    thumbnail: largestThumb(Array.isArray(item.thumbnail) ? item.thumbnail : item.thumbnail?.contents),
+    uploaderName: artist?.name ?? (typeof item.author === 'string' ? item.author : undefined),
+    uploaderUrl: artist?.channel_id ? `/channel/${artist.channel_id}` : undefined,
+    duration: item.duration?.seconds ?? undefined,
+    views: -1,
+    uploaded: -1,
+    uploaderVerified: false,
+    isShort: false,
+  };
+}
+
 /** Build a StreamItem for an album. */
 function albumToStreamItem(item: YTMusicItem): StreamItem | null {
   const title = extractText(item.title) ?? extractText(item.name);
@@ -990,9 +1011,12 @@ export function createYoutubeiSource(
       const videoCountParsed = parseVideoCount(info.total_items);
       const videos = videoCountParsed >= 0 ? videoCountParsed : relatedStreams.length;
 
+      // The page also carries tokens for other shelves (recommended videos): a playlist that
+      // says it has no more songs gets no next page, or "Load more" would add unrelated videos.
       const nextToken =
-        extractContinuationToken(res.memo) ??
-        extractContinuationToken(res.page?.contents_memo);
+        res.has_continuation === false
+          ? null
+          : (extractContinuationToken(res.memo) ?? extractContinuationToken(res.page?.contents_memo));
       const nextpage = nextToken ? JSON.stringify({ token: nextToken, playlistId: cleanId }) : null;
 
       return {
@@ -1063,6 +1087,20 @@ export function createYoutubeiSource(
     }
   }
 
+  // ---- related -------------------------------------------------------------
+  /** YouTube Music's radio for a song (the automix in its "Up next" panel), the seed included. */
+  async function related(videoId: string): Promise<StreamItem[]> {
+    if (typeof current.music.getUpNext !== 'function') {
+      throw new SourceError('unavailable', 'Up next endpoint not available on this Innertube instance');
+    }
+    try {
+      const panel = await current.music.getUpNext(videoId, true);
+      return (panel.contents ?? []).map(upNextToStreamItem).filter(Boolean) as StreamItem[];
+    } catch (err) {
+      throw classifyError(err);
+    }
+  }
+
   return {
     getStream,
     refresh,
@@ -1074,5 +1112,6 @@ export function createYoutubeiSource(
     channelTabs,
     playlist,
     playlistNextPage,
+    related,
   };
 }

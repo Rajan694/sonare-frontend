@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type {
   InnertubeLike,
   YTBasicInfoResult,
@@ -73,6 +73,7 @@ function fakeInnertube(
     getPlaylist?: (id: string) => Promise<any>;
     getChannel?: (id: string) => Promise<any>;
     getTrending?: () => Promise<any>;
+    getUpNext?: (id: string, automix?: boolean) => Promise<any>;
     actions?: InnertubeLike['actions'];
   } = {},
 ): InnertubeLike {
@@ -81,6 +82,7 @@ function fakeInnertube(
     music: {
       search: (opts.search ?? (async () => ({ contents: [] }))) as InnertubeLike['music']['search'],
       getSearchSuggestions: opts.getSearchSuggestions ?? (async () => []),
+      ...(opts.getUpNext ? { getUpNext: opts.getUpNext } : {}),
     },
     ...(opts.getPlaylist ? { getPlaylist: opts.getPlaylist } : {}),
     ...(opts.getChannel ? { getChannel: opts.getChannel } : {}),
@@ -1130,5 +1132,69 @@ describe('youtubeiSource', () => {
     expect(probeRange(4_695_894)).toEqual({ start: 1_200_000, end: 1_201_023 });
     expect(probeRange(500_000)).toEqual({ start: 498_976, end: 499_999 });
     expect(probeRange(-1)).toEqual({ start: 1_200_000, end: 1_201_023 });
+  });
+
+  it('WEB-CAT-086: a playlist that says it has no more songs gets no next page, whatever other tokens its page has', async () => {
+    // YouTube sends a continuation for its recommended-videos shelf with every playlist page.
+    const memo = new Map([
+      ['ContinuationItem', [{ type: 'ContinuationItem', endpoint: { payload: { token: 'recommended_token' } } }]],
+    ]);
+    const page = (has_continuation: boolean) => ({
+      info: { title: 'Katha', total_items: '10 videos' },
+      videos: [{ id: 'vid1', title: 'Day 1', duration: { seconds: 8000 } }],
+      has_continuation,
+      memo,
+    });
+    let full = true;
+    const src = createYoutubeiSource(fakeInnertube({ getPlaylist: async () => page(!full) }));
+    expect((await src.playlist('PLkatha')).nextpage).toBeNull();
+    full = false;
+    expect((await src.playlist('PLkatha')).nextpage).toBe(
+      JSON.stringify({ token: 'recommended_token', playlistId: 'PLkatha' }),
+    );
+  });
+
+  it("WEB-CAT-087: related maps YouTube Music's up-next automix to stream items", async () => {
+    const getUpNext = vi.fn().mockResolvedValue({
+      contents: [
+        {
+          type: 'PlaylistPanelVideo',
+          video_id: 'seed1',
+          title: { text: 'Never Gonna Give You Up' },
+          author: 'Rick Astley',
+          duration: { text: '3:34', seconds: 214 },
+          thumbnail: [{ url: 'https://small.jpg', width: 60, height: 60 }],
+        },
+        {
+          type: 'PlaylistPanelVideo',
+          video_id: 'next1',
+          title: { text: 'Together Forever' },
+          author: 'Rick Astley',
+          artists: [{ name: 'Rick Astley', channel_id: 'UCrick' }],
+          duration: { text: '3:24', seconds: 204 },
+          thumbnail: [
+            { url: 'https://small.jpg', width: 60, height: 60 },
+            { url: 'https://big.jpg', width: 544, height: 544 },
+          ],
+        },
+        { type: 'AutomixPreviewVideo' },
+      ],
+    });
+    const src = createYoutubeiSource(fakeInnertube({ getUpNext }));
+    const items = await src.related('seed1');
+    expect(getUpNext).toHaveBeenCalledWith('seed1', true);
+    expect(items.map((i) => i.url)).toEqual(['/watch?v=seed1', '/watch?v=next1']);
+    expect(items[1]).toMatchObject({
+      type: 'stream',
+      title: 'Together Forever',
+      uploaderName: 'Rick Astley',
+      uploaderUrl: '/channel/UCrick',
+      thumbnail: 'https://big.jpg',
+      duration: 204,
+    });
+    expect(items[0].uploaderName).toBe('Rick Astley');
+
+    // Without the endpoint, the backend answers instead.
+    await expect(createYoutubeiSource(fakeInnertube()).related('x')).rejects.toThrow(SourceError);
   });
 });

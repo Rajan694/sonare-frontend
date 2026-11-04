@@ -235,68 +235,69 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/screens-player.test.tsx`
 
-| ID               | Use case                                                                                          |
-| :--------------- | :------------------------------------------------------------------------------------------------ |
-| `MOB-NP-001`     | shows the song, where it plays from, its quality and the time left                                |
-| `MOB-NP-002`     | a downloaded song is shown as on this device                                                      |
-| `MOB-NP-003`     | transport buttons drive the player                                                                |
-| `MOB-NP-004`     | tapping the waveform seeks to that point                                                          |
-| `MOB-NP-005`     | a guest hearting the song is asked to sign up; a signed-in user saves it                          |
-| `MOB-NP-006`     | playback errors are shown with Retry; lyrics, queue, equalizer and the song menu are one tap away |
-| `MOB-NP-007`     | with nothing playing it says so and can be closed                                                 |
-| `MOB-NP-008`     | Up next lists the queue after this song, a tap jumps to it, and it hides at the end               |
-| `MOB-NP-009`     | nothing comes after the last song, so Up next is hidden                                           |
-| `MOB-NP-010`     | the Up next "Open queue" link opens the Queue screen                                              |
-| `MOB-NP-011`     | a song whose lyrics cannot be found shows a disabled Lyrics button; while unknown it is enabled   |
-| `MOB-Q-001`      | shows what is next, counts server songs, and plays a tapped song                                  |
-| `MOB-Q-002`      | "Clear queue" keeps only the current song; then it says the queue has ended                       |
-| `MOB-Q-003`      | a song's × removes it from the queue                                                              |
-| `MOB-Q-004`      | saving the queue creates a playlist with every queued song, named "Queue 1"                       |
-| `MOB-Q-005`      | a failed save says why; shuffle and repeat work from here                                         |
-| `MOB-Q-006`      | an empty queue says so                                                                            |
-| `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                       |
-| `MOB-Q-008`      | saving the queue names it one past the highest "Queue N" already used                             |
-| `MOB-Q-009`      | 10 or more upcoming songs all render in the queue list                                            |
-| `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                            |
-| `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                       |
-| `MOB-LYR-003`    | plain text view shows the words without timing                                                    |
-| `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files        |
-| `MOB-LYR-005`    | LRCLIB down shows the reason and a retry, not "No lyrics found"                                   |
-| `MOB-LYR-006`    | "Earlier" and "Later" move the timing at once and save once after the taps stop                   |
-| `MOB-LYR-007`    | lyrics are read-only: there is no Edit control and no way to replace the words                    |
-| `MOB-LYR-008`    | synced lyrics have an Auto-scroll switch, on by default, remembered on the phone                  |
-| `MOB-LYR-009`    | a timing change still waiting when the screen closes is saved                                     |
-| `MOB-EQ-001`     | presets and switches respond to taps                                                              |
-| `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                                 |
-| `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                           |
-| `MOB-EQ-004`     | bands stop at ±12 dB                                                                              |
-| `MOB-EQ-005`     | bass boost and virtualizer adjust and show their amount                                           |
-| `MOB-EQ-006`     | speed, crossfade and normalization change what the player gets                                    |
-| `MOB-EQ-007`     | switching the equalizer off freezes the effects but not speed or transitions                      |
-| `MOB-DL-S-001`   | with nothing downloaded it says so                                                                |
-| `MOB-DL-S-002`   | shows progress for running downloads and lets them be paused, resumed or retried                  |
-| `MOB-DL-S-003`   | finished songs play as a queue of downloads; a moved file is marked                               |
-| `MOB-DL-S-004`   | deleting asks first and deletes the file; a moved file is only taken off the list                 |
-| `MOB-DL-S-005`   | "Delete all" removes every finished download after asking                                         |
-| `MOB-SET-S-001`  | a guest is offered sign-in and sign-up                                                            |
-| `MOB-SET-S-002`  | signing out asks first                                                                            |
-| `MOB-SET-S-003`  | the download format changes the quality description and is saved                                  |
-| `MOB-SET-S-004`  | the download location can be changed or reset                                                     |
-| `MOB-SET-S-005`  | a folder that cannot be used is reported                                                          |
-| `MOB-SET-S-006`  | an unverified account enters the emailed code or sends a new one; verified accounts see no prompt |
-| `MOB-SET-S-007`  | streaming quality is picked in Playback and saved                                                 |
-| `MOB-SIGNIN-001` | checks the form before sending anything                                                           |
-| `MOB-SIGNIN-002` | signs in with a normalised email and goes back                                                    |
-| `MOB-SIGNIN-003` | a gate visit opens on sign-up, needs a name and 8+ character password                             |
-| `MOB-SIGNIN-004` | server and network failures are shown plainly                                                     |
-| `MOB-SIGNIN-005` | "keep listening" leaves without an account                                                        |
-| `MOB-SIGNIN-006` | "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in           |
-| `MOB-SIGNIN-007` | a wrong code or a failed request shows why, and "Back to sign in" returns to the form             |
-| `MOB-SIGNIN-008` | after signing up, the emailed code can be entered before going back, or skipped                   |
-| `MOB-MODE-001`   | confirming switches to Offline Mode and goes back                                                 |
-| `MOB-MODE-002`   | cancelling keeps the current mode                                                                 |
-| `MOB-MODE-003`   | "stay offline automatically" starts off, and turning it on is remembered                          |
-| `MOB-FOLD-001`   | a phone with no scanned folders shows no made-up folders                                          |
+| ID               | Use case                                                                                           |
+| :--------------- | :------------------------------------------------------------------------------------------------- |
+| `MOB-NP-001`     | shows the song, where it plays from, its quality and the time left                                 |
+| `MOB-NP-002`     | a downloaded song is shown as on this device                                                       |
+| `MOB-NP-003`     | transport buttons drive the player                                                                 |
+| `MOB-NP-004`     | tapping the waveform seeks to that point                                                           |
+| `MOB-NP-005`     | a guest hearting the song is asked to sign up; a signed-in user saves it                           |
+| `MOB-NP-006`     | playback errors are shown with Retry; lyrics, queue, equalizer and the song menu are one tap away  |
+| `MOB-NP-007`     | with nothing playing it says so and can be closed                                                  |
+| `MOB-NP-008`     | Up next lists the queue after this song, a tap jumps to it, and it hides at the end                |
+| `MOB-NP-009`     | nothing comes after the last song, so Up next is hidden                                            |
+| `MOB-NP-010`     | the Up next "Open queue" link opens the Queue screen                                               |
+| `MOB-NP-011`     | a song whose lyrics cannot be found shows a disabled Lyrics button; while unknown it is enabled    |
+| `MOB-NP-012`     | rewind and fast-forward jump by the step set in Settings, inside the song, and hide when it is Off |
+| `MOB-Q-001`      | shows what is next, counts server songs, and plays a tapped song                                   |
+| `MOB-Q-002`      | "Clear queue" keeps only the current song; then it says the queue has ended                        |
+| `MOB-Q-003`      | a song's × removes it from the queue                                                               |
+| `MOB-Q-004`      | saving the queue creates a playlist with every queued song, named "Queue 1"                        |
+| `MOB-Q-005`      | a failed save says why; shuffle and repeat work from here                                          |
+| `MOB-Q-006`      | an empty queue says so                                                                             |
+| `MOB-Q-007`      | a queued song moves with its handle (screen readers: increment / decrement)                        |
+| `MOB-Q-008`      | saving the queue names it one past the highest "Queue N" already used                              |
+| `MOB-Q-009`      | 10 or more upcoming songs all render in the queue list                                             |
+| `MOB-LYR-001`    | highlights the line being sung and taps jump to a line                                             |
+| `MOB-LYR-002`    | the offset shifts which line is current and where taps land                                        |
+| `MOB-LYR-003`    | plain text view shows the words without timing                                                     |
+| `MOB-LYR-004`    | no lyrics, or a local file, says none were found without asking the server for local files         |
+| `MOB-LYR-005`    | LRCLIB down shows the reason and a retry, not "No lyrics found"                                    |
+| `MOB-LYR-006`    | "Earlier" and "Later" move the timing at once and save once after the taps stop                    |
+| `MOB-LYR-007`    | lyrics are read-only: there is no Edit control and no way to replace the words                     |
+| `MOB-LYR-008`    | synced lyrics have an Auto-scroll switch, on by default, remembered on the phone                   |
+| `MOB-LYR-009`    | a timing change still waiting when the screen closes is saved                                      |
+| `MOB-EQ-001`     | presets and switches respond to taps                                                               |
+| `MOB-EQ-002`     | a chosen preset is still selected when the screen is opened again                                  |
+| `MOB-EQ-003`     | moving a band starts a Custom curve from the preset and shows its level                            |
+| `MOB-EQ-004`     | bands stop at ±12 dB                                                                               |
+| `MOB-EQ-005`     | bass boost and virtualizer adjust and show their amount                                            |
+| `MOB-EQ-006`     | speed, crossfade and normalization change what the player gets                                     |
+| `MOB-EQ-007`     | switching the equalizer off freezes the effects but not speed or transitions                       |
+| `MOB-DL-S-001`   | with nothing downloaded it says so                                                                 |
+| `MOB-DL-S-002`   | shows progress for running downloads and lets them be paused, resumed or retried                   |
+| `MOB-DL-S-003`   | finished songs play as a queue of downloads; a moved file is marked                                |
+| `MOB-DL-S-004`   | deleting asks first and deletes the file; a moved file is only taken off the list                  |
+| `MOB-DL-S-005`   | "Delete all" removes every finished download after asking                                          |
+| `MOB-SET-S-001`  | a guest is offered sign-in and sign-up                                                             |
+| `MOB-SET-S-002`  | signing out asks first                                                                             |
+| `MOB-SET-S-003`  | the download format changes the quality description and is saved                                   |
+| `MOB-SET-S-004`  | the download location can be changed or reset                                                      |
+| `MOB-SET-S-005`  | a folder that cannot be used is reported                                                           |
+| `MOB-SET-S-006`  | an unverified account enters the emailed code or sends a new one; verified accounts see no prompt  |
+| `MOB-SET-S-007`  | streaming quality is picked in Playback and saved                                                  |
+| `MOB-SIGNIN-001` | checks the form before sending anything                                                            |
+| `MOB-SIGNIN-002` | signs in with a normalised email and goes back                                                     |
+| `MOB-SIGNIN-003` | a gate visit opens on sign-up, needs a name and 8+ character password                              |
+| `MOB-SIGNIN-004` | server and network failures are shown plainly                                                      |
+| `MOB-SIGNIN-005` | "keep listening" leaves without an account                                                         |
+| `MOB-SIGNIN-006` | "Forgot password?" emails a code, checks it, sets the new password and fills in sign-in            |
+| `MOB-SIGNIN-007` | a wrong code or a failed request shows why, and "Back to sign in" returns to the form              |
+| `MOB-SIGNIN-008` | after signing up, the emailed code can be entered before going back, or skipped                    |
+| `MOB-MODE-001`   | confirming switches to Offline Mode and goes back                                                  |
+| `MOB-MODE-002`   | cancelling keeps the current mode                                                                  |
+| `MOB-MODE-003`   | "stay offline automatically" starts off, and turning it on is remembered                           |
+| `MOB-FOLD-001`   | a phone with no scanned folders shows no made-up folders                                           |
 
 ## `__tests__/store.test.ts`
 
@@ -355,21 +356,22 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/playback-extras.test.ts`
 
-| ID                | Use case                                                                                |
-| ----------------- | --------------------------------------------------------------------------------------- |
-| `MOB-RESTORE-001` | the queue, track, position, modes and source are saved as they change                   |
-| `MOB-RESTORE-002` | on the next start it comes back paused where it was, and the player resumes there       |
-| `MOB-RESTORE-003` | a damaged save, or one whose track is missing, is ignored                               |
-| `MOB-RESTORE-004` | a fresh install signed in gets the queue the account remembers                          |
-| `MOB-RESTORE-005` | signed in, the queue is also saved to the account                                       |
-| `MOB-RESTORE-006` | signed in, a newer queue from another device replaces the phone's; an older one doesn't |
-| `MOB-SERVER-001`  | debug builds talk to localhost (adb reverse); there is no other address                 |
-| `MOB-SERVER-002`  | an address saved by an older build is ignored                                           |
-| `MOB-PREFS-001`   | the lyrics language is kept on the phone and restored                                   |
-| `MOB-PREFS-002`   | an unknown saved script is ignored                                                      |
-| `MOB-PREFS-003`   | lyrics are asked for in the chosen script; "original" sends none                        |
-| `MOB-PREFS-004`   | the auto-scroll choice is kept on the phone and restored                                |
-| `MOB-FROM-001`    | playTrack remembers where the queue came from; moving along keeps it                    |
+| ID                | Use case                                                                                 |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| `MOB-RESTORE-001` | the queue, track, position, modes and source are saved as they change                    |
+| `MOB-RESTORE-002` | on the next start it comes back paused where it was, and the player resumes there        |
+| `MOB-RESTORE-003` | a damaged save, or one whose track is missing, is ignored                                |
+| `MOB-RESTORE-004` | a fresh install signed in gets the queue the account remembers                           |
+| `MOB-RESTORE-005` | signed in, the queue is also saved to the account                                        |
+| `MOB-RESTORE-006` | signed in, a newer queue from another device replaces the phone's; an older one doesn't  |
+| `MOB-SERVER-001`  | debug builds talk to localhost (adb reverse); there is no other address                  |
+| `MOB-SERVER-002`  | an address saved by an older build is ignored                                            |
+| `MOB-PREFS-001`   | the lyrics language is kept on the phone and restored                                    |
+| `MOB-PREFS-002`   | an unknown saved script is ignored                                                       |
+| `MOB-PREFS-003`   | lyrics are asked for in the chosen script; "original" sends none                         |
+| `MOB-PREFS-004`   | the auto-scroll choice is kept on the phone and restored                                 |
+| `MOB-PREFS-005`   | the rewind and fast-forward step is kept on the phone; an unknown one falls back to 10 s |
+| `MOB-FROM-001`    | playTrack remembers where the queue came from; moving along keeps it                     |
 
 ## `__tests__/screens-extras.test.tsx`
 
@@ -535,11 +537,11 @@ navigation mock live in `test-utils/`.
 
 ## `__tests__/autoplay.test.ts`
 
-| ID             | Use case                                                                                        |
-| :------------- | :---------------------------------------------------------------------------------------------- |
-| `MOB-AUTO-001` | fewer than 10 upcoming songs asks once for similar songs and adds the new ones, which play next |
-| `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                       |
-| `MOB-AUTO-003` | 10 or more upcoming songs does not ask for similar songs until queue drops below 10             |
+| ID             | Use case                                                                                   |
+| :------------- | :----------------------------------------------------------------------------------------- |
+| `MOB-AUTO-001` | fewer than 10 upcoming songs asks for similar songs and adds the new ones, which play next |
+| `MOB-AUTO-002` | nothing is asked for with Autoplay off, in Offline Mode, or on repeat all                  |
+| `MOB-AUTO-003` | 10 or more upcoming songs does not ask for similar songs until queue drops below 10        |
 
 ## `__tests__/library.test.tsx`
 

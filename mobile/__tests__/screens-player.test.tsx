@@ -79,7 +79,7 @@ beforeEach(() => {
   useLibraryStore.setState({ favouriteIds: {}, playlists: [] });
   useTrackMenuStore.setState({ track: null });
   useLyricsAvailabilityStore.setState({ status: {} });
-  useDevicePrefsStore.setState({ lyricsScript: 'original', lyricsAutoScroll: true });
+  useDevicePrefsStore.setState({ lyricsScript: 'original', lyricsAutoScroll: true, seekStep: 10 });
   jest.spyOn(api, 'peaks').mockResolvedValue({ peaks: [1, 2, 3] } as never);
   // Now Playing asks for the current song's lyrics once so the Lyrics button knows its state.
   jest.spyOn(api, 'lyrics').mockResolvedValue({ synced: false, lines: [], offsetMs: 0 } as never);
@@ -112,6 +112,28 @@ describe('Now Playing', () => {
     expect(usePlayerStore.getState().shuffle).toBe(true);
     fireEvent.press(getByLabelText('Repeat off'));
     expect(usePlayerStore.getState().repeat).toBe('all');
+  });
+
+  it('MOB-NP-012 rewind and fast-forward jump by the step set in Settings, inside the song, and hide when it is Off', () => {
+    const { getByLabelText, queryByLabelText, rerender } = render(<NowPlayingScreen />);
+    fireEvent.press(getByLabelText('Forward 10 seconds'));
+    expect(usePlayerStore.getState().seekRequest?.ms).toBe(70_000);
+    fireEvent.press(getByLabelText('Back 10 seconds'));
+    expect(usePlayerStore.getState().seekRequest?.ms).toBe(60_000);
+    // Near the end, fast-forward stops a second short of it rather than skipping the song.
+    act(() => usePlayerStore.setState({ positionMs: 235_000 }));
+    act(() => useDevicePrefsStore.setState({ seekStep: 30 }));
+    rerender(<NowPlayingScreen />);
+    fireEvent.press(getByLabelText('Forward 30 seconds'));
+    expect(usePlayerStore.getState().seekRequest?.ms).toBe(239_000);
+    act(() => usePlayerStore.setState({ positionMs: 5_000 }));
+    fireEvent.press(getByLabelText('Back 30 seconds'));
+    expect(usePlayerStore.getState().seekRequest?.ms).toBe(0);
+    act(() => useDevicePrefsStore.setState({ seekStep: 0 }));
+    rerender(<NowPlayingScreen />);
+    expect(queryByLabelText(/Back \d+ seconds/)).toBeNull();
+    expect(queryByLabelText(/Forward \d+ seconds/)).toBeNull();
+    expect(getByLabelText('Next track')).toBeTruthy();
   });
 
   it('MOB-NP-004 tapping the waveform seeks to that point', () => {

@@ -360,6 +360,7 @@ const App = () => {
   useEffect(() => {
     void autoplay.check();
   }, [autoplay, playerState.index, playerState.queue, playerState.repeat]);
+  useEffect(() => () => autoplay.reset(), [autoplay]);
 
   const toggleShuffle = () => {
     setPlayerState((prev) => queueOps.toggleShuffle(prev));

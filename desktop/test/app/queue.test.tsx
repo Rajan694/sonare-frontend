@@ -1,6 +1,6 @@
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, renderHook, waitFor } from '@testing-library/react';
+import { act, cleanup, render, renderHook, waitFor } from '@testing-library/react';
 import type { PlayerStore } from '../../src/store/playerContext';
 import type { PlaybackStatus } from '../../src/audio/player';
 import { makeTrack } from '../helpers/fixtures';
@@ -99,7 +99,11 @@ beforeEach(() => {
   render(<App />);
 });
 
-afterEach(() => vi.clearAllMocks());
+afterEach(() => {
+  // Unmounted, so an App from an earlier test can't ask the next test's mocks for similar songs.
+  cleanup();
+  vi.clearAllMocks();
+});
 
 describe('starting playback', () => {
   it('WEB-QUEUE-001 playing a song from a list queues the list and starts that song', () => {
@@ -385,9 +389,10 @@ describe('when the queue runs out', () => {
     expect(ids().slice(2)).toEqual(freshTen.map((t) => t.id));
     trackEnds();
     expect(current()).toBe('yt:top0');
-    // Once playback advances, upcoming drops below 10 so it tops up using the last catalog song
-    await waitFor(() => expect(related).toHaveBeenCalledTimes(2));
-    expect(related).toHaveBeenLastCalledWith('yt:top9');
+    // Once playback advances, upcoming drops below 10 so it tops up using the last catalog song,
+    // and with nothing new there, the songs before it.
+    await waitFor(() => expect(related).toHaveBeenCalledTimes(4));
+    expect(related.mock.calls.slice(1).map(([id]) => id)).toEqual(['yt:top9', 'yt:top8', 'yt:top7']);
   });
 
   it('WEB-QUEUE-029 nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device', async () => {

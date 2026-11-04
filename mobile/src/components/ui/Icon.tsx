@@ -389,6 +389,24 @@ const GLYPHS = {
       </>
     ),
   },
+  rewind: {
+    solid: true,
+    body: (
+      <>
+        <Path d="M11.4 6.4v11.2L3.4 12z" />
+        <Path d="M20.6 6.4v11.2L12.6 12z" />
+      </>
+    ),
+  },
+  'fast-forward': {
+    solid: true,
+    body: (
+      <>
+        <Path d="M12.6 6.4v11.2l8-5.6z" />
+        <Path d="M3.4 6.4v11.2l8-5.6z" />
+      </>
+    ),
+  },
   output: {
     solid: false,
     body: (

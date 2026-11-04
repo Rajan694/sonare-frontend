@@ -10,6 +10,7 @@ import { useArtColor } from '../lib/useArtColor';
 import Waveform from '../components/music/Waveform';
 import TrackDownloadButton from '../components/music/TrackDownloadButton';
 import LyricsButton from '../components/music/LyricsButton';
+import SeekButton from '../components/music/SeekButton';
 import { addCurrentToPlaylist } from '../components/layout/BottomPlayer';
 import { IconButton } from '../components/ui/Button';
 import Icon from '../components/ui/Icon';
@@ -275,6 +276,7 @@ const NowPlaying = () => {
               onClick={previous}
               className="text-t1"
             />
+            <SeekButton direction="back" size={40} className="text-t1" />
             <button
               className={cn(
                 'playbtn playbtn-56 flex-none transition-transform active:scale-95',
@@ -292,6 +294,7 @@ const NowPlaying = () => {
                 className={cn(isLoading && 'animate-spin')}
               />
             </button>
+            <SeekButton direction="forward" size={40} className="text-t1" />
             <IconButton icon="skip-forward" label="Next track" kbd="→→" size={44} onClick={next} className="text-t1" />
             <IconButton
               icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'}

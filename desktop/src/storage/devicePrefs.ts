@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react';
+import { DEFAULT_SEEK_STEP, sanitizeSeekStep, type SeekStep } from '../../../shared/player/seek';
 
 /**
  * Preferences that belong to this device rather than the account: the script lyrics are
- * shown in, and whether similar songs play when the queue ends. Kept in localStorage. Sonare
- * plays on the system's audio output.
+ * shown in, whether similar songs play when the queue ends, and how far the rewind and
+ * fast-forward buttons jump. Kept in localStorage. Sonare plays on the system's audio output.
  */
 
 export type LyricsScript =
@@ -26,10 +27,12 @@ export interface DevicePrefs {
   lyricsScript: LyricsScript;
   /** Keeps at least 10 songs lined up with similar ones (shared/player/autoplay.ts). */
   autoplaySimilar: boolean;
+  /** Seconds the rewind and fast-forward buttons jump; 0 hides them (shared/player/seek.ts). */
+  seekStep: SeekStep;
 }
 
 const KEY = 'sonare_device_prefs';
-const DEFAULTS: DevicePrefs = { lyricsScript: 'original', autoplaySimilar: true };
+const DEFAULTS: DevicePrefs = { lyricsScript: 'original', autoplaySimilar: true, seekStep: DEFAULT_SEEK_STEP };
 
 const read = (): DevicePrefs => {
   try {
@@ -41,7 +44,7 @@ const read = (): DevicePrefs => {
     const autoplaySimilar =
       typeof saved.autoplaySimilar === 'boolean' ? saved.autoplaySimilar : DEFAULTS.autoplaySimilar;
     // Only known keys: an output device saved by an older version is dropped.
-    return { lyricsScript, autoplaySimilar };
+    return { lyricsScript, autoplaySimilar, seekStep: sanitizeSeekStep(saved.seekStep) };
   } catch {
     return DEFAULTS;
   }

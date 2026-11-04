@@ -26,13 +26,14 @@ afterEach(() => {
 });
 
 describe('autoplay', () => {
-  it('MOB-AUTO-001 fewer than 10 upcoming songs asks once for similar songs and adds the new ones, which play next', async () => {
+  it('MOB-AUTO-001 fewer than 10 upcoming songs asks for similar songs and adds the new ones, which play next', async () => {
     const related = jest.spyOn(api, 'relatedTracks').mockResolvedValue([a, e, t('local:x'), f]);
     usePlayerStore.getState().playTrack(a, [a, b]);
     await settle();
-    expect(related).toHaveBeenCalledTimes(1);
-    expect(related).toHaveBeenCalledWith('yt:b');
+    expect(related).toHaveBeenNthCalledWith(1, 'yt:b');
     expect(ids()).toEqual(['yt:a', 'yt:b', 'yt:e', 'yt:f']);
+    // Still under 10 ahead: it went on asking with the newest songs, which had nothing new.
+    expect(related.mock.calls.slice(1).map(([id]) => id)).toEqual(['yt:f', 'yt:e', 'yt:b']);
     usePlayerStore.getState().onTrackEnded();
     expect(usePlayerStore.getState().currentTrack?.id).toBe('yt:b');
     usePlayerStore.getState().onTrackEnded();

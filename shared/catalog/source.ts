@@ -25,4 +25,6 @@ export interface YouTubeSource {
   channelTabs(data: string): Promise<ChannelTabPage>;
   playlist(id: string): Promise<Playlist>;
   playlistNextPage(id: string, nextpage: string): Promise<PlaylistPage>;
+  /** Songs like this one, for autoplay (the backend gets them from Piped's related streams instead). */
+  related(videoId: string): Promise<StreamItem[]>;
 }

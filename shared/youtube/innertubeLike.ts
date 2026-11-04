@@ -135,6 +135,8 @@ export interface YTMusicSearchResult {
 export interface InnertubeMusicLike {
   search(q: string, opts: { type: 'song' | 'album' | 'artist' | 'playlist' }): Promise<YTMusicSearchResult>;
   getSearchSuggestions(q: string): Promise<YTSuggestionsSection[]>;
+  /** The "Up next" panel for a song; with automix, YouTube Music's radio for it. */
+  getUpNext?(videoId: string, automix?: boolean): Promise<{ contents?: any[] }>;
 }
 
 /** A video item inside a playlist or channel. */
