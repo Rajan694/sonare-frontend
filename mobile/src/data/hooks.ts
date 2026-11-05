@@ -4,6 +4,21 @@ import { api } from './api';
 import type { Track, Page } from './types';
 import { fetchAllPages } from '../../../shared/api/pages';
 
+/**
+ * The last result of each cached loader (useAsync's `cacheKey`, usePagedTracks' first page), so a
+ * screen opened again shows what it had at once and refreshes it quietly instead of spinning.
+ */
+const cache = new Map<string, unknown>();
+const MAX_CACHED = 60;
+
+const remember = (key: string, value: unknown) => {
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > MAX_CACHED) cache.delete(cache.keys().next().value!);
+};
+
+export const clearLoaderCache = (): void => cache.clear();
+
 export interface AsyncState<T> {
   data: T | null;
   loading: boolean;
@@ -14,21 +29,31 @@ export interface AsyncState<T> {
 /**
  * Run an async loader and track its result. `deps` re-run it; `refetchOnFocus` re-runs it
  * whenever the screen comes back into view (lists the user can change from elsewhere).
+ *
+ * With a `cacheKey`, the last result for the same deps shows straight away (no spinner) while a
+ * fresh one loads; if that refresh fails, what is shown stays and no error appears.
  */
 export const useAsync = <T>(
   load: () => Promise<T>,
   deps: unknown[],
-  { enabled = true, refetchOnFocus = false }: { enabled?: boolean; refetchOnFocus?: boolean } = {},
+  {
+    enabled = true,
+    refetchOnFocus = false,
+    cacheKey,
+  }: { enabled?: boolean; refetchOnFocus?: boolean; cacheKey?: string } = {},
 ): AsyncState<T> => {
-  const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(enabled);
+  const depKey = JSON.stringify(deps);
+  const key = cacheKey ? `${cacheKey}:${depKey}` : null;
+  const [data, setData] = useState<T | null>(() =>
+    enabled && key ? ((cache.get(key) as T | undefined) ?? null) : null,
+  );
+  const [loading, setLoading] = useState(enabled && !(key && cache.has(key)));
   const [error, setError] = useState<Error | null>(null);
   const [nonce, setNonce] = useState(0);
   const loadRef = useRef(load);
   loadRef.current = load;
 
   const refetch = useCallback(() => setNonce((n) => n + 1), []);
-  const depKey = JSON.stringify(deps);
 
   useEffect(() => {
     if (!enabled) {
@@ -36,17 +61,22 @@ export const useAsync = <T>(
       return;
     }
     let live = true;
-    setLoading(true);
+    const quiet = !!key && cache.has(key);
+    if (quiet) setData(cache.get(key!) as T);
+    setLoading(!quiet);
     setError(null);
     loadRef
       .current()
-      .then((res) => live && setData(res))
-      .catch((err) => live && setError(err instanceof Error ? err : new Error(String(err))))
+      .then((res) => {
+        if (key) remember(key, res);
+        if (live) setData(res);
+      })
+      .catch((err) => live && !quiet && setError(err instanceof Error ? err : new Error(String(err))))
       .finally(() => live && setLoading(false));
     return () => {
       live = false;
     };
-  }, [enabled, nonce, depKey]);
+  }, [enabled, nonce, depKey, key]);
 
   // Skip the first focus: the effect above already loaded on mount.
   const focusedOnce = useRef(false);
@@ -89,21 +119,24 @@ export const usePagedTracks = (
   { enabled = true, refetchOnFocus = false }: { enabled?: boolean; refetchOnFocus?: boolean } = {},
 ): PagedTracksState => {
   const PAGE = 100;
-  const [items, setItems] = useState<Track[]>([]);
+  const depKey = JSON.stringify([filter, sort, ...deps]);
+  // The first page as it was last time, shown at once while it reloads (see `cache`).
+  const firstKey = `libraryTracks:${depKey}`;
+  const firstPage = enabled ? (cache.get(firstKey) as Page<Track> | undefined) : undefined;
+  const [items, setItems] = useState<Track[]>(() => firstPage?.items ?? []);
   const itemsRef = useRef<Track[]>([]);
   itemsRef.current = items;
-  const [total, setTotal] = useState<number | null>(null);
-  const [loading, setLoading] = useState(enabled);
+  const [total, setTotal] = useState<number | null>(() => firstPage?.meta?.total ?? null);
+  const [loading, setLoading] = useState(enabled && !firstPage);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [loadMoreError, setLoadMoreError] = useState<Error | null>(null);
-  const [cursor, setCursor] = useState<string | undefined>(undefined);
+  const [cursor, setCursor] = useState<string | undefined>(() => firstPage?.meta?.nextCursor);
   const cursorRef = useRef<string | undefined>(undefined);
   cursorRef.current = cursor;
   const [nonce, setNonce] = useState(0);
   const generation = useRef(0);
   const lastDepKey = useRef<string | null>(null);
-  const depKey = JSON.stringify([filter, sort, ...deps]);
 
   const asError = (err: unknown) => (err instanceof Error ? err : new Error(String(err)));
 
@@ -124,17 +157,19 @@ export const usePagedTracks = (
     }
     const isRefetch = lastDepKey.current === depKey;
     lastDepKey.current = depKey;
-    setLoading(true);
+    const cached = cache.get(firstKey) as Page<Track> | undefined;
+    setLoading(!cached);
     setError(null);
     setLoadMoreError(null);
     if (!isRefetch) {
-      setItems([]);
-      setCursor(undefined);
-      setTotal(null);
+      setItems(cached?.items ?? []);
+      setCursor(cached?.meta?.nextCursor);
+      setTotal(cached?.meta?.total ?? null);
     }
     api
       .libraryTracks({ filter, sort, limit: PAGE })
       .then((page: Page<Track>) => {
+        remember(firstKey, page);
         if (gen !== generation.current) return;
         setItems(page.items);
         setCursor(page.meta?.nextCursor);
@@ -142,12 +177,13 @@ export const usePagedTracks = (
       })
       .catch((err: unknown) => {
         if (gen !== generation.current) return;
-        setError(asError(err));
+        // A failed refresh of a list already on show keeps it, without an error.
+        if (!cached) setError(asError(err));
       })
       .finally(() => {
         if (gen === generation.current) setLoading(false);
       });
-  }, [enabled, nonce, depKey, filter, sort]);
+  }, [enabled, nonce, depKey, firstKey, filter, sort]);
 
   const enabledRef = useRef(enabled);
   enabledRef.current = enabled;

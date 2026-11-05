@@ -52,8 +52,6 @@ export const NowPlayingScreen = () => {
   const queue = usePlayerStore((state) => state.queue);
   const index = usePlayerStore((state) => state.index);
   const playAt = usePlayerStore((state) => state.playAt);
-  const positionMs = usePlayerStore((state) => state.positionMs);
-  const durationMs = usePlayerStore((state) => state.durationMs);
   const buffering = usePlayerStore((state) => state.buffering);
   const error = usePlayerStore((state) => state.error);
   const seekTo = usePlayerStore((state) => state.seekTo);
@@ -65,9 +63,6 @@ export const NowPlayingScreen = () => {
       currentTrack?.source === 'local' ||
       (!!currentTrack && state.items[currentTrack.id]?.status === 'done' && !state.items[currentTrack.id]?.missing),
   );
-  const wave = useWaveform(currentTrack, 76);
-  const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
-  const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
   // Rewind and fast-forward (Settings → Playback) make the row seven buttons wide, so the
   // buttons around Play get a little smaller to fit a narrow phone.
   const seekStep = useDevicePrefsStore((state) => state.seekStep);
@@ -276,25 +271,7 @@ export const NowPlayingScreen = () => {
         </View>
 
         {/* Waveform Seek Rail */}
-        <View className="gap-1 mt-1">
-          <View className="w-full h-[34px] justify-center">
-            <Waveform
-              trackId={currentTrack.id}
-              progress={progress}
-              mode={isGold ? 'offline' : 'online'}
-              peaks={wave?.peaks}
-              real={wave?.real}
-              onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
-            />
-          </View>
-
-          <View className="flex-row justify-between">
-            <Text className="text-mono-s font-mono text-t2">{formatDuration(positionMs)}</Text>
-            <Text className="text-mono-s font-mono text-t3">
-              {durationMs ? `-${formatDuration(remainingMs)}` : formatDuration(currentTrack.durationMs || 0)}
-            </Text>
-          </View>
-        </View>
+        <SeekRail track={currentTrack} gold={isGold} />
 
         {/* Transport Controls */}
         <View className="flex-row items-center justify-between mt-1 px-1">
@@ -467,6 +444,40 @@ export const NowPlayingScreen = () => {
         </ScrollView>
       )}
     </Screen>
+  );
+};
+
+/**
+ * The waveform and the times under it. The only part of Now Playing that follows the position,
+ * so the twice-a-second position updates redraw this alone, not the whole screen.
+ */
+const SeekRail = ({ track, gold }: { track: Track; gold: boolean }) => {
+  const wave = useWaveform(track, 76);
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  const durationMs = usePlayerStore((state) => state.durationMs);
+  const seekTo = usePlayerStore((state) => state.seekTo);
+  const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
+  const remainingMs = durationMs ? Math.max(0, durationMs - positionMs) : 0;
+  return (
+    <View className="gap-1 mt-1">
+      <View className="w-full h-[34px] justify-center">
+        <Waveform
+          trackId={track.id}
+          progress={progress}
+          mode={gold ? 'offline' : 'online'}
+          peaks={wave?.peaks}
+          real={wave?.real}
+          onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
+        />
+      </View>
+
+      <View className="flex-row justify-between">
+        <Text className="text-mono-s font-mono text-t2">{formatDuration(positionMs)}</Text>
+        <Text className="text-mono-s font-mono text-t3">
+          {durationMs ? `-${formatDuration(remainingMs)}` : formatDuration(track.durationMs || 0)}
+        </Text>
+      </View>
+    </View>
   );
 };
 

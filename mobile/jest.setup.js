@@ -522,3 +522,8 @@ module.exports = {
   mockEventEmitter,
   MockXMLHttpRequest,
 };
+
+// Screen data cached by data/hooks.ts must not carry from one test into the next.
+beforeEach(() => {
+  require('./src/data/hooks').clearLoaderCache();
+});

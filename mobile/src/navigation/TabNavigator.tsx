@@ -4,18 +4,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeScreen } from '../screens/Home';
-import { LibraryScreen } from '../screens/Library';
-import { PlaylistsScreen } from '../screens/Playlists';
-import { SearchScreen } from '../screens/Search';
-import { AlbumScreen } from '../screens/Album';
-import { ArtistScreen } from '../screens/Artist';
-import { PlaylistDetailScreen } from '../screens/PlaylistDetail';
-import { SettingsScreen } from '../screens/Settings';
-import { FoldersScreen } from '../screens/Folders';
-import { DownloadsScreen } from '../screens/Downloads';
-import { TrackListScreen } from '../screens/TrackList';
-import { EqualizerScreen } from '../screens/Equalizer';
-import { AccountScreen } from '../screens/Account';
 import { MiniPlayer } from '../components/music/MiniPlayer';
 import { useModeStore } from '../store/mode';
 import Icon from '../components/ui/Icon';
@@ -29,29 +17,33 @@ const Stack = createNativeStackNavigator<Record<string, object | undefined>, und
  * M13, M15, M16). Now Playing, Lyrics, Queue, sign-in and the mode switch cover
  * everything from the root stack instead (M09-M12, M14).
  */
-const tabStack = (rootName: string, Root: React.ComponentType<any>) => {
+/*
+ * Screens other than Home load the first time they open (getComponent), so a cold start only
+ * has to evaluate Home and what it uses.
+ */
+const tabStack = (rootName: string, getRoot: () => React.ComponentType<any>) => {
   return function TabStack() {
     return (
       <Stack.Navigator id={undefined} screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
-        <Stack.Screen name={rootName} component={Root} />
-        <Stack.Screen name="Album" component={AlbumScreen} />
-        <Stack.Screen name="Artist" component={ArtistScreen} />
-        <Stack.Screen name="Playlist" component={PlaylistDetailScreen} />
-        <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="Folders" component={FoldersScreen} />
-        <Stack.Screen name="Downloads" component={DownloadsScreen} />
-        <Stack.Screen name="TrackList" component={TrackListScreen} />
-        <Stack.Screen name="Equalizer" component={EqualizerScreen} />
-        <Stack.Screen name="Account" component={AccountScreen} />
+        <Stack.Screen name={rootName} getComponent={getRoot} />
+        <Stack.Screen name="Album" getComponent={() => require('../screens/Album').AlbumScreen} />
+        <Stack.Screen name="Artist" getComponent={() => require('../screens/Artist').ArtistScreen} />
+        <Stack.Screen name="Playlist" getComponent={() => require('../screens/PlaylistDetail').PlaylistDetailScreen} />
+        <Stack.Screen name="Settings" getComponent={() => require('../screens/Settings').SettingsScreen} />
+        <Stack.Screen name="Folders" getComponent={() => require('../screens/Folders').FoldersScreen} />
+        <Stack.Screen name="Downloads" getComponent={() => require('../screens/Downloads').DownloadsScreen} />
+        <Stack.Screen name="TrackList" getComponent={() => require('../screens/TrackList').TrackListScreen} />
+        <Stack.Screen name="Equalizer" getComponent={() => require('../screens/Equalizer').EqualizerScreen} />
+        <Stack.Screen name="Account" getComponent={() => require('../screens/Account').AccountScreen} />
       </Stack.Navigator>
     );
   };
 };
 
-const HomeStack = tabStack('HomeRoot', HomeScreen);
-const LibraryStack = tabStack('LibraryRoot', LibraryScreen);
-const PlaylistsStack = tabStack('PlaylistsRoot', PlaylistsScreen);
-const SearchStack = tabStack('SearchRoot', SearchScreen);
+const HomeStack = tabStack('HomeRoot', () => HomeScreen);
+const LibraryStack = tabStack('LibraryRoot', () => require('../screens/Library').LibraryScreen);
+const PlaylistsStack = tabStack('PlaylistsRoot', () => require('../screens/Playlists').PlaylistsScreen);
+const SearchStack = tabStack('SearchRoot', () => require('../screens/Search').SearchScreen);
 
 export const TabNavigator = () => {
   const toastVisible = useModeStore((state) => state.toastVisible);

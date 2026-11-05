@@ -22,6 +22,28 @@ interface WaveformProps {
   className?: string;
 }
 
+// Plain colours, not classNames: a className goes through NativeWind on every render, and the
+// rail re-renders twice a second while a song plays.
+const COLOR = { played: { online: '#00E28A', offline: '#FFC24D' }, playhead: '#FFFFFF', rest: '#33333B' } as const;
+
+type BarState = 'played' | 'playhead' | 'rest';
+
+/** One bar; memoised, so a position tick only redraws the one or two bars that change colour. */
+const Bar = React.memo(
+  ({ height, state, color, dim }: { height: number; state: BarState; color: string; dim: boolean }) => (
+    <View
+      style={{
+        height: Math.max(MIN_H, height),
+        width: state === 'playhead' ? 3 : 2,
+        borderRadius: 999,
+        backgroundColor: color,
+        // A placeholder bar: the real level shows once the song has played past it.
+        opacity: dim ? 0.45 : 1,
+      }}
+    />
+  ),
+);
+
 export const Waveform = ({ trackId, progress, mode, peaks, real, onSeek, size = 'md', className }: WaveformProps) => {
   const maxH = HEIGHT[size] - 4;
   const heights = React.useMemo(() => {
@@ -32,6 +54,7 @@ export const Waveform = ({ trackId, progress, mode, peaks, real, onSeek, size = 
   }, [trackId, peaks, maxH]);
   const activeIndex = Math.floor(progress * heights.length);
   const [width, setWidth] = React.useState(0);
+  const dimmable = !!real && peaks?.length === heights.length;
 
   return (
     <Pressable
@@ -49,28 +72,9 @@ export const Waveform = ({ trackId, progress, mode, peaks, real, onSeek, size = 
         pointerEvents="none"
       >
         {heights.map((height, i) => {
-          const isPlayed = i < activeIndex;
-          const isPlayhead = i === activeIndex;
-
-          let bgColor = 'bg-ln3';
-          if (isPlayed) {
-            bgColor = mode === 'online' ? 'bg-acc' : 'bg-gold';
-          } else if (isPlayhead) {
-            bgColor = 'bg-white';
-          }
-
-          return (
-            <View
-              key={i}
-              className={cn('rounded-full', bgColor)}
-              style={{
-                height: Math.max(MIN_H, height),
-                width: isPlayhead ? 3 : 2,
-                // A placeholder bar: the real level shows once the song has played past it.
-                opacity: real && peaks?.length === heights.length && !real[i] ? 0.45 : 1,
-              }}
-            />
-          );
+          const state: BarState = i < activeIndex ? 'played' : i === activeIndex ? 'playhead' : 'rest';
+          const color = state === 'played' ? COLOR.played[mode] : state === 'playhead' ? COLOR.playhead : COLOR.rest;
+          return <Bar key={i} height={height} state={state} color={color} dim={dimmable && !real![i]} />;
         })}
       </View>
     </Pressable>
