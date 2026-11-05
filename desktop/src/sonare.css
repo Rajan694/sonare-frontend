@@ -621,6 +621,72 @@ svg.ic {
   border-radius: 1px;
   display: block;
 }
+/* Playing: full-height bars scaled from the bottom, so the animation never triggers layout.
+   The steps are the old heights out of 14px: 14 6 12 4 10, 6 12 4 14 8, 10 4 14 6 12. */
+.eqbars-live i {
+  height: 14px;
+  transform-origin: bottom;
+  animation: eqbar-a 0.6s ease-in-out infinite alternate;
+}
+.eqbars-live i:nth-child(2) {
+  animation-name: eqbar-b;
+  animation-delay: 0.15s;
+}
+.eqbars-live i:nth-child(3) {
+  animation-name: eqbar-c;
+  animation-delay: 0.3s;
+}
+@keyframes eqbar-a {
+  0% {
+    transform: scaleY(1);
+  }
+  25% {
+    transform: scaleY(0.43);
+  }
+  50% {
+    transform: scaleY(0.86);
+  }
+  75% {
+    transform: scaleY(0.29);
+  }
+  100% {
+    transform: scaleY(0.71);
+  }
+}
+@keyframes eqbar-b {
+  0% {
+    transform: scaleY(0.43);
+  }
+  25% {
+    transform: scaleY(0.86);
+  }
+  50% {
+    transform: scaleY(0.29);
+  }
+  75% {
+    transform: scaleY(1);
+  }
+  100% {
+    transform: scaleY(0.57);
+  }
+}
+@keyframes eqbar-c {
+  0% {
+    transform: scaleY(0.71);
+  }
+  25% {
+    transform: scaleY(0.29);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+  75% {
+    transform: scaleY(0.43);
+  }
+  100% {
+    transform: scaleY(0.86);
+  }
+}
 
 /* ---------- waveform ---------- */
 .wave {

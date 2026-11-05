@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { api } from './api';
+import { ApiError } from '../../../shared/api/client';
 import type { Track, Page } from './types';
 import { fetchAllPages } from '../../../shared/api/pages';
 
@@ -18,6 +19,13 @@ const remember = (key: string, value: unknown) => {
 };
 
 export const clearLoaderCache = (): void => cache.clear();
+
+/**
+ * A refresh of cached data failed for a reason that says nothing about the data (offline, the
+ * server or YouTube down): keep showing it. A clear answer about it (not found, not allowed) is
+ * shown instead.
+ */
+const keepsCached = (err: unknown): boolean => !(err instanceof ApiError && err.status >= 400 && err.status < 500);
 
 export interface AsyncState<T> {
   data: T | null;
@@ -71,7 +79,12 @@ export const useAsync = <T>(
         if (key) remember(key, res);
         if (live) setData(res);
       })
-      .catch((err) => live && !quiet && setError(err instanceof Error ? err : new Error(String(err))))
+      .catch((err) => {
+        if (quiet && !keepsCached(err)) cache.delete(key!);
+        if (!live || (quiet && keepsCached(err))) return;
+        if (quiet) setData(null);
+        setError(err instanceof Error ? err : new Error(String(err)));
+      })
       .finally(() => live && setLoading(false));
     return () => {
       live = false;
@@ -178,7 +191,10 @@ export const usePagedTracks = (
       .catch((err: unknown) => {
         if (gen !== generation.current) return;
         // A failed refresh of a list already on show keeps it, without an error.
-        if (!cached) setError(asError(err));
+        if (cached && keepsCached(err)) return;
+        cache.delete(firstKey);
+        if (cached) setItems([]);
+        setError(asError(err));
       })
       .finally(() => {
         if (gen === generation.current) setLoading(false);
