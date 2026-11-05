@@ -15,6 +15,8 @@ const mockSonarePlayerNative = {
   setFades: jest.fn(),
   setHeadsetActions: jest.fn(),
   setLiked: jest.fn(),
+  mediaVolume: jest.fn().mockResolvedValue(8),
+  raiseVolume: jest.fn(),
   setAudioEffects: jest.fn(),
   setSpatialAudio: jest.fn(),
 };
@@ -520,3 +522,8 @@ module.exports = {
   mockEventEmitter,
   MockXMLHttpRequest,
 };
+
+// Screen data cached by data/hooks.ts must not carry from one test into the next.
+beforeEach(() => {
+  require('./src/data/hooks').clearLoaderCache();
+});

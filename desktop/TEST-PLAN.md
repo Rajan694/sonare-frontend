@@ -50,6 +50,11 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-QUEUE-029` | nothing is asked for with Autoplay off, on repeat all (until it is off), or for a song on the device |
 | `WEB-QUEUE-030` | an answer that arrives after another song was picked is dropped                                      |
 | `WEB-QUEUE-031` | the "Added to queue" toast counts only songs that really went in, and says when none did             |
+| `WEB-QUEUE-032` | starting another list offers Undo, which brings the old queue back at its song and position          |
+| `WEB-QUEUE-033` | no Undo for another song of the same list, and none once another song has started                    |
+| `WEB-QUEUE-034` | a long track played again starts where it was left and says so; Start over goes back to 0:00         |
+| `WEB-QUEUE-035` | ordinary songs always start from 0, and a long next song is not prepared for a gapless start         |
+| `WEB-QUEUE-036` | starting playback with Sonare muted says so; Unmute turns it back up; not again for a while          |
 
 ## `test/components/layout.test.tsx`
 
@@ -96,6 +101,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-LAYOUT-039` | suggestions show once typing pauses; arrows and Enter or a click pick one          |
 | `WEB-LAYOUT-040` | upcoming list keeps a minimum usable height and content scrolls                    |
 | `WEB-LAYOUT-041` | lists saved YouTube playlists after user playlists with cloud badge and owner      |
+| `WEB-LAYOUT-042` | a toast with a button runs it once and closes                                      |
 
 ## `test/components/music.test.tsx`
 
@@ -998,6 +1004,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-QH-004` | panel shows 1 when current is index 1, and none at index 0         |
 | `WEB-QH-005` | clicking a played row calls playAt with its queue index            |
 | `WEB-QH-006` | offline mode leaves out entries without a local copy in both lists |
+| `WEB-QH-007` | the panel says how many songs come next and how long they run      |
 
 ## `test/desktop/download-artwork.test.ts`
 
@@ -1035,17 +1042,21 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-AUTO-001` | fewer than 10 songs left asks for similar songs using the last catalog song as seed      |
 | `WEB-AUTO-002` | 10 or more songs left does not ask for similar songs                                     |
 | `WEB-AUTO-003` | repeat all or repeat one does not ask for similar songs                                  |
-| `WEB-AUTO-004` | asks once per (seed, queue length) key, avoiding loops if 0 songs returned               |
+| `WEB-AUTO-004` | asks once per (playing entry, queue length) key, avoiding loops if 0 songs returned      |
 | `WEB-AUTO-005` | stale answer dropped if playing song changed during fetch                                |
 | `WEB-AUTO-006` | seed selection: finds last catalog song at or after index or falls back to current track |
+| `WEB-AUTO-007` | a seed that fails or has nothing new falls back to the queue's earlier catalog songs     |
+| `WEB-AUTO-008` | an answer that gave nothing is asked again when the next song starts                     |
+| `WEB-AUTO-009` | with nothing found it tries again by itself after a wait that doubles                    |
+| `WEB-AUTO-010` | seek buttons jump inside the song and the saved step is one of the offered ones          |
 
 ## `test/unit/devicePrefs.test.ts`
 
-| ID              | Use case                                                                  |
-| --------------- | ------------------------------------------------------------------------- |
-| `WEB-PREFS-001` | start at the original lyrics with Autoplay on, and restore what was saved |
-| `WEB-PREFS-002` | an unknown script or unreadable storage falls back to the defaults        |
-| `WEB-PREFS-003` | every script offered is one the server accepts                            |
+| ID              | Use case                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------- |
+| `WEB-PREFS-001` | start at the original lyrics with Autoplay on and 10 s seek buttons, and restore what was saved |
+| `WEB-PREFS-002` | an unknown script or seek step, or unreadable storage, falls back to the defaults               |
+| `WEB-PREFS-003` | every script offered is one the server accepts                                                  |
 
 ## `test/unit/recentPlays.test.ts`
 
@@ -1096,6 +1107,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-035` | track resolves best audio stream codec and bitrate, and stream returns StreamInfo                  |
 | `WEB-CAT-036` | stream throws SourceError when no audio or video streams are available                             |
 | `WEB-CAT-085` | parseYouTubeLink parses YouTube URLs across all supported forms or returns null                    |
+| `WEB-CAT-088` | relatedTracks keeps 1 to 15 minute songs, without the seed or repeats                              |
 
 ## `test/unit/sharedCatalog/youtubeiSource.test.ts`
 
@@ -1149,6 +1161,8 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-CAT-078` | after a session switch, later calls (search) go through the new session                                           |
 | `WEB-CAT-079` | refresh() starts a fresh session; no-op without newSession                                                        |
 | `WEB-CAT-080` | probeRange reads 1 KB past the first 1.2 MB, or the last 1 KB of a short file                                     |
+| `WEB-CAT-086` | a playlist that says it has no more songs gets no next page, whatever other tokens its page has                   |
+| `WEB-CAT-087` | related maps YouTube Music's up-next automix to stream items                                                      |
 
 ## `test/unit/sharedCatalog/artColor.test.ts`
 

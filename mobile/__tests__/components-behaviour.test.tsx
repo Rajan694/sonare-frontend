@@ -372,12 +372,7 @@ describe('waveform', () => {
     fireEvent.press(wave, { nativeEvent: { locationX: 999 } });
     expect(onSeek.mock.calls.map((c) => c[0])).toEqual([0.75, 1]);
     const bars = UNSAFE_getAllByType('View' as never).filter((v) => v.props.style?.width);
-    expect(bars.map((b) => b.props.className)).toEqual([
-      expect.stringContaining('bg-gold'),
-      expect.stringContaining('bg-gold'),
-      expect.stringContaining('bg-white'),
-      expect.stringContaining('bg-ln3'),
-    ]);
+    expect(bars.map((b) => b.props.style.backgroundColor)).toEqual(['#FFC24D', '#FFC24D', '#FFFFFF', '#33333B']);
   });
 
   it('MOB-COMP-043 without a seek handler the waveform cannot be tapped', () => {

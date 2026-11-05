@@ -25,6 +25,7 @@ import { cn } from '../lib/cn';
 import { useDevicePrefsStore } from '../store/devicePrefs';
 import { useWaveform } from '../store/waveforms';
 import { requireAccount } from '../data/accountGate';
+import type { Track } from '../data/types';
 
 /** One tap of "earlier" / "later" (the desktop app's step too). */
 const OFFSET_STEP_MS = 250;
@@ -41,22 +42,14 @@ const stamp = (ms: number) => {
 export const LyricsScreen = () => {
   const navigation = useNavigation<any>();
   const currentTrack = usePlayerStore((state) => state.currentTrack);
-  const positionMs = usePlayerStore((state) => state.positionMs);
   const seekTo = usePlayerStore((state) => state.seekTo);
-  const durationMs = usePlayerStore((state) => state.durationMs);
-  const isPlaying = usePlayerStore((state) => state.isPlaying);
-  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
-  const playNext = usePlayerStore((state) => state.playNext);
-  const playPrevious = usePlayerStore((state) => state.playPrevious);
   const mode = useModeStore((state) => state.mode);
-  const insets = useSafeAreaInsets();
   const [userScrolling, setUserScrolling] = useState(false);
   const [view, setView] = useState<'synced' | 'plain'>('synced');
 
   const lyricsScript = useDevicePrefsStore((state) => state.lyricsScript);
   const lyricsAutoScroll = useDevicePrefsStore((state) => state.lyricsAutoScroll);
   const setLyricsAutoScroll = useDevicePrefsStore((state) => state.setLyricsAutoScroll);
-  const wave = useWaveform(currentTrack, 76);
   const artUri = useTrackArtwork(currentTrack, 140);
   const artColor = useArtColor(artUri);
   const lyrics = useAsync(
@@ -102,9 +95,14 @@ export const LyricsScreen = () => {
       saveTimer.current = setTimeout(() => flushOffset.current(), OFFSET_SAVE_DELAY_MS);
     });
 
-  const at = positionMs - offsetMs;
-  let activeIndex = -1;
-  for (let i = 0; i < lines.length && lines[i].atMs <= at; i++) activeIndex = i;
+  // Follows the position but only changes line by line, so the lyrics redraw when the
+  // highlighted line moves, not on every position update.
+  const activeIndex = usePlayerStore((state) => {
+    const at = state.positionMs - offsetMs;
+    let found = -1;
+    for (let i = 0; i < lines.length && lines[i].atMs <= at; i++) found = i;
+    return found;
+  });
 
   const scrollViewRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const lineY = useRef<Record<number, number>>({});
@@ -291,51 +289,70 @@ export const LyricsScreen = () => {
       )}
 
       {/* The design's player bar under the lyrics: small waveform, time and transport. */}
-      <View
-        className="bg-[rgba(11,11,13,0.92)] border-t border-ln2 px-[22px] pt-3 gap-2.5"
-        style={{ paddingBottom: insets.bottom + 16 }}
-      >
-        <Waveform
-          trackId={currentTrack.id}
-          peaks={wave?.peaks}
-          real={wave?.real}
-          size="sm"
-          progress={durationMs ? Math.min(1, positionMs / durationMs) : 0}
-          mode={isGold ? 'offline' : 'online'}
-          onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
-        />
-        <View className="flex-row items-center justify-between">
-          <Text className="text-mono-s font-mono text-t2 w-12">{formatDuration(positionMs)}</Text>
-          <View className="flex-row items-center gap-4">
-            <IconButton
-              icon={<Icon name="skip-back" size={18} color="#FFFFFF" />}
-              size={32}
-              onPress={playPrevious}
-              accessibilityLabel="Previous track"
-            />
-            <Pressable
-              onPress={() => setIsPlaying(!isPlaying)}
-              accessibilityRole="button"
-              accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
-              className={cn(
-                'w-10 h-10 rounded-full items-center justify-center',
-                isGold ? 'bg-gold shadow-glow-gold' : 'bg-acc shadow-glow-acc',
-              )}
-            >
-              <Icon name={isPlaying ? 'pause' : 'play'} size={18} color="#000000" />
-            </Pressable>
-            <IconButton
-              icon={<Icon name="skip-forward" size={18} color="#FFFFFF" />}
-              size={32}
-              onPress={playNext}
-              accessibilityLabel="Next track"
-            />
-          </View>
-          <Text className="text-mono-s font-mono text-t3 w-12 text-right">
-            -{formatDuration(Math.max(0, (durationMs || currentTrack.durationMs || 0) - positionMs))}
-          </Text>
-        </View>
-      </View>
+      <LyricsPlayerBar track={currentTrack} isGold={isGold} />
     </Screen>
+  );
+};
+
+/**
+ * The small player under the lyrics. It follows the position on its own, so the lyrics above
+ * don't redraw on every position update.
+ */
+const LyricsPlayerBar = ({ track, isGold }: { track: Track; isGold: boolean }) => {
+  const insets = useSafeAreaInsets();
+  const wave = useWaveform(track, 76);
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  const durationMs = usePlayerStore((state) => state.durationMs);
+  const seekTo = usePlayerStore((state) => state.seekTo);
+  const isPlaying = usePlayerStore((state) => state.isPlaying);
+  const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
+  const playNext = usePlayerStore((state) => state.playNext);
+  const playPrevious = usePlayerStore((state) => state.playPrevious);
+  return (
+    <View
+      className="bg-[rgba(11,11,13,0.92)] border-t border-ln2 px-[22px] pt-3 gap-2.5"
+      style={{ paddingBottom: insets.bottom + 16 }}
+    >
+      <Waveform
+        trackId={track.id}
+        peaks={wave?.peaks}
+        real={wave?.real}
+        size="sm"
+        progress={durationMs ? Math.min(1, positionMs / durationMs) : 0}
+        mode={isGold ? 'offline' : 'online'}
+        onSeek={durationMs ? (f) => seekTo(Math.round(f * durationMs)) : undefined}
+      />
+      <View className="flex-row items-center justify-between">
+        <Text className="text-mono-s font-mono text-t2 w-12">{formatDuration(positionMs)}</Text>
+        <View className="flex-row items-center gap-4">
+          <IconButton
+            icon={<Icon name="skip-back" size={18} color="#FFFFFF" />}
+            size={32}
+            onPress={playPrevious}
+            accessibilityLabel="Previous track"
+          />
+          <Pressable
+            onPress={() => setIsPlaying(!isPlaying)}
+            accessibilityRole="button"
+            accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+            className={cn(
+              'w-10 h-10 rounded-full items-center justify-center',
+              isGold ? 'bg-gold shadow-glow-gold' : 'bg-acc shadow-glow-acc',
+            )}
+          >
+            <Icon name={isPlaying ? 'pause' : 'play'} size={18} color="#000000" />
+          </Pressable>
+          <IconButton
+            icon={<Icon name="skip-forward" size={18} color="#FFFFFF" />}
+            size={32}
+            onPress={playNext}
+            accessibilityLabel="Next track"
+          />
+        </View>
+        <Text className="text-mono-s font-mono text-t3 w-12 text-right">
+          -{formatDuration(Math.max(0, (durationMs || track.durationMs || 0) - positionMs))}
+        </Text>
+      </View>
+    </View>
   );
 };

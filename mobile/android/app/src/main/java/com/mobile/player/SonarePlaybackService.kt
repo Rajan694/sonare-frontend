@@ -6,6 +6,7 @@ import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
@@ -23,8 +24,13 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.session.CacheBitmapLoader
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import com.mobile.MainActivity
 import com.mobile.widget.SonareWidgetUpdater
 import com.mobile.widget.WidgetState
@@ -36,7 +42,8 @@ import com.mobile.widget.WidgetStorage
  * controls, audio focus, and pausing when headphones are unplugged.
  *
  * The queue lives in JS; the engine only knows the current track and the next one.
- * Next/previous pressed outside the app are handed to JS through [RemoteCommands].
+ * Next/previous pressed outside the app are handed to JS through [RemoteCommands], and so is
+ * the heart beside them in the notification and on the lock screen.
  */
 @OptIn(UnstableApi::class)
 class SonarePlaybackService : MediaSessionService() {
@@ -46,6 +53,8 @@ class SonarePlaybackService : MediaSessionService() {
   private var observedPlayer: Player? = null
   private var currentArtworkBitmap: Bitmap? = null
   private var currentArtworkUri: Uri? = null
+  /** The heart the notification shows (filled or not), to change it only when the song's liked state does. */
+  private var heartShown: Boolean? = null
 
   private val widgetPlayerListener =
     object : Player.Listener {
@@ -126,7 +135,9 @@ class SonarePlaybackService : MediaSessionService() {
         // Cached: without it every notification and session update downloads the artwork again
         // (the default loader is wrapped the same way; a custom one isn't).
         .setBitmapLoader(cachedBitmapLoader)
+        .setMediaButtonPreferences(listOf(heartButton(isLiked)))
         .build()
+    heartShown = isLiked
 
     observedPlayer = engine.active
     observedPlayer?.addListener(widgetPlayerListener)
@@ -160,6 +171,13 @@ class SonarePlaybackService : MediaSessionService() {
       SonareWidgetUpdater.ACTION_PREVIOUS -> RemoteCommands.send("previous")
       SonareWidgetUpdater.ACTION_LIKE -> RemoteCommands.send("like")
     }
+  }
+
+  /** The notification / lock-screen heart follows the current song's liked state. */
+  fun updateHeart() {
+    if (heartShown == isLiked) return
+    heartShown = isLiked
+    session?.setMediaButtonPreferences(listOf(heartButton(isLiked)))
   }
 
   fun updateWidgets() {
@@ -260,6 +278,17 @@ class SonarePlaybackService : MediaSessionService() {
     @Volatile var headsetActions: HeadsetActions = HeadsetActions.DEFAULT
 
     @Volatile var isLiked: Boolean = false
+
+    /** The notification's heart; pressed, it goes to JS as the "like" remote command. */
+    const val LIKE_COMMAND_ACTION = "com.mobile.LIKE"
+    val LIKE_COMMAND = SessionCommand(LIKE_COMMAND_ACTION, Bundle.EMPTY)
+
+    fun heartButton(liked: Boolean): CommandButton =
+      CommandButton.Builder(if (liked) CommandButton.ICON_HEART_FILLED else CommandButton.ICON_HEART_UNFILLED)
+        .setDisplayName(if (liked) "Remove from Liked Songs" else "Add to Liked Songs")
+        .setSessionCommand(LIKE_COMMAND)
+        .setSlots(CommandButton.SLOT_FORWARD_SECONDARY, CommandButton.SLOT_OVERFLOW)
+        .build()
     @Volatile var instance: SonarePlaybackService? = null
     @Volatile var currentWidgetState: WidgetState? = null
 
@@ -267,7 +296,10 @@ class SonarePlaybackService : MediaSessionService() {
       isLiked = liked
       val service = instance
       if (service != null) {
-        Handler(Looper.getMainLooper()).post { service.updateWidgets() }
+        Handler(Looper.getMainLooper()).post {
+          service.updateHeart()
+          service.updateWidgets()
+        }
       } else {
         val saved = WidgetStorage.loadState(context)
         val updated = saved.copy(liked = liked)
@@ -290,6 +322,26 @@ class SonarePlaybackService : MediaSessionService() {
 private class HeadsetSessionCallback(private val engine: PlaybackEngine) : MediaSession.Callback {
   private val handler = Handler(Looper.getMainLooper())
   private val detector = HeadsetButtonDetector(400L)
+
+  // Every controller (notification, lock screen, the app) may send the heart's command.
+  override fun onConnect(session: MediaSession, controller: MediaSession.ControllerInfo): MediaSession.ConnectionResult {
+    val commands =
+      MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().add(SonarePlaybackService.LIKE_COMMAND).build()
+    return MediaSession.ConnectionResult.AcceptedResultBuilder(session).setAvailableSessionCommands(commands).build()
+  }
+
+  override fun onCustomCommand(
+    session: MediaSession,
+    controller: MediaSession.ControllerInfo,
+    customCommand: SessionCommand,
+    args: Bundle,
+  ): ListenableFuture<SessionResult> {
+    if (customCommand.customAction != SonarePlaybackService.LIKE_COMMAND_ACTION) {
+      return super.onCustomCommand(session, controller, customCommand, args)
+    }
+    RemoteCommands.send("like")
+    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+  }
 
   private val commitTask = Runnable {
     val count = detector.takeCount()

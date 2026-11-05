@@ -2,15 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
-import { NowPlayingScreen } from '../screens/NowPlaying';
-import { LyricsScreen } from '../screens/Lyrics';
-import { QueueScreen } from '../screens/Queue';
-import { EqualizerScreen } from '../screens/Equalizer';
 import { useDownloadsStore } from '../store/downloads';
 import { useLocalMusicStore } from '../store/localMusic';
 import { useSettingsStore } from '../data/settings';
-import { ModeSwitchScreen } from '../screens/ModeSwitch';
-import { SignInScreen } from '../screens/SignIn';
 import { useAuthStore } from '../data/auth';
 import { useLibraryStore } from '../store/library';
 import { navigationRef, takePendingAction } from '../data/accountGate';
@@ -156,18 +150,19 @@ export const RootNavigator = () => {
         }}
       >
         <Stack.Screen name="Tabs" component={TabNavigator} />
-        <Stack.Screen name="NowPlaying" component={NowPlayingScreen} />
-        <Stack.Screen name="Lyrics" component={LyricsScreen} />
-        <Stack.Screen name="Queue" component={QueueScreen} />
+        {/* These load the first time they open, not at launch. */}
+        <Stack.Screen name="NowPlaying" getComponent={() => require('../screens/NowPlaying').NowPlayingScreen} />
+        <Stack.Screen name="Lyrics" getComponent={() => require('../screens/Lyrics').LyricsScreen} />
+        <Stack.Screen name="Queue" getComponent={() => require('../screens/Queue').QueueScreen} />
         {/* Opened from Now Playing, over it; from Settings it opens inside the tab. */}
-        <Stack.Screen name="Equalizer" component={EqualizerScreen} />
+        <Stack.Screen name="Equalizer" getComponent={() => require('../screens/Equalizer').EqualizerScreen} />
         {/* A sheet over the screen it was opened from, which stays visible (dimmed) behind it. */}
         <Stack.Screen
           name="ModeSwitch"
-          component={ModeSwitchScreen}
+          getComponent={() => require('../screens/ModeSwitch').ModeSwitchScreen}
           options={{ presentation: 'transparentModal', animation: 'fade' }}
         />
-        <Stack.Screen name="SignIn" component={SignInScreen} />
+        <Stack.Screen name="SignIn" getComponent={() => require('../screens/SignIn').SignInScreen} />
       </Stack.Navigator>
       <TrackMenuHost />
       <CollectionMenuHost />

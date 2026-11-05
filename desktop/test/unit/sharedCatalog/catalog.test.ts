@@ -146,6 +146,7 @@ const createMockSource = (overrides: Partial<YouTubeSource> = {}): YouTubeSource
   channelTabs: vi.fn().mockResolvedValue({ content: [], nextpage: null }),
   playlist: vi.fn().mockResolvedValue(samplePipedPlaylist()),
   playlistNextPage: vi.fn().mockResolvedValue({ relatedStreams: [samplePipedSearchItem()], nextpage: null }),
+  related: vi.fn().mockResolvedValue([]),
   ...overrides,
 });
 
@@ -785,5 +786,27 @@ describe('shared catalog: catalog operations', () => {
 
     await expect(catalog.stream('yt:emptyStreams')).rejects.toThrow(SourceError);
     await expect(catalog.stream('yt:emptyStreams')).rejects.toThrow('No audio streams found');
+  });
+
+  it('WEB-CAT-088 relatedTracks keeps 1 to 15 minute songs, without the seed or repeats', async () => {
+    const song = (id: string, duration: number): StreamItem => ({ ...samplePipedSearchItem(id), duration });
+    const related = vi
+      .fn()
+      .mockResolvedValue([
+        song('seed', 213),
+        song('songA', 200),
+        song('clip', 30),
+        song('mix', 3600),
+        song('songA', 200),
+        song('songB', 61),
+        { ...song('pl', 200), url: '/playlist?list=PLx' },
+      ]);
+    const catalog = createCatalog(createMockSource({ related }));
+
+    const res = await catalog.relatedTracks('yt:seed');
+    expect(related).toHaveBeenCalledWith('seed');
+    expect(res.items.map((t) => t.id)).toEqual(['yt:songA', 'yt:songB']);
+    expect(res.items[0].kind).toBe('track');
+    expect((await catalog.relatedTracks('yt:seed', 1)).items.map((t) => t.id)).toEqual(['yt:songA']);
   });
 });

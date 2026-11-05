@@ -1,11 +1,13 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   AUTOPLAY_COUNT,
+  AUTOPLAY_RETRY_MS,
   createAutoplay,
   findAutoplaySeed,
   isCatalogSong,
   needsAutoplay,
 } from '../../../shared/player/autoplay';
+import { DEFAULT_SEEK_STEP, SEEK_STEPS, sanitizeSeekStep, seekTarget } from '../../../shared/player/seek';
 import type { QueueState } from '../../../shared/player/queue';
 
 interface Track {
@@ -23,6 +25,10 @@ const makeQueue = (ids: string[], index = 0, repeat: 'off' | 'all' | 'one' = 'of
 });
 
 describe('autoplay top-up rule', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('WEB-AUTO-001 fewer than 10 songs left asks for similar songs using the last catalog song as seed', async () => {
     const queue = makeQueue(['yt:a', 'yt:b', 'local:c', 'yt:d', 'local:e'], 1);
     // index is 1 (yt:b), queue length is 5. Upcoming ahead of index: 5 - 1 - 1 = 3 (< 10).
@@ -89,7 +95,7 @@ describe('autoplay top-up rule', () => {
     expect(fetchRelated).not.toHaveBeenCalled();
   });
 
-  it('WEB-AUTO-004 asks once per (seed, queue length) key, avoiding loops if 0 songs returned', async () => {
+  it('WEB-AUTO-004 asks once per (playing entry, queue length) key, avoiding loops if 0 songs returned', async () => {
     const state = makeQueue(['yt:a'], 0);
     const fetchRelated = vi.fn().mockResolvedValue([]);
     const append = vi.fn();
@@ -108,6 +114,7 @@ describe('autoplay top-up rule', () => {
     // Check again with unchanged state: does not re-fetch the same seed
     await autoplay.check();
     expect(fetchRelated).toHaveBeenCalledTimes(1);
+    autoplay.reset();
   });
 
   it('WEB-AUTO-005 stale answer dropped if playing song changed during fetch', async () => {
@@ -147,5 +154,104 @@ describe('autoplay top-up rule', () => {
     expect(AUTOPLAY_COUNT).toBe(10);
     expect(isCatalogSong(t('yt:123'))).toBe(true);
     expect(isCatalogSong(t('local:123'))).toBe(false);
+  });
+
+  it("WEB-AUTO-007 a seed that fails or has nothing new falls back to the queue's earlier catalog songs", async () => {
+    let state = makeQueue(['yt:a', 'yt:b', 'local:c', 'yt:d'], 0);
+    const fetchRelated = vi.fn(async (id: string) => {
+      if (id === 'yt:d') throw new Error('upstream down');
+      if (id === 'yt:b') return [t('yt:a'), t('yt:d')]; // all already queued
+      return [t('yt:x'), t('yt:y')];
+    });
+    const autoplay = createAutoplay<Track>({
+      fetchRelated,
+      getState: () => state,
+      append: (songs) => {
+        state = { ...state, queue: [...state.queue, ...songs] };
+      },
+      enabled: () => true,
+    });
+
+    await autoplay.check();
+    expect(fetchRelated.mock.calls.map(([id]) => id)).toEqual(['yt:d', 'yt:b', 'yt:a']);
+    expect(state.queue.map((s) => s.id)).toEqual(['yt:a', 'yt:b', 'local:c', 'yt:d', 'yt:x', 'yt:y']);
+    autoplay.reset();
+  });
+
+  it('WEB-AUTO-008 an answer that gave nothing is asked again when the next song starts', async () => {
+    let state = makeQueue(['yt:a', 'yt:b'], 0);
+    const fetchRelated = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue([t('yt:z')]);
+    const autoplay = createAutoplay<Track>({
+      fetchRelated,
+      getState: () => state,
+      append: (songs) => {
+        state = { ...state, queue: [...state.queue, ...songs] };
+      },
+      enabled: () => true,
+    });
+
+    await autoplay.check();
+    // Both seeds were tried (yt:b failed, yt:a then answered); the queue grew.
+    expect(state.queue.map((s) => s.id)).toEqual(['yt:a', 'yt:b', 'yt:z']);
+
+    // The queue's length stays the same while the next songs play: it still asks each time.
+    state = makeQueue(['yt:a', 'yt:b', 'yt:z'], 1);
+    fetchRelated.mockClear();
+    fetchRelated.mockResolvedValue([]);
+    await autoplay.check();
+    expect(fetchRelated).toHaveBeenCalled();
+    fetchRelated.mockClear();
+    fetchRelated.mockResolvedValue([t('yt:w')]);
+    state = { ...state, index: 2 };
+    await autoplay.check();
+    expect(fetchRelated).toHaveBeenCalledWith('yt:z');
+    expect(state.queue.map((s) => s.id)).toEqual(['yt:a', 'yt:b', 'yt:z', 'yt:w']);
+    autoplay.reset();
+  });
+
+  it('WEB-AUTO-009 with nothing found it tries again by itself after a wait that doubles', async () => {
+    vi.useFakeTimers();
+    let state = makeQueue(['yt:a'], 0);
+    const fetchRelated = vi.fn().mockRejectedValue(new Error('upstream down'));
+    const autoplay = createAutoplay<Track>({
+      fetchRelated,
+      getState: () => state,
+      append: (songs) => {
+        state = { ...state, queue: [...state.queue, ...songs] };
+      },
+      enabled: () => true,
+    });
+
+    await autoplay.check();
+    expect(fetchRelated).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(AUTOPLAY_RETRY_MS - 1);
+    expect(fetchRelated).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchRelated).toHaveBeenCalledTimes(2);
+    // The next wait is twice as long.
+    await vi.advanceTimersByTimeAsync(AUTOPLAY_RETRY_MS);
+    expect(fetchRelated).toHaveBeenCalledTimes(2);
+    fetchRelated.mockResolvedValue([t('yt:b')]);
+    await vi.advanceTimersByTimeAsync(AUTOPLAY_RETRY_MS);
+    expect(fetchRelated).toHaveBeenCalledTimes(3);
+    expect(state.queue.map((s) => s.id)).toEqual(['yt:a', 'yt:b']);
+    autoplay.reset();
+  });
+
+  it('WEB-AUTO-010 seek buttons jump inside the song and the saved step is one of the offered ones', () => {
+    expect(seekTarget(30_000, 10_000, 200_000)).toBe(40_000);
+    expect(seekTarget(4_000, -10_000, 200_000)).toBe(0);
+    // Never past the end, which would skip the song.
+    expect(seekTarget(195_000, 10_000, 200_000)).toBe(199_000);
+    // Length not known yet: only the start is a limit.
+    expect(seekTarget(5_000, 30_000, 0)).toBe(35_000);
+    expect(SEEK_STEPS).toEqual([0, 5, 10, 15, 30]);
+    expect(sanitizeSeekStep(15)).toBe(15);
+    expect(sanitizeSeekStep(0)).toBe(0);
+    expect(sanitizeSeekStep(7)).toBe(DEFAULT_SEEK_STEP);
+    expect(sanitizeSeekStep('10')).toBe(DEFAULT_SEEK_STEP);
   });
 });

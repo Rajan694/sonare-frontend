@@ -676,4 +676,22 @@ describe('app shell', () => {
     await user.click(within(toast).getByRole('button', { name: 'Close message' }));
     await waitFor(() => expect(within(region).queryByText('Added to queue')).not.toBeInTheDocument());
   });
+
+  it('WEB-LAYOUT-042 a toast with a button runs it once and closes', async () => {
+    const { showToast } = await import('../../src/store/toasts');
+    const onClick = vi.fn();
+    const { user } = shell('/home');
+    act(() =>
+      showToast({
+        title: 'Playing Second',
+        description: 'Your queue was replaced',
+        action: { label: 'Undo', onClick },
+      }),
+    );
+    const region = screen.getByRole('status');
+    const toast = within(region).getByText('Playing Second').closest('.shadow-e3') as HTMLElement;
+    await user.click(within(toast).getByRole('button', { name: 'Undo' }));
+    expect(onClick).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(within(region).queryByText('Playing Second')).not.toBeInTheDocument());
+  });
 });

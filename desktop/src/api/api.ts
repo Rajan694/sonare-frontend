@@ -201,7 +201,12 @@ export const api = {
 
   /** Songs like this one, played when the queue runs out (backend only). */
   async getRelatedTracks(id: string, limit: number = 20) {
-    const res = await request<Page<Track>>(`/tracks/${encodeURIComponent(id)}/related`, { params: { limit } });
+    const res = await localFirst<Page<Track>>(
+      'relatedTracks',
+      (c) => c.relatedTracks(ytId(id), limit),
+      () => request(`/tracks/${encodeURIComponent(id)}/related`, { params: { limit } }),
+      id,
+    );
     return res.items;
   },
 

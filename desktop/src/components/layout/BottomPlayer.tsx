@@ -14,6 +14,7 @@ import Artwork, { trackArtwork } from '../music/Artwork';
 import Waveform from '../music/Waveform';
 import TrackDownloadButton from '../music/TrackDownloadButton';
 import LyricsButton from '../music/LyricsButton';
+import SeekButton from '../music/SeekButton';
 import { formatDuration } from '../../lib/format';
 import * as player from '../../audio/player';
 import { useAppDispatch, useAppSelector } from '../../store';
@@ -131,6 +132,7 @@ const BottomPlayer = () => {
             onClick={toggleShuffle}
           />
           <IconButton icon="skip-back" label="Previous track" kbd="←←" size={32} onClick={previous} />
+          <SeekButton direction="back" size={32} />
           <button
             className={cn('playbtn playbtn-40 flex-none', isOffline ? 'bg-gold shadow-glow-g' : 'bg-acc shadow-glow-s')}
             aria-label={isPlaying ? 'Pause' : 'Play'}
@@ -141,6 +143,7 @@ const BottomPlayer = () => {
           >
             <Icon name={isPlaying ? 'pause' : 'play'} size={18} />
           </button>
+          <SeekButton direction="forward" size={32} />
           <IconButton icon="skip-forward" label="Next track" kbd="→→" size={32} onClick={next} />
           <IconButton
             icon={state.repeat === 'one' ? 'repeat-one' : 'repeat'}

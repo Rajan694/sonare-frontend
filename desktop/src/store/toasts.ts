@@ -7,7 +7,16 @@ export interface ToastItem {
   description?: string;
   icon?: IconName;
   variant?: 'neutral' | 'acc' | 'gold';
+  /**
+   * A button for something the app just did by itself ("Undo", "Start over"); clicking it
+   * also closes the toast.
+   */
+  action?: { label: string; onClick: () => void };
 }
+
+/** Long enough to read; one with a button stays longer, so there's time to click it. */
+const SHOW_MS = 3200;
+const SHOW_WITH_ACTION_MS = 6000;
 
 let toasts: ToastItem[] = [];
 let nextId = 1;
@@ -22,7 +31,10 @@ export const dismissToast = (id: number): void => {
   emit();
 };
 
-export const showToast = (toast: Omit<ToastItem, 'id'>, durationMs = 3200): void => {
+export const showToast = (
+  toast: Omit<ToastItem, 'id'>,
+  durationMs = toast.action ? SHOW_WITH_ACTION_MS : SHOW_MS,
+): void => {
   const id = nextId++;
   // Keep the stack short; the newest message is the one that matters.
   toasts = [...toasts.slice(-2), { ...toast, id }];

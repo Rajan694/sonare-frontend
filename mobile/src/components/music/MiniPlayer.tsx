@@ -35,7 +35,6 @@ export const MiniPlayer = () => {
   const onPhone = useDownloadsStore(
     (s) => !!currentTrack && s.items[currentTrack.id]?.status === 'done' && !s.items[currentTrack.id]?.missing,
   );
-  const progress = usePlayerStore((state) => (state.durationMs ? Math.min(1, state.positionMs / state.durationMs) : 0));
 
   const translateY = useSharedValue(0);
   const insets = useSafeAreaInsets();
@@ -82,9 +81,7 @@ export const MiniPlayer = () => {
         ]}
         className="absolute inset-x-0 h-[64px] bg-[#111114] flex-row items-center px-2.5 border-t border-ln2 z-50"
       >
-        <View className="absolute -top-[1px] left-0 right-0 h-[2px] bg-ln2">
-          <View className={cn('h-full', isGold ? 'bg-gold' : 'bg-acc')} style={{ width: `${progress * 100}%` }} />
-        </View>
+        <MiniProgress gold={isGold} />
 
         <Pressable
           onPress={() => navigation.navigate('NowPlaying')}
@@ -151,5 +148,15 @@ export const MiniPlayer = () => {
         </View>
       </AnimatedViewComponent>
     </PanGestureHandler>
+  );
+};
+
+/** The thin progress line on top; it follows the position by itself so the rest of the mini player doesn't redraw. */
+const MiniProgress = ({ gold }: { gold: boolean }) => {
+  const progress = usePlayerStore((state) => (state.durationMs ? Math.min(1, state.positionMs / state.durationMs) : 0));
+  return (
+    <View className="absolute -top-[1px] left-0 right-0 h-[2px] bg-ln2">
+      <View className={cn('h-full', gold ? 'bg-gold' : 'bg-acc')} style={{ width: `${progress * 100}%` }} />
+    </View>
   );
 };

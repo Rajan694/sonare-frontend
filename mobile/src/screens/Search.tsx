@@ -268,7 +268,7 @@ export const SearchScreen = () => {
   };
 
   const showGenres = online && (!q || filter === 'genres') && !parsedLink;
-  const genres = useAsync(() => api.genres(), [], { enabled: showGenres });
+  const genres = useAsync(() => api.genres(), [], { enabled: showGenres, cacheKey: 'search:genres' });
   const openGenre = (g: Genre) => {
     setQuery(genreQuery(g));
     setFilter('all');

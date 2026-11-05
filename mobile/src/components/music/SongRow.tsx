@@ -8,13 +8,16 @@ import { SourceGlyph } from './SourceGlyph';
 import { EqualizerBars } from './EqualizerBars';
 import { IconButton } from '../ui/IconButton';
 import { formatDuration } from '../../lib/format';
-import Animated, { FadeIn, Layout, ReduceMotion } from 'react-native-reanimated';
+import Animated, { FadeIn, ReduceMotion } from 'react-native-reanimated';
 import Icon from '../ui/Icon';
 import { useLibraryStore } from '../../store/library';
 import { useTrackMenuStore, type TrackMenuAction } from '../../store/trackMenu';
 import { usePlayerStore } from '../../store/player';
 import { useDownloadsStore } from '../../store/downloads';
 import { useTrackArtwork } from '../../store/deviceArt';
+
+/** How many rows of a list fade in when it first shows. */
+const ENTERING_ROWS = 12;
 
 interface SongRowProps {
   track: Track;
@@ -68,11 +71,16 @@ export const SongRow = ({
 
   return (
     <Animated.View
-      entering={FadeIn.delay(Math.min(index || 0, 12) * 30)
-        .springify()
-        .damping(20)
-        .reduceMotion(ReduceMotion.System)}
-      layout={Layout.springify().damping(20).reduceMotion(ReduceMotion.System)}
+      // Only the first screenful fades in: rows a long list mounts while scrolling appear at once,
+      // and no row carries a layout animation, which Reanimated would track on every commit.
+      entering={
+        (index ?? 0) < ENTERING_ROWS
+          ? FadeIn.delay((index || 0) * 30)
+              .springify()
+              .damping(20)
+              .reduceMotion(ReduceMotion.System)
+          : undefined
+      }
     >
       <Pressable
         onPress={inSelectionMode ? onToggleSelect : onPress}

@@ -1,18 +1,18 @@
 import React from 'react';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
-import {
-  FolderX,
-  BarChart3,
-  Moon,
-  Sun,
-  LogOut,
-  Speaker,
-  Usb,
-  Server,
-  Settings,
-  Compass,
-  RotateCcw,
-} from 'lucide-react-native';
+// One file per icon: the package's main entry loads all ~3,700 lucide icons at launch (Metro
+// doesn't tree-shake), which cost a noticeable slice of startup.
+import FolderX from 'lucide-react-native/icons/folder-x';
+import BarChart3 from 'lucide-react-native/icons/chart-column';
+import Moon from 'lucide-react-native/icons/moon';
+import Sun from 'lucide-react-native/icons/sun';
+import LogOut from 'lucide-react-native/icons/log-out';
+import Speaker from 'lucide-react-native/icons/speaker';
+import Usb from 'lucide-react-native/icons/usb';
+import Server from 'lucide-react-native/icons/server';
+import Settings from 'lucide-react-native/icons/settings';
+import Compass from 'lucide-react-native/icons/compass';
+import RotateCcw from 'lucide-react-native/icons/rotate-ccw';
 
 /**
  * The design system's own icon set (design-system/screens/*.html): 24px glyphs drawn with a
@@ -386,6 +386,24 @@ const GLYPHS = {
       <>
         <Path d="M19 5.2v13.6L9 12z" />
         <Rect x="4.5" y="5.2" width="2.9" height="13.6" rx="1.2" />
+      </>
+    ),
+  },
+  rewind: {
+    solid: true,
+    body: (
+      <>
+        <Path d="M11.4 6.4v11.2L3.4 12z" />
+        <Path d="M20.6 6.4v11.2L12.6 12z" />
+      </>
+    ),
+  },
+  'fast-forward': {
+    solid: true,
+    body: (
+      <>
+        <Path d="M12.6 6.4v11.2l8-5.6z" />
+        <Path d="M3.4 6.4v11.2l8-5.6z" />
       </>
     ),
   },

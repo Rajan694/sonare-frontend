@@ -101,11 +101,13 @@ export const LibraryScreen = () => {
   }, [activeTab, onCancelSelection]);
 
   const albums = useAsync(() => api.libraryAlbums(), [userId], {
+    cacheKey: 'library:albums',
     enabled: online && !!userId && activeTab === 'albums',
     refetchOnFocus: true,
   });
 
   const artists = useAsync(() => api.libraryArtists(), [userId, favouriteCount, playlistCount], {
+    cacheKey: 'library:artists',
     enabled: online && !!userId && activeTab === 'artists',
     refetchOnFocus: true,
   });

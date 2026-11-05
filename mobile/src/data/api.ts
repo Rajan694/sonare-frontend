@@ -168,7 +168,12 @@ export const api = {
     ),
   /** Songs like this one, played when the queue runs out (backend only). */
   relatedTracks: (id: string, limit = 20) =>
-    request<Page<Track>>(`/tracks/${enc(id)}/related`, { params: { limit } }).then((page) => page.items),
+    localFirst<Page<Track>>(
+      'relatedTracks',
+      (c) => c.relatedTracks(ytId(id), limit),
+      () => request(`/tracks/${enc(id)}/related`, { params: { limit } }),
+      id,
+    ).then((page) => page.items),
 
   /** YouTube playlists; the user's own ones go through the `my*` calls below. */
   playlist: (id: string) =>

@@ -24,6 +24,7 @@ import { useTrackArtwork } from '../store/deviceArt';
 import { useArtColor } from '../hooks/useArtColor';
 import { cn } from '../lib/cn';
 import { nextQueuePlaylistName } from '../../../shared/player/playlistNames';
+import { roughDuration, upcomingMs } from '../../../shared/player/queueTime';
 import type { Track } from '../data/types';
 import Icon from '../components/ui/Icon';
 
@@ -42,8 +43,6 @@ export const QueueScreen = () => {
   const cycleRepeat = usePlayerStore((state) => state.cycleRepeat);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
-  const positionMs = usePlayerStore((state) => state.positionMs);
-  const durationMs = usePlayerStore((state) => state.durationMs);
   const insets = useSafeAreaInsets();
   const [saved, setSaved] = useState<string | null>(null);
   // A drag on a row turns the list's own scrolling off, so the drag can't scroll it.
@@ -91,10 +90,10 @@ export const QueueScreen = () => {
   const playedStart = Math.max(0, currentIndex - PLAYED_COUNT);
   const playedQueue = queue.slice(playedStart, currentIndex);
   const upcomingQueue = queue.slice(currentIndex + 1);
+  const upcomingTime = upcomingMs(queue, currentIndex);
   const serverCount = queue.filter((t) => t.source === 'server').length;
 
   const accent = isGold ? '#FFC24D' : '#00E28A';
-  const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
   const footerHeight = 72 + insets.bottom;
 
   /** Moves the upcoming track at `from` (an index into the whole queue) by `by` rows. */
@@ -205,21 +204,7 @@ export const QueueScreen = () => {
                   </Text>
                   <SourceGlyph source={currentTrack.source} />
                 </View>
-                <View className="flex-row items-center gap-2.5">
-                  <View className="flex-1 h-1 bg-ln2 rounded-full justify-center">
-                    <View
-                      className={cn('h-full rounded-full', isGold ? 'bg-gold' : 'bg-acc')}
-                      style={{ width: `${progress * 100}%` }}
-                    />
-                    <View
-                      className="absolute w-3 h-3 -ml-1.5 rounded-full bg-t1"
-                      style={{ left: `${progress * 100}%` }}
-                    />
-                  </View>
-                  <Text className="text-mono-s font-mono text-t3">
-                    -{formatDuration(Math.max(0, (durationMs || currentTrack.durationMs || 0) - positionMs))}
-                  </Text>
-                </View>
+                <NowPlayingProgress track={currentTrack} gold={isGold} />
               </View>
               <IconButton
                 icon={<Icon name={isPlaying ? 'pause' : 'play'} size={18} color="#FFFFFF" />}
@@ -229,9 +214,17 @@ export const QueueScreen = () => {
               />
             </View>
 
-            {/* Next in queue */}
+            {/* Next in queue, and how long it runs */}
             <View className="flex-row justify-between items-center mb-2">
-              <Text className="text-t3 text-ov uppercase">Next in queue</Text>
+              <View className="flex-row items-baseline gap-2 shrink">
+                <Text className="text-t3 text-ov uppercase">Next in queue</Text>
+                {upcomingQueue.length > 0 && (
+                  <Text className="text-t3 text-bs shrink" numberOfLines={1}>
+                    {songCount(upcomingQueue.length)}
+                    {upcomingTime > 0 ? ` · ${roughDuration(upcomingTime)}` : ''}
+                  </Text>
+                )}
+              </View>
               {upcomingQueue.length > 0 && (
                 <Pressable onPress={() => setQueue([currentTrack], 0)} accessibilityRole="button" hitSlop={8}>
                   <Text className={cn('text-ll', isGold ? 'text-gold' : 'text-acc')}>Clear queue</Text>
@@ -285,6 +278,30 @@ export const QueueScreen = () => {
         </Button>
       </View>
     </Screen>
+  );
+};
+
+/**
+ * The playing song's progress bar and time left. It follows the position by itself, so the
+ * queue list doesn't redraw on every position update.
+ */
+const NowPlayingProgress = ({ track, gold }: { track: Track; gold: boolean }) => {
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  const durationMs = usePlayerStore((state) => state.durationMs);
+  const progress = durationMs ? Math.min(1, positionMs / durationMs) : 0;
+  return (
+    <View className="flex-row items-center gap-2.5">
+      <View className="flex-1 h-1 bg-ln2 rounded-full justify-center">
+        <View
+          className={cn('h-full rounded-full', gold ? 'bg-gold' : 'bg-acc')}
+          style={{ width: `${progress * 100}%` }}
+        />
+        <View className="absolute w-3 h-3 -ml-1.5 rounded-full bg-t1" style={{ left: `${progress * 100}%` }} />
+      </View>
+      <Text className="text-mono-s font-mono text-t3">
+        -{formatDuration(Math.max(0, (durationMs || track.durationMs || 0) - positionMs))}
+      </Text>
+    </View>
   );
 };
 

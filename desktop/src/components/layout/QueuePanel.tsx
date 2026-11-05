@@ -7,6 +7,7 @@ import { showToast } from '../../store/toasts';
 import { api } from '../../api/api';
 import { requireAccount } from '../../api/accountGate';
 import { nextQueuePlaylistName } from '../../../../shared/player/playlistNames';
+import { listMs, roughDuration } from '../../../../shared/player/queueTime';
 import { notifyPlaylistsChanged } from '../../api/hooks';
 import { isAvailableOffline, playsFrom, useLocalLibrary } from '../../storage/local';
 import { IconButton } from '../ui/Button';
@@ -56,6 +57,8 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
     .filter((r) => !isOffline || isAvailableOffline(r.track.id));
   const played = rows.filter((r) => r.index < state.index).slice(-PLAYED_COUNT);
   const upcoming = rows.filter((r) => r.index > state.index);
+  // What's listed: offline, only the songs on this device.
+  const upcomingTime = listMs(upcoming.map((r) => r.track));
   const serverCount = rows.filter((r) => r.track.source === 'server').length;
 
   const virtual = useVirtualRows({ count: upcoming.length, rowHeight: 48, gap: 2, scrollRef: listRef });
@@ -214,7 +217,15 @@ const QueuePanel = ({ onClose, isMobileSheet = false }: QueuePanelProps) => {
 
         {/* Next in Queue Header */}
         <div className="flex items-center justify-between pt-2 flex-none">
-          <span className="text-overline text-t3">Next in queue</span>
+          <span className="flex items-baseline gap-2 min-w-0">
+            <span className="text-overline text-t3 flex-none">Next in queue</span>
+            {upcoming.length > 0 && (
+              <span className="text-body-s text-t3 truncate">
+                {upcoming.length} {upcoming.length === 1 ? 'song' : 'songs'}
+                {upcomingTime > 0 ? ` · ${roughDuration(upcomingTime)}` : ''}
+              </span>
+            )}
+          </span>
           {upcoming.length > 0 && (
             <button
               onClick={clearUpcoming}
