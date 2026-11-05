@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useOutlet } from 'react-router-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import Sidebar from './Sidebar';
@@ -152,7 +152,9 @@ const AppShell = () => {
                     transition={transition.normal}
                     className="flex flex-col grow overflow-auto h-full"
                   >
-                    <FrozenOutlet />
+                    <Suspense fallback={null}>
+                      <FrozenOutlet />
+                    </Suspense>
                   </motion.div>
                 </AnimatePresence>
               </div>
@@ -188,7 +190,9 @@ const AppShell = () => {
                   transition={transition.normal}
                   className="flex flex-col grow overflow-auto h-full min-w-0"
                 >
-                  <FrozenOutlet />
+                  <Suspense fallback={null}>
+                    <FrozenOutlet />
+                  </Suspense>
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -222,7 +226,9 @@ const AppShell = () => {
             transition={transition.normal}
             className="flex flex-col grow overflow-auto h-full min-w-0"
           >
-            <FrozenOutlet />
+            <Suspense fallback={null}>
+              <FrozenOutlet />
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </div>

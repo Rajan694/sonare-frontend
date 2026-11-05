@@ -29,28 +29,65 @@ import { localLibrary } from './storage/local';
 import { downloads } from './storage/downloads';
 import AppShell from './components/layout/AppShell';
 import Home from './screens/Home';
-import Search from './screens/Search';
-import Library from './screens/Library';
-import Album from './screens/Album';
-import Artist from './screens/Artist';
-import PlaylistDetail from './screens/PlaylistDetail';
-import Playlists from './screens/Playlists';
-import NowPlaying from './screens/NowPlaying';
-import Lyrics from './screens/Lyrics';
-import Queue from './screens/Queue';
-import Equalizer from './screens/Equalizer';
-import ModeSwitch from './screens/ModeSwitch';
-import Settings from './screens/Settings';
-import Downloads from './screens/Downloads';
-import SignIn from './screens/SignIn';
-import ResetPassword from './screens/ResetPassword';
-import VerifyEmail from './screens/VerifyEmail';
 import './styles.css';
 import './sonare.css';
 
 // The web build's intro page at "/": its own chunk, so the music app doesn't load it.
 const Landing = lazy(() => import('./screens/Landing'));
 const Privacy = lazy(() => import('./screens/Privacy'));
+
+/*
+ * Every screen but Home is its own chunk, so a first visit downloads and runs less before Home
+ * shows. They are all fetched in the background once the app is up (prefetchScreens), so opening
+ * one later doesn't wait on the network, or fail on a connection that has since dropped.
+ */
+const screens = {
+  Search: () => import('./screens/Search'),
+  Library: () => import('./screens/Library'),
+  Album: () => import('./screens/Album'),
+  Artist: () => import('./screens/Artist'),
+  PlaylistDetail: () => import('./screens/PlaylistDetail'),
+  Playlists: () => import('./screens/Playlists'),
+  NowPlaying: () => import('./screens/NowPlaying'),
+  Lyrics: () => import('./screens/Lyrics'),
+  Queue: () => import('./screens/Queue'),
+  Equalizer: () => import('./screens/Equalizer'),
+  ModeSwitch: () => import('./screens/ModeSwitch'),
+  Settings: () => import('./screens/Settings'),
+  Downloads: () => import('./screens/Downloads'),
+  SignIn: () => import('./screens/SignIn'),
+  ResetPassword: () => import('./screens/ResetPassword'),
+  VerifyEmail: () => import('./screens/VerifyEmail'),
+};
+const Search = lazy(screens.Search);
+const Library = lazy(screens.Library);
+const Album = lazy(screens.Album);
+const Artist = lazy(screens.Artist);
+const PlaylistDetail = lazy(screens.PlaylistDetail);
+const Playlists = lazy(screens.Playlists);
+const NowPlaying = lazy(screens.NowPlaying);
+const Lyrics = lazy(screens.Lyrics);
+const Queue = lazy(screens.Queue);
+const Equalizer = lazy(screens.Equalizer);
+const ModeSwitch = lazy(screens.ModeSwitch);
+const Settings = lazy(screens.Settings);
+const Downloads = lazy(screens.Downloads);
+const SignIn = lazy(screens.SignIn);
+const ResetPassword = lazy(screens.ResetPassword);
+const VerifyEmail = lazy(screens.VerifyEmail);
+
+/** Fetches the other screens while nothing else is going on, after the first page is up. */
+const prefetchScreens = (): (() => void) => {
+  const load = () => {
+    for (const screen of Object.values(screens)) screen().catch(() => {});
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    const handle = window.requestIdleCallback(load, { timeout: 4000 });
+    return () => window.cancelIdleCallback(handle);
+  }
+  const timer = setTimeout(load, 1500);
+  return () => clearTimeout(timer);
+};
 
 type Playback = Omit<player.PlaybackStatus, 'positionMs'>;
 
@@ -153,6 +190,8 @@ const App = () => {
   const [playback, setPlayback] = useState<Playback>(() => withoutPosition(player.getStatus()));
   /** When the current listen began — used to key a play so a replay counts again. */
   const playStartedAt = useRef<number>(Date.now());
+
+  useEffect(prefetchScreens, []);
 
   useEffect(() => {
     initDevAuth();
