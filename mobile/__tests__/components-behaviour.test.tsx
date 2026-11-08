@@ -112,14 +112,30 @@ describe('small pieces', () => {
     expect(JSON.stringify(server.toJSON())).toContain('"width":12');
   });
 
-  it('MOB-COMP-013 Toast shows its message and detail, and fades out when hidden', () => {
+  it('MOB-COMP-013 Toast shows its message and detail, and fades out when hidden without catching taps', () => {
     const { getByText, rerender, toJSON } = render(
-      <Toast visible message="Offline Mode enabled" subtext="Showing music on this phone" mode="offline" />,
+      <Toast
+        visible
+        message="Offline Mode enabled"
+        subtext="Showing music on this phone"
+        mode="offline"
+        action={{ label: 'Undo', onPress: jest.fn() }}
+      />,
     );
     expect(getByText('Offline Mode enabled')).toBeTruthy();
     expect(getByText('Showing music on this phone')).toBeTruthy();
-    rerender(<Toast visible={false} message="Offline Mode enabled" />);
+    rerender(<Toast visible={false} message="Offline Mode enabled" action={{ label: 'Undo', onPress: jest.fn() }} />);
     expect(JSON.stringify(toJSON())).toContain('"opacity":0');
+    // Every view from the root down to the faded box lets taps through to the list underneath.
+    type Node = { props: { pointerEvents?: string }; children?: (Node | string)[] | null };
+    const chain: (string | undefined)[] = [];
+    for (let node = toJSON() as unknown as Node | undefined; node;) {
+      chain.push(node.props.pointerEvents);
+      if (node.props.pointerEvents === 'none') break;
+      node = node.children?.find((c): c is Node => typeof c !== 'string');
+    }
+    expect(chain.at(-1)).toBe('none');
+    expect(chain.every((p) => p === 'box-none' || p === 'none')).toBe(true);
   });
 });
 

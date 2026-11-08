@@ -38,6 +38,9 @@ export const Toast = ({
       accessibilityLiveRegion={accessibilityLiveRegion}
     >
       <MotiView
+        // The faded-out toast stays mounted: its box must not catch taps either, or the row
+        // above the mini player can't be tapped after any snackbar.
+        pointerEvents="box-none"
         animate={{
           opacity: visible ? 1 : 0,
           translateY: visible ? 0 : 20,

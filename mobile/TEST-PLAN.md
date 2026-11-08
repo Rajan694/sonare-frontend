@@ -12,7 +12,7 @@ navigation mock live in `test-utils/`.
 | `MOB-COMP-007` | Icon draws the mapped glyph at its size and colour, and nothing for an unknown name                             |
 | `MOB-COMP-022` | EqualizerBars draws three bars in the given colour                                                              |
 | `MOB-COMP-023` | SourceGlyph shows a gold phone for local files and a green cloud for the server                                 |
-| `MOB-COMP-013` | Toast shows its message and detail, and fades out when hidden                                                   |
+| `MOB-COMP-013` | Toast shows its message and detail, and fades out when hidden without catching taps                             |
 | `MOB-COMP-017` | shows the image, falls back to the second url, then to a plain tile                                             |
 | `MOB-COMP-036` | without an image, a gradient is drawn, with rings when asked                                                    |
 | `MOB-COMP-006` | GuestPrompt offers to create an account or sign in                                                              |
