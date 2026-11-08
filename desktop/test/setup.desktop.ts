@@ -71,3 +71,9 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
+
+// Screen data cached by src/api/hooks.ts must not carry from one test into the next. Imported
+// here, not at the top, so it loads after the test file's vi.mock()s.
+beforeEach(async () => {
+  (await import('../src/api/hooks')).clearLoaderCache?.();
+});

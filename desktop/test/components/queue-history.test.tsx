@@ -59,6 +59,16 @@ describe('queue history and up next', () => {
     expect(screen.queryByText('Track 4')).not.toBeInTheDocument();
   });
 
+  it('WEB-QH-007 the panel says how many songs come next and how long they run', () => {
+    const queue = [
+      makeTrack({ id: 'yt:now', durationMs: 200_000 }),
+      makeTrack({ id: 'yt:n1', durationMs: 30 * 60_000 }),
+      makeTrack({ id: 'yt:n2', durationMs: 35 * 60_000 }),
+    ];
+    renderWithProviders(<QueuePanel onClose={vi.fn()} />, { player: makePlayer({ queue, index: 0 }) });
+    expect(screen.getByText('2 songs · 1 h 5 min')).toBeInTheDocument();
+  });
+
   it('WEB-QH-003 panel shows exactly the 2 before the current one in order', () => {
     const queue = Array.from({ length: 5 }, (_, i) => makeTrack({ id: `yt:q${i}`, title: `Item ${i}` }));
     const p = makePlayer({ queue, index: 3 });

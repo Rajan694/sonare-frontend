@@ -49,34 +49,34 @@ export const HomeScreen = () => {
   const currentTrack = usePlayerStore((state) => state.currentTrack);
   const isPlaying = usePlayerStore((state) => state.isPlaying);
   const setIsPlaying = usePlayerStore((state) => state.setIsPlaying);
-  const positionMs = usePlayerStore((state) => state.positionMs);
-  const durationMs = usePlayerStore((state) => state.durationMs);
 
   const online = mode === 'online';
   const offlineTracks = usePhoneTracks();
   // History and favourites belong to an account; guests just get the catalog.
   const recent = useAsync(() => api.recentlyPlayed(12), [user?.id], {
+    cacheKey: 'home:recent',
     enabled: online && signedIn,
     refetchOnFocus: true,
   });
   // Re-read favourites when a heart is toggled anywhere (including a like made while signing in).
   const favouriteCount = useLibraryStore((s) => Object.keys(s.favouriteIds).length);
   const favourites = useAsync(() => api.favourites(), [user?.id, favouriteCount, online], {
+    cacheKey: 'home:favourites',
     enabled: online && signedIn,
     refetchOnFocus: true,
   });
   const notPlayed = useAsync(() => api.notPlayedLately(20), [user?.id, online], {
+    cacheKey: 'home:notPlayed',
     enabled: online && signedIn,
     refetchOnFocus: true,
   });
-  const trending = useAsync(() => api.trending(20), [], { enabled: online });
+  const trending = useAsync(() => api.trending(20), [], { enabled: online, cacheKey: 'home:trending' });
 
   const recentTracks = signedIn ? playable(recent.data?.items) : [];
   const favouriteTracks = signedIn ? playable(favourites.data?.items) : [];
   const notPlayedTracks = signedIn && online && !notPlayed.error ? playable(notPlayed.data?.items) : [];
   const trendingTracks = trending.data?.items ?? [];
   const resume = currentTrack ?? (online ? recentTracks[0] : null);
-  const progress = currentTrack && durationMs ? Math.min(1, positionMs / durationMs) : 0;
 
   const refresh = () => {
     if (online) {
@@ -181,19 +181,7 @@ export const HomeScreen = () => {
                     <Text className="text-t1 text-tm font-medium truncate" numberOfLines={1}>
                       {resume.title}
                     </Text>
-                    <View className="flex-row items-center gap-2">
-                      <View className="flex-1 h-1 bg-ln2 rounded-full justify-center">
-                        <View className="h-full bg-acc rounded-full" style={{ width: `${progress * 100}%` }} />
-                        {/* The design's .track knob: a 12px white dot on the playhead. */}
-                        <View
-                          className="absolute w-3 h-3 -ml-1.5 rounded-full bg-t1 shadow-e1"
-                          style={{ left: `${progress * 100}%` }}
-                        />
-                      </View>
-                      <Text className="text-t3 text-mono-s font-mono">
-                        {currentTrack?.id === resume.id && durationMs ? formatDuration(positionMs) : resume.artist}
-                      </Text>
-                    </View>
+                    <ResumeProgress showTime={currentTrack?.id === resume.id} fallback={resume.artist} />
                   </View>
                   <View className="w-[52px] h-[52px] rounded-full items-center justify-center bg-acc shadow-glow-acc flex-none">
                     <Icon
@@ -411,16 +399,7 @@ export const HomeScreen = () => {
                     <Text className="text-t1 text-tm font-medium" numberOfLines={1}>
                       {currentTrack.title}
                     </Text>
-                    <View className="flex-row items-center gap-2">
-                      <View className="flex-1 h-1 bg-ln2 rounded-full justify-center">
-                        <View className="h-full bg-gold rounded-full" style={{ width: `${progress * 100}%` }} />
-                        <View
-                          className="absolute w-3 h-3 -ml-1.5 rounded-full bg-t1 shadow-e1"
-                          style={{ left: `${progress * 100}%` }}
-                        />
-                      </View>
-                      <Text className="text-t3 text-mono-s font-mono">{formatDuration(positionMs)}</Text>
-                    </View>
+                    <ResumeProgress gold showTime />
                   </View>
                   <View className="w-[52px] h-[52px] rounded-full items-center justify-center bg-gold shadow-glow-gold flex-none">
                     <Icon name={isPlaying ? 'pause' : 'play'} size={22} color="#000000" />
@@ -451,5 +430,41 @@ export const HomeScreen = () => {
         </View>
       </ScrollView>
     </Screen>
+  );
+};
+
+/**
+ * A resume card's progress bar and time. It follows the position by itself, so the rest of Home
+ * doesn't redraw on every position update while a song plays.
+ */
+const ResumeProgress = ({
+  gold = false,
+  showTime,
+  fallback,
+}: {
+  gold?: boolean;
+  showTime: boolean;
+  fallback?: string;
+}) => {
+  const positionMs = usePlayerStore((state) => state.positionMs);
+  const durationMs = usePlayerStore((state) => state.durationMs);
+  const hasTrack = usePlayerStore((state) => !!state.currentTrack);
+  const progress = hasTrack && durationMs ? Math.min(1, positionMs / durationMs) : 0;
+  const label = fallback !== undefined && !(showTime && durationMs) ? fallback : formatDuration(positionMs);
+  return (
+    <View className="flex-row items-center gap-2">
+      <View className="flex-1 h-1 bg-ln2 rounded-full justify-center">
+        <View
+          className={gold ? 'h-full bg-gold rounded-full' : 'h-full bg-acc rounded-full'}
+          style={{ width: `${progress * 100}%` }}
+        />
+        {/* The design's .track knob: a 12px white dot on the playhead. */}
+        <View
+          className="absolute w-3 h-3 -ml-1.5 rounded-full bg-t1 shadow-e1"
+          style={{ left: `${progress * 100}%` }}
+        />
+      </View>
+      <Text className="text-t3 text-mono-s font-mono">{label}</Text>
+    </View>
   );
 };

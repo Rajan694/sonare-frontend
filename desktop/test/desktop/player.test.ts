@@ -16,6 +16,8 @@ const h = vi.hoisted(() => {
     static made: FakePlayback[] = [];
     paused = true;
     ended = false;
+    /** StreamPlayback: waiting for its start position to download. */
+    waiting = false;
     currentTime = 0;
     volume = 1;
     rate = 1;

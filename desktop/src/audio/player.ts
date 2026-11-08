@@ -121,7 +121,7 @@ const status = (): PlaybackStatus => {
   return {
     trackId: active.trackId,
     playing: !!m && !m.paused && !m.ended,
-    loading,
+    loading: loading || (active.decoded instanceof StreamPlayback && active.decoded.waiting),
     positionMs: m ? Math.floor(m.currentTime * 1000) : 0,
     durationMs: m && Number.isFinite(m.duration) ? Math.floor(m.duration * 1000) : 0,
     muxed: active.muxed,
@@ -704,7 +704,9 @@ export const load = async (trackId: string, force = false): Promise<void> => {
 /** Moves to `positionMs` as soon as the loaded track can seek (a restored queue resumes mid-song). */
 const seekWhenReady = (positionMs: number) => {
   if (active.decoded) {
-    active.decoded.seek(positionMs / 1000);
+    // A song still downloading waits for that part rather than starting near its beginning.
+    if (active.decoded instanceof StreamPlayback) active.decoded.seek(positionMs / 1000, true);
+    else active.decoded.seek(positionMs / 1000);
     emit();
     return;
   }

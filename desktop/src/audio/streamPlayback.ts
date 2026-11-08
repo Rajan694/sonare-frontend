@@ -209,6 +209,8 @@ export class StreamPlayback {
   private wantPlaying = false;
   private starting: Promise<void> | null = null;
   private disposed = false;
+  /** A start position past what has downloaded (a resume point): playing waits until it's here. */
+  private startAt: number | null = null;
 
   /**
    * Hands `media`'s buffers to the worker: they're unusable here afterwards. `downloading`:
@@ -240,6 +242,16 @@ export class StreamPlayback {
     this.available = media.duration;
     const { data, buffers } = streamMedia(media, complete);
     send({ type: 'grow', media: this.mediaId, data }, buffers);
+    if (this.startAt !== null && (complete || this.startAt <= this.available - 1)) {
+      this.offset = Math.min(this.startAt, this.available);
+      this.startAt = null;
+      if (this.wantPlaying) void this.play();
+    }
+  }
+
+  /** Play was pressed, but the start position hasn't downloaded yet. */
+  get waiting(): boolean {
+    return this.startAt !== null && this.wantPlaying;
   }
 
   /** Seconds that can play now: the whole song once downloaded. */
@@ -276,7 +288,7 @@ export class StreamPlayback {
     if (this.finished || this.offset >= this.duration) this.offset = 0;
     this.finished = false;
     if (this.ctx.state === 'suspended') await this.ctx.resume();
-    if (!this.wantPlaying || this.run || this.disposed) return;
+    if (!this.wantPlaying || this.run || this.disposed || this.startAt !== null) return;
     if (this.ctx.state !== 'running')
       throw new DOMException('Audio is blocked until you press play', 'NotAllowedError');
     const run: Run = new Run(
@@ -312,12 +324,17 @@ export class StreamPlayback {
     this.run = null;
   }
 
-  seek(seconds: number): void {
+  /**
+   * `waitForIt`: a start position (a resume point) past what has downloaded waits for that part
+   * instead of playing from near the beginning.
+   */
+  seek(seconds: number, waitForIt = false): void {
     const playing = this.wantPlaying;
     this.pause();
     // While downloading, a seek past what's here lands just before its end.
     const limit = this.complete ? this.duration : Math.max(0, this.available - 1);
-    this.offset = Math.max(0, Math.min(seconds, limit));
+    this.startAt = waitForIt && !this.complete && seconds > limit ? Math.min(seconds, this.duration) : null;
+    this.offset = this.startAt ?? Math.max(0, Math.min(seconds, limit));
     this.finished = false;
     if (playing) void this.play();
   }

@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import type { HeadsetAction, HeadsetActions } from '../native/SonarePlayer';
+import { DEFAULT_SEEK_STEP, sanitizeSeekStep, type SeekStep } from '../../../shared/player/seek';
 
 /** The script lyrics are shown in; the server picks the LRCLIB version written in it. */
 export type LyricsScript =
@@ -63,19 +64,25 @@ interface DevicePrefsStore {
   autoplaySimilar: boolean;
   /** What 1, 2 and 3 quick presses of a headset's button do. */
   headsetActions: HeadsetActions;
+  /** Seconds Now Playing's rewind and fast-forward buttons jump; 0 hides them (shared/player/seek.ts). */
+  seekStep: SeekStep;
   hydrate: () => Promise<void>;
   setLyricsScript: (script: LyricsScript) => void;
   setLyricsAutoScroll: (on: boolean) => void;
   setAutoplaySimilar: (on: boolean) => void;
   setHeadsetAction: (slot: keyof HeadsetActions, action: HeadsetAction) => void;
+  setSeekStep: (step: SeekStep) => void;
 }
 
-type SavedPrefs = Pick<DevicePrefsStore, 'lyricsScript' | 'lyricsAutoScroll' | 'autoplaySimilar' | 'headsetActions'>;
+type SavedPrefs = Pick<
+  DevicePrefsStore,
+  'lyricsScript' | 'lyricsAutoScroll' | 'autoplaySimilar' | 'headsetActions' | 'seekStep'
+>;
 
-const persist = ({ lyricsScript, lyricsAutoScroll, autoplaySimilar, headsetActions }: SavedPrefs) => {
+const persist = ({ lyricsScript, lyricsAutoScroll, autoplaySimilar, headsetActions, seekStep }: SavedPrefs) => {
   AsyncStorage.setItem(
     STORAGE_KEY,
-    JSON.stringify({ lyricsScript, lyricsAutoScroll, autoplaySimilar, headsetActions }),
+    JSON.stringify({ lyricsScript, lyricsAutoScroll, autoplaySimilar, headsetActions, seekStep }),
   ).catch(() => {});
 };
 
@@ -84,6 +91,7 @@ export const useDevicePrefsStore = create<DevicePrefsStore>((set, get) => ({
   lyricsAutoScroll: true,
   autoplaySimilar: true,
   headsetActions: { ...DEFAULT_HEADSET_ACTIONS },
+  seekStep: DEFAULT_SEEK_STEP,
   hydrate: async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
@@ -97,6 +105,7 @@ export const useDevicePrefsStore = create<DevicePrefsStore>((set, get) => ({
         lyricsAutoScroll: typeof saved.lyricsAutoScroll === 'boolean' ? saved.lyricsAutoScroll : true,
         autoplaySimilar: typeof saved.autoplaySimilar === 'boolean' ? saved.autoplaySimilar : true,
         headsetActions,
+        seekStep: sanitizeSeekStep(saved.seekStep),
       });
     } catch {
       // Defaults apply.
@@ -117,6 +126,10 @@ export const useDevicePrefsStore = create<DevicePrefsStore>((set, get) => ({
   // AudioEngine sends the change to the native player.
   setHeadsetAction: (slot, action) => {
     set((state) => ({ headsetActions: sanitizeHeadsetActions({ ...state.headsetActions, [slot]: action }) }));
+    persist(get());
+  },
+  setSeekStep: (seekStep) => {
+    set({ seekStep });
     persist(get());
   },
 }));

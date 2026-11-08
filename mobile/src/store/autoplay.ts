@@ -14,10 +14,10 @@ export const autoplay = createAutoplay<Track>({
   enabled: () => useDevicePrefsStore.getState().autoplaySimilar && useModeStore.getState().mode === 'online',
 });
 
-/** Watches the queue and track changes to top up when fewer than 10 songs remain; returns the unsubscribe. */
+/** Watches the queue and track changes to top up when fewer than 10 songs remain; returns the stop. */
 export const startAutoplay = (): (() => void) => {
   autoplay.check().catch(() => {});
-  return usePlayerStore.subscribe((state, prev) => {
+  const unsubscribe = usePlayerStore.subscribe((state, prev) => {
     if (
       state.index !== prev.index ||
       state.queue !== prev.queue ||
@@ -27,4 +27,8 @@ export const startAutoplay = (): (() => void) => {
       autoplay.check().catch(() => {});
     }
   });
+  return () => {
+    unsubscribe();
+    autoplay.reset();
+  };
 };

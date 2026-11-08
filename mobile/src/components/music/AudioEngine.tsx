@@ -9,7 +9,7 @@ import { API_QUALITY, useSettingsStore } from '../../data/settings';
 import type { StreamInfo, Track } from '../../data/types';
 import { SonarePlayer, type LoadOptions } from '../../native/SonarePlayer';
 import { currentGains, useAudioStore } from '../../store/audio';
-import { usePlayerStore } from '../../store/player';
+import { canUndoReplace, usePlayerStore } from '../../store/player';
 import { useLibraryStore } from '../../store/library';
 import { useDevicePrefsStore } from '../../store/devicePrefs';
 import { showSnackbar } from '../../store/snackbar';
@@ -18,6 +18,8 @@ import { deviceUriFor } from '../../store/localMusic';
 import { refreshInAppSession } from '../../youtube/inApp';
 import { noteLevel, saveWaveforms, watchWaveform } from '../../store/waveforms';
 import { watchPlayerPersistence } from '../../store/playerPersist';
+import { loadResumePoints, noteResume, resumeAt, saveResumePoints } from '../../store/resumePoints';
+import { formatDuration } from '../../lib/format';
 import { useSpatialStore } from '../../store/spatial';
 import { resolveSpatial } from '../../../../shared/spatial';
 
@@ -182,6 +184,9 @@ const prepareNext = async () => {
     (useSettingsStore.getState().gapless ||
       (useAudioStore.getState().crossfade && useAudioStore.getState().crossfadeMs > 0)) &&
     (next?.source === 'server' || (!!next && !!onPhone(next.id))) &&
+    // A long track left part-way loads by itself, from where it was left.
+    !!next &&
+    !resumeAt(next.id) &&
     loadedId !== null &&
     loadedId === current()?.id;
   if (!wanted || !next) {
@@ -243,6 +248,30 @@ const pushHeadsetSettings = () => {
   SonarePlayer.setHeadsetActions(useDevicePrefsStore.getState().headsetActions);
 };
 
+/** When the muted-phone hint last showed; it waits a while before showing again. */
+let volumeHintAt = 0;
+const VOLUME_HINT_EVERY_MS = 20_000;
+
+/**
+ * Play pressed in the app with the phone's media volume at 0: say why nothing is heard, with a
+ * button that turns it up. Not from the lock screen or a headset (no snackbar there).
+ */
+const checkMediaVolume = () => {
+  if (AppState.currentState !== 'active' || Date.now() - volumeHintAt < VOLUME_HINT_EVERY_MS) return;
+  SonarePlayer.mediaVolume()
+    .then((volume) => {
+      if (volume > 0 || !usePlayerStore.getState().isPlaying) return;
+      volumeHintAt = Date.now();
+      showSnackbar({
+        title: 'Phone volume is off',
+        subtitle: 'Sonare is playing silently',
+        icon: 'volume',
+        action: { label: 'Turn up', onPress: () => SonarePlayer.raiseVolume() },
+      });
+    })
+    .catch(() => {});
+};
+
 let lastLikedTrackId: string | null = null;
 let lastLikedPlayId: number | null = null;
 let lastLiked: boolean | null = null;
@@ -274,6 +303,34 @@ const adopt = (id: string) => {
   prepareNext();
 };
 
+/** "Start over" on the resume snackbar: back to 0:00, if that track is still the one playing. */
+const startOver = (trackId: string) => {
+  const player = usePlayerStore.getState();
+  if (player.currentTrack?.id !== trackId) return;
+  noteResume(trackId, 0, player.durationMs || player.currentTrack.durationMs || 0);
+  if (loadedId === trackId) player.seekTo(0);
+  else {
+    // Still loading from the resume point: load again from the start.
+    usePlayerStore.setState({ startAtMs: 0 });
+    loadCurrent();
+  }
+};
+
+/** A long track played again carries on where it was left; the snackbar says so and offers a restart. */
+const resumePoint = (track: Track): number => {
+  const at = resumeAt(track.id);
+  // The Undo for a replaced queue matters more than this note; it stays on screen.
+  if (at > 0 && AppState.currentState === 'active' && !canUndoReplace()) {
+    showSnackbar({
+      title: `Resuming from ${formatDuration(at)}`,
+      subtitle: 'Where you left off last time',
+      icon: 'play',
+      action: { label: 'Start over', onPress: () => startOver(track.id) },
+    });
+  }
+  return at;
+};
+
 const loadCurrent = async () => {
   const token = ++loadToken;
   loadedId = null;
@@ -293,9 +350,11 @@ const loadCurrent = async () => {
   try {
     const url = await streamUrl(track);
     if (token !== loadToken) return;
-    // A restored queue resumes where it was left; anything else starts at 0.
-    const { startAtMs } = usePlayerStore.getState();
-    if (startAtMs !== null) usePlayerStore.setState({ startAtMs: null });
+    // A restored queue resumes where it was left, and so does a long track played part-way;
+    // anything else starts at 0.
+    const { startAtMs: asked } = usePlayerStore.getState();
+    if (asked !== null) usePlayerStore.setState({ startAtMs: null });
+    const startAtMs = asked ?? resumePoint(track);
     await SonarePlayer.load({
       ...loadOptions(track, url),
       autoplay: usePlayerStore.getState().isPlaying,
@@ -359,6 +418,7 @@ const startAudio = () => {
       noteLevel(listen.trackId, e.durationMs, prev!, e.positionMs, e.level);
     }
     lastProgress = { trackId: listen.trackId, positionMs: e.positionMs };
+    noteResume(listen.trackId, e.positionMs, e.durationMs);
     if (nextDueFor !== listen.trackId && nearEnd()) {
       nextDueFor = listen.trackId;
       prepareNext();
@@ -439,10 +499,14 @@ const startAudio = () => {
 
   // Partial waveforms are written every few seconds; write the latest before Android may stop the app.
   AppState.addEventListener('change', (next) => {
-    if (next === 'background') saveWaveforms();
+    if (next === 'background') {
+      saveWaveforms();
+      saveResumePoints();
+    }
   });
 
   watchPlayerPersistence();
+  loadResumePoints();
 
   // Audio settings -> native, now and whenever they change (including when the phone's saved
   // ones finish loading).
@@ -483,9 +547,14 @@ const startAudio = () => {
   // Store -> native.
   usePlayerStore.subscribe((state, prev) => {
     pushLikedState();
+    if (state.isPlaying && !prev.isPlaying) checkMediaVolume();
     // Another queue entry is current (the same song again counts: it can be in the queue twice).
     if (state.playId !== prev.playId) {
       reloads = null;
+      // Where the song being left was: a long one carries on from there next time.
+      if (prev.currentTrack && loadedId === prev.currentTrack.id) {
+        noteResume(prev.currentTrack.id, prev.positionMs, prev.durationMs || prev.currentTrack.durationMs || 0);
+      }
       if (state.currentTrack && state.currentTrack.id === advancedTo) adopt(state.currentTrack.id);
       else loadCurrent(); // the new load carries play state and starts from 0
       return;

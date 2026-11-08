@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { ApiError } from '../../../shared/api/client';
 import { api } from './api';
 import { onFavouritesSaved } from './favourites';
 import { fetchLyrics } from './lyricsAvailability';
@@ -135,14 +136,43 @@ export const useAuth = (): { user: User | null; ready: boolean } => {
   return { user, ready };
 };
 
+/**
+ * The last result of each cached loader (useAsync's `cacheKey`), so a screen opened again shows
+ * what it had at once and refreshes it quietly instead of showing a spinner.
+ */
+const cache = new Map<string, unknown>();
+const MAX_CACHED = 80;
+
+const remember = (key: string, value: unknown) => {
+  cache.delete(key);
+  cache.set(key, value);
+  if (cache.size > MAX_CACHED) cache.delete(cache.keys().next().value!);
+};
+
+export const clearLoaderCache = (): void => cache.clear();
+
+/**
+ * A refresh of cached data failed for a reason that says nothing about the data (offline, the
+ * server or YouTube down): keep showing it. A clear answer about it (not found, not allowed) is
+ * shown instead.
+ */
+const keepsCached = (err: unknown): boolean => !(err instanceof ApiError && err.status >= 400 && err.status < 500);
+
+/**
+ * With a `cacheKey`, the last result for the same deps shows straight away (no spinner) while a
+ * fresh one loads; if that refresh fails, what is shown stays and no error appears.
+ */
 export const useAsync = <T>(
   asyncFn: () => Promise<T>,
   deps: any[] = [],
-  options: { enabled?: boolean; initialData?: T | null } = {},
+  options: { enabled?: boolean; initialData?: T | null; cacheKey?: string } = {},
 ): AsyncState<T> => {
-  const { enabled = true, initialData = null } = options;
-  const [data, setData] = useState<T | null>(initialData);
-  const [loading, setLoading] = useState<boolean>(enabled);
+  const { enabled = true, initialData = null, cacheKey } = options;
+  const key = cacheKey ? `${cacheKey}:${JSON.stringify(deps)}` : null;
+  const [data, setData] = useState<T | null>(() =>
+    enabled && key && cache.has(key) ? (cache.get(key) as T) : initialData,
+  );
+  const [loading, setLoading] = useState<boolean>(enabled && !(key && cache.has(key)));
   const [error, setError] = useState<Error | null>(null);
   const [trigger, setTrigger] = useState(0);
 
@@ -165,19 +195,26 @@ export const useAsync = <T>(
     }
 
     let isMounted = true;
-    setLoading(true);
+    const quiet = !!key && cache.has(key);
+    if (quiet) setData(cache.get(key!) as T);
+    setLoading(!quiet);
     setError(null);
 
     asyncFn()
       .then((res) => {
+        if (key) remember(key, res);
         if (isMounted) {
           setData(res);
           setLoading(false);
         }
       })
       .catch((err) => {
+        if (quiet && !keepsCached(err)) cache.delete(key!);
         if (isMounted) {
-          setError(err);
+          if (!quiet || !keepsCached(err)) {
+            setData(initialData);
+            setError(err);
+          }
           setLoading(false);
         }
       });
@@ -185,7 +222,7 @@ export const useAsync = <T>(
     return () => {
       isMounted = false;
     };
-  }, [enabled, trigger, depKey]);
+  }, [enabled, trigger, depKey, key]);
 
   return { data, loading, error, refetch };
 };
@@ -193,16 +230,16 @@ export const useAsync = <T>(
 export const useAuthAsync = <T>(
   asyncFn: () => Promise<T>,
   deps: any[] = [],
-  options: { enabled?: boolean; initialData?: T | null; accountOnly?: boolean } = {},
+  options: { enabled?: boolean; initialData?: T | null; accountOnly?: boolean; cacheKey?: string } = {},
 ): AsyncState<T> => {
   const { user, ready } = useAuth();
-  const { enabled = true, initialData = null, accountOnly = false } = options;
+  const { enabled = true, initialData = null, accountOnly = false, cacheKey } = options;
 
   // Wait for auth to settle during cold boot before firing /me calls, and refetch on user state change.
   // Account-only data isn't asked for at all while listening as a guest.
   const shouldRun = enabled && ready && (!accountOnly || !!user);
 
-  return useAsync(asyncFn, [user?.id, ready, ...deps], { enabled: shouldRun, initialData });
+  return useAsync(asyncFn, [user?.id, ready, ...deps], { enabled: shouldRun, initialData, cacheKey });
 };
 
 /** `value` once it has stopped changing for `delayMs`; `initial` until then (default: `value` itself). */
@@ -221,7 +258,7 @@ export const useDebounce = <T>(value: T, delayMs: number = 300, initial: T = val
 
 // Catalog hooks (unauthenticated, immediate)
 export const useTrending = (region: string = 'IN', limit: number = 50) => {
-  return useAsync(() => api.getTrending(region, limit), [region, limit]);
+  return useAsync(() => api.getTrending(region, limit), [region, limit], { cacheKey: 'trending' });
 };
 
 /** One search; `query` should already be settled (the Search screen debounces what is typed). */
@@ -249,12 +286,13 @@ export const useSearchSuggestions = (query: string, enabled: boolean = true): st
 };
 
 export const useGenres = () => {
-  return useAsync(() => api.getGenres(), []);
+  return useAsync(() => api.getGenres(), [], { cacheKey: 'genres' });
 };
 
 export const useAlbum = (id: string | undefined) => {
   return useAsync(() => (id ? api.getAlbum(id) : Promise.reject(new Error('Missing album id'))), [id], {
     enabled: !!id,
+    cacheKey: 'album',
   });
 };
 
@@ -262,13 +300,14 @@ export const useAlbumTracks = (id: string | undefined, cursor?: string) => {
   return useAsync(
     () => (id ? api.getAlbumTracks(id, cursor) : Promise.reject(new Error('Missing album id'))),
     [id, cursor],
-    { enabled: !!id },
+    { enabled: !!id, cacheKey: 'albumTracks' },
   );
 };
 
 export const useArtist = (id: string | undefined) => {
   return useAsync(() => (id ? api.getArtist(id) : Promise.reject(new Error('Missing artist id'))), [id], {
     enabled: !!id,
+    cacheKey: 'artist',
   });
 };
 
@@ -276,7 +315,7 @@ export const useArtistTopTracks = (id: string | undefined, limit: number = 20) =
   return useAsync(
     () => (id ? api.getArtistTopTracks(id, limit) : Promise.reject(new Error('Missing artist id'))),
     [id, limit],
-    { enabled: !!id },
+    { enabled: !!id, cacheKey: 'artistTop' },
   );
 };
 
@@ -284,7 +323,7 @@ export const useArtistAlbums = (id: string | undefined, cursor?: string) => {
   return useAsync(
     () => (id ? api.getArtistAlbums(id, cursor) : Promise.reject(new Error('Missing artist id'))),
     [id, cursor],
-    { enabled: !!id },
+    { enabled: !!id, cacheKey: 'artistAlbums' },
   );
 };
 
@@ -300,7 +339,7 @@ export const usePlaylist = (id: string | undefined) => {
           ? api.getMyPlaylist(id)
           : api.getPlaylist(id),
     [id],
-    { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id) },
+    { enabled: !!id, accountOnly: !!id && isOwnPlaylist(id), cacheKey: 'playlist' },
   );
   // Renamed (or changed) elsewhere, e.g. from the sidebar's menu: show the new name.
   const { refetch } = result;
@@ -322,7 +361,7 @@ export const usePlaylistTracks = (id: string | undefined, cursor?: string, enabl
           ? api.getMyPlaylistTracks(id)
           : api.getPlaylistTracks(id, cursor),
     [id, cursor],
-    { enabled: enabled && !!id, accountOnly: !!id && isOwnPlaylist(id) },
+    { enabled: enabled && !!id, accountOnly: !!id && isOwnPlaylist(id), cacheKey: 'playlistTracks' },
   );
 };
 
@@ -445,7 +484,10 @@ export const useLibrarySongs = ({
 };
 
 export const useLibraryAlbums = (cursor?: string) => {
-  const result = useAuthAsync(() => api.getLibraryAlbums(cursor), [cursor], { accountOnly: true });
+  const result = useAuthAsync(() => api.getLibraryAlbums(cursor), [cursor], {
+    accountOnly: true,
+    cacheKey: 'libraryAlbums',
+  });
   const { refetch } = result;
   useEffect(() => {
     window.addEventListener(PLAYLISTS_CHANGED, refetch);
@@ -455,11 +497,14 @@ export const useLibraryAlbums = (cursor?: string) => {
 };
 
 export const useLibraryArtists = (cursor?: string) => {
-  return useAuthAsync(() => api.getLibraryArtists(cursor), [cursor], { accountOnly: true });
+  return useAuthAsync(() => api.getLibraryArtists(cursor), [cursor], { accountOnly: true, cacheKey: 'libraryArtists' });
 };
 
 export const useFavourites = (cursor?: string) => {
-  const result = useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor], { accountOnly: true });
+  const result = useAuthAsync(() => api.getFavouriteTracks(cursor), [cursor], {
+    accountOnly: true,
+    cacheKey: 'favourites',
+  });
   const { refetch } = result;
   // A heart toggled anywhere (player, another list) changes this list.
   useEffect(() => onFavouritesSaved(refetch), [refetch]);
@@ -482,19 +527,29 @@ const useRefetchOnHistoryCleared = (refetch: () => void) => {
 };
 
 export const useRecentlyPlayed = (limit: number = 20) => {
-  const result = useAuthAsync(() => api.getRecentlyPlayed(limit), [limit], { accountOnly: true });
+  const result = useAuthAsync(() => api.getRecentlyPlayed(limit), [limit], {
+    accountOnly: true,
+    cacheKey: 'recentlyPlayed',
+  });
   useRefetchOnHistoryCleared(result.refetch);
   return result;
 };
 
 export const useNotPlayedLately = (limit: number = 20, enabled: boolean = true) => {
-  const result = useAuthAsync(() => api.getNotPlayedLately(limit), [limit], { accountOnly: true, enabled });
+  const result = useAuthAsync(() => api.getNotPlayedLately(limit), [limit], {
+    accountOnly: true,
+    enabled,
+    cacheKey: 'notPlayedLately',
+  });
   useRefetchOnHistoryCleared(result.refetch);
   return result;
 };
 
 export const useMostPlayed = (params?: { limit?: number; window?: '30d' }) => {
-  const result = useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], { accountOnly: true });
+  const result = useAuthAsync(() => api.getMostPlayed(params), [params?.limit, params?.window], {
+    accountOnly: true,
+    cacheKey: 'mostPlayed',
+  });
   useRefetchOnHistoryCleared(result.refetch);
   return result;
 };
@@ -507,7 +562,7 @@ export const notifyPlaylistsChanged = (): void => {
 };
 
 export const useMyPlaylists = (enabled: boolean = true) => {
-  const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true, enabled });
+  const result = useAuthAsync(() => api.getMyPlaylists(), [], { accountOnly: true, enabled, cacheKey: 'myPlaylists' });
   const { data, refetch } = result;
   // Keep the server's list for Offline Mode (storage/offlinePlaylists.ts).
   useEffect(() => {

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { api } from '../data/api';
@@ -155,15 +156,19 @@ export const useWaveform = (
   const id = track?.source === 'server' && isYouTube(track.id) ? track.id : undefined;
   const server = useAsync(() => fetchServerPeaks(id!), [id], { enabled: !!id });
   const heard = useWaveformStore((s) => (id ? s.heard[id] : undefined));
-  const placeholder = !!server.data?.placeholder;
+  const data = server.data;
 
-  if (!id || !server.data) return null;
-  if (!placeholder) return { peaks: resamplePeaks(server.data.peaks, bars) };
-  const merged = heard ? mergeHeardPeaks(heard.heard, server.data.peaks) : null;
-  const peaks = resamplePeaks(merged?.peaks ?? server.data.peaks, bars);
-  if (merged?.real.every(Boolean)) return { peaks };
-  const real = merged?.real ?? server.data.peaks.map(() => false);
-  return { peaks, real: Array.from({ length: bars }, (_, i) => real[Math.floor((i / bars) * real.length)]) };
+  // The same arrays until something changes, so the waveform's bars aren't worked out again on
+  // every render.
+  return useMemo(() => {
+    if (!id || !data) return null;
+    if (!data.placeholder) return { peaks: resamplePeaks(data.peaks, bars) };
+    const merged = heard ? mergeHeardPeaks(heard.heard, data.peaks) : null;
+    const peaks = resamplePeaks(merged?.peaks ?? data.peaks, bars);
+    if (merged?.real.every(Boolean)) return { peaks };
+    const real = merged?.real ?? data.peaks.map(() => false);
+    return { peaks, real: Array.from({ length: bars }, (_, i) => real[Math.floor((i / bars) * real.length)]) };
+  }, [id, data, heard, bars]);
 };
 
 export const resetWaveformsForTesting = (): void => {

@@ -1,21 +1,17 @@
-import React, { useMemo } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import React from 'react';
+import { useReducedMotion } from 'motion/react';
 
 interface EqualizerBarsProps {
   playing?: boolean;
 }
 
+/*
+ * The bars move with a CSS animation of transform: scaleY (sonare.css, .eqbars-live). It runs on
+ * the compositor: animating `height` from JS (as this did with motion) laid out the whole page on
+ * every frame for as long as a song played, about a quarter of the main thread on Home.
+ */
 const EqualizerBars = ({ playing = true }: EqualizerBarsProps) => {
   const reduceMotion = useReducedMotion();
-
-  const bars = useMemo(
-    () => [
-      { delay: 0, heights: [14, 6, 12, 4, 10] },
-      { delay: 0.15, heights: [6, 12, 4, 14, 8] },
-      { delay: 0.3, heights: [10, 4, 14, 6, 12] },
-    ],
-    [],
-  );
 
   // Paused (or reduced motion): the bars hold still at a fixed shape.
   if (reduceMotion || !playing) {
@@ -29,21 +25,10 @@ const EqualizerBars = ({ playing = true }: EqualizerBarsProps) => {
   }
 
   return (
-    <span className="eqbars" aria-label="Now playing">
-      {bars.map((bar, i) => (
-        <motion.i
-          key={i}
-          animate={{ height: bar.heights.map((h) => `${h}px`) }}
-          transition={{
-            duration: 0.6,
-            repeat: Infinity,
-            repeatType: 'reverse',
-            delay: bar.delay,
-            ease: 'easeInOut',
-          }}
-          style={{ height: `${bar.heights[0]}px` }}
-        />
-      ))}
+    <span className="eqbars eqbars-live" aria-label="Now playing">
+      <i />
+      <i />
+      <i />
     </span>
   );
 };

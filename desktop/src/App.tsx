@@ -22,33 +22,72 @@ import { maybeRecordPlay, resetPlay } from './api/plays';
 import { setSyncOnline, startBackgroundSync } from './api/sync';
 import { loadSettings, updateSettings, useSettings } from './storage/settings';
 import { showToast } from './store/toasts';
+import { noteResume, resumeAt } from './storage/resumePoints';
+import { formatDuration } from './lib/format';
 import { ServerWakeNotice } from './components/ui/ServerWakeNotice';
 import { localLibrary } from './storage/local';
 import { downloads } from './storage/downloads';
 import AppShell from './components/layout/AppShell';
 import Home from './screens/Home';
-import Search from './screens/Search';
-import Library from './screens/Library';
-import Album from './screens/Album';
-import Artist from './screens/Artist';
-import PlaylistDetail from './screens/PlaylistDetail';
-import Playlists from './screens/Playlists';
-import NowPlaying from './screens/NowPlaying';
-import Lyrics from './screens/Lyrics';
-import Queue from './screens/Queue';
-import Equalizer from './screens/Equalizer';
-import ModeSwitch from './screens/ModeSwitch';
-import Settings from './screens/Settings';
-import Downloads from './screens/Downloads';
-import SignIn from './screens/SignIn';
-import ResetPassword from './screens/ResetPassword';
-import VerifyEmail from './screens/VerifyEmail';
 import './styles.css';
 import './sonare.css';
 
 // The web build's intro page at "/": its own chunk, so the music app doesn't load it.
 const Landing = lazy(() => import('./screens/Landing'));
 const Privacy = lazy(() => import('./screens/Privacy'));
+
+/*
+ * Every screen but Home is its own chunk, so a first visit downloads and runs less before Home
+ * shows. They are all fetched in the background once the app is up (prefetchScreens), so opening
+ * one later doesn't wait on the network, or fail on a connection that has since dropped.
+ */
+const screens = {
+  Search: () => import('./screens/Search'),
+  Library: () => import('./screens/Library'),
+  Album: () => import('./screens/Album'),
+  Artist: () => import('./screens/Artist'),
+  PlaylistDetail: () => import('./screens/PlaylistDetail'),
+  Playlists: () => import('./screens/Playlists'),
+  NowPlaying: () => import('./screens/NowPlaying'),
+  Lyrics: () => import('./screens/Lyrics'),
+  Queue: () => import('./screens/Queue'),
+  Equalizer: () => import('./screens/Equalizer'),
+  ModeSwitch: () => import('./screens/ModeSwitch'),
+  Settings: () => import('./screens/Settings'),
+  Downloads: () => import('./screens/Downloads'),
+  SignIn: () => import('./screens/SignIn'),
+  ResetPassword: () => import('./screens/ResetPassword'),
+  VerifyEmail: () => import('./screens/VerifyEmail'),
+};
+const Search = lazy(screens.Search);
+const Library = lazy(screens.Library);
+const Album = lazy(screens.Album);
+const Artist = lazy(screens.Artist);
+const PlaylistDetail = lazy(screens.PlaylistDetail);
+const Playlists = lazy(screens.Playlists);
+const NowPlaying = lazy(screens.NowPlaying);
+const Lyrics = lazy(screens.Lyrics);
+const Queue = lazy(screens.Queue);
+const Equalizer = lazy(screens.Equalizer);
+const ModeSwitch = lazy(screens.ModeSwitch);
+const Settings = lazy(screens.Settings);
+const Downloads = lazy(screens.Downloads);
+const SignIn = lazy(screens.SignIn);
+const ResetPassword = lazy(screens.ResetPassword);
+const VerifyEmail = lazy(screens.VerifyEmail);
+
+/** Fetches the other screens while nothing else is going on, after the first page is up. */
+const prefetchScreens = (): (() => void) => {
+  const load = () => {
+    for (const screen of Object.values(screens)) screen().catch(() => {});
+  };
+  if (typeof window.requestIdleCallback === 'function') {
+    const handle = window.requestIdleCallback(load, { timeout: 4000 });
+    return () => window.cancelIdleCallback(handle);
+  }
+  const timer = setTimeout(load, 1500);
+  return () => clearTimeout(timer);
+};
 
 type Playback = Omit<player.PlaybackStatus, 'positionMs'>;
 
@@ -138,12 +177,21 @@ const App = () => {
   const lastPositionSave = useRef(0);
   /** The playId of an entry the engine already started by itself (gapless / crossfade). */
   const adopted = useRef<number | null>(null);
+  /** The queue a new list just replaced, for Undo; playId is the new queue's, so Undo ends when it moves on. */
+  const replaced = useRef<{ state: PlayerState; positionMs: number; playId: number } | null>(null);
+  /** Where the entry with this playId starts (Undo puts the old queue back mid-song). */
+  const startAt = useRef<{ playId: number; positionMs: number } | null>(null);
+  /** For the muted hint: whether it was playing at the last update, and when the hint last showed. */
+  const wasPlaying = useRef(false);
+  const mutedHintAt = useRef(0);
 
   // Everything about playback except the position, which lives in store/playbackPosition so
   // a position tick doesn't re-render the app (see there).
   const [playback, setPlayback] = useState<Playback>(() => withoutPosition(player.getStatus()));
   /** When the current listen began — used to key a play so a replay counts again. */
   const playStartedAt = useRef<number>(Date.now());
+
+  useEffect(prefetchScreens, []);
 
   useEffect(() => {
     initDevAuth();
@@ -253,6 +301,22 @@ const App = () => {
         lastPositionSave.current = Date.now();
         queueChanged();
       }
+      // A long track carries on from here next time it's played.
+      if (s.playing && s.trackId) {
+        const heard = currentTrackRef.current;
+        noteResume(s.trackId, s.positionMs, s.durationMs || (heard?.id === s.trackId ? heard.durationMs : 0) || 0);
+      }
+      // Started with Sonare's own volume at 0: say why nothing is heard (not again for a while).
+      if (s.playing && !wasPlaying.current && s.volume === 0 && Date.now() - mutedHintAt.current >= 20_000) {
+        mutedHintAt.current = Date.now();
+        showToast({
+          title: 'Sonare is muted',
+          description: 'Playing, but nothing can be heard',
+          icon: 'mute',
+          action: { label: 'Unmute', onClick: () => player.getVolume() === 0 && player.toggleMute() },
+        });
+      }
+      wasPlaying.current = s.playing;
       setPlayback((prev) => (samePlayback(prev, s) ? prev : withoutPosition(s)));
       // Count the play once enough of the track has actually been heard.
       const track = currentTrackRef.current;
@@ -277,7 +341,29 @@ const App = () => {
       adopted.current = null;
       return;
     }
-    void player.playTrackId(currentTrack.id, true);
+    // Undo brings an old queue back where it was; a long track played part-way carries on.
+    const asked = startAt.current?.playId === playerState.playId ? startAt.current.positionMs : null;
+    startAt.current = null;
+    const at = asked ?? resumeAt(currentTrack.id);
+    if (asked === null && at > 0) {
+      const id = currentTrack.id;
+      showToast({
+        title: `Resuming from ${formatDuration(at)}`,
+        description: 'Where you left off last time',
+        icon: 'play',
+        action: {
+          label: 'Start over',
+          onClick: () => {
+            const track = currentTrackRef.current;
+            if (track?.id !== id) return;
+            noteResume(id, 0, track.durationMs ?? 0);
+            void player.playTrackId(id, true, 0);
+          },
+        },
+      });
+    }
+    if (at > 0) void player.playTrackId(currentTrack.id, true, at);
+    else void player.playTrackId(currentTrack.id, true);
   }, [currentTrack?.id, playerState.playId]);
 
   // The engine started the next song by itself (gapless or crossfade): move the queue along.
@@ -343,7 +429,11 @@ const App = () => {
   // What plays after this by itself, so the engine can prepare it (gapless, crossfade, or just
   // its stream looked up ahead).
   const following = playerState.repeat === 'one' ? null : stepQueue(playerState, 1);
-  const upcoming = following && following !== playerState ? following.queue[following.index] : null;
+  // A long track left part-way isn't started gaplessly from 0: it loads by itself, from its point.
+  const upcoming =
+    following && following !== playerState && !resumeAt(following.queue[following.index].id)
+      ? following.queue[following.index]
+      : null;
   useEffect(() => {
     player.setNext(upcoming ? { id: upcoming.id, album: upcoming.album ?? null } : null, currentTrack?.album ?? null);
   }, [upcoming?.id, upcoming?.album, currentTrack?.album]);
@@ -360,6 +450,7 @@ const App = () => {
   useEffect(() => {
     void autoplay.check();
   }, [autoplay, playerState.index, playerState.queue, playerState.repeat]);
+  useEffect(() => () => autoplay.reset(), [autoplay]);
 
   const toggleShuffle = () => {
     setPlayerState((prev) => queueOps.toggleShuffle(prev));
@@ -470,7 +561,39 @@ const App = () => {
     );
   };
 
+  /**
+   * Starting `list` drops the songs still lined up in the queue: keep that queue and offer it
+   * back with Undo (shared/player/queue.ts dropsQueue).
+   */
+  const offerUndo = (list: Track[], title: string, from: PlayingFrom | null) => {
+    const prev = playerStateRef.current;
+    if (!queueOps.dropsQueue(prev, list, prev.playingFrom, from)) {
+      replaced.current = null;
+      return;
+    }
+    const positionMs = resume.current?.positionMs ?? player.getStatus().positionMs;
+    replaced.current = { state: prev, positionMs, playId: prev.playId + 1 };
+    showToast({
+      title,
+      description: 'Your queue was replaced',
+      icon: 'list',
+      action: { label: 'Undo', onClick: () => actionsRef.current.undoReplace() },
+    });
+  };
+
+  /** Put back the queue the last new list replaced, at its song and position. */
+  const undoReplace = () => {
+    const back = replaced.current;
+    replaced.current = null;
+    // Only straight after the switch: once another song started, the old queue is history.
+    if (!back || playerStateRef.current.playId !== back.playId) return;
+    const playId = back.playId + 1;
+    startAt.current = { playId, positionMs: back.positionMs };
+    setPlayerState((prev) => ({ ...back.state, repeat: prev.repeat, playId }));
+  };
+
   const playTrack = (track: Track, newQueue?: Track[], from?: PlayingFrom) => {
+    if (newQueue) offerUndo(newQueue, `Playing ${from?.name ?? track.title}`, from ?? null);
     setPlayerState((prev) => {
       if (newQueue) {
         return { ...queueOps.startQueue(prev, newQueue, track), playId: prev.playId + 1, playingFrom: from ?? null };
@@ -485,6 +608,7 @@ const App = () => {
   const playShuffled = (tracks: Track[], from?: PlayingFrom) => {
     if (!tracks.length) return;
     const first = tracks[Math.floor(Math.random() * tracks.length)];
+    offerUndo(tracks, from?.name ? `Playing ${from.name}` : 'Playing shuffled songs', from ?? null);
     setPlayerState((prev) => ({
       ...queueOps.startQueue({ ...prev, shuffle: true }, tracks, first),
       playId: prev.playId + 1,
@@ -512,6 +636,7 @@ const App = () => {
     removeFromQueue,
     moveInQueue,
     clearUpcoming,
+    undoReplace,
   };
   const actionsRef = useRef(actions);
   actionsRef.current = actions;

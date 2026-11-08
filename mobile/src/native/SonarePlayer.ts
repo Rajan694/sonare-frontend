@@ -94,6 +94,8 @@ interface NativeSonarePlayer {
   setFades(enabled: boolean): void;
   setHeadsetActions(actions: HeadsetActions): void;
   setLiked(liked: boolean): void;
+  mediaVolume(): Promise<number>;
+  raiseVolume(): void;
   setAudioEffects(options: AudioEffects): void;
   setSpatialAudio(options: SpatialParams): void;
 }
@@ -138,8 +140,12 @@ export const SonarePlayer = {
   setFades: (enabled: boolean) => native?.setFades?.(enabled),
   /** The actions for 1, 2 and 3 quick presses of a headset's play button. */
   setHeadsetActions: (actions: HeadsetActions) => native?.setHeadsetActions?.(actions),
-  /** Whether the current song is liked: the home-screen widget's heart shows it. */
+  /** Whether the current song is liked: the widget's and the notification's hearts show it. */
   setLiked: (liked: boolean) => native?.setLiked?.(liked),
+  /** The phone's media volume; 0 is silent. Unknown (an older build) reads as audible. */
+  mediaVolume: (): Promise<number> => native?.mediaVolume?.() ?? Promise.resolve(1),
+  /** Media volume up to a third, with the system volume panel shown. */
+  raiseVolume: () => native?.raiseVolume?.(),
   setAudioEffects: (options: AudioEffects) => native?.setAudioEffects(options),
   setSpatialAudio: (options: SpatialParams) => native?.setSpatialAudio(options),
 
@@ -148,7 +154,7 @@ export const SonarePlayer = {
   onError: (handler: (e: PlayerErrorEvent) => void) => on('error', handler),
   /**
    * Next / previous pressed on the lock screen, notification, a headset or the widget; like
-   * from a headset press or the widget's heart.
+   * from a headset press or the heart on the widget, notification or lock screen.
    */
   onRemote: (handler: (e: { command: RemoteCommand }) => void) => on('remote', handler),
   /** The player moved on to the next track by itself; sent before the state change it causes. */

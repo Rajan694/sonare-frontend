@@ -62,6 +62,24 @@ export const startQueue = <T extends Item, S extends QueueState<T>>(state: S, li
   return state.shuffle ? { ...state, queue: shuffledFrom(queue, at), index: 0 } : { ...state, queue, index: at };
 };
 
+/**
+ * Starting `list` throws away songs that were still lined up after the playing one (the apps
+ * then offer Undo). Another song from the same list (the same "Playing from") isn't that, even
+ * when Autoplay had added songs to it.
+ */
+export const dropsQueue = <T extends Item>(
+  state: QueueState<T>,
+  list: readonly T[],
+  before: PlayingFrom | null = null,
+  now: PlayingFrom | null = null,
+): boolean => {
+  const lined = state.queue.slice(state.index + 1);
+  if (!state.queue[state.index] || !lined.length) return false;
+  if (before && now && before.kind === now.kind && before.name === now.name) return false;
+  const kept = new Set(list.map((t) => t.id));
+  return lined.some((t) => !kept.has(t.id));
+};
+
 /** Switching shuffle on reorders the queue around the playing entry; off keeps the order. */
 export const toggleShuffle = <T, S extends QueueState<T>>(state: S): S => {
   if (state.shuffle || !state.queue[state.index]) return { ...state, shuffle: !state.shuffle };

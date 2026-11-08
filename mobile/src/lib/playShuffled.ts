@@ -8,7 +8,6 @@ import type { Track } from '../data/types';
  */
 export const playShuffled = (tracks: Track[], from?: PlayingFrom): void => {
   if (!tracks.length) return;
-  const player = usePlayerStore.getState();
-  if (!player.shuffle) player.toggleShuffle();
-  player.playTrack(tracks[Math.floor(Math.random() * tracks.length)], tracks, from);
+  // Shuffle is switched on with the new list, so the old queue keeps its order (for Undo).
+  usePlayerStore.getState().playTrack(tracks[Math.floor(Math.random() * tracks.length)], tracks, from, true);
 };

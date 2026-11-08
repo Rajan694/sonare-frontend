@@ -72,6 +72,8 @@ import {
   Sparkles,
   Compass,
   RotateCcw,
+  Rewind,
+  FastForward,
 } from 'lucide-react';
 
 const ICONS = {
@@ -96,6 +98,8 @@ const ICONS = {
   shuffle: Shuffle,
   'skip-back': SkipBack,
   'skip-forward': SkipForward,
+  rewind: Rewind,
+  'fast-forward': FastForward,
   repeat: Repeat,
   'repeat-one': Repeat1,
   volume: Volume2,
@@ -178,6 +182,18 @@ const SOLID: Partial<Record<IconName, React.ReactNode>> = {
     <>
       <path d="M19 5.2v13.6L9 12z" />
       <rect x="4.5" y="5.2" width="2.9" height="13.6" rx="1.2" />
+    </>
+  ),
+  rewind: (
+    <>
+      <path d="M11.4 6.4v11.2L3.4 12z" />
+      <path d="M20.6 6.4v11.2L12.6 12z" />
+    </>
+  ),
+  'fast-forward': (
+    <>
+      <path d="M12.6 6.4v11.2l8-5.6z" />
+      <path d="M3.4 6.4v11.2l8-5.6z" />
     </>
   ),
 };

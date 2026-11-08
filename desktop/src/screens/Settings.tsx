@@ -37,6 +37,7 @@ import { useAppDispatch, useAppSelector } from '../store';
 import { checkForUpdates, downloadAppUpdate } from '../store/updateSlice';
 import { releaseNotesDialog } from '../store/dialogs';
 import { compareVersions } from '../../../shared/releases';
+import { SEEK_STEPS, seekStepLabel } from '../../../shared/player/seek';
 import { openUpdate, showUpdateFolder } from '../storage/appUpdate';
 
 const QUALITIES: { id: AudioQuality; label: string }[] = [
@@ -377,6 +378,15 @@ const Settings = () => {
           />
         </Row>
       </label>
+      <Row icon="fast-forward" label="Rewind & fast-forward" desc="Buttons beside Play that jump back or ahead">
+        <Select
+          align="end"
+          ariaLabel="Rewind and fast-forward step"
+          value={devicePrefs.seekStep}
+          options={SEEK_STEPS.map((step) => ({ value: step, label: seekStepLabel(step) }))}
+          onChange={(seekStep) => updateDevicePrefs({ seekStep })}
+        />
+      </Row>
       <label className="cursor-pointer">
         <Row icon="volume" label="Volume normalization" desc="Evens out loud and quiet tracks">
           <Switch

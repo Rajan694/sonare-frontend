@@ -10,6 +10,8 @@ interface ToastProps {
   icon?: IconName;
   variant?: 'neutral' | 'acc' | 'gold';
   onClose?: () => void;
+  /** A button before the close one ("Undo", "Start over"). */
+  action?: { label: string; onClick: () => void };
 }
 
 const variants = {
@@ -24,7 +26,7 @@ const iconVariants = {
   gold: 'text-gold bg-goldbg',
 };
 
-export const Toast = ({ show, title, description, icon, variant = 'neutral', onClose }: ToastProps) => {
+export const Toast = ({ show, title, description, icon, variant = 'neutral', onClose, action }: ToastProps) => {
   return (
     <AnimatePresence>
       {show && (
@@ -49,6 +51,18 @@ export const Toast = ({ show, title, description, icon, variant = 'neutral', onC
             <span className="text-body-m font-medium truncate">{title}</span>
             {description && <span className="text-body-s text-t3 truncate">{description}</span>}
           </div>
+          {action && (
+            <button
+              type="button"
+              onClick={action.onClick}
+              className={cn(
+                'flex-none ml-2 px-2 h-7 rounded-md text-label-l font-semibold hover:bg-s3',
+                variant === 'gold' ? 'text-gold' : 'text-acc',
+              )}
+            >
+              {action.label}
+            </button>
+          )}
           {onClose && (
             <button onClick={onClose} className="ib ib-28 flex-none ml-2" aria-label="Close message" data-tip="Dismiss">
               <Icon name="close" size={14} />

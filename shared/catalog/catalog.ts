@@ -417,6 +417,31 @@ export const createCatalog = (source: YouTubeSource) => {
     },
 
     /**
+     * Songs like this one, for autoplay (/tracks/:id/related): YouTube Music's radio for it,
+     * songs only (1 to 15 minutes, like the backend's), without the song itself.
+     * @param id Track video ID (format `yt:<videoId>`)
+     * @param limit Maximum results (1–100, default 20)
+     */
+    async relatedTracks(id: string, limit: number = 20): Promise<Page<Track & { kind: 'track' }>> {
+      const rawId = idHelpers.extractYtId(id);
+      const validatedLimit = validateLimit(limit, 20);
+      const seen = new Set([rawId]);
+      const songs = (await source.related(rawId)).filter((item) => {
+        const videoId = item.url.startsWith('/watch?v=') ? item.url.substring(9) : '';
+        const seconds = item.duration ?? 0;
+        if (!videoId || seen.has(videoId) || seconds < 60 || seconds > 15 * 60) return false;
+        seen.add(videoId);
+        return true;
+      });
+      return {
+        items: songs
+          .slice(0, validatedLimit)
+          .map((item) => ({ kind: 'track' as const, ...normalizeStreamItemToTrack(item) })),
+        meta: {},
+      };
+    },
+
+    /**
      * Track details (/tracks/:id).
      * Codec and bitrate from the 'auto' stream selection pick.
      * @param id Track video ID (format `yt:<videoId>`)

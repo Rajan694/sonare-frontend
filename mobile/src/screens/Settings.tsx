@@ -24,6 +24,7 @@ import { appVersion, isLocalBuild } from '../native/SonareBuild';
 import { VerifyEmailCode } from '../components/account/VerifyEmailCode';
 import { Sheet } from '../components/ui/Sheet';
 import { parseReleaseNotes } from '../../../shared/releaseNotes';
+import { SEEK_STEPS, sanitizeSeekStep, seekStepLabel } from '../../../shared/player/seek';
 import { SonarePlayer } from '../native/SonarePlayer';
 import { formatBytes } from '../lib/format';
 import type { AppRelease } from '../data/types';
@@ -79,6 +80,8 @@ export const SettingsScreen = () => {
   const lyricsScript = useDevicePrefsStore((st) => st.lyricsScript);
   const autoplaySimilar = useDevicePrefsStore((st) => st.autoplaySimilar);
   const setAutoplaySimilar = useDevicePrefsStore((st) => st.setAutoplaySimilar);
+  const seekStep = useDevicePrefsStore((st) => st.seekStep);
+  const setSeekStep = useDevicePrefsStore((st) => st.setSeekStep);
   const headsetActions = useDevicePrefsStore((st) => st.headsetActions);
   const headsetSummary = React.useMemo(
     () =>
@@ -312,6 +315,17 @@ export const SettingsScreen = () => {
                 <Text className="text-bs text-t3">Keeps at least 10 songs lined up with similar ones</Text>
               </View>
               <Switch value={autoplaySimilar} onValueChange={setAutoplaySimilar} accessibilityLabel="Autoplay" />
+            </View>
+            <View className="px-4 py-3.5 gap-2.5 border-b border-ln">
+              <View className="gap-0.5">
+                <Text className="text-tm font-medium text-t1">Rewind & fast-forward</Text>
+                <Text className="text-bs text-t3">Buttons beside Play that jump back or ahead</Text>
+              </View>
+              <SegmentedControl
+                options={SEEK_STEPS.map((step) => ({ value: String(step), label: seekStepLabel(step) }))}
+                value={String(seekStep)}
+                onChange={(v) => setSeekStep(sanitizeSeekStep(Number(v)))}
+              />
             </View>
             <Pressable
               onPress={() => navigation.navigate('Equalizer')}

@@ -245,6 +245,20 @@ describe('device preferences and lyrics', () => {
     expect(prefs.useDevicePrefsStore.getState().lyricsAutoScroll).toBe(false);
   });
 
+  it('MOB-PREFS-005 the rewind and fast-forward step is kept on the phone; an unknown one falls back to 10 s', async () => {
+    let { prefs } = fresh();
+    expect(prefs.useDevicePrefsStore.getState().seekStep).toBe(10);
+    prefs.useDevicePrefsStore.getState().setSeekStep(30);
+    await waitFor(async () => expect(await AsyncStorage.getItem('sonare.devicePrefs')).toContain('"seekStep":30'));
+    ({ prefs } = fresh());
+    await prefs.useDevicePrefsStore.getState().hydrate();
+    expect(prefs.useDevicePrefsStore.getState().seekStep).toBe(30);
+    await AsyncStorage.setItem('sonare.devicePrefs', JSON.stringify({ seekStep: 7 }));
+    ({ prefs } = fresh());
+    await prefs.useDevicePrefsStore.getState().hydrate();
+    expect(prefs.useDevicePrefsStore.getState().seekStep).toBe(10);
+  });
+
   it('MOB-PREFS-003 lyrics are asked for in the chosen script; "original" sends none', async () => {
     const { api } = fresh();
     const opened: string[] = [];
