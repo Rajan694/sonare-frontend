@@ -53,17 +53,15 @@ describe('AudioEngine and the native player', () => {
       normalization: false,
     });
     act(() =>
-      useAudioStore
-        .getState()
-        .update({
-          bassBoost: 40,
-          virtualizer: 20,
-          speed: 1.25,
-          pitch: 2,
-          fades: true,
-          crossfade: true,
-          crossfadeMs: 8000,
-        }),
+      useAudioStore.getState().update({
+        bassBoost: 40,
+        virtualizer: 20,
+        speed: 1.25,
+        pitch: 2,
+        fades: true,
+        crossfade: true,
+        crossfadeMs: 8000,
+      }),
     );
     expect(native.setAudioEffects).toHaveBeenLastCalledWith(
       expect.objectContaining({ bassBoost: 40, virtualizer: 20 }),
