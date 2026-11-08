@@ -887,6 +887,15 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-PLAYER-024` | nothing of the next song is fetched until 15 s before this one ends                           |
 | `WEB-PLAYER-025` | a saved song plays from the song cache without a stream lookup; others are tagged to be saved |
 
+## `test/unit/streamPlayback.test.ts`
+
+| ID               | Use case                                                                                   |
+| :--------------- | :----------------------------------------------------------------------------------------- |
+| `WEB-STREAM-001` | a start position past the downloaded part waits for it, then plays from there              |
+| `WEB-STREAM-002` | a seek by the user still lands just before the downloaded end, and cancels a waiting start |
+| `WEB-STREAM-003` | a paused wait starts nothing; the finished download releases it at the right place         |
+| `WEB-STREAM-004` | a whole file never waits, even for a position past its end                                 |
+
 ## `test/unit/plays-sync.test.ts`
 
 | ID             | Use case                                                                            |
