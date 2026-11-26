@@ -9,7 +9,7 @@ import { useSpatialStore } from '../../store/spatial';
 import { SpatialPresetCard } from './SpatialPresetCard';
 import { Soundstage } from './Soundstage';
 import { SpatialControls } from './SpatialControls';
-import type { SpatialMode } from '../../../../shared/spatial';
+import { SPATIAL_PRESET_GROUPS, type SpatialMode } from '../../../../shared/spatial';
 
 interface SpatialAudioSectionProps {
   variant?: 'default' | 'gold';
@@ -119,28 +119,27 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
       {/* Mode Content */}
       <View className={cn(!enabled && 'opacity-50')}>
         {mode === 'presets' ? (
-          <View className="gap-1" accessibilityRole="radiogroup" accessibilityLabel="Spatial preset">
-            <SpatialPresetCard
-              preset="concert"
-              active={preset === 'concert'}
-              disabled={!enabled}
-              variant={variant}
-              onSelect={setPreset}
-            />
-            <SpatialPresetCard
-              preset="cafe"
-              active={preset === 'cafe'}
-              disabled={!enabled}
-              variant={variant}
-              onSelect={setPreset}
-            />
-            <SpatialPresetCard
-              preset="hall"
-              active={preset === 'hall'}
-              disabled={!enabled}
-              variant={variant}
-              onSelect={setPreset}
-            />
+          <View className="gap-3" accessibilityRole="radiogroup" accessibilityLabel="Spatial preset">
+            {SPATIAL_PRESET_GROUPS.map((group) => (
+              <View key={group.id} className="gap-1">
+                <View className="gap-0.5 mb-1.5">
+                  <Text className="text-ll text-t2" accessibilityRole="header">
+                    {group.label}
+                  </Text>
+                  {group.hint && <Text className="text-mono-s text-t3">{group.hint}</Text>}
+                </View>
+                {group.presets.map((id) => (
+                  <SpatialPresetCard
+                    key={id}
+                    preset={id}
+                    active={preset === id}
+                    disabled={!enabled}
+                    variant={variant}
+                    onSelect={setPreset}
+                  />
+                ))}
+              </View>
+            ))}
           </View>
         ) : (
           <View className="gap-4">

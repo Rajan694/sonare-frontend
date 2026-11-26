@@ -1,6 +1,15 @@
 export type SpatialMode = 'presets' | 'custom';
-export type SpatialPresetId = 'concert' | 'cafe' | 'hall';
-export type RoomId = 'stage' | 'cafe' | 'hall' | 'studio';
+export type SpatialPresetId = 'concert' | 'cafe' | 'hall' | 'myRoom' | 'livingRoom' | 'bgmCafe';
+export type RoomId = 'stage' | 'cafe' | 'hall' | 'studio' | 'myRoom' | 'livingRoom' | 'bgmCafe';
+
+export const SPATIAL_PRESET_IDS: readonly SpatialPresetId[] = [
+  'concert',
+  'cafe',
+  'hall',
+  'myRoom',
+  'livingRoom',
+  'bgmCafe',
+];
 
 export interface SpatialCustom {
   x: number; // [-1, 1], +y = front, +x = right
@@ -24,7 +33,7 @@ export interface EarlyReflection {
 }
 
 export interface ToneSetting {
-  type: 'highshelf' | 'lowpass';
+  type: 'highshelf' | 'lowpass' | 'lowshelf';
   frequency: number;
   gainDb?: number;
 }
@@ -44,6 +53,26 @@ export interface RoomDefinition {
   Eer: number;
 }
 
+/**
+ * Background music (after Sony's listening mode of that name): the song is meant to sound like
+ * it plays from speakers somewhere in the room rather than in your ears. Stage presets keep the
+ * direct sound up front and add some room; here the room is as loud as the direct sound or
+ * louder, the speakers are dull and narrow from far away, and the whole thing plays quieter.
+ * The values replace what the stage maths would work out from distance / width / ambience.
+ */
+export interface BackgroundMix {
+  /** Half-angle between the two virtual speakers, degrees. */
+  spreadDeg: number;
+  /** Low-pass on the direct sound: distance and speakers pointing elsewhere. */
+  airHz: number;
+  /** Direct sound level, dB. */
+  directDb: number;
+  /** Room level (reverb and early reflections), dB. */
+  roomDb: number;
+  /** Change in loudness after level matching, dB (negative: plays in the background). */
+  levelDb: number;
+}
+
 export interface SpatialPreset {
   id: SpatialPresetId;
   label: string;
@@ -54,6 +83,7 @@ export interface SpatialPreset {
   ambience: number;
   room: RoomId;
   tone?: ToneSetting;
+  background?: BackgroundMix;
 }
 
 export interface SpatialParams {
@@ -74,7 +104,7 @@ export interface SpatialParams {
   earlyReflections: EarlyReflection[];
 
   // Flat fields for cross-platform bridge (Kotlin / AudioTrack / JNI)
-  toneType: 'none' | 'highshelf' | 'lowpass';
+  toneType: 'none' | 'highshelf' | 'lowpass' | 'lowshelf';
   toneFrequency: number;
   toneGainDb: number;
   rt60Low: number;
@@ -109,8 +139,9 @@ export function sanitizeSpatial(raw: unknown): SpatialSettings {
 
   const enabled = Boolean(obj.enabled);
   const mode: SpatialMode = obj.mode === 'custom' ? 'custom' : 'presets';
-  const preset: SpatialPresetId =
-    obj.preset === 'cafe' || obj.preset === 'hall' || obj.preset === 'concert' ? obj.preset : 'concert';
+  const preset: SpatialPresetId = SPATIAL_PRESET_IDS.includes(obj.preset as SpatialPresetId)
+    ? (obj.preset as SpatialPresetId)
+    : 'concert';
 
   const rawCustom = (typeof obj.custom === 'object' && obj.custom !== null ? obj.custom : {}) as Record<
     string,
@@ -167,6 +198,36 @@ export function sanitizeSpatial(raw: unknown): SpatialSettings {
     custom: { x, y, intensity, ambience, width },
   };
 }
+
+const tapEnergy = (taps: EarlyReflection[]): number => taps.reduce((sum, t) => sum + t.gain ** 2, 0);
+
+// Background-music rooms: early reflections close behind the direct sound (walls a metre or two
+// away in My Room, further in the café) and short, dull tails; furnished rooms soak up the highs.
+const MY_ROOM_TAPS: EarlyReflection[] = [
+  { delayMs: 3, gain: 0.5, channel: 'L' },
+  { delayMs: 4.5, gain: 0.45, channel: 'R' },
+  { delayMs: 7, gain: 0.38, channel: 'L' },
+  { delayMs: 9.5, gain: 0.32, channel: 'R' },
+  { delayMs: 13, gain: 0.25, channel: 'L' },
+  { delayMs: 18, gain: 0.18, channel: 'R' },
+];
+const LIVING_ROOM_TAPS: EarlyReflection[] = [
+  { delayMs: 6, gain: 0.48, channel: 'L' },
+  { delayMs: 9, gain: 0.44, channel: 'R' },
+  { delayMs: 13, gain: 0.38, channel: 'L' },
+  { delayMs: 18, gain: 0.32, channel: 'R' },
+  { delayMs: 25, gain: 0.25, channel: 'L' },
+  { delayMs: 33, gain: 0.18, channel: 'R' },
+];
+const BGM_CAFE_TAPS: EarlyReflection[] = [
+  { delayMs: 9, gain: 0.42, channel: 'L' },
+  { delayMs: 12, gain: 0.4, channel: 'R' },
+  { delayMs: 17, gain: 0.36, channel: 'L' },
+  { delayMs: 23, gain: 0.33, channel: 'R' },
+  { delayMs: 31, gain: 0.28, channel: 'L' },
+  { delayMs: 42, gain: 0.22, channel: 'R' },
+  { delayMs: 56, gain: 0.16, channel: 'L' },
+];
 
 export const ROOMS: Record<RoomId, RoomDefinition> = {
   cafe: {
@@ -253,6 +314,48 @@ export const ROOMS: Record<RoomId, RoomDefinition> = {
     Re: 1.0,
     Eer: 0.5 ** 2 + 0.42 ** 2 + 0.35 ** 2 + 0.28 ** 2 + 0.22 ** 2,
   },
+  myRoom: {
+    id: 'myRoom',
+    name: 'My Room',
+    rt60Low: 0.35,
+    rt60High: 0.25,
+    preDelayMs: 2,
+    dampingHz: 5000,
+    sendLowCutHz: 150,
+    earlyReflections: MY_ROOM_TAPS,
+    sendLevelDb: -15,
+    sizeScale: 0.35,
+    Re: 1.0,
+    Eer: tapEnergy(MY_ROOM_TAPS),
+  },
+  livingRoom: {
+    id: 'livingRoom',
+    name: 'Living Room',
+    rt60Low: 0.55,
+    rt60High: 0.4,
+    preDelayMs: 6,
+    dampingHz: 4200,
+    sendLowCutHz: 160,
+    earlyReflections: LIVING_ROOM_TAPS,
+    sendLevelDb: -14,
+    sizeScale: 0.55,
+    Re: 1.0,
+    Eer: tapEnergy(LIVING_ROOM_TAPS),
+  },
+  bgmCafe: {
+    id: 'bgmCafe',
+    name: 'Café',
+    rt60Low: 0.9,
+    rt60High: 0.6,
+    preDelayMs: 12,
+    dampingHz: 3200,
+    sendLowCutHz: 200,
+    earlyReflections: BGM_CAFE_TAPS,
+    sendLevelDb: -12,
+    sizeScale: 0.8,
+    Re: 1.0,
+    Eer: tapEnergy(BGM_CAFE_TAPS),
+  },
 };
 
 export const SPATIAL_PRESETS: Record<SpatialPresetId, SpatialPreset> = {
@@ -295,7 +398,83 @@ export const SPATIAL_PRESETS: Record<SpatialPresetId, SpatialPreset> = {
       frequency: 12000,
     },
   },
+  // Background music. levelDb is set from measurements, not from the drop wanted: with pink noise
+  // (50% L/R correlation), desktop and Android each come out within about 1 dB of -3 / -5 / -7 dB.
+  // The level matching above assumes a brighter, louder room than the dull rooms render, so the
+  // drop you hear is about 1-3 dB more than levelDb.
+  myRoom: {
+    id: 'myRoom',
+    label: 'My Room',
+    description: 'A speaker on your desk in a small quiet room: close, but out of your head',
+    distance: 0.55,
+    width: 40,
+    intensity: 100,
+    ambience: 60,
+    room: 'myRoom',
+    tone: { type: 'lowshelf', frequency: 200, gainDb: -2 },
+    background: {
+      spreadDeg: 20,
+      airHz: 11000,
+      directDb: -3,
+      roomDb: -6,
+      levelDb: -2.1,
+    },
+  },
+  livingRoom: {
+    id: 'livingRoom',
+    label: 'Living Room',
+    description: 'Speakers across the living room, playing along while you do other things',
+    distance: 0.8,
+    width: 50,
+    intensity: 100,
+    ambience: 75,
+    room: 'livingRoom',
+    tone: { type: 'lowshelf', frequency: 180, gainDb: -2.5 },
+    background: {
+      spreadDeg: 24,
+      airHz: 8000,
+      directDb: -8,
+      roomDb: -4,
+      levelDb: -3.3,
+    },
+  },
+  bgmCafe: {
+    id: 'bgmCafe',
+    label: 'Café (background)',
+    description: 'Ceiling speakers around a café: distant, spread out and easy to tune out',
+    distance: 1.0,
+    width: 90,
+    intensity: 100,
+    ambience: 90,
+    room: 'bgmCafe',
+    tone: { type: 'lowshelf', frequency: 200, gainDb: -4 },
+    background: {
+      spreadDeg: 38,
+      airHz: 6000,
+      directDb: -12,
+      roomDb: -2,
+      levelDb: -4.9,
+    },
+  },
 };
+
+export interface SpatialPresetGroup {
+  id: 'stage' | 'background';
+  label: string;
+  hint?: string;
+  presets: readonly SpatialPresetId[];
+}
+
+/** How the Presets tab lays the presets out, in both apps. */
+export const SPATIAL_PRESET_GROUPS: readonly SpatialPresetGroup[] = [
+  { id: 'stage', label: 'Stage', presets: ['concert', 'cafe', 'hall'] },
+  {
+    id: 'background',
+    label: 'Background music',
+    hint: 'Sounds like music playing in the room around you, and plays quieter',
+    presets: ['myRoom', 'livingRoom', 'bgmCafe'],
+  },
+];
 
 export function toPolar(x: number, y: number): { azimuth: number; distance: number; azimuthDeg: number } {
   const distance = Math.hypot(x, y);
@@ -416,6 +595,7 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
   let ambience: number;
   let room: RoomDefinition;
   let tone: ToneSetting | undefined;
+  let background: BackgroundMix | undefined;
 
   if (settings.mode === 'presets') {
     const preset = SPATIAL_PRESETS[settings.preset] || SPATIAL_PRESETS.concert;
@@ -426,6 +606,7 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
     ambience = preset.ambience;
     room = ROOMS[preset.room] || ROOMS.stage;
     tone = preset.tone;
+    background = preset.background;
   } else {
     const c = settings.custom;
     const polar = toPolar(c.x, c.y);
@@ -446,7 +627,7 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
   const wNorm = width / 50;
   const spreadDegRaw = 30 * (0.6 + 0.8 * wNorm) * (1 - 0.4 * distance);
   const spreadDegClamped = clamp(spreadDegRaw, 12, 55);
-  const spreadDeg = 30 + (spreadDegClamped - 30) * intensityFactor;
+  const spreadDeg = background ? background.spreadDeg : 30 + (spreadDegClamped - 30) * intensityFactor;
   const spread = (spreadDeg * Math.PI) / 180;
 
   // Rear shelf: up to -4 * max(0, -cos az) dB. Capped at -2 dB for HRTF.
@@ -457,15 +638,15 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
 
   // Air low-pass: 20 kHz near (d=0.1), ~8 kHz far (d=1.0)
   const dNorm = (distance - 0.1) / 0.9;
-  const airHz = 20000 - 12000 * dNorm;
+  const airHz = background ? background.airHz : 20000 - 12000 * dNorm;
 
   // Direct path gain: intentional -1.5·d dB
-  const gDirDb = -1.5 * distance;
+  const gDirDb = background ? background.directDb : -1.5 * distance;
   const gDir = Math.pow(10, gDirDb / 20);
 
   // Send level: from -24 dB up to (room.sendLevelDb + 12 dB). Any lower and the room is lost
   // under the direct sound: the presets sounded like the original.
-  const sendDb = -24 + (room.sendLevelDb + 12 - -24) * ambienceFactor;
+  const sendDb = background ? background.roomDb : -24 + (room.sendLevelDb + 12 - -24) * ambienceFactor;
   const sendGain = Math.pow(10, sendDb / 20);
   const gRev = sendGain * intensityFactor;
   const gEr = sendGain * intensityFactor;
@@ -478,7 +659,8 @@ export function resolveSpatial(settings: SpatialSettings, options: ResolveOption
   const P = gDir ** 2 * H_az + gRev ** 2 * room.Re + gEr ** 2 * room.Eer;
   const effectiveP = Math.max(1e-4, P);
   const preGainDb = -3;
-  const trimDb = clamp(-10 * Math.log10(effectiveP), -6, 1.5) - preGainDb;
+  // Background music then drops below the original on purpose.
+  const trimDb = clamp(-10 * Math.log10(effectiveP), -6, 1.5) - preGainDb + (background?.levelDb ?? 0);
 
   return {
     active,

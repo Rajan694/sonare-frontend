@@ -654,6 +654,8 @@ navigation mock live in `test-utils/`.
 | `MOB-SPATIAL-014` | Soundstage renders 2D disc with polar readout and handles touch or accessibility adjustment                   |
 | `MOB-SPATIAL-015` | SpatialControls renders quick placement buttons and sliders for distance, width, intensity, ambience          |
 | `MOB-SPATIAL-016` | leaving the Audio screen ends Compare                                                                         |
+| `MOB-SPATIAL-017` | presets come in Stage and Background music groups; a background music preset is picked and saved              |
+| `MOB-SPATIAL-018` | AudioEngine sends a background music preset with its low shelf and quieter trim                               |
 
 ## `__tests__/collection-menu.test.tsx`
 

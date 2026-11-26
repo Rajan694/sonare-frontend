@@ -487,8 +487,8 @@ export function createSpatialStage(ctx: AudioContext): SpatialStage {
     // Direct path filters
     rearShelf.gain.setTargetAtTime(params.rearShelfDb, t, 0.02);
 
-    if (params.tone?.type === 'highshelf') {
-      toneFilter.type = 'highshelf';
+    if (params.tone?.type === 'highshelf' || params.tone?.type === 'lowshelf') {
+      toneFilter.type = params.tone.type;
       toneFilter.frequency.setTargetAtTime(params.tone.frequency, t, 0.02);
       toneFilter.gain.setTargetAtTime(params.tone.gainDb ?? 0, t, 0.02);
     } else if (params.tone?.type === 'lowpass') {

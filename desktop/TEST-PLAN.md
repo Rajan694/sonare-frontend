@@ -366,6 +366,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-EQ-015`     | without Web Audio the section says so and spatial audio cannot be switched on          |
 | `WEB-EQ-016`     | in offline mode the spatial preset cards use the gold accent                           |
 | `WEB-EQ-017`     | crossfade length slider and fade-on-play-pause switch control dsp state                |
+| `WEB-EQ-018`     | the background music presets have their own group and can be picked                    |
 | `WEB-NP-007`     | "Add to playlist" opens the playlist picker for the song                               |
 | `WEB-NP-008`     | a guest is asked to sign up first, and gets the picker once signed in                  |
 | `WEB-NP-009`     | there is no output picker: Sonare plays on the system output                           |
@@ -732,6 +733,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-DSP-029` | without Web Audio, spatial audio reports that it is unsupported                                    |
 | `WEB-DSP-030` | the renderer probe keeps its source playing well past the impulse, so WebKitGTK renders it         |
 | `WEB-DSP-031` | clamps crossfadeMs to 1000..12000 in steps of 500 on load and set                                  |
+| `WEB-DSP-032` | a background music preset makes the tone filter a low shelf, and stage presets set it back         |
 
 ## `test/unit/spatial.test.ts`
 
@@ -749,6 +751,9 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SPATIAL-010` | bypass makes spatial stage inactive without clearing settings                            |
 | `WEB-SPATIAL-016` | desktop spatial store manages settings, continuous custom updates, bypass, and support   |
 | `WEB-SPATIAL-017` | a disc point maps to a position (edge = farthest, up = front); drawn stage matches audio |
+| `WEB-SPATIAL-018` | background music presets are kept when saved; unknown presets fall back to concert       |
+| `WEB-SPATIAL-019` | background music: My Room closest, Café furthest and widest, room louder than direct     |
+| `WEB-SPATIAL-020` | background music plays quieter than the original by its level drop                       |
 
 ## `test/unit/spatialReverb.test.ts`
 
@@ -759,6 +764,7 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-SPATIAL-013` | energy decay curve gives RT60 within ±20%               |
 | `WEB-SPATIAL-014` | early reflection taps land at the right sample offsets  |
 | `WEB-SPATIAL-015` | impulse response lengths follow Cafe < Concert < Hall   |
+| `WEB-SPATIAL-021` | background music rooms decay as set, My Room < Café     |
 
 ## `test/unit/useArtColor.test.tsx`
 

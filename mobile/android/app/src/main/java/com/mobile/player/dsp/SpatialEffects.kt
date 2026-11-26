@@ -38,7 +38,7 @@ data class SpatialStageParams(
   val spread: Double = Math.toRadians(30.0), // radians
   val rearShelfDb: Double = 0.0, // dB
   val airHz: Double = 20000.0, // 8000..20000 Hz
-  val toneType: String = "none", // "none" | "highshelf" | "lowpass"
+  val toneType: String = "none", // "none" | "highshelf" | "lowpass" | "lowshelf"
   val toneFrequency: Double = 0.0,
   val toneGainDb: Double = 0.0,
   val gDir: Double = 1.0, // linear gain

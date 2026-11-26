@@ -483,6 +483,7 @@ class SpatialStage(private val sampleRate: Int) {
 
     when (targetParams.toneType) {
       "highshelf" -> toneFilter.set(Biquad.Type.HIGH_SHELF, sampleRate, targetParams.toneFrequency, targetParams.toneGainDb)
+      "lowshelf" -> toneFilter.set(Biquad.Type.LOW_SHELF, sampleRate, targetParams.toneFrequency, targetParams.toneGainDb)
       "lowpass" -> toneFilter.set(Biquad.Type.LOWPASS, sampleRate, targetParams.toneFrequency, 0.0, 1.0 / sqrt(2.0))
       else -> toneFilter.set(Biquad.Type.PEAKING, sampleRate, 1000.0, 0.0)
     }

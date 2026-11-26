@@ -44,6 +44,54 @@ const Preview = ({ preset }: { preset: SpatialPresetId }) => {
           <circle cx={32} cy={31} r={2.6} className="fill-[var(--spatial-accent)]" />
         </>
       )}
+      {preset === 'myRoom' && (
+        <>
+          {/* A small room with a speaker pair on the desk, just in front of the listener */}
+          <rect x={18} y={6} width={28} height={30} rx={3} {...common} />
+          <path d="M23 15 L41 15" {...common} strokeOpacity={0.5} />
+          {[26, 38].map((x) => (
+            <rect key={x} x={x - 1.5} y={10.5} width={3} height={3} rx={0.8} fill="currentColor" />
+          ))}
+          <circle cx={32} cy={24} r={2.6} className="fill-[var(--spatial-accent)]" />
+        </>
+      )}
+      {preset === 'livingRoom' && (
+        <>
+          {/* Speakers on the far wall, the listener on the sofa across the room */}
+          <rect x={8} y={4} width={48} height={32} rx={4} {...common} />
+          {[17, 47].map((x) => (
+            <rect key={x} x={x - 1.5} y={7} width={3} height={3} rx={0.8} fill="currentColor" />
+          ))}
+          <path d="M22 33 L22 28 Q22 26 24 26 L40 26 Q42 26 42 28 L42 33" {...common} strokeOpacity={0.5} />
+          <circle cx={32} cy={29} r={2.6} className="fill-[var(--spatial-accent)]" />
+        </>
+      )}
+      {preset === 'bgmCafe' && (
+        <>
+          {/* Ceiling speakers all over a café, tables, and the listener at one of them */}
+          <rect x={6} y={4} width={52} height={32} rx={4} {...common} />
+          {[
+            [15, 10],
+            [32, 9],
+            [49, 10],
+            [15, 29],
+            [49, 29],
+          ].map(([x, y]) => (
+            <g key={`${x}${y}`}>
+              <circle cx={x} cy={y} r={2} {...common} />
+              <circle cx={x} cy={y} r={0.7} fill="currentColor" />
+            </g>
+          ))}
+          {[
+            [23, 19],
+            [41, 19],
+            [26, 29],
+          ].map(([x, y]) => (
+            <circle key={`${x}${y}`} cx={x} cy={y} r={2.6} {...common} strokeOpacity={0.5} />
+          ))}
+          <circle cx={38} cy={28} r={2.6} className="fill-[var(--spatial-accent)]" />
+        </>
+      )}
     </svg>
   );
 };

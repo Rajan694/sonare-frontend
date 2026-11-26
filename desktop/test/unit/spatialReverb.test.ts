@@ -98,6 +98,32 @@ describe('spatial reverb FDN engine', () => {
     }
   });
 
+  it('WEB-SPATIAL-021 background music rooms decay as set, and get longer from My Room to Café', () => {
+    const fs = 48000;
+    const decay = (room: (typeof ROOMS)[keyof typeof ROOMS]) => {
+      const fdn = new FdnReverb(room, fs);
+      const n = Math.round(room.rt60Low * 1.5 * fs);
+      const schroeder = new Float64Array(n);
+      const energy = new Float64Array(n);
+      for (let i = 0; i < n; i++) {
+        const [l, r] = fdn.processSample(i === 0 ? 1 : 0);
+        energy[i] = 0.5 * (l * l + r * r);
+      }
+      let running = 0;
+      for (let i = n - 1; i >= 0; i--) schroeder[i] = running += energy[i];
+      const at = (db: number) => schroeder.findIndex((e) => e <= schroeder[0] * 10 ** (db / 10));
+      return ((at(-25) - at(-5)) / fs) * 3;
+    };
+    for (const room of [ROOMS.myRoom, ROOMS.livingRoom, ROOMS.bgmCafe]) {
+      const rt60 = decay(room);
+      expect(rt60).toBeGreaterThanOrEqual(room.rt60High * 0.8);
+      expect(rt60).toBeLessThanOrEqual(room.rt60Low * 1.25);
+    }
+    const length = (room: (typeof ROOMS)[keyof typeof ROOMS]) => renderImpulse(room, fs).left.length;
+    expect(length(ROOMS.myRoom)).toBeLessThan(length(ROOMS.livingRoom));
+    expect(length(ROOMS.livingRoom)).toBeLessThan(length(ROOMS.bgmCafe));
+  });
+
   it('WEB-SPATIAL-015 impulse response lengths follow Cafe < Concert < Hall', () => {
     const cafeIr = renderImpulse(ROOMS.cafe, 48000);
     const stageIr = renderImpulse(ROOMS.stage, 48000);
