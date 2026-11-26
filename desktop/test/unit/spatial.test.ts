@@ -8,13 +8,22 @@ import {
   getDirectPower,
   pointToPosition,
   resolveSpatial,
+  SPATIAL_PRESET_GROUPS,
+  SPATIAL_PRESETS,
   stageGeometry,
   sanitizeSpatial,
   shortestArc,
   toPolar,
   withDistance,
+  type SpatialPresetId,
   type SpatialSettings,
 } from '../../../shared/spatial';
+
+const BGM = ['myRoom', 'livingRoom', 'bgmCafe'] as const;
+const resolvePreset = (preset: SpatialPresetId, renderer: 'hrtf' | 'headModel' = 'hrtf') =>
+  resolveSpatial({ ...DEFAULT_SPATIAL, enabled: true, mode: 'presets', preset }, { renderer });
+const wetPower = (p: ReturnType<typeof resolveSpatial>, renderer: 'hrtf' | 'headModel') =>
+  p.gDir ** 2 * getDirectPower(p.azimuth, renderer) + p.gRev ** 2 * p.room.Re + p.gEr ** 2 * p.room.Eer;
 
 const freshSpatial = async () => {
   vi.resetModules();
@@ -206,6 +215,70 @@ describe('spatial audio shared model', () => {
           const custom = { x, y, intensity: 70, ambience: 40, width: 60 };
           check(resolveSpatial({ enabled: true, mode: 'custom', preset: 'concert', custom }, { renderer }), renderer);
         }
+      }
+    }
+  });
+
+  it('WEB-SPATIAL-018 background music presets are kept when saved, and unknown presets fall back to concert', () => {
+    for (const preset of BGM) {
+      expect(sanitizeSpatial({ ...DEFAULT_SPATIAL, preset }).preset).toBe(preset);
+    }
+    expect(sanitizeSpatial({ ...DEFAULT_SPATIAL, preset: 'office' }).preset).toBe('concert');
+    expect(SPATIAL_PRESET_GROUPS.map((g) => g.label)).toEqual(['Stage', 'Background music']);
+    expect(SPATIAL_PRESET_GROUPS.flatMap((g) => g.presets)).toEqual([
+      'concert',
+      'cafe',
+      'hall',
+      'myRoom',
+      'livingRoom',
+      'bgmCafe',
+    ]);
+  });
+
+  it('WEB-SPATIAL-019 background music puts the room around you: My Room closest, Café furthest and widest', () => {
+    const [mine, living, cafe] = BGM.map((id) => resolvePreset(id));
+    BGM.forEach((id, i) => {
+      const p = [mine, living, cafe][i];
+      const bg = SPATIAL_PRESETS[id].background!;
+      expect(p.roomId).toBe(id);
+      expect(p.azimuth).toBe(0);
+      expect(p.spread).toBeCloseTo((bg.spreadDeg * Math.PI) / 180, 10);
+      expect(p.airHz).toBe(bg.airHz);
+      expect(20 * Math.log10(p.gDir)).toBeCloseTo(bg.directDb, 10);
+      expect(20 * Math.log10(p.gRev)).toBeCloseTo(bg.roomDb, 10);
+      // Speakers across a room carry less low end: a low shelf cut on the direct sound.
+      expect(p.toneType).toBe('lowshelf');
+      expect(p.toneGainDb).toBeLessThan(0);
+    });
+
+    // Direct-to-room ratio falls with each step away; in the café the room dominates.
+    const dr = (p: ReturnType<typeof resolveSpatial>) =>
+      10 * Math.log10((p.gDir ** 2 * getDirectPower(0, 'hrtf')) / (p.gRev ** 2 * p.room.Re + p.gEr ** 2 * p.room.Eer));
+    expect(dr(mine)).toBeGreaterThan(0);
+    expect(dr(living)).toBeLessThan(dr(mine));
+    expect(dr(cafe)).toBeLessThan(dr(living));
+    expect(dr(cafe)).toBeLessThan(-6);
+
+    expect(mine.spread).toBeLessThan(living.spread);
+    expect(living.spread).toBeLessThan(cafe.spread);
+    expect(mine.airHz).toBeGreaterThan(living.airHz);
+    expect(living.airHz).toBeGreaterThan(cafe.airHz);
+    expect(mine.room.rt60Low).toBeLessThan(living.room.rt60Low);
+    expect(living.room.rt60Low).toBeLessThan(cafe.room.rt60Low);
+
+    // The stage presets work as before.
+    for (const id of ['concert', 'cafe', 'hall'] as const) expect(SPATIAL_PRESETS[id].background).toBeUndefined();
+  });
+
+  it('WEB-SPATIAL-020 background music plays quieter than the original by its level drop, more the further away', () => {
+    for (const renderer of ['hrtf', 'headModel'] as const) {
+      let previous = 0;
+      for (const id of BGM) {
+        const p = resolvePreset(id, renderer);
+        const net = p.preGainDb + p.trimDb + 10 * Math.log10(wetPower(p, renderer));
+        expect(net).toBeCloseTo(SPATIAL_PRESETS[id].background!.levelDb, 6);
+        expect(net).toBeLessThan(previous);
+        previous = net;
       }
     }
   });

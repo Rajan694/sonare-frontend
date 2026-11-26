@@ -521,11 +521,29 @@ describe('equalizer', () => {
   it('WEB-EQ-008 selecting spatial presets switches active acoustic profile', async () => {
     setSpatial({ enabled: true, mode: 'presets', preset: 'concert' });
     const { user } = renderWithProviders(<Equalizer />);
-    await user.click(screen.getByRole('radio', { name: /Café/i }));
+    const stage = within(screen.getByRole('group', { name: 'Stage' }));
+    await user.click(stage.getByRole('radio', { name: /Café/i }));
     expect(getSpatial().preset).toBe('cafe');
-    expect(screen.getByRole('radio', { name: /Café/i })).toHaveAttribute('aria-checked', 'true');
-    await user.click(screen.getByRole('radio', { name: /Hall/i }));
+    expect(stage.getByRole('radio', { name: /Café/i })).toHaveAttribute('aria-checked', 'true');
+    await user.click(stage.getByRole('radio', { name: /Hall/i }));
     expect(getSpatial().preset).toBe('hall');
+  });
+
+  it('WEB-EQ-018 the background music presets have their own group and can be picked', async () => {
+    setSpatial({ enabled: true, mode: 'presets', preset: 'concert' });
+    const { user } = renderWithProviders(<Equalizer />);
+    expect(within(screen.getByRole('group', { name: 'Stage' })).getAllByRole('radio')).toHaveLength(3);
+    const bgm = within(screen.getByRole('group', { name: 'Background music' }));
+    expect(bgm.getAllByRole('radio')).toHaveLength(3);
+    expect(screen.getByText(/plays quieter/)).toBeInTheDocument();
+
+    await user.click(bgm.getByRole('radio', { name: /My Room/ }));
+    expect(getSpatial().preset).toBe('myRoom');
+    await user.click(bgm.getByRole('radio', { name: /Living Room/ }));
+    expect(getSpatial().preset).toBe('livingRoom');
+    await user.click(bgm.getByRole('radio', { name: /Café \(background\)/ }));
+    expect(getSpatial().preset).toBe('bgmCafe');
+    expect(bgm.getByRole('radio', { name: /Café/ })).toHaveAttribute('aria-checked', 'true');
   });
 
   it('WEB-EQ-009 switching to custom soundstage mode displays the 2D disc and controls', async () => {

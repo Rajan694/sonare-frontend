@@ -492,6 +492,25 @@ describe('audio graph', () => {
     expect(internal.trimGain.gain.value).toBeGreaterThan(0);
   });
 
+  it('WEB-DSP-032 a background music preset makes the tone filter a low shelf, and stage presets set it back', async () => {
+    vi.stubGlobal('AudioContext', FakeContext);
+    const d = await fresh();
+    const spatialStore = await import('../../src/audio/spatial');
+    d.bindElement(document.createElement('audio'));
+    await d.ensureGraph();
+    const internal = d.getSpatialStage()!._internal!;
+
+    spatialStore.setSpatial({ enabled: true, mode: 'presets', preset: 'livingRoom' });
+    expect(internal.toneFilter.type).toBe('lowshelf');
+    expect(internal.toneFilter.frequency.value).toBe(180);
+    expect(internal.toneFilter.gain.value).toBe(-2.5);
+    expect(internal.airLPF.frequency.value).toBe(8000);
+
+    spatialStore.setSpatial({ preset: 'hall' });
+    expect(internal.toneFilter.type).toBe('lowpass');
+    expect(internal.toneFilter.gain.value).toBe(0);
+  });
+
   it('WEB-DSP-021 spatial stage smooths azimuth and spread transitions across animation frames', async () => {
     vi.stubGlobal('AudioContext', FakeContext);
     const d = await fresh();

@@ -308,7 +308,7 @@ describe('Spatial Audio Mobile', () => {
       });
     });
 
-    const { getByText, getByLabelText } = render(<SpatialAudioSection />);
+    const { getByText, getAllByText, getByLabelText } = render(<SpatialAudioSection />);
 
     // Names, descriptions and decay times are the ones the audio uses.
     expect(getByText('Concert')).toBeTruthy();
@@ -316,7 +316,7 @@ describe('Spatial Audio Mobile', () => {
     expect(getByText(SPATIAL_PRESETS.concert.description)).toBeTruthy();
 
     expect(getByText('Café')).toBeTruthy();
-    expect(getByText('0.6 s decay')).toBeTruthy();
+    expect(getAllByText('0.6 s decay')).toHaveLength(2); // Café and Living Room
 
     expect(getByText('Hall')).toBeTruthy();
     expect(getByText('2.2 s decay')).toBeTruthy();
@@ -460,6 +460,53 @@ describe('Spatial Audio Mobile', () => {
     fireEvent(distanceSlider, 'accessibilityAction', { nativeEvent: { actionName: 'increment' } });
     const polar = toPolar(useSpatialStore.getState().custom.x, useSpatialStore.getState().custom.y);
     expect(polar.distance).toBeCloseTo(0.41, 2);
+  });
+
+  it('MOB-SPATIAL-017 the presets come in two groups, and a background music preset is picked and saved', () => {
+    act(() => {
+      useSpatialStore.setState({ ...DEFAULT_SPATIAL, enabled: true, mode: 'presets', preset: 'concert' });
+    });
+    const setItemSpy = jest.spyOn(AsyncStorage, 'setItem');
+    const { getByText, getAllByLabelText, getByLabelText } = render(<SpatialAudioSection />);
+
+    expect(getByText('Stage')).toBeTruthy();
+    expect(getByText('Background music')).toBeTruthy();
+    expect(getByText(/plays quieter/)).toBeTruthy();
+    expect(getAllByLabelText(/spatial preset$/)).toHaveLength(6);
+    expect(getByText('My Room')).toBeTruthy();
+    expect(getByText('Living Room')).toBeTruthy();
+    expect(getByText('Café (background)')).toBeTruthy();
+
+    fireEvent.press(getByLabelText('My Room spatial preset'));
+    expect(useSpatialStore.getState().preset).toBe('myRoom');
+    fireEvent.press(getByLabelText('Café (background) spatial preset'));
+    expect(useSpatialStore.getState().preset).toBe('bgmCafe');
+    expect(getByLabelText('Café (background) spatial preset').props.accessibilityState.checked).toBe(true);
+    expect(setItemSpy).toHaveBeenLastCalledWith('sonare.spatial', expect.stringContaining('"preset":"bgmCafe"'));
+  });
+
+  it('MOB-SPATIAL-018 AudioEngine sends a background music preset with its low shelf and quieter trim', () => {
+    render(<AudioEngine />);
+    native.setSpatialAudio.mockClear();
+    act(() => {
+      useSpatialStore.getState().setEnabled(true);
+      useSpatialStore.getState().setPreset('livingRoom');
+    });
+    const expected = resolveSpatial(
+      { ...DEFAULT_SPATIAL, enabled: true, mode: 'presets', preset: 'livingRoom' },
+      { renderer: 'headModel' },
+    );
+    expect(native.setSpatialAudio).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        active: true,
+        roomId: 'livingRoom',
+        toneType: 'lowshelf',
+        toneFrequency: 180,
+        toneGainDb: -2.5,
+        airHz: 8000,
+        trimDb: expected.trimDb,
+      }),
+    );
   });
 
   it('MOB-SPATIAL-016 leaving the Audio screen ends Compare', () => {

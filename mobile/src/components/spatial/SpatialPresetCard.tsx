@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Pressable } from 'react-native';
-import Svg, { Circle, Path, Rect } from 'react-native-svg';
+import Svg, { Circle, G, Path, Rect } from 'react-native-svg';
 import { Text } from '../ui/Text';
 import Icon from '../ui/Icon';
 import { cn } from '../../lib/cn';
@@ -44,6 +44,51 @@ const Preview = ({ preset, accent }: { preset: SpatialPresetId; accent: string }
           <Path d="M20 28 Q32 10 44 28" {...line} strokeOpacity={0.5} />
           <Path d="M16 30 Q32 2 48 30" {...line} strokeOpacity={0.3} />
           <Circle cx={32} cy={31} r={2.6} fill={accent} />
+        </>
+      )}
+      {preset === 'myRoom' && (
+        <>
+          <Rect x={18} y={6} width={28} height={30} rx={3} {...line} />
+          <Path d="M23 15 L41 15" {...line} strokeOpacity={0.5} />
+          {[26, 38].map((x) => (
+            <Rect key={x} x={x - 1.5} y={10.5} width={3} height={3} rx={0.8} fill={LINE} />
+          ))}
+          <Circle cx={32} cy={24} r={2.6} fill={accent} />
+        </>
+      )}
+      {preset === 'livingRoom' && (
+        <>
+          <Rect x={8} y={4} width={48} height={32} rx={4} {...line} />
+          {[17, 47].map((x) => (
+            <Rect key={x} x={x - 1.5} y={7} width={3} height={3} rx={0.8} fill={LINE} />
+          ))}
+          <Path d="M22 33 L22 28 Q22 26 24 26 L40 26 Q42 26 42 28 L42 33" {...line} strokeOpacity={0.5} />
+          <Circle cx={32} cy={29} r={2.6} fill={accent} />
+        </>
+      )}
+      {preset === 'bgmCafe' && (
+        <>
+          <Rect x={6} y={4} width={52} height={32} rx={4} {...line} />
+          {[
+            [15, 10],
+            [32, 9],
+            [49, 10],
+            [15, 29],
+            [49, 29],
+          ].map(([x, y]) => (
+            <G key={`${x}${y}`}>
+              <Circle cx={x} cy={y} r={2} {...line} />
+              <Circle cx={x} cy={y} r={0.7} fill={LINE} />
+            </G>
+          ))}
+          {[
+            [23, 19],
+            [41, 19],
+            [26, 29],
+          ].map(([x, y]) => (
+            <Circle key={`${x}${y}`} cx={x} cy={y} r={2.6} {...line} strokeOpacity={0.5} />
+          ))}
+          <Circle cx={38} cy={28} r={2.6} fill={accent} />
         </>
       )}
     </Svg>

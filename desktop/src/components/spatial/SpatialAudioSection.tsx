@@ -14,7 +14,7 @@ import {
 import { SpatialPresetCard } from './SpatialPresetCard';
 import { Soundstage } from './Soundstage';
 import { SpatialControls } from './SpatialControls';
-import type { SpatialMode, SpatialPresetId } from '../../../../shared/spatial';
+import { SPATIAL_PRESET_GROUPS, type SpatialMode, type SpatialPresetId } from '../../../../shared/spatial';
 
 interface SpatialAudioSectionProps {
   variant?: 'acc' | 'gold';
@@ -146,16 +146,33 @@ export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ varian
 
       {/* Mode Content */}
       {spatial.mode === 'presets' ? (
-        <div role="radiogroup" aria-label="Spatial preset" className="grid grid-cols-1 @md:grid-cols-3 gap-3.5">
-          {(['concert', 'cafe', 'hall'] as const).map((preset) => (
-            <SpatialPresetCard
-              key={preset}
-              preset={preset}
-              active={spatial.preset === preset}
-              disabled={disabled}
-              variant={variant}
-              onSelect={handlePresetSelect}
-            />
+        <div role="radiogroup" aria-label="Spatial preset" className="flex flex-col gap-5">
+          {SPATIAL_PRESET_GROUPS.map((group) => (
+            <div
+              key={group.id}
+              role="group"
+              aria-labelledby={`spatial-group-${group.id}`}
+              className="flex flex-col gap-2.5"
+            >
+              <div className="flex flex-col gap-0.5">
+                <span id={`spatial-group-${group.id}`} className="text-label-m font-medium text-t2">
+                  {group.label}
+                </span>
+                {group.hint && <span className="text-label-s text-t3">{group.hint}</span>}
+              </div>
+              <div className="grid grid-cols-1 @md:grid-cols-3 gap-3.5">
+                {group.presets.map((preset) => (
+                  <SpatialPresetCard
+                    key={preset}
+                    preset={preset}
+                    active={spatial.preset === preset}
+                    disabled={disabled}
+                    variant={variant}
+                    onSelect={handlePresetSelect}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       ) : (
