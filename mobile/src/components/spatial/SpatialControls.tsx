@@ -13,12 +13,7 @@ interface SpatialControlsProps {
   onChange: (patch: Partial<SpatialCustom>, opts?: { commit?: boolean }) => void;
 }
 
-export const SpatialControls: React.FC<SpatialControlsProps> = ({
-  custom,
-  disabled = false,
-  variant = 'default',
-  onChange,
-}) => {
+export const SpatialControls = ({ custom, disabled = false, variant = 'default', onChange }: SpatialControlsProps) => {
   const polar = toPolar(custom.x, custom.y);
   const distancePct = Math.round(polar.distance * 100);
 

@@ -20,7 +20,7 @@ interface SoundstageProps {
 const DISC_RADIUS = 95; // SVG coordinate units
 const VIEW_HALF = 120; // half the viewBox
 
-export const Soundstage: React.FC<SoundstageProps> = ({ custom, disabled = false, variant = 'acc', onChange }) => {
+export const Soundstage = ({ custom, disabled = false, variant = 'acc', onChange }: SoundstageProps) => {
   const accent = variant === 'gold' ? 'var(--color-gold)' : 'var(--color-acc)';
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [isDragging, setIsDragging] = useState(false);

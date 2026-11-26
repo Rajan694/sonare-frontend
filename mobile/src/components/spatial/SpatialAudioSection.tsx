@@ -16,7 +16,7 @@ interface SpatialAudioSectionProps {
   className?: string;
 }
 
-export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ variant = 'default', className }) => {
+export const SpatialAudioSection = ({ variant = 'default', className }: SpatialAudioSectionProps) => {
   const enabled = useSpatialStore((s) => s.enabled);
   const mode = useSpatialStore((s) => s.mode);
   const preset = useSpatialStore((s) => s.preset);

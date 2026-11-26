@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { cn } from '../../lib/cn';
 import Icon from '../ui/Icon';
 import { Switch } from '../ui/Switch';
@@ -21,7 +21,7 @@ interface SpatialAudioSectionProps {
   className?: string;
 }
 
-export const SpatialAudioSection: React.FC<SpatialAudioSectionProps> = ({ variant = 'acc', className }) => {
+export const SpatialAudioSection = ({ variant = 'acc', className }: SpatialAudioSectionProps) => {
   const spatial = useSpatial();
   const bypass = useSpatialBypass();
   const support = useSpatialSupport();

@@ -104,13 +104,13 @@ interface SpatialPresetCardProps {
   onSelect: (preset: SpatialPresetId) => void;
 }
 
-export const SpatialPresetCard: React.FC<SpatialPresetCardProps> = ({
+export const SpatialPresetCard = ({
   preset,
   active,
   disabled = false,
   variant = 'acc',
   onSelect,
-}) => {
+}: SpatialPresetCardProps) => {
   const info = SPATIAL_PRESETS[preset];
   const room = ROOMS[info.room];
   const gold = variant === 'gold';

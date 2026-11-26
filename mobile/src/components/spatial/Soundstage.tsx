@@ -34,7 +34,7 @@ interface SoundstageProps {
 const DISC_RADIUS = 95; // SVG coordinate units (-120..120 viewBox)
 const VIEW_HALF = 120;
 
-export const Soundstage: React.FC<SoundstageProps> = ({ custom, disabled = false, variant = 'default', onChange }) => {
+export const Soundstage = ({ custom, disabled = false, variant = 'default', onChange }: SoundstageProps) => {
   const [size, setSize] = useState(240);
   const accent = variant === 'gold' ? '#FFC24D' : '#00E28A';
 

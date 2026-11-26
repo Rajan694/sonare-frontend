@@ -1,4 +1,3 @@
-import React from 'react';
 import { Slider } from '../ui/Slider';
 import Icon from '../ui/Icon';
 import { DEFAULT_SPATIAL, toPolar, withDistance, type SpatialCustom } from '../../../../shared/spatial';
@@ -10,12 +9,7 @@ interface SpatialControlsProps {
   onChange: (patch: Partial<SpatialCustom>, opts?: { commit?: boolean }) => void;
 }
 
-export const SpatialControls: React.FC<SpatialControlsProps> = ({
-  custom,
-  disabled = false,
-  variant = 'acc',
-  onChange,
-}) => {
+export const SpatialControls = ({ custom, disabled = false, variant = 'acc', onChange }: SpatialControlsProps) => {
   const polar = toPolar(custom.x, custom.y);
   const distancePct = Math.round(polar.distance * 100);
 
