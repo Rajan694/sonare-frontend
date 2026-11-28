@@ -41,3 +41,16 @@ export const bucketLabels = (at: string, unit: 'hour' | 'day') => {
   if (unit === 'day') return { label: day, tip: day };
   return { label: time, tip: `${day}, ${time}` };
 };
+
+/** Bytes in decimal units, as phones and carriers count data: 120000000 -> '120 MB'. */
+export const fmtBytes = (n: number): string => {
+  if (n < 1000) return `${Math.round(n)} B`;
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let v = n / 1000;
+  let i = 0;
+  while (v >= 1000 && i < units.length - 1) {
+    v /= 1000;
+    i += 1;
+  }
+  return `${v >= 100 ? Math.round(v) : v.toFixed(1).replace(/\.0$/, '')} ${units[i]}`;
+};

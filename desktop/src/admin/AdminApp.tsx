@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   LogOut,
   Settings as SettingsIcon,
+  Smartphone,
   Sparkles,
 } from 'lucide-react';
 import { BrandMark } from '../components/ui/BrandMark';
@@ -20,6 +21,7 @@ import ApiMetrics from './ApiMetrics';
 import ErrorLogs from './ErrorLogs';
 import Settings from './Settings';
 import AiProviders from './AiProviders';
+import PipedHosts from './PipedHosts';
 import Account from './Account';
 import '../sonare.css';
 
@@ -31,6 +33,7 @@ const NAV = [
   { to: '/admin/api', label: 'API', icon: Activity },
   { to: '/admin/errors', label: 'Errors', icon: AlertTriangle },
   { to: '/admin/ai', label: 'AI', icon: Sparkles },
+  { to: '/admin/piped', label: 'Piped hosts', icon: Smartphone },
   { to: '/admin/settings', label: 'Settings', icon: SettingsIcon },
   { to: '/admin/account', label: 'Account', icon: KeyRound },
 ];
@@ -69,6 +72,7 @@ const AdminApp = () => {
               <Route path="api" element={<ApiMetrics />} />
               <Route path="errors" element={<ErrorLogs />} />
               <Route path="ai" element={<AiProviders />} />
+              <Route path="piped" element={<PipedHosts />} />
               <Route path="settings" element={<Settings />} />
               <Route path="account" element={<Account account={account} onChange={setAccount} />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />

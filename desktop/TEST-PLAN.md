@@ -1230,6 +1230,19 @@ request a test did not mock (`test/helpers/server.ts`).
 | `WEB-AIADM-004` | check now, disable, move and delete call the backend             |
 | `WEB-AIADM-005` | shows calls, tokens in and out, by provider and by feature       |
 
+## `test/screens/piped-hosts-admin.test.tsx`
+
+| ID              | Use case                                                                                                        |
+| :-------------- | :-------------------------------------------------------------------------------------------------------------- |
+| `WEB-PHADM-001` | lists phones active first, with role, health, network, version and which one is in use                          |
+| `WEB-PHADM-002` | says when traffic is on the env fallback or the Settings pin, and when there are no phones                      |
+| `WEB-PHADM-003` | opening a phone shows its live status (battery, network, data, parts, checks, versions) and polls it while open |
+| `WEB-PHADM-004` | a phone that can't be reached shows its registry data and "offline", not an error page; an old hostd warns      |
+| `WEB-PHADM-005` | Connect, Disconnect, Run checks and Update parts call the phone, show its answer, and follow the live status    |
+| `WEB-PHADM-006` | a check run shows the failing steps; while it runs the phone buttons wait                                       |
+| `WEB-PHADM-007` | Make active, Make standby, priority, health check and remove (after a confirm) change the registry              |
+| `WEB-PHADM-008` | a list that fails to load says so                                                                               |
+
 ## `test/screens/admin-analytics.test.tsx`
 
 | ID            | Use case                                                                              |

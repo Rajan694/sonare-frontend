@@ -83,7 +83,10 @@ const call = async <T>(
   if (!res.ok) {
     // Expired, or the password changed in another session: back to the sign-in form.
     if (res.status === 401 && path !== '/login') setToken(null);
-    throw new AdminApiError(data?.error?.message ?? `Request failed (${res.status})`, res.status, data?.error?.code);
+    // Our errors are { error: { code, message } }; a phone's answer passed through by
+    // /piped-hosts/:uuid/actions is { error: 'not serving' }.
+    const message = typeof data?.error === 'string' ? data.error : data?.error?.message;
+    throw new AdminApiError(message ?? `Request failed (${res.status})`, res.status, data?.error?.code);
   }
   return data as T;
 };
@@ -277,6 +280,91 @@ export interface AiUsage {
   series: (AiUsageTotals & { day: string })[];
 }
 
+/** A phone hosting Piped, as the backend's registry has it (services/pipedHosts.ts). */
+export type PipedHostRole = 'active' | 'standby' | 'released';
+
+export interface AdminPipedHost {
+  uuid: string;
+  name: string;
+  apiUrl: string;
+  role: PipedHostRole;
+  /** Lower is tried first among standbys. */
+  priority: number;
+  epoch: number;
+  /** sonare-hostd's version, as the phone last reported it. */
+  version: string | null;
+  network: 'wifi' | 'mobile' | 'unknown';
+  metered: boolean;
+  status: 'ok' | 'down' | 'unknown';
+  failures: number;
+  retryAt: number | null;
+  /** The last signed request from the phone, in ms. */
+  lastRequestAt: number | null;
+  updatedAt: number;
+  lastCheckedAt: number | null;
+  lastError: string | null;
+  latencyMs: number | null;
+}
+
+/** Where Piped traffic goes now: a phone, the URL pinned in Settings, or env PIPED_API_URL. */
+export type PipedHostCurrent = { uuid: string; name: string } | 'pin' | 'env';
+
+export interface AdminPipedHosts {
+  hosts: AdminPipedHost[];
+  current: PipedHostCurrent;
+  epoch: number;
+}
+
+export interface PipedHostCheckResult {
+  at?: string;
+  ok?: boolean;
+  steps?: { name: string; ok: boolean; detail?: string; ms?: number }[];
+}
+
+/**
+ * A phone's live status (sonare-hostd GET /_sonare/status, sonare-piped-host docs/CONTROL-API.md).
+ * Every field may be missing on older phones.
+ */
+export interface PipedHostLive {
+  version?: string;
+  host?: { uuid?: string; name?: string; hostname?: string; mode?: string; priority?: number; keySet?: boolean };
+  phase?: string;
+  serving?: boolean;
+  lastError?: string;
+  publicUrl?: string;
+  tailscale?: { state?: string; dnsName?: string; ips?: string[]; serving?: boolean; certOk?: boolean };
+  gates?: Record<string, { serving?: boolean; requests?: number; bytesOut?: number } | undefined>;
+  parts?: { name: string; state?: string; pid?: number; since?: string; restarts?: number; lastError?: string }[];
+  bundle?: { ready?: boolean; version?: string; sources?: Record<string, string> };
+  check?: PipedHostCheckResult | null;
+  /** Downloads in progress: [bytes so far, total]. */
+  progress?: Record<string, [number, number] | undefined>;
+  startedAt?: string;
+  backend?: {
+    url?: string;
+    action?: string;
+    at?: string;
+    reply?: { ok?: boolean; you?: string; epoch?: number } | null;
+    lastError?: string;
+  } | null;
+  device?: {
+    model?: string;
+    android?: string;
+    battery?: { level?: number; temperature?: number; charging?: boolean; health?: string } | null;
+    network?: { type?: string; metered?: boolean } | null;
+    data?: { month?: string; wifiBytes?: number; mobileBytes?: number } | null;
+  } | null;
+}
+
+export interface PipedHostLiveReply {
+  live: PipedHostLive;
+  /** When the backend read it, in ms. */
+  fetchedAt: number;
+  ms: number;
+}
+
+export type PipedHostAction = 'connect' | 'disconnect' | 'check' | 'update';
+
 // ---- Calls ----
 
 export const adminApi = {
@@ -362,5 +450,39 @@ export const adminApi = {
 
   aiUsage(days: number) {
     return call<AiUsage>('/analytics/ai', { params: { days } });
+  },
+
+  pipedHosts() {
+    return call<AdminPipedHosts>('/piped-hosts');
+  },
+
+  /** role 'active' hands traffic to this phone (a new epoch); the previous active becomes standby. */
+  updatePipedHost(uuid: string, update: { priority?: number; role?: PipedHostRole }) {
+    return call<AdminPipedHost>(`/piped-hosts/${encodeURIComponent(uuid)}`, { method: 'PATCH', body: update });
+  },
+
+  deletePipedHost(uuid: string) {
+    return call<{ ok: boolean }>(`/piped-hosts/${encodeURIComponent(uuid)}`, { method: 'DELETE' });
+  },
+
+  /** The backend's own health check of the phone's Piped (/healthcheck). */
+  checkPipedHost(uuid: string) {
+    return call<{ ok: boolean; ms: number; error?: string; host: AdminPipedHost }>(
+      `/piped-hosts/${encodeURIComponent(uuid)}/check`,
+      { method: 'POST' },
+    );
+  },
+
+  /** 502 UPSTREAM_UNAVAILABLE when the phone can't be reached. */
+  pipedHostLive(uuid: string) {
+    return call<PipedHostLiveReply>(`/piped-hosts/${encodeURIComponent(uuid)}/live`);
+  },
+
+  /** The phone's own answer: connect and update { status }, check the check result. */
+  pipedHostAction(uuid: string, action: PipedHostAction) {
+    return call<Record<string, unknown> & PipedHostCheckResult>(
+      `/piped-hosts/${encodeURIComponent(uuid)}/actions/${action}`,
+      { method: 'POST' },
+    );
   },
 };
