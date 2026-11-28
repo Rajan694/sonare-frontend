@@ -43,6 +43,12 @@ import { fmtBytes, fmtDuration, fmtInt, fmtMs, timeAgo } from './format';
 export const PIPED_HOSTS_POLL = { list: 10_000, live: 5_000, busy: 2_000, follow: 90_000 };
 
 const iso = (ms: number | null) => (ms === null ? null : new Date(ms).toISOString());
+/**
+ * sonare-hostd (Go) writes times with nanoseconds, '2026-11-28T17:53:13.000102091Z'. Only up to
+ * milliseconds is a date format every browser must parse, so the rest is cut off.
+ */
+const phoneTime = (t: string) => t.replace(/(\.\d{3})\d+/, '$1');
+const phoneAgo = (t: string) => timeAgo(phoneTime(t));
 const clock = (ms: number) => new Date(ms).toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' });
 const plural = (n: number, one: string, many = `${one}s`) => `${fmtInt(n)} ${n === 1 ? one : many}`;
 
@@ -166,13 +172,13 @@ const battery = (b: NonNullable<PipedHostLive['device']>['battery']) => {
     .join(', ');
 };
 
-const uptimeSec = (startedAt: string) => Math.max(0, (Date.now() - new Date(startedAt).getTime()) / 1000);
+const uptimeSec = (startedAt: string) => Math.max(0, (Date.now() - new Date(phoneTime(startedAt)).getTime()) / 1000);
 
 const CheckSteps = ({ check, title }: { check: PipedHostCheckResult; title: string }) => (
   <div className="flex flex-col gap-1.5">
     <div className="text-label-l text-t2">
       {title}
-      {check.at ? ` ${timeAgo(check.at)}` : ''}:{' '}
+      {check.at ? ` ${phoneAgo(check.at)}` : ''}:{' '}
       <span className={check.ok ? 'text-acc' : 'text-red'}>{check.ok ? 'passed' : 'failed'}</span>
     </div>
     {(check.steps ?? []).length > 0 && (
@@ -248,7 +254,7 @@ const LiveDetails = ({ reply, stale }: { reply: PipedHostLiveReply; stale: boole
           {s.backend?.action ? (
             <>
               {s.backend.action}
-              {s.backend.at && ` ${timeAgo(s.backend.at)}`}
+              {s.backend.at && ` ${phoneAgo(s.backend.at)}`}
               {s.backend.reply?.you && `: ${s.backend.reply.you}`}
               {s.backend.lastError && <span className="block text-red">{s.backend.lastError}</span>}
             </>
@@ -302,7 +308,7 @@ const LiveDetails = ({ reply, stale }: { reply: PipedHostLiveReply; stale: boole
                     <span className={cn('badge', partTone(p.state))}>{p.state ?? 'unknown'}</span>
                   </td>
                   <td className="py-1.5 text-right text-t2 tabular-nums">{fmtInt(p.restarts ?? 0)}</td>
-                  <td className="py-1.5 pl-4 text-t3">{p.since ? timeAgo(p.since) : '-'}</td>
+                  <td className="py-1.5 pl-4 text-t3">{p.since ? phoneAgo(p.since) : '-'}</td>
                 </tr>
               ))}
             </tbody>

@@ -35,6 +35,9 @@ const host = (over: Partial<AdminPipedHost>): AdminPipedHost => ({
   ...over,
 });
 
+/** A time as sonare-hostd (Go) writes it: nanoseconds, e.g. '2026-11-28T17:53:13.000102091Z'. */
+const goTime = (msAgo: number) => new Date(Date.now() - msAgo).toISOString().replace('Z', '102091Z');
+
 const LIVE: PipedHostLive = {
   version: '0.2.0',
   host: { uuid: A, name: 'realme-x2', hostname: 'sonare-host-realme-x2', mode: 'handover', priority: 100 },
@@ -47,21 +50,32 @@ const LIVE: PipedHostLive = {
     media: { serving: true, requests: 30, bytesOut: 120_000_000 },
   },
   parts: [
-    { name: 'bg-helper', state: 'running', pid: 101, restarts: 0, lastError: '' },
+    { name: 'bg-helper', state: 'running', pid: 101, since: goTime(2 * 3600_000), restarts: 0 },
     { name: 'piped-proxy', state: 'running', pid: 102, restarts: 2, lastError: '' },
     { name: 'piped', state: 'failed', pid: 0, restarts: 5, lastError: 'exit status 1' },
   ],
-  bundle: { ready: true, version: '0.1.1' },
+  bundle: { ready: true, version: '2026.11.28-1545' },
   check: {
-    at: new Date(Date.now() - 60_000).toISOString(),
+    at: goTime(60_000),
     ok: false,
     steps: [
       { name: 'search', ok: true, detail: '20 results', ms: 870 },
       { name: 'streams', ok: false, detail: 'HTTP 500 from Piped', ms: 2_400 },
     ],
   },
-  startedAt: new Date(Date.now() - 2 * 3600_000).toISOString(),
-  backend: { action: 'claim', at: new Date().toISOString(), reply: { ok: true, you: 'active', epoch: 1 } },
+  startedAt: goTime(2 * 3600_000),
+  process: { pid: 26240 },
+  backend: {
+    url: 'https://api.sonare.vip',
+    action: 'claim',
+    at: goTime(0),
+    reply: {
+      ok: true,
+      you: 'active',
+      epoch: 1,
+      active: { uuid: A, name: 'realme-x2', api_url: 'https://sonare-host-realme-x2.tailb61775.ts.net' },
+    },
+  },
   device: {
     model: 'RMX1992',
     android: '11',
@@ -197,7 +211,7 @@ describe('admin: Piped hosts', () => {
     expect(within(panel).getByText('Wi-Fi 120 MB · mobile 2.5 MB')).toBeInTheDocument();
     expect(within(panel).getByText(`${fmtBytes(120_052_000)} in 150 requests`)).toBeInTheDocument();
     expect(within(panel).getByText(/^2 h 0 min$/)).toBeInTheDocument();
-    expect(within(panel).getByText(/hostd 0\.2\.0 · bundle 0\.1\.1/)).toBeInTheDocument();
+    expect(within(panel).getByText(/hostd 0\.2\.0 · bundle 2026\.11\.28-1545/)).toBeInTheDocument();
     expect(within(panel).getByText('Running')).toBeInTheDocument();
     expect(within(panel).getByText('RMX1992 · Android 11')).toBeInTheDocument();
     expect(within(panel).getByText(/claim just now: active/)).toBeInTheDocument();
@@ -206,7 +220,7 @@ describe('admin: Piped hosts', () => {
     const rows = within(parts).getAllByRole('row');
     expect(rows.map((r) => r.textContent)).toEqual([
       'PartStateRestartsSince',
-      'bg-helperrunning0-',
+      'bg-helperrunning02 h ago',
       'piped-proxyrunning2-',
       'pipedexit status 1failed5-',
     ]);

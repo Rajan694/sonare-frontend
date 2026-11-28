@@ -340,11 +340,17 @@ export interface PipedHostLive {
   /** Downloads in progress: [bytes so far, total]. */
   progress?: Record<string, [number, number] | undefined>;
   startedAt?: string;
+  process?: { pid?: number };
   backend?: {
     url?: string;
     action?: string;
     at?: string;
-    reply?: { ok?: boolean; you?: string; epoch?: number } | null;
+    reply?: {
+      ok?: boolean;
+      you?: string;
+      epoch?: number;
+      active?: { uuid?: string; name?: string; api_url?: string } | null;
+    } | null;
     lastError?: string;
   } | null;
   device?: {
